@@ -32,6 +32,7 @@ Cette partie concerne les règles esthétiques qui doivent être appliquée pour
 |====
 
 
+
 |====
 | `MIN_H_DIST` | Distance minimale horizontale entre deux objets, par type d'objet (clé). Les empêche d'être horizontalement trop proches.
 | `MIN_V_DIST` | Distance minimale verticale entre deux objets. Les empêche d'être trop proches verticalement.
@@ -40,8 +41,26 @@ Cette partie concerne les règles esthétiques qui doivent être appliquée pour
 | `MIN_SIZE`    | Table définissant la taille (`width`/`height`) de chaque élément. Si une valeur est `nil`, c'est qu'il n'existe pas de limite.
 |====
 
+
 Si l'user veut placer un élément à un endroit dans son <<gabarit>> mais que le calcul ne le permet pas.
 Solution proposée ?
+
+
+[[tdm-rules, règles concernant la table des matières]]
+==== Règles concernant la table des matières ====
+
+
+[cols="1,6,2", options="header"]
+|====
+| Num. | Règle | Note
+
+| RATDM1 | La table des matières doit tenir sur deux colonnes |
+| RATDM2 | Si la table des matières est moins grande que deux colonnes complètes, on doit répartir le MÊME NOMBRE DE LIGNES de chaque côté |
+| RATDM3 | L'éloignement du chiffre doit être calculé par rapport au plus long titre de la liste des titres, auquel on ajoute la valeur MIN_H_DIST['tdm_num'] | (valeur fixée à 20pt pour l'essai)
+| RATDM4 | Un filet de conduite doit relier les titres à leur numéro de page | TDM[:leader_character] = '.' et TDM[:leader_space] = '3pt' (espaces entre les caractères du filet) réglables.
+
+|====
+
 
 [[title-rules, règles concernant la bande de titre]]
 ==== Règles concernant la bande de titres (infos) ====
