@@ -61,6 +61,9 @@ module GabaritEssai1
   LINE_GAP = 4
   DIAG_W = 60
   DIAG_TEXT_GAP = 26
+  # RAD3 : largeur plancher sous laquelle un diag ne doit jamais être réduit (valeur
+  # provisoire, à ajuster — Phil, 2026-08-19).
+  MIN_SIZE = { diags: { width: 48.0 } }.freeze
 
   # Marges : plus de valeur fixe — imposées par la classe `KDP` (2026-08-17), jamais
   # laissées au choix de l'utilisateur (esthétique, pas un réglage). Voir
@@ -132,10 +135,20 @@ module GabaritEssai1
   # Table par TYPE d'élément (:diags, :title, :score, :tabla, :strophe...) — clé absente ⇒
   # valeur de :default. Seul :diags a une valeur propre pour l'instant (Phil, 2026-08-16),
   # les autres types tomberont sur :default tant qu'aucun besoin distinct n'est apparu.
-  MIN_V_DIST = { default: 20.0, diags: 5.0 }.freeze
-  MIN_H_DIST = { default: 8.0, diags: 4.0 }.freeze
-  MAX_V_DIST = { default: 80.0, diags: 5.0 }.freeze
+  # `band_diag`/`band_strophe` : gouttière ENTRE la bande de titre et le 1er élément
+  # (diag / couplet) — INDÉPENDANTE de la gouttière ENTRE éléments de même type (`diags`/
+  # `default`). Les deux ne doivent jamais partager la même plage (Phil, 2026-08-19) : sinon
+  # une plage resserrée pour "entre diags" resserre aussi, à tort, "sous le bandeau".
+  # `tdm_num` (RATDM3) : distance entre le titre le plus long de la TDM et le chiffre de
+  # page — valeur fixée à 20pt pour l'essai (Manuel, regles_esthetiques.adoc).
+  MIN_V_DIST = { default: 20.0, diags: 2.0, band_diag: 10.0, band_strophe: 20.0 }.freeze
+  MIN_H_DIST = { default: 8.0, diags: 4.0, tdm_num: 20.0 }.freeze
+  MAX_V_DIST = { default: 80.0, diags: 2.0, band_diag: 20.0, band_strophe: 40.0 }.freeze
   MAX_H_DIST = { default: 40.0 }.freeze
+
+  # RATDM4 : filet de conduite entre titre et numéro de page — caractère et espacement
+  # réglables (Manuel).
+  TDM = { leader_character: ".", leader_space: 3.0 }.freeze
 
   def self.min_v_dist(type = :default)
     MIN_V_DIST.fetch(type, MIN_V_DIST[:default])
@@ -653,11 +666,20 @@ module GabaritEssai1
 
   # `.gab` : suite de paragraphes — soit une directive `{clé: valeur; ...}` (classée par la
   # clé qu'elle porte : titre/tabla/diags), soit une row de contenu `{song: nom}` (une ou
-  # deux, séparées par `//` pour le côte-à-côte, comme le `//` du DSL simple).
+  # deux, séparées par `//` pour le côte-à-côte, comme le `//` du DSL simple), soit une row
+  # de blocs `.lyr` référencés DIRECTEMENT par leur nom `{nom}` (sans `song:`) — `+` entre
+  # deux `{nom}` CONCATÈNE leurs paroles en un seul bloc rendu (Phil, 2026-08-19 : forcer
+  # un pseudo-refrain coupé en plusieurs blocs à s'afficher comme un seul, à côté d'un
+  # couplet, via `//`). Ex. `{couplet-1} // {refrain-part1-1} + {refrain-part2-1}`.
+  ROW_TOKEN_RE = /\A\{[^:;}]+\}(\s*\+\s*\{[^:;}]+\})*\z/.freeze
+
   def self.parse_gab(path)
     File.read(path).split(/\n{2,}/).map(&:strip).reject(&:empty?).map do |para|
       if para.include?("{song:")
         names = para.split("//").filter_map { |chunk| chunk[/\{song:\s*([^;}]+)/, 1]&.strip }
+        GabItem.new(:row, names)
+      elsif (cols = para.split("//").map(&:strip)).all? { |c| c =~ ROW_TOKEN_RE }
+        names = cols.map { |c| c.scan(/\{([^:;}]+)\}/).flatten.map(&:strip).join("+") }
         GabItem.new(:row, names)
       else
         inner = para[/\A\{(.*)\}\z/m, 1] || ""
@@ -753,6 +775,15 @@ module GabaritEssai1
     items
   end
 
+  # `name` peut être "nomA+nomB" (voir `parse_gab`, marque `+`) : concatène les lignes des
+  # blocs dans l'ordre pour n'en faire qu'un seul, rendu comme un bloc normal.
+  def self.resolve_block(lyr_blocks, name)
+    return lyr_blocks.fetch(name) unless name.include?("+")
+
+    parts = name.split("+").map { |n| lyr_blocks.fetch(n) }
+    Block.new(lines: parts.flat_map(&:lines), directives: parts.first.directives, paired_with_previous: false)
+  end
+
   # Orchestrateur .gab/.lyr/.infos : un dossier = une chanson + une mise en page d'essai.
   # Seule la position "left" des diags est câblée pour l'instant (Right/Top/Bot à venir).
   # `.gab` OPTIONNEL (voir `default_items`). page_count/first_page_no : voir `render`.
@@ -788,7 +819,7 @@ module GabaritEssai1
       text_ascent = font_metric(pdf, TEXT_SIZE) { pdf.font.ascender }
       text_descent = font_metric(pdf, TEXT_SIZE) { pdf.font.descender }
 
-      rows = items.select { |i| i.type == :row }.map { |i| i.data.map { |name| lyr_blocks.fetch(name) } }
+      rows = items.select { |i| i.type == :row }.map { |i| i.data.map { |name| resolve_block(lyr_blocks, name) } }
       col1_w, col2_w, h_gutter = row_column_widths(pdf, rows, text_w)
 
       row_idx = 0
@@ -1023,16 +1054,21 @@ module GabaritEssai1
   # les gouttières internes, mais la première (haut) et la dernière (bas) sont pondérées
   # (TOP_GUTTER_WEIGHT / BOTTOM_GUTTER_WEIGHT) pour l'équilibre optique. Retourne un
   # tableau de n+1 valeurs (avant le 1er élément, entre chaque paire, après le dernier).
-  # Chaque valeur bornée par [min_v_dist(type), max_v_dist(type)].
-  def self.distribute_v_gutters(avail, sizes, type: :default)
+  # Chaque valeur bornée par [min_v_dist(type), max_v_dist(type)] — SAUF la gouttière du
+  # haut (indice 0) qui utilise `top_type` (ex. `:band_diag`/`:band_strophe` : distance
+  # bandeau-titre → 1er élément, plage INDÉPENDANTE de celle entre deux éléments — Phil,
+  # 2026-08-19). `top_type` vaut `type` par défaut (pages sans bandeau au-dessus).
+  def self.distribute_v_gutters(avail, sizes, type: :default, top_type: type)
     return [] if sizes.empty?
 
     slack = [avail - sizes.sum, 0].max
     weights = Array.new(sizes.size + 1, 1.0)
     weights[0] = TOP_GUTTER_WEIGHT
     weights[-1] = BOTTOM_GUTTER_WEIGHT
+    types = Array.new(sizes.size + 1, type)
+    types[0] = top_type
     unit = slack / weights.sum
-    gutters = weights.map { |w| (w * unit).clamp(min_v_dist(type), max_v_dist(type)) }
+    gutters = weights.each_index.map { |i| (weights[i] * unit).clamp(min_v_dist(types[i]), max_v_dist(types[i])) }
 
     # Remonter une gouttière au plancher (poids < 1, slack serré) ne compense JAMAIS en
     # réduisant les autres tout seul — sans ce rééquilibrage, la somme dépasse parfois
@@ -1040,10 +1076,10 @@ module GabaritEssai1
     # gouttières AU-DESSUS du plancher, proportionnellement à leur marge de manœuvre.
     excess = gutters.sum - slack
     if excess > 0
-      above_floor = gutters.each_index.select { |i| gutters[i] > min_v_dist(type) }
-      reducible = above_floor.sum { |i| gutters[i] - min_v_dist(type) }
+      above_floor = gutters.each_index.select { |i| gutters[i] > min_v_dist(types[i]) }
+      reducible = above_floor.sum { |i| gutters[i] - min_v_dist(types[i]) }
       if reducible > 0
-        above_floor.each { |i| gutters[i] -= excess * (gutters[i] - min_v_dist(type)) / reducible }
+        above_floor.each { |i| gutters[i] -= excess * (gutters[i] - min_v_dist(types[i])) / reducible }
       end
     end
 
@@ -1230,15 +1266,20 @@ module GabaritEssai1
   # `side_col` (Hash x:/width:/paths:/heights:, ou nil) : colonne de diags left/right (voir
   # `layout_diags`), paginée EN PARALLÈLE du texte — mêmes numéros de page, mais chaque
   # colonne avance à son propre rythme (une page peut avoir du texte sans diag ou l'inverse,
-  # "colonne vide mais réservée" reste la règle). Le nombre de pages du carnet est le MAX
-  # des deux — si les diags à eux seuls ont besoin de plus de pages que le texte, ces pages
-  # supplémentaires sont créées quand même (bug AIGLE corrigé, 2026-08-19).
+  # "colonne vide mais réservée" reste la règle).
+  # RAD6 : la colonne de diags n'a JAMAIS le droit de forcer des pages au-delà de celles du
+  # texte (bug AIGLE, 2026-08-19 — 2 pages entières sans une seule parole, rien que des
+  # diags). Elle est bornée au nombre de pages du texte ; les diags en trop ("excès") sont
+  # regroupés horizontalement, plusieurs par ligne, sur une ou des pages dédiées après la
+  # chanson (`draw_diags_grid`) — seulement si RAD5 (jamais un diag seul) ne suffit plus.
   def self.paginate_and_draw(pdf, elements, first_avail_h, kdp:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil)
     heights = elements.map(&:height)
     pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned)
 
     side_elements = []
     side_pages = []
+    excess_paths = []
+    excess_heights = []
     if side_col
       side_elements = side_col[:paths].each_with_index.map do |path, i|
         h = side_col[:heights][i]
@@ -1246,7 +1287,15 @@ module GabaritEssai1
         w = side_col[:width]
         PageElement.new(h, lambda { |pdf_, y| pdf_.svg(IO.read(path), at: [x, y], width: w, position: :left, enable_web_requests: false) })
       end
-      side_pages = paginate(side_elements, first_avail_h, pdf.bounds.height, type: :diags)
+      side_pages_all = paginate(side_elements, first_avail_h, pdf.bounds.height, type: :diags)
+      if side_pages_all.size > pages.size
+        side_pages = side_pages_all.first(pages.size)
+        excess_start = side_pages.empty? ? 0 : side_pages.last[:finish]
+        excess_paths = side_col[:paths][excess_start..] || []
+        excess_heights = side_col[:heights][excess_start..] || []
+      else
+        side_pages = side_pages_all
+      end
     end
 
     page_count = [pages.size, side_pages.size, 1].max
@@ -1263,7 +1312,7 @@ module GabaritEssai1
       if page
         page_els = elements[page[:start]...page[:finish]]
         page_heights = heights[page[:start]...page[:finish]]
-        gutters = distribute_v_gutters(page[:avail_h], page_heights)
+        gutters = distribute_v_gutters(page[:avail_h], page_heights, top_type: i.zero? ? :band_strophe : :default)
 
         y = page[:avail_h] - gutters[0]
         page_els.each_with_index do |el, j|
@@ -1278,7 +1327,7 @@ module GabaritEssai1
 
       side_page_els = side_elements[side_page[:start]...side_page[:finish]]
       side_page_heights = side_page_els.map(&:height)
-      side_gutters = distribute_v_gutters(side_page[:avail_h], side_page_heights, type: :diags)
+      side_gutters = distribute_v_gutters(side_page[:avail_h], side_page_heights, type: :diags, top_type: i.zero? ? :band_diag : :diags)
 
       y = side_page[:avail_h] - side_gutters[0]
       side_page_els.each_with_index do |el, j|
@@ -1287,6 +1336,40 @@ module GabaritEssai1
       end
       if y < -0.01
         conflict!("diagrammes dépassent la zone sûre de #{-y.round(2)}pt", solution: "dessinés quand même, hors zone sûre")
+      end
+    end
+
+    return if excess_paths.empty?
+
+    draw_diags_grid(pdf, excess_paths, excess_heights, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt,
+      first_page_no: first_page_no + page_count)
+  end
+
+  # RAD6 : diags en excès — regroupés horizontalement, plusieurs par ligne, sur une ou
+  # plusieurs pages dédiées après la chanson (dernier recours, RAD5 ne suffit plus).
+  def self.draw_diags_grid(pdf, paths, heights, kdp:, page_w_pt:, page_h_pt:, first_page_no:)
+    diag_h = heights.max
+    gap_h = min_h_dist(:diags)
+    gap_v = min_v_dist(:diags)
+    cols = [((pdf.bounds.width + gap_h) / (DIAG_W + gap_h)).floor, 1].max
+    rows_per_page = [((pdf.bounds.height + gap_v) / (diag_h + gap_v)).floor, 1].max
+    per_page = cols * rows_per_page
+    row_w = cols * DIAG_W + (cols - 1) * gap_h
+    x0 = [(pdf.bounds.width - row_w) / 2.0, 0].max
+
+    paths.each_slice(per_page).with_index do |slice, gi|
+      pdf.start_new_page
+      page_no = first_page_no + gi
+      self.current_page = page_no
+      apply_kdp_margins(pdf, kdp, page_no, page_w_pt, page_h_pt)
+      draw_page_number(pdf, kdp, page_no, page_w_pt)
+
+      slice.each_slice(cols).with_index do |row, ri|
+        y = pdf.bounds.height - gap_v - ri * (diag_h + gap_v)
+        row.each_with_index do |path, ci|
+          x = x0 + ci * (DIAG_W + gap_h)
+          pdf.svg(IO.read(path), at: [x, y], width: DIAG_W, position: :left, enable_web_requests: false)
+        end
       end
     end
   end
@@ -1312,22 +1395,39 @@ module GabaritEssai1
     end.join("/")
   end
 
-  # "sus" (ex. "Gsus", "Gsus4") affiché plus petit que le reste du nom (Phil, 2026-08-18).
-  def self.draw_chord_label(pdf, chord, x, y, size: CHORD_SIZE)
+  # Racine (1ère lettre + éventuel ♯/♭) affichée pleine taille, tout le reste de l'accord
+  # (qualité : "m", "7", "7M", "sus4", "dim"...) plus petit — généralisé (Phil, 2026-08-19)
+  # à partir du cas "sus" seul (Phil, 2026-08-18). Accord avec basse (slash, ex. "D/F♯") :
+  # pas encore désambiguïsé, affiché en un seul bloc pleine taille pour l'instant.
+  def self.chord_label_parts(chord)
     text = display_chord(chord)
-    sus_size = size - 2
-    idx = text.index("sus")
-    unless idx
-      pdf.draw_text text, at: [x, y], size: size, style: :bold
-      return
-    end
+    return [text, ""] if text.include?("/")
 
-    main = text[0...idx]
-    suffix = text[idx..]
-    pdf.draw_text main, at: [x, y], size: size, style: :bold
-    pdf.draw_text suffix, at: [x + pdf.width_of(main, size: size, style: :bold), y], size: sus_size, style: :bold
+    root_end = text[1] == "♯" || text[1] == "♭" ? 2 : 1
+    [text[0...root_end], text[root_end..] || ""]
   end
 
+  def self.chord_label_width(pdf, chord, size)
+    main, suffix = chord_label_parts(chord)
+    w = pdf.width_of(main, size: size, style: :bold)
+    w += pdf.width_of(suffix, size: size - 2, style: :bold) unless suffix.empty?
+    w
+  end
+
+  def self.draw_chord_label(pdf, chord, x, y, size: CHORD_SIZE)
+    main, suffix = chord_label_parts(chord)
+    pdf.draw_text main, at: [x, y], size: size, style: :bold
+    return if suffix.empty?
+
+    pdf.draw_text suffix, at: [x + pdf.width_of(main, size: size, style: :bold), y], size: size - 2, style: :bold
+  end
+
+  # L'avancée horizontale ne doit JAMAIS être inférieure à la largeur du label d'accord
+  # tout juste dessiné (RAA1 : deux accords ne doivent jamais se superposer) — une "avancée
+  # à texte vide" fixe (ex. 3 espaces) s'est avérée insuffisante en pratique (mesuré :
+  # espaces 9.17pt < largeur label "C9" 11.67pt, chevauchement constaté malgré le fix —
+  # AYNL puis À bicyclette, 2026-08-19). On avance donc du MAX(largeur du texte, largeur
+  # du label d'accord) : garantie mathématique, jamais un réglage à ajuster à la main.
   def self.draw_line(pdf, line, x, y, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
     has_chord = line_has_chord?(line)
     cx = x
@@ -1335,13 +1435,14 @@ module GabaritEssai1
       draw_chord_label(pdf, seg.chord, cx, y, size: chord_size) if seg.chord
       text_y = has_chord ? y - chord_size - LINE_GAP : y
       pdf.draw_text seg.text, at: [cx, text_y], size: text_size
-      advance_text = seg.chord && seg.text.empty? ? "   " : seg.text
-      cx += pdf.width_of(advance_text, size: text_size)
+      text_w = pdf.width_of(seg.text, size: text_size)
+      chord_w = seg.chord ? chord_label_width(pdf, seg.chord, chord_size) : 0
+      cx += [text_w, chord_w].max
     end
   end
 
   def self.draw_diags(pdf, diag_paths, heights, x:, avail_h:, width:)
-    gutters = distribute_v_gutters(avail_h, heights, type: :diags)
+    gutters = distribute_v_gutters(avail_h, heights, type: :diags, top_type: :band_diag)
     y = avail_h - gutters[0]
     diag_paths.each_with_index do |path, i|
       svg_data = IO.read(path)
@@ -1398,10 +1499,36 @@ module GabaritEssai1
   # Top/Bot : rangée horizontale pleine largeur, dessinée ici, toujours page 1 seulement
   # (pas concerné par ce bug — pas retouché). Top réduit l'espace disponible par le HAUT
   # (le contenu commence plus bas), Bot le réduit par le BAS de la page 1 SEULEMENT.
+  # RAD3 : si une pleine page de diags (hauteur `page_height`) ne peut en accueillir qu'un
+  # de plus en réduisant la largeur — jamais sous `MIN_SIZE[:diags][:width]` — on prend le
+  # plus PETIT écart qui gagne CETTE unique place (pas une réduction plus grande que
+  # nécessaire : à 0.37% près, un diag de plus peut tenir — Phil, 2026-08-19). Mesuré sur
+  # une pleine page (`page_height`/`page_height`), pas la 1re page (bandeau) : capacité
+  # "normale" d'une page, celle que Phil compare page à page.
+  def self.diag_column_width(paths, first_avail_h, page_height)
+    return DIAG_W if paths.empty?
+
+    capacity_at = lambda do |w|
+      height = svg_height_for(File.read(paths.first), w)
+      elements = Array.new(paths.size) { PageElement.new(height, nil) }
+      page = paginate(elements, page_height, page_height, type: :diags).first
+      page[:finish] - page[:start]
+    end
+
+    baseline = capacity_at.call(DIAG_W)
+    floor_w = MIN_SIZE[:diags][:width]
+    w = DIAG_W
+    while w > floor_w
+      w = [w - 0.1, floor_w].max
+      return w if capacity_at.call(w) > baseline
+    end
+    DIAG_W
+  end
+
   def self.layout_diags(pdf, diag_paths, position, header_bottom)
     case position
     when :right
-      diag_w = DIAG_W
+      diag_w = diag_column_width(diag_paths, header_bottom, pdf.bounds.height)
       diag_heights = diag_paths.map { |p| svg_height_for(File.read(p), diag_w) }
       diag_col_w = diag_w + DIAG_TEXT_GAP
       side_col = { x: pdf.bounds.width - diag_w, width: diag_w, paths: diag_paths, heights: diag_heights }
@@ -1417,7 +1544,7 @@ module GabaritEssai1
       draw_diags_row(pdf, diag_paths, 0, row_h, pdf.bounds.width, w)
       [0, pdf.bounds.width, header_bottom - row_h, nil]
     else # :left, défaut
-      diag_w = DIAG_W
+      diag_w = diag_column_width(diag_paths, header_bottom, pdf.bounds.height)
       diag_heights = diag_paths.map { |p| svg_height_for(File.read(p), diag_w) }
       diag_col_w = diag_w + DIAG_TEXT_GAP
       side_col = { x: 0, width: diag_w, paths: diag_paths, heights: diag_heights }

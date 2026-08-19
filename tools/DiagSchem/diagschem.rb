@@ -85,6 +85,7 @@ class DiagSchem
     @buffer = ''
     @saisie_en_cours = false # "1" tapé, en attente d'un éventuel 2e chiffre
     @error = nil
+    @error_live = nil
     @sortie = nil
     @output_svg = output_svg
     @svg_path = nil
@@ -379,7 +380,10 @@ class DiagSchem
 
     @buffer = char
     appliquer_buffer
-    commiter_buffer
+    # doigt impossible : verifier_immediat vient d'effacer la valeur — on reste sur
+    # la case (pas d'avance) pour retaper tout de suite (Phil, 2026-08-19).
+    return if @entries[@row].doigt_val.nil?
+
     @row, @col = pas_avant(@row, @col)
     @row, @col = pas_avant(@row, @col) while doigt_impossible_ici?
     reinitialiser_buffer
@@ -406,6 +410,7 @@ class DiagSchem
         entry.doigt_val = @buffer.empty? ? nil : @buffer
       end
     end
+    verifier_immediat
   end
 
   def commiter_buffer
@@ -415,6 +420,27 @@ class DiagSchem
   def effacer
     @buffer = @buffer[0..-2] || ''
     appliquer_buffer
+  end
+
+  # Doigtés impossibles (p hors 5/6, conflit sur une même case, ordre case/doigt) —
+  # signalés dès la frappe, pas seulement à la soumission (Phil, 2026-08-19). Ne
+  # porte que sur les cordes DÉJÀ dotées d'un doigt : une saisie encore incomplète
+  # n'est jamais "impossible", juste "pas fini". Le doigt qui vient de créer
+  # l'impossibilité est effacé tout de suite (jamais laissé en place, invalide) —
+  # le message reste affiché pour expliquer pourquoi (Phil, 2026-08-19).
+  def verifier_immediat
+    erreur = erreurs_impossibles(entrees_avec_doigt).first
+    if erreur && @row.between?(0, 5) && @col == 1
+      @entries[@row].doigt_val = nil
+      @buffer = ''
+      @saisie_en_cours = false
+    end
+    @error_live = erreur
+  end
+
+  def entrees_avec_doigt
+    @entries.each_with_index.map { |e, i| [i + 1, e] }
+            .reject { |_, e| e.doigt_val.nil? || e.case_val.nil? || sans_doigt?(e) }
   end
 
   def valider_et_sortir
@@ -448,18 +474,25 @@ class DiagSchem
     end
     return erreurs if erreurs.any?
 
-    @entries.each_with_index do |e, i|
-      corde = i + 1
+    erreurs.concat(erreurs_impossibles(entrees_avec_doigt))
+    erreurs
+  end
+
+  # Règles de doigté "impossible" — partagées entre la vérif immédiate (saisie
+  # encore incomplète, ne porte que sur les cordes déjà dotées d'un doigt) et la
+  # validation finale (`valider`, appelée seulement une fois tout défini).
+  def erreurs_impossibles(entrees)
+    erreurs = []
+
+    entrees.each do |corde, e|
       if e.doigt_val == 'p' && !CORDES_AUTORISEES_POUR_P.include?(corde)
         erreurs << "corde #{corde} : doigt 'p' interdit (seulement cordes 5/6)"
       end
     end
 
     # même case : doigt précédent (corde plus faible) >= doigt suivant (hors p,
-    # hors cordes exclues 'x' ou à vide 0, qui n'ont pas de doigt comparable,
     # hors notes facultatives qui dupliquent volontairement une autre note)
-    non_p = @entries.each_with_index.map { |e, i| [i + 1, e] }
-                     .reject { |_, e| e.doigt_val == 'p' || sans_doigt?(e) || e.optional }
+    non_p = entrees.reject { |_, e| e.doigt_val == 'p' || e.optional }
     non_p.group_by { |_, e| e.case_val }.each_value do |groupe|
       groupe.sort_by! { |corde, _| corde }
       groupe.each_cons(2) do |(_, e1), (_, e2)|
@@ -594,7 +627,7 @@ class DiagSchem
       contenu = texte.center(INTERIOR_WIDTH)
       "│\e[32m#{contenu}\e[0m│"
     else
-      contenu = (@error || '').ljust(INTERIOR_WIDTH)[0, INTERIOR_WIDTH]
+      contenu = (@error || @error_live || '').ljust(INTERIOR_WIDTH)[0, INTERIOR_WIDTH]
       "│\e[31m#{contenu}\e[0m│"
     end
   end

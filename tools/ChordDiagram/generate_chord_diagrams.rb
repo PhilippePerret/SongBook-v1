@@ -42,13 +42,18 @@ module GenerateChordDiagrams
   #
   # `indices` (cordes candidates réelles) sert à masquer leur point/chiffre individuel
   # — jamais les autres cordes de l'intervalle, qui gardent leur propre note même plus
-  # haute (comme pour F). `span` sert SEULEMENT à la ligne dessinée : un doigt à plat ne
-  # peut physiquement tenir des cordes non adjacentes sans aussi couvrir celles entre
-  # les deux — sauf REPLI complet sur les 6 cordes. Donc un span de 2, 3 ou 4 cordes
-  # (ex. cordes 3 à 6) est IMPOSSIBLE et remplacé par le grand barré (span 1-6), sauf
-  # l'exception réelle des cordes 5-6 (repli partiel sur les 2 graves, technique connue)
-  # (Phil, 2026-08-19, cas trouvé sur Dm6-5 : candidats cordes 3/5/6, corde 4 séparée à
-  # une frette plus haute — un span 3-6 est impossible sans couvrir aussi la 4).
+  # haute (comme pour F). `span` sert SEULEMENT à la ligne dessinée, bornée aux
+  # candidates SAUF s'il y a un "trou" (corde non-candidate strictement entre la plus
+  # basse et la plus haute des cordes candidates) qui est elle-même frettée ailleurs
+  # (note individuelle plus haute, cas F/Dm6-5) : un doigt à plat ne peut alors
+  # physiquement tenir les deux cordes de part et d'autre du trou sans aussi couvrir
+  # celle du trou, donc le barré est forcément complet (span 1-6). Si le trou est une
+  # corde à vide (0) ou étouffée (x) — jamais frettée nulle part —, ou s'il n'y a
+  # simplement AUCUN trou (candidates déjà contiguës, même 2/3/4 cordes, ex. D7M-0 :
+  # cordes 1-2-3 barrées, 4/5/6 à vide/étouffées, hors du span, rien à couvrir), le
+  # span reste borné aux candidates — jamais promu (bug trouvé sur D7M-0, 2026-08-19 :
+  # le repli sur 6 cordes dessinait alors un barré traversant des cordes à vide,
+  # impossible aussi).
   # Décode "<6 tokens>" en {positions:, fingers:, barre:, optionals:}, prêt pour
   # `ChordDiagram.build`.
   def self.decode(tokens_str)
@@ -64,9 +69,10 @@ module GenerateChordDiagrams
       if candidates.size >= 2
         strings = candidates.map { |t| t[:string] }
         min_s, max_s = strings.minmax
-        width = max_s - min_s + 1
         indices = candidates.map { |t| 6 - t[:string] }
-        span = ([2, 3, 4].include?(width) && [min_s, max_s] != [5, 6]) ? (0..5).to_a : indices
+        gap_strings = ((min_s..max_s).to_a - strings)
+        gap_fretted = gap_strings.any? { |s| fretted.any? { |t| t[:string] == s } }
+        span = gap_fretted ? (0..5).to_a : indices
         barre = { fret: min_fret, finger: key == :implicit ? "1" : key, indices: indices, span: span }
       end
     end
