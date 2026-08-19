@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -115 420 445" font-family="sans-serif">
+<text x="150" y="-60" dy="0.35em" text-anchor="middle"><tspan font-size="56" font-weight="bold">F</tspan><tspan font-size="56" font-weight="bold" dx="-6">♯</tspan><tspan font-size="56" font-weight="bold"></tspan><tspan font-size="34" font-weight="bold" dx="2">m</tspan></text>
+<line x1="0" y1="0" x2="300" y2="0" stroke="black" stroke-width="3"/>
+<line x1="0" y1="51" x2="300" y2="51" stroke="black" stroke-width="3"/>
+<line x1="0" y1="102" x2="300" y2="102" stroke="black" stroke-width="3"/>
+<line x1="0" y1="153" x2="300" y2="153" stroke="black" stroke-width="3"/>
+<line x1="0" y1="204" x2="300" y2="204" stroke="black" stroke-width="3"/>
+<line x1="0" y1="255" x2="300" y2="255" stroke="black" stroke-width="3"/>
+<line x1="0" y1="0" x2="0" y2="255" stroke="black" stroke-width="3"/>
+<line x1="75" y1="0" x2="75" y2="255" stroke="black" stroke-width="3"/>
+<line x1="150" y1="0" x2="150" y2="255" stroke="black" stroke-width="3"/>
+<line x1="225" y1="0" x2="225" y2="255" stroke="black" stroke-width="3"/>
+<line x1="300" y1="0" x2="300" y2="255" stroke="black" stroke-width="3"/>
+<line x1="0" y1="-6" x2="0" y2="261" stroke="black" stroke-width="10"/>
+<circle cx="262.5" cy="204" r="22" fill="#000000"/>
+<text x="262.5" y="204" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">3</text>
+<circle cx="262.5" cy="153" r="22" fill="#000000"/>
+<text x="262.5" y="153" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">4</text>
+<line x1="112.5" y1="0" x2="112.5" y2="255" stroke="black" stroke-width="36" stroke-linecap="round"/>
+<text x="112.5" y="127.5" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">1</text>
+</svg>

@@ -1,0 +1,92 @@
+[[properties, propriétés]]
+=== Les propriétés ===
+
+Cette section d'annexe décrit toutes les propriétés qu'on peut utiliser sur tout objet des carnets de chant de l'application __**SongBook**__.
+
+[[position-properties, propriétés de placement des objets]]
+==== Propriété de placement des objets ====
+
+Permet à tout <<terminology, objet>> d'être positionnné de la façon souhaitée dans la page du carnet.
+
+Exemple : 
+
+----
+{couplet-1; margin-top:12px; }
+Un beau jour ou peut-être une nuit
+Près d'un lac je m'étais endormie
+----
+
+[cols="1,4,2", options="header"]
+|====
+| Propriété 
+| Définition
+| Exemple
+
+| `margin-top`
+| Marge en haut laissé entre l'objet et l'objet au-dessus ou la marge haute de la page.
+| `margin-top: 12px;`
+
+| `margin-bottom`
+| Marge en bas laissé entre l'objet et l'objet au-dessous ou la marge basse de la page.
+| `margin-bottom: 12px;`
+
+| `margin-left`
+| Marge en haut laissé entre l'objet et l'objet à gauche ou la marge gauche de la page.
+| `margin-left: 12%`
+
+| `margin-right`
+| Marge en haut laissé entre l'objet et l'objet au-dessus ou la marge droite de la page.
+| `margin-right: 12em;`
+
+| `block-align`
+| Alignement du block dans son contexte. Valeurs `left` (défaut), `right`, `center`.
+| `block-align:right;`
+
+| `block-valign`
+| Alignement vertical du block dans son contexte. Valeurs `top` (défaut), `bottom`, `center`/`middle`
+| `block-valign:middle;`
+
+|====
+
+
+
+[[text-properties, propriétés de texte]]
+==== Propriétés de texte ====
+
+Exemple :
+
+----
+{conplet-1; font-size:14pt; align:right; }
+Un beau jour ou peut-être une nuit
+Près d'un lac je m'étais endormie
+----
+
+En tant qu'__objet__, les strophes héritent de toutes les <<position-properties>>.
+
+[cols="1,4,2", options="header"]
+|====
+| Propriété 
+| Définition
+| Exemple
+
+| `font-family`
+| Famille de la fonte à utiliser. Voir la liste des Fontes disponible (TODO)
+| `font-family:Arial;`
+
+| `font-size` 
+| Taille de la police choisie, avec son unité.
+| `font-size:11pt;
+
+| `font-style`
+| Style de la police, parmi `italic`, `bold`, `underline`.
+| `font-style:italic;`
+
+| `font`
+| Raccourci permettant de définir la fonte, la taille et le style.
+| `font: Georgia 12pt italic;`
+
+| `align`
+| Alignement du texte dans son bloc. Valeurs : `left` (defaut), `right`, `center`
+| `align:center;`
+
+|====

@@ -1,0 +1,4 @@
+[[songbook-presentation]]
+=== Présentation ===
+
+La grande force de __**SongBook**__ est de permettre de produire des carnets de chant ("songbook" en anglais) très facilement.

@@ -1,0 +1,13 @@
+== Les Fichiers utilisateurs ==
+
+// Fichier des paroles
+include::lyrics.adoc[]
+
+// Fichier du gabarit
+include::gabarit.adoc[]
+
+// Configuration
+include::config.adoc[]
+
+// Tablatures et Partitions
+include:tablas-et-scores.adoc[]

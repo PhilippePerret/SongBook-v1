@@ -1,0 +1,11 @@
+{title: band; infos: beside;}
+
+{diags: all; position: left;}
+
+{song: couplet-1;} // {song: couplet-2}
+
+{song: couplet-3;} // {song: couplet-4}
+
+{tabla: penitencier-intro+acc; title: "Intro et accompagnement"; shrink: true;}
+
+{song: couplet-5;} // {song: couplet-6}

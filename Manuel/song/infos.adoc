@@ -1,0 +1,42 @@
+[[infos-file]]
+=== Fichier des informations de la chanson ===
+
+Les informations de la chanson sont consignés dans son <<song-folder, dossier>> dans une fichier portant l'extension `.lyr` et un nom racine quelconque (p.e. `mc`).
+
+Ce fichier est un pseudo fichier YAML (pour ceux qui connaissent le format) où chaque élément est défini de cette manière :
+
+----
+<propriété>: <valeur>
+----
+
+Par exemple, pour définir l'identifiant de la chanson (reprise dans les <<songbook-tdm, tables des matières des carnets>>) :
+
+----
+id: dont-give-up-gabriel-1986
+----
+
+On met dans ce fichier toutes les informations utiles, à savoir :
+
+----
+id: Identifiant simple de la chanson
+title: Titre de la chanson (tel qu'il sera affiché)
+performer: l'interprète de la chanson
+composer: Compositeur ou compositrice de la chanson
+lyrics: Auteur ou autrice des paroles
+year: L'année de sortie
+# Optionnel (utiliser avec prudence)
+layout: La disposition utilisée (par défaut, regular)
+----
+
+Par exemple : 
+
+----
+id: dont-give-up-gabriel-1986
+title: Don’t Give Up
+performer: Peter Gabriel et Kate Bush
+composer: P. Gabriel
+lyrics: P. Gabriel
+year: 1986
+
+layout: regular
+----

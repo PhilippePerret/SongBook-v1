@@ -1,0 +1,32 @@
+:doctype: book
+++++
+<style type="text/css">
+body {font-size:1.2em;}
+a {
+  text-decoration: none;
+  color: #000066;
+}
+</style>
+++++
+= SongBook manuel =
+
+// En cas d'erreur (ne mettre que ce fichier)
+// include::_dev/en-cas-derreur.adoc[]
+
+// Introduction
+include::app/presentation.adoc[]
+
+// Chanson
+include::song/_main.adoc[]
+
+// Carnet de chant
+include::songbook/_main.adoc[]
+
+// Fichiers user
+include::user_files/_main.adoc[]
+
+// Annexe
+include::annexes/_main.adoc[]
+
+// Développement
+include::_dev/_main.adoc[]

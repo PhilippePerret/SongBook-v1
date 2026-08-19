@@ -1,0 +1,28 @@
+[[strophes, les strophes]]
+=== Les Strophes ===
+
+Conformément à la <<terminology>> de __**SongBook**__, on appelle __STROPHE__ les groupes de vers formant un couplet, un refrain ou autre texte parlé ou chanté au cours de la chanson.
+
+[[strophe-definition, définition de la strophe]]
+==== Définition de la strophe ====
+
+La __strophe__ se définit dans les <<lyrics-file, fichier des lyrics>> par une première ligne entre crochets : 
+
+----
+{couplet-1}
+Un beau jour ou peut-être une nuit
+Près d'un lac je m'étais endormie
+Quand soudain semblant crever le ciel
+Et venant de nulle part 
+surgit un aigle noir
+----
+
+Cette définition (texte entre crochets) peut employer toutes les <<text-properties, propriété propres aux textes>>.
+
+----
+{couplet-1; font-size:14pt; align:center;}
+Un beau jour ou peut-être une nuit
+Près d'un lac je m'étais endormie
+----
+
+Cependant, la chanson pouvant être employée dans différents carnets, il vaut mieux définir ces propriétés dans un fichier gabarit propre au carnet comme cela est expliqué dans <<best-practices>>.

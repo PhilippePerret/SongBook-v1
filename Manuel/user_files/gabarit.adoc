@@ -1,0 +1,57 @@
+[[gabarit, le fichier Gabarit]]
+=== Fichier gabarit ===
+
+__Fichier définissant les gabarits, c'est-à-dire la disposition des éléments dans la page.__
+
+Peu importe son nom pourvu que son extension soit `.gab` (comme "GABarit"). `fichier.gab`
+
+Sa fonction principale est de définir la position et l'aspect des différents éléments de la chanson.
+
+Par exemple : 
+
+----
+# Dans le fichier machanson.gab
+
+{title: band; infos: beside;}
+
+{lyrics: couplet-1} // {lyrics: couplet-2}
+
+{tabla: accompagnement;}
+
+{lyrics: refrain; align: center; text_align: left;}
+
+----
+
+
+
+----
+À placer
+
+{
+  title: band|simple;   # type de titre. note : pris dans .infos
+  infos: under|beside;  # place des infos
+  align: left;          # Alignement
+}
+
+{
+  diags: all| [liste des accords];
+  position: Top|Left|Bot|Rigth|Ext|Int; 
+}
+
+{ 
+  tabla: fichier-sans-ext;
+  shrink: true; # on peut réduire pour tenir
+}
+
+{
+  score: fichier-sans-ext;
+  shrink: true; # on peut réduire pour tenir
+}
+
+{
+  song: couplet-1; # partie à placer (prise dans .lyr)
+}
+
+\# Parties côte à côte (deux couplets par exemple)
+{song: ...} // {song: ...}
+----

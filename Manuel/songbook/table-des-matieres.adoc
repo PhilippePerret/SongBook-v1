@@ -1,0 +1,22 @@
+[[songbook-tdm, table des matières]]
+=== Table des matières du carnet ===
+
+Après avoir défini les données des chansons (<<lyrics-file>>, <<infos-file>>), vous êtes en mesure de définir la table des matières pour définir la liste des chansons utilisée et leur ordre.
+
+Comme défini dans les <<best-practices>>, il vaut mieux que les chansons soient définies dans un autre dossier, séparé. Dans la table des matières, vous pouvez y faire référence par leur identifiant (`id`), leur titre (`title`) ou encore le nom de leur dossier dans le dossier des chansons.
+
+La table des matières est un fichier qui porte l'extension `.tdm`, peu importe son nom.
+
+Imaginons un carnet des tubes des années 1986 qui portera le nom `Carnets/Carnet-tubes-1986/`, on trouvera le fichier : `Carnets/Carnet-tubes-1986/c.tdm` qui pourra débuter par : 
+
+----
+- adelaide-arnold-turboust-1986
+- Capitaine abandonné
+- Démons de minuit (Les)
+...
+----
+
+- Le premier fait référence à l'identifiant,(`id`) de la chanson dans son fichier `.infos`.
+- le second fait référence au titre (`title`) dans le même fichier `.infos`,
+- le troisième fait référence au nom du dossier dans le dossier `Chansons`.
+ 

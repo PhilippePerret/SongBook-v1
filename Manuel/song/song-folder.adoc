@@ -1,0 +1,33 @@
+[[song-folder]]
+=== Dossier de la chanson ===
+
+Une chanson doit être contenue dans un dossier qui contient les éléments qui sont indispensables à la définir. La structure classique est : 
+
+----
+Ma-chanson/
+  |— paroles-et-accords.lyr
+  |— titres-et-gens.infos
+  | [Optionel]
+  |— scores/      # Dossier des partitions et tablatures
+  |— images/      # Dosssier des images
+  |— format.gab
+  |— configuration.config
+----
+
+> __**SongBook**__ étant une __application basée sur les extensions__, seules sont importantes les extensions des fichiers. Peu importe leur racine (mais la racine sert à retrouver les fichiers).
+
+Si vous voulez concentrer l'attention juste sur le suffixe, vous pouvez utiliser :
+
+----
+Ma-chanson/
+  |— mc.lyr
+  |— mc.infos
+  |— mc.gab 
+----
+
+À savoir :
+
+- le <<infos-file>> (`.infos`) contient le titre et autres informations générales sur la chanson.
+- le <<lyrics-file, fichier des paroles et accords>> (`.lyr`) contient toutes les paroles, accompagnées des accords, ainsi que, éventuellement, les <<riffs>> et autres petits bouts de musique.
+- le <<gabarit>> optionnel de la chanson (`.gab`), s'il est particulier à cette chanson ou qu'elle ne s'insère pas dans un <<songbook, carnet>> définissant son propre gabarit. __Notez qu'utiliser ce fichier dans ce dossier n’est pas considéré comme une <<best-practices, bonne pratique>>__.
+- le <<config>> de la chanson, s'il est particulier à cette chanson ou qu'elle ne s'incère pas dans un <<songbook, carnet>> définissant sa propre configuration. __Comme le fichier précédent, ce fichier dans ce dossier n’est pas considéré comme une <<best-practices, bonne pratique>>__.

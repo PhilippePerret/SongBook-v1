@@ -1,0 +1,11 @@
+[[songbook, Carnet de chant]]
+== Carnet de chant ==
+
+// Présentation
+include::presentation.adoc[]
+
+// Bonnes pratiques
+include::best-practices.adoc[]
+
+// Table des matières
+include::table-des-matieres.adoc[]

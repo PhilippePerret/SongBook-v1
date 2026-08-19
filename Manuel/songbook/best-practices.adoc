@@ -1,0 +1,75 @@
+[[best-practices, les bonnes pratiques]]
+=== Les bonnes pratiques ===
+
+Dans cette partie vous trouverez des conseils pour gérer au mieux vos cahiers de chant.
+
+[[songs-folder, dossier des chansons]]
+==== Dossier des chansons ====
+
+Les chansons pouvont servir à former plusieurs carnets^*^, vous avez tout intérêt à les rassemblez dans un dossier séparé de vos carnets de chant.
+
+^*^ Par exemple, la chanson __Don't Give Up__ pourrait faire partie du __Carnet des meilleurs duo__, du __Carnet des tubes de l'année 1986__ et du __Carnet Peter Gabriel__.
+
+----
+/Documents/Musique/Chant/
+  |— Chansons/
+----
+
+[[bestprat-song-infos, infos de la chanson]]
+===== Infos sur la chanson =====
+
+Dans le fichier des informations de la chanson (`.infos`), le mieux est d'indiquer un identifiant (`id`) qui permettra d'identifier (sic) la chanson plus facilement, sans faute et en glissant des informations supplémentaires. Par exemple : 
+
+----
+id: dont-give-up-peter-gabriel-1986
+title: Don't Give Up
+interprete: Peter Gabriel et Kate Bush
+...
+----
+
+[[songbooks-folder, dossier des carnets]]
+==== Dossier des carnets ====
+
+Ensuite, par exemple au même niveau que le <<songs-folder>>, vous pouvez avoir le dossier où vous allez créer tous vos carnets.
+
+----
+/Documents/Musique/Chant/
+  |— Carnets/
+  |— Chansons/
+----
+
+[[songbook-folder, dossier du carnet]]
+==== Dossier **du** carnet ====
+
+Et dans le dossier précédent, on peut créer le dossier du carnet en particulier.
+
+----
+/Documents/Musique/Chant/
+  |— Carnets/
+  |     |— Carnet-tubes-1986
+  |
+  |— Chansons/
+----
+
+[[bestpract-songbook-tdm, table des matières du carnet]]
+==== Table des matières du carnet de chant ====
+
+La première chose à créer, c'est la table des matières du carnet de chant. Cette table des matières, comme cela est indiqué dans <<songbook-tdm, sa description>> est un fichier `.tdm` qui liste simplement les chansons soit par leur `id` soit par leur titre de dossier **exact** (attention aux fautes de typo !).
+
+Dans le fichier `Carnet-tubes-1986/c.tdm` :
+
+----
+- adelaide-arnold-turboust-1986
+- lazziza-daniel-balavoine-1986
+- capitaine-abandonee-gold-1986
+- the-captain-of-her-heart-double-1986
+- demons-de-minuit-images-1986
+- dont-give-up-peter-gabriel-1986
+...
+----
+
+À partir de là, sans aucune autre précision, si vos fichiers chansons sont bien définis, tout peut se faire tout seul (`songbook .` dans le Terminal ouvert au dossier) pour générer le carnet prêt à être imprimé ou envoyé à votre imprimeur.
+
+
+
+TODO: Poursuivre

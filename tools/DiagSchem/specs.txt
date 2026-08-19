@@ -1,0 +1,33 @@
+Définition de l’outil
+
+BUT
+Permettre de produire très vite les schémas permettant de générer les diags d’accord.
+Doit produire quelque chose comme : 
+  A-5 : 15/1 251 36/2 47/4 57/3 65/1
+
+SPECS
+- en ligne de commande
+- en ruby
+- avec tty-prompt ou plutôt outils custom
+- toute valeur doit être visualisée et modifiable (IMPÉRATIF)
+
+SYNOPSIS
+- la ligne de commande demande le nom de l’accord puis la frette (case)
+  => ça donne la première ligne toujours affichée et modifiable
+      Affiché comme : « ACCORD : <nom>-<case>
+- la ligne de commande écrit en dessous une table (dessinée) qu’on va remplir :
+  - une rangée par corde
+  - colonne 1 : le numéro de la corde
+  - colonne 2 : la case à presser
+  - colonne 3 : le doigt à utiliser
+- avec les flèches, on doit pouvoir se déplacer de case en case sur les colonnes 2 et 3 seulement
+- la touche Enter permet de soumettre les valeurs et produire le schéma final
+- le schéma final est mis dans le presse-papier
+
+VÉRIFICATIONS EN DIRECT
+- les doigts peuvent avoir seulement les valeurs 1, 2, 3, 4 et p
+- les cases peuvent avoir les valeurs 0 à 20
+- toutes les valeurs doivent être impérativement définies
+- sur une même case, le doigté précédent doit toujours être supérieur au doigté suivant (hors « p »)
+- un doigté (hors « p ») sur la case N doit forcément être supérieur aux doigtés des cases précédente
+- le doigté « p » ne peut être sur d’autres cordes que 5 et 6

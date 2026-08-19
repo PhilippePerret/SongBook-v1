@@ -1,0 +1,8 @@
+[[annexes]]
+== Annexes ==
+
+// Terminologie
+include::terminology.adoc[]
+
+// Propriétés
+include::properties.adoc[]

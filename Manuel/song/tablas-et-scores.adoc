@@ -1,0 +1,18 @@
+=== Tablatures et Partitions ===
+
+Le système de __partitions__ et de __tablatures__ de __SongBook__ reste rudimentaire et permet de faire le minimum pour une chanson. C'est-à-dire : 
+
+- produire une <<score>>/<<tablature>> de la mélodie avec les paroles,
+- produire une partition/tablature de l'accompagnement,
+- produire une partition/tablature d'un riff, d'un petit bout de musique.
+
+[[tablature, tablature]]
+==== Tablatures ====
+
+Un fichier tablature peut être placé n'importe où dans le dossier de la chanson, mais doit porter l'extension `.tab`. Par défaut, on le place de préférence dans un dossier `/scores`
+
+[[score, partition]]
+==== Partitions ====
+
+Pour le moment, on ne peut pas encore produire de partitions.
+

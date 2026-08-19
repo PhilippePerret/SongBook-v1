@@ -1,0 +1,16 @@
+[[song, Chanson]]
+== Chanson ==
+
+La __chanson__ est la base de tout carnet de chant. C'est pour présenter des __chansons__ et les jouer que le <<songbook, carnet de chant>> est conçu.
+
+// Dossier de la chanson
+include::song-folder.adoc[]
+
+// Fichier des informations
+include::infos.adoc[]
+
+// Strophes
+include::strophes.adoc[]
+
+// Tablatures et partitions
+include::tablas-et-scores.adoc[]
