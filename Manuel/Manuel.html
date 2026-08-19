@@ -931,6 +931,7 @@ sensitivity: &lt;value&gt; # degré de sensibilité aux erreurs
               high/haut # Le programme s'arrête dès la première erreur
               low/bas # aucune erreur n'est signalée, corrections en coulisses
 mode: strict (aucun changement dans l'ordre des chansons)
+labels_in_title_band: true # =&gt; on met les lables "Paroles", "Musique"
 keep_order: true # =&gt; aucun changement dans l'ordre des chanson
 shrink_diag: true   # =&gt; on peut rétrécir les diagrammes (diags)
              false  # =&gt; on ne peut pas rétrécir les diags
@@ -1034,13 +1035,18 @@ shrink_score: true # idem avec les partitions</pre>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ligne de définition</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">C&#8217;est la ligne, toujours entre crochet, qui définit le bloc qui la suit sans espace. Voir <em>propriété</em> ci-dessous pour son contenu.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>{refrain; font-size:2em;}</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Objet (ou élément)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Désigne tout élément du carnet de chant à partir du moment où il est imprimé dans le carnet, visible ou non.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bande de titre, couplet, numéro de page, séparateur…</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Propriété</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">On désigne par <em>pr.</em> tous les attributs qui permettent de définir l&#8217;aspect des éléments d&#8217;un carnet de chant. Elles sont définies entre crochets au-dessus des <em>objets</em>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On désigne par <em>pr.</em> tous les attributs qui permettent de définir l&#8217;aspect des éléments d&#8217;un carnet de chant. Elles sont définies entre crochets au-dessus des <em>objets</em>, dans la <em>ligne de définition</em>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">font-size, font, align</p></td>
 </tr>
 <tr>
@@ -1272,6 +1278,16 @@ Près d'un lac je m'étais endormie</pre>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Un object quelconque ne devrait JAMAIS pouvoir chevaucher un autre objet de quelque nature que ce soit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Sauf demande expresse dans le gabarit (<code>overlap: true</code> dans la définition de l&#8217;objet).</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAO5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sauf indication explicite, deux objets différents (un couplet et un refrain par exemple) ne doivent jamais se trouver côte à côte</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Demande explicite : <code>{intro &#8230;&#8203;} // {couplet &#8230;&#8203;}</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAO6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sauf indication explicite, deux objets identiques côte à côte ne doivent jamais être être éloignés de plus que la distance définie par <code>MAX_H_DIST[:&lt;objet&gt;]</code> (horizontalement) et <code>MAX_V_DIST[:&lt;objet&gt;]</code> (verticalement).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">indication explicite : <code>{couplet; margin-left: 100pt;}</code></p></td>
+</tr>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
@@ -1308,7 +1324,36 @@ Solution proposée ?</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="lyrids-rules">Règles concernant les lyrics</h4>
+<h4 id="title-rules">Règles concernant la bande de titres (infos)</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 11.1111%;">
+<col style="width: 66.6666%;">
+<col style="width: 22.2223%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Num.</th>
+<th class="tableblock halign-left valign-top">Règle</th>
+<th class="tableblock halign-left valign-top">Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAT1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lorsque le compositeur ou la compositrice (<code>composer</code>) et l&#8217;auteur ou l&#8217;autrice (<code>lyrics</code>) sont la même personne, on indique qu&#8217;une fois le nom, sans "/".</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sauf si option <code>labels_in_title_band: true</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAT2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Si <code>composer</code> et <code>lyrics</code> sont la ou les mêmes personnes, et que l&#8217;option <code>labels_in_title_band</code> est appliquée, on utilise la mention « Paroles et musiques : nom »</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="lyrics-rules">Règles concernant les lyrics</h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 11.1111%;">
@@ -1327,6 +1372,30 @@ Solution proposée ?</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RAL1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Deux <a href="#strophes">strophes</a> côte à côté ne peux pas avoir deux tailles de polices différentes</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Sauf mention explicite dans la <a href="#strophe-definition">définition de la strophe</a>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="chords-rules">Règles concernant les accords</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 11.1111%;">
+<col style="width: 66.6666%;">
+<col style="width: 22.2223%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Num.</th>
+<th class="tableblock halign-left valign-top">Règle</th>
+<th class="tableblock halign-left valign-top">Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAA1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Deux accords ne doivent JAMAIS être écrits l&#8217;un sur l&#8217;autre.</p></td>
+<td class="tableblock halign-left valign-top"></td>
 </tr>
 </tbody>
 </table>
@@ -1360,19 +1429,66 @@ Solution proposée ?</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RAC3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Si aucune chanson après ne peut être trouvée, en chercher une deux avant, à la suite, et les mettre après la chanson concernée</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Sauf <code>mode: strict</code> ou <code>keep_order: true</code></p>
-<p class="tableblock"><a id="diags-rules"></a>
-==== Concernant les diags ====</p>
-<p class="tableblock">&gt; « Diag » pour « diagrammes des accords ».</p>
-<p class="tableblock">[cols="1,6,2", options="header"]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sauf <code>mode: strict</code> ou <code>keep_order: true</code></p></td>
 </tr>
 </tbody>
 </table>
-<div class="paragraph">
-<p>| RAD1 | les diags peuvent passer d&#8217;une page sur l&#8217;autre |
-| RAD2 | Mais lorsqu&#8217;un seul diagramme doit passer sur l&#8217;autre page, on doit essayer de le ramener sur la page précédente en RÉDUISANT L&#8217;ÉCART entre les diags | sans dépasser <code>MIN_H_DIST[:diags]</code> (disposition horizontale) ou <code>MIN_V_DIST[:diags]</code> (disposition verticale).
-| RAD3 | Si la méthode précédente ne suffit pas, on peut RÉDUIRE LA TAILLE des diags | Sauf si <code>shrink_diag: false</code> et sans dépasser <code>MIN_SIZE[:diags].width/heigh</code></p>
 </div>
+<div class="sect3">
+<h4 id="diags-rules">Concernant les diags</h4>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>« Diag » pour « diagrammes des accords ».</p>
+</div>
+</blockquote>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 11.1111%;">
+<col style="width: 66.6666%;">
+<col style="width: 22.2223%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Num.</th>
+<th class="tableblock halign-left valign-top">Règle</th>
+<th class="tableblock halign-left valign-top">Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAD1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">les diags peuvent passer d&#8217;une page sur l&#8217;autre</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAD2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mais lorsqu&#8217;un seul diagramme doit passer sur l&#8217;autre page, on doit essayer de le ramener sur la page précédente en RÉDUISANT L&#8217;ÉCART entre les diags</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sans dépasser <code>MIN_H_DIST[:diags]</code> (disposition horizontale) ou <code>MIN_V_DIST[:diags]</code> (disposition verticale).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAD3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Si la méthode précédente ne suffit pas, on peut RÉDUIRE LA TAILLE des diags</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sauf si <code>shrink_diag: false</code> et sans dépasser <code>MIN_SIZE[:diags].width/heigh</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAD4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On doit toujours mettre autant de diags qu&#8217;on peut sur la première page</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAD5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sauf indication explicite, les diagrammes en colonne gauche ou droite ne doivent JAMAIS être seuls sur une page</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Les mettre dans dans l&#8217;espace disponible de la page précédente ou adopter la règle RAD6.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAD6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">En l&#8217;absence d&#8217;autres solutions, les diags en excès peuvent se retrouver rassemblés horizontalement, de lignes en lignes, dans tout l&#8217;espace vierge d&#8217;une page vierge après la chanson.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Seulement si la solution de la règle RAD5 n&#8217;a pas peu être appliquée.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 <div class="sect2">
@@ -1386,20 +1502,32 @@ Solution proposée ?</p>
 <col style="width: 50%;">
 <col style="width: 33.3334%;">
 </colgroup>
-<tbody>
+<thead>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Nom de l&#8217;objet</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Note</p></td>
+<th class="tableblock halign-left valign-top">Nom de l&#8217;objet</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Note</th>
 </tr>
+</thead>
+<tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>band</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Bande de titre, contenant obligatoirement le titre de la chanson et pouvant contenir l&#8217;interprète, l&#8217;année de création, le parolier, le compositeur ainsi que toute autre information utile.</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lyrics</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Ce sont les paroles de la chanson.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>break</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bloc définissant de la musique ou des paroles à l&#8217;intérieur de la chanson, souvent après la deuxième partie refrrain.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>chord</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Accord de musique</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>couplet</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Objet de type <code>strophe</code></p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
@@ -1408,13 +1536,28 @@ Solution proposée ?</p>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>intro</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bloc définissant de la musique ou des paroles, en introduction de la chanson.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lyrics</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ce sont les paroles de la chanson.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>refrain</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Objet de type <code>strophe</code></p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>riff</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Petit bout de musique caractéristique de la chanson.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">dans <em>SongBook</em>, c&#8217;est une <a href="#tablature">tablature</a> ou un bout de <a href="#score">partition</a>.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>chord</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Accord de musique</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>strophe</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bloc contenant des paroles (intro, refrain, couplet…)</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 </tbody>

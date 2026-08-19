@@ -1,0 +1,12 @@
+=== Tests ===
+
+
+- Option "côte à côte" ON
+  Doit regrouper deux par deux les strophes
+  Ne doit pas regrouper avec une strophe de type "refrain"
+
+- Option "côte à côté OFF
+  "//" posé entre deux strophes permet de les mettre côte à côte.
+  
+  - titre pour une tablature
+  - titre pour une partition

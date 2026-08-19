@@ -1,0 +1,5 @@
+Fichier utilisé en cas d'erreur incompréhensible pour tester un tout petit bout de code.
+
+|====
+| Pour | une | table
+|====

@@ -1,0 +1,19 @@
+[[object-list, liste des objets]]
+=== Liste des objets ===
+
+On appelle __objet__ tout élément de la chanson affiché dans sa page.
+
+[cols="1,3,2", options="header"]
+|====
+| Nom de l'objet | Description | Note
+| `band` | Bande de titre, contenant obligatoirement le titre de la chanson et pouvant contenir l'interprète, l'année de création, le parolier, le compositeur ainsi que toute autre information utile. |
+| `break`| Bloc définissant de la musique ou des paroles à l'intérieur de la chanson, souvent après la deuxième partie refrrain. |
+| `chord` | Accord de musique | 
+| `couplet`| Objet de type `strophe` | 
+| `diag` | Pour « diagramme », il s'agit des images d'accords indiquant où et comment un accord de guitare doit se jouer. | 
+| `intro` | Bloc définissant de la musique ou des paroles, en introduction de la chanson. |
+| `lyrics` | Ce sont les paroles de la chanson. |
+| `refrain` | Objet de type `strophe` |
+| `riff` | Petit bout de musique caractéristique de la chanson. | dans __SongBook__, c'est une <<tablature>> ou un bout de <<score>>.
+| `strophe` | Bloc contenant des paroles (intro, refrain, couplet…) |
+|====

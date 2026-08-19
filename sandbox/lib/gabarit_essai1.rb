@@ -793,7 +793,7 @@ module GabaritEssai1
         )
       end
 
-      paginate_and_draw(pdf, elements, first_avail_h, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned)
+      paginate_and_draw(pdf, elements, first_avail_h, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col)
     end
   end
 

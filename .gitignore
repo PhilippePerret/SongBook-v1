@@ -1,6 +1,8 @@
 .DS_Store
 
 _dev/
+!_dev/specs/
+!Manuel/_dev/
 
 dev/
 

@@ -1,0 +1,107 @@
+[aesthetic-rules, règles esthétiques]
+=== Règles esthétiques ===
+
+Cette partie concerne les règles esthétiques qui doivent être appliquée pour obtenir le meilleur rendu dans toutes les circonstances.
+
+[[general-rules, règles générales]]
+==== Règles générales ====
+
+[cols="1,6,2", options="header"]
+|====
+| Num. | Règle | Note
+| RAG1 | L'erreur doit être signalée à l'user en fonction du **degré de sensibilité** défini dans le <<config, fichier de configuration>> | cf. `sensitivity`
+| RAG2 | En cas d'erreur, le programme doit s'arrêter à la première erreur rencontrée si `sensitivity: high` |
+| RAG3 | En cas d'erreur, le programme soit afficher clairement la liste des erreurs à la fin de la production si `sensitivity: errors` |
+| RAG4 | En cas d'erreur, le programme doit afficher une message « Des erreurs sont produites (x), voir le fichier <fichier> si `sensitivity: log` |
+| RAG5 | En cas d'erreur, le programme ne doit rien signaler ni afficher de particulier. |
+|====
+
+[[object-rules, règles concernant les éléments]]
+==== Règles concernant les éléments, les __objets__ ====
+
+[cols="1,6,2", options="header"]
+|====
+| Num. | Règle | Note
+| RAO1 | Un <<object-list, objet>> autre que les tablatures et les partitions ne doit JAMAIS pouvoir être coupé. |
+| RAO2 | Si une partition ou une tablature doit être coupée, il faut que ce soit par système seulement, jamais à l'intérieur d'un système. |
+| RAO3 | Un object quelconque ne devrait JAMAIS pouvoir chevaucher une des marges, que ce soit en partie ou complètement. | 
+| RAO4 | Un object quelconque ne devrait JAMAIS pouvoir chevaucher un autre objet de quelque nature que ce soit | Sauf demande expresse dans le gabarit (`overlap: true` dans la définition de l'objet).
+| RAO5 | Sauf indication explicite, deux objets différents (un couplet et un refrain par exemple) ne doivent jamais se trouver côte à côte | Demande explicite : `{intro ...} // {couplet ...}`
+| RAO6 | Sauf indication explicite, deux objets identiques côte à côte ne doivent jamais être être éloignés de plus que la distance définie par `MAX_H_DIST[:<objet>]` (horizontalement) et `MAX_V_DIST[:<objet>]` (verticalement). | indication explicite : `{couplet; margin-left: 100pt;}`
+
+|====
+
+
+|====
+| `MIN_H_DIST` | Distance minimale horizontale entre deux objets, par type d'objet (clé). Les empêche d'être horizontalement trop proches.
+| `MIN_V_DIST` | Distance minimale verticale entre deux objets. Les empêche d'être trop proches verticalement.
+| `MAX_H_DIST` | Distance maximale horizontale entre deux objets. Les empêche d'être horizontalement trop éloignés.
+| `MAX_V_DIST` | Distance maximale verticale entre deux objets. Les empêche d'être vertialement trop éloignés.
+| `MIN_SIZE`    | Table définissant la taille (`width`/`height`) de chaque élément. Si une valeur est `nil`, c'est qu'il n'existe pas de limite.
+|====
+
+Si l'user veut placer un élément à un endroit dans son <<gabarit>> mais que le calcul ne le permet pas.
+Solution proposée ?
+
+[[title-rules, règles concernant la bande de titre]]
+==== Règles concernant la bande de titres (infos) ====
+
+[cols="1,6,2", options="header"]
+|====
+| Num. | Règle | Note
+
+| RAT1 | Lorsque le compositeur ou la compositrice (`composer`) et l'auteur ou l'autrice (`lyrics`) sont la même personne, on indique qu'une fois le nom, sans "/". | Sauf si option `labels_in_title_band: true`
+
+| RAT2 | Si `composer` et `lyrics` sont la ou les mêmes personnes, et que l'option `labels_in_title_band` est appliquée, on utilise la mention « Paroles et musiques : nom » | 
+
+|====
+
+
+[[lyrics-rules, règles concernant les textes]]
+==== Règles concernant les lyrics ====
+
+[cols="1,6,2", options="header"]
+|====
+| Num. | Règle | Note
+| RAL1 | Deux <<strophes, strophes>> côte à côté ne peux pas avoir deux tailles de polices différentes | Sauf mention explicite dans la <<strophe-definition, définition de la strophe>>.
+|====
+
+
+
+[[chords-rules, règles concernant les accords]]
+==== Règles concernant les accords ====
+
+[cols="1,6,2", options="header"]
+|====
+| Num. | Règle | Note
+| RAA1 | Deux accords ne doivent JAMAIS être écrits l'un sur l'autre. | 
+|====
+
+
+[[song-rules, règles concernant les chansons]]
+==== Concernant les chansons ====
+
+[cols="1,6,2", options="header"]
+|====
+| Num. | Règle | Note
+| RAC1 | Les chansons de plus de deux pages sont présentées de préférence en vis à vis (page gauche + page droite). |
+| RAC2 | Si une chanson ne peut pas être mise en vis à vis, trouver un chanson suivante d'une seule page et l'insérer avant. | Sauf `mode: strict` ou `keep_order: true`.
+| RAC3 | Si aucune chanson après ne peut être trouvée, en chercher une deux avant, à la suite, et les mettre après la chanson concernée | Sauf `mode: strict` ou `keep_order: true`
+|====
+
+
+[[diags-rules, règles concernant les diagrammes]]
+==== Concernant les diags ====
+
+> « Diag » pour « diagrammes des accords ».
+
+[cols="1,6,2", options="header"]
+|====
+| Num. | Règle | Note
+| RAD1 | les diags peuvent passer d'une page sur l'autre |
+| RAD2 | Mais lorsqu'un seul diagramme doit passer sur l'autre page, on doit essayer de le ramener sur la page précédente en RÉDUISANT L'ÉCART entre les diags | sans dépasser `MIN_H_DIST[:diags]` (disposition horizontale) ou `MIN_V_DIST[:diags]` (disposition verticale).
+| RAD3 | Si la méthode précédente ne suffit pas, on peut RÉDUIRE LA TAILLE des diags | Sauf si `shrink_diag: false` et sans dépasser `MIN_SIZE[:diags].width/heigh`
+| RAD4 | On doit toujours mettre autant de diags qu'on peut sur la première page |
+| RAD5 | sauf indication explicite, les diagrammes en colonne gauche ou droite ne doivent JAMAIS être seuls sur une page | Les mettre dans dans l'espace disponible de la page précédente ou adopter la règle RAD6.
+| RAD6 | En l'absence d'autres solutions, les diags en excès peuvent se retrouver rassemblés horizontalement, de lignes en lignes, dans tout l'espace vierge d'une page vierge après la chanson. | Seulement si la solution de la règle RAD5 n'a pas peu être appliquée.
+|====

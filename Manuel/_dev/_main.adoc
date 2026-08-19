@@ -1,0 +1,12 @@
+== Développement de l'application ==
+
+__Cette section est réservée aux développeurs qui contribuent à l'application __**SongBook**__ et à son bon fonctionnement.
+
+// Les règles esthétiques
+include::regles_esthetiques.adoc[]
+
+// Liste des objets
+include::object-list.adoc[]
+
+// Les tests
+include::tests.adoc[]
