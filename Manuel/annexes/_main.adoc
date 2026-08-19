@@ -6,3 +6,6 @@ include::terminology.adoc[]
 
 // Propriétés
 include::properties.adoc[]
+
+// Outils
+include::outils.adoc[]

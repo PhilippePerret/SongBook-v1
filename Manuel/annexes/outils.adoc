@@ -1,0 +1,17 @@
+=== Outils ===
+
+La commande `diag -o` permet de construire très rapidement des schémas et des images SVG de diagrammes d'accord.
+
+Pour faire la commande : 
+
+----
+ln -s /Applications/SongBook.app/tools/DiagSchem/diagschem.rb /usr/local/bin/diag
+----
+
+Si les schémas sont placés dans des fichiers `schemas.txt`, la commande `build-diags` permet de construire ou reconstruire tous les SVG manquants.
+
+Pour faire la commande : 
+
+----
+ln -s /Applications/SongBook.app/tools/ChordDiagram/build_diags.rb /usr/local/bin/build-diags
+----

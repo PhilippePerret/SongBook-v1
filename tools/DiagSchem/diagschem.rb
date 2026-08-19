@@ -19,9 +19,15 @@ def touche(s) = "#{ORANGE}#{s}#{RESET}"
 HELP_TEXT = <<~TXT
   #{GRAS}diag#{RESET} — saisie assistée du schéma d'un diagramme d'accord
 
-  Usage : #{touche('diag')} [#{touche('-h')} | #{touche('--help')}] [#{touche('-o')} | #{touche('--output')}]
+  Usage : #{touche('diag')} [#{touche('-h')} | #{touche('--help')}] [#{touche('-o')} | #{touche('--output')}] [schéma]
 
   Produit quelque chose comme « Am-0: 10 21/1 32/3 42/2 50 6x ».
+
+  Argument [schéma] : pour modifier un schéma existant, on peut le passer en
+  argument, table pré-remplie. Accepte tel quel le texte copié dans le
+  presse-papier ("Nom-case : tokens") ou sans espaces ("Nom-case:tokens").
+  Toujours entre guillemets. Exemple :
+    #{touche('diag "Am-0 : 10 21/1 32/3 42/2 50 6x"')}
 
   Utilisation :
     On utilise les flèches et Tab pour se déplacer de case
@@ -40,6 +46,7 @@ HELP_TEXT = <<~TXT
     #{touche('0')}          corde à vide
     #{touche('x')}          corde à ne pas jouer
     #{touche('1 2 3 4 p')}  doigt, 'p' pour le pouce
+    #{touche('(')}          bascule la corde en note facultative
     #{touche('⌫')}          effacer le dernier caractère
 
     Note : retaper sur une valeur déjà remplie la remplace.
@@ -53,13 +60,26 @@ HELP_TEXT = <<~TXT
     #{touche('-o')} / #{touche('--output')}  produit le SVG dans le dossier courant
 TXT
 
-Entry = Struct.new(:case_val, :doigt_val)
+Entry = Struct.new(:case_val, :doigt_val, :optional)
+
+# "<Nom>-<case>:<tokens>" ou "<Nom>-<case> : <tokens>" (espaces optionnelles
+# autour du ":", pour accepter tel quel le texte copié dans le presse-papier
+# par preparer_sortie, qui les inclut) — repérage par découpe sur ce
+# caractère. <tokens> : mêmes tokens que la sortie, "<corde><case>[/<doigt>]"
+# ou "(<corde><case>[/<doigt>])" pour une note facultative (parenthèses autour
+# du token entier, comme attendu par generate_chord_diagrams.rb), séparés par
+# des espaces. Attention : si espaces autour du ":", l'argument entier doit
+# être entre guillemets (sinon le shell le coupe en plusieurs arguments).
+SCHEMA_RE = /\A(.+)-(\d+)\s*:\s*(.+)\z/
+TOKEN_RE = /\A(\()?([1-6])(x|\d{1,2})(?:\/(\w+))?(\))?\z/
+
+class SchemaInvalide < StandardError; end
 
 class DiagSchem
-  def initialize(output_svg: false)
+  def initialize(output_svg: false, schema: nil)
     @nom = ''
     @case_ref = nil
-    @entries = Array.new(6) { Entry.new(nil, nil) } # index 0 = corde 1 ... index 5 = corde 6
+    @entries = Array.new(6) { Entry.new(nil, nil, false) } # index 0 = corde 1 ... index 5 = corde 6
     @row = -1   # -1 = en-tête, 0..5 = corde 1..6
     @col = 0    # -1: col0=nom, col1=case_ref ; 0..5: col0=case, col1=doigt
     @buffer = ''
@@ -68,6 +88,8 @@ class DiagSchem
     @sortie = nil
     @output_svg = output_svg
     @svg_path = nil
+    parser_schema(schema) if schema
+    reinitialiser_buffer # synchronise @buffer avec la cellule courante (nom), sinon affiché "_"
   end
 
   def run
@@ -85,6 +107,26 @@ class DiagSchem
   end
 
   private
+
+  # --- Argument en ligne de commande (pré-remplissage pour modification) ----
+
+  def parser_schema(schema)
+    m = SCHEMA_RE.match(schema)
+    raise SchemaInvalide, "schéma illisible : #{schema.inspect}" unless m
+
+    @nom = m[1]
+    @case_ref = m[2].to_i
+    m[3].split.each do |token|
+      tm = TOKEN_RE.match(token)
+      raise SchemaInvalide, "token illisible : #{token.inspect}" unless tm
+
+      corde, case_str, doigt = tm[2].to_i, tm[3], tm[4]
+      entry = @entries[corde - 1]
+      entry.case_val = case_str == 'x' ? 'x' : case_str.to_i
+      entry.doigt_val = doigt
+      entry.optional = !!(tm[1] && tm[5])
+    end
+  end
 
   # --- Boucle principale ----------------------------------------------
 
@@ -220,7 +262,9 @@ class DiagSchem
   end
 
   def saisir_car(char)
-    if @row == -1 && @col.zero?
+    if char == '(' && @row.between?(0, 5)
+      toggler_optionnel
+    elsif @row == -1 && @col.zero?
       saisir_nom(char)
     elsif @row == -1 && @col == 1
       saisir_case_ref(char)
@@ -229,6 +273,15 @@ class DiagSchem
     else
       saisir_doigt(char)
     end
+  end
+
+  # "(" : bascule une corde en note facultative — parenthèses autour du token
+  # entier à la sortie (affichées encadrant corde+case+doigt, dessinées à
+  # distance fixe puisque case ET doigt occupent des colonnes de largeur fixe).
+  # Jamais de saisie littérale des parenthèses : ça les fermerait "à la main"
+  # sur un texte libre, alors qu'ici c'est un simple booléen par corde.
+  def toggler_optionnel
+    @entries[@row].optional = !@entries[@row].optional
   end
 
   def saisir_nom(char)
@@ -403,9 +456,10 @@ class DiagSchem
     end
 
     # même case : doigt précédent (corde plus faible) >= doigt suivant (hors p,
-    # hors cordes exclues 'x' ou à vide 0, qui n'ont pas de doigt comparable)
+    # hors cordes exclues 'x' ou à vide 0, qui n'ont pas de doigt comparable,
+    # hors notes facultatives qui dupliquent volontairement une autre note)
     non_p = @entries.each_with_index.map { |e, i| [i + 1, e] }
-                     .reject { |_, e| e.doigt_val == 'p' || sans_doigt?(e) }
+                     .reject { |_, e| e.doigt_val == 'p' || sans_doigt?(e) || e.optional }
     non_p.group_by { |_, e| e.case_val }.each_value do |groupe|
       groupe.sort_by! { |corde, _| corde }
       groupe.each_cons(2) do |(_, e1), (_, e2)|
@@ -432,7 +486,8 @@ class DiagSchem
 
   def preparer_sortie
     tokens = @entries.each_with_index.map do |e, i|
-      e.doigt_val ? "#{i + 1}#{e.case_val}/#{e.doigt_val}" : "#{i + 1}#{e.case_val}"
+      token = e.doigt_val ? "#{i + 1}#{e.case_val}/#{e.doigt_val}" : "#{i + 1}#{e.case_val}"
+      e.optional ? "(#{token})" : token
     end
     @sortie = "#{@nom}-#{@case_ref} : #{tokens.join(' ')}"
     IO.popen('pbcopy', 'w') { |io| io.print @sortie }
@@ -445,13 +500,14 @@ class DiagSchem
     ordonnees = @entries.reverse
     positions = ordonnees.map { |e| e.case_val == 'x' ? :muted : (e.case_val.zero? ? :open : e.case_val) }
     doigts = ordonnees.map(&:doigt_val)
-    [positions, doigts]
+    optionnels = ordonnees.map { |e| !!e.optional }
+    [positions, doigts, optionnels]
   end
 
   def generer_svg
-    positions, doigts = positions_et_doigts
+    positions, doigts, optionnels = positions_et_doigts
     nom, basse = @nom.include?('/') ? @nom.split('/', 2) : [@nom, nil]
-    svg = ChordDiagram.build(name: nom, positions: positions, fingers: doigts, bass: basse)
+    svg = ChordDiagram.build(name: nom, positions: positions, fingers: doigts, bass: basse, optionals: optionnels)
     chemin = "#{nom}-#{@case_ref}.svg"
     File.write(chemin, svg)
     chemin
@@ -470,12 +526,17 @@ class DiagSchem
   COL_REF       = COL_MARK_REF + 2
 
   # Colonnes de la table (alignées : case sous le "a" de "Case", doigt sous le "i" de "Doigt")
-  LARGEUR_TABLE = 18
-  COL_CORDE     = 0
-  COL_MARK_CASE = 6
-  COL_CASE      = 8
-  COL_MARK_DOIGT = 13
-  COL_DOIGT     = 15
+  # Décalées de 1 vers la droite par rapport à l'ancien layout : colonne 0
+  # réservée à la parenthèse ouvrante d'une note facultative, une colonne après
+  # le doigt réservée à la fermante (Phil, 2026-08-19).
+  LARGEUR_TABLE = 20
+  COL_OPT_OPEN  = 0
+  COL_CORDE     = 1
+  COL_MARK_CASE = 7
+  COL_CASE      = 9
+  COL_MARK_DOIGT = 14
+  COL_DOIGT     = 16
+  COL_OPT_CLOSE = 17
 
   def afficher
     w("\e[2J\e[H") # clear + home, sans dépendre de la commande externe 'clear'
@@ -483,7 +544,7 @@ class DiagSchem
     w(cadre(ligne_labels_entete))
     w(cadre(ligne_valeurs_entete))
     w(bordure('├', '┤'))
-    w(cadre('Corde  Case  Doigt'))
+    w(cadre(' Corde  Case  Doigt'))
     @entries.each_with_index { |e, i| w(cadre(ligne_corde(e, i))) }
     w(bordure('├', '┤'))
     w(ligne_erreur)
@@ -517,11 +578,13 @@ class DiagSchem
     marker_case = (@row == i && @col.zero?) ? '>' : ' '
     marker_doigt = (@row == i && @col == 1) ? '>' : ' '
     l = ' ' * LARGEUR_TABLE
+    l[COL_OPT_OPEN] = e.optional ? '(' : ' '
     l[COL_CORDE, 5] = format('%3d  ', corde)
     l[COL_MARK_CASE] = marker_case
     l[COL_CASE, case_str.length] = case_str
     l[COL_MARK_DOIGT] = marker_doigt
     l[COL_DOIGT, 1] = doigt_str
+    l[COL_OPT_CLOSE] = e.optional ? ')' : ' '
     l
   end
 
@@ -615,5 +678,11 @@ if ARGV.include?('-h') || ARGV.include?('--help')
   puts HELP_TEXT
 else
   output_svg = ARGV.include?('-o') || ARGV.include?('--output')
-  DiagSchem.new(output_svg: output_svg).run
+  schema = ARGV.find { |a| !a.start_with?('-') }
+  begin
+    DiagSchem.new(output_svg: output_svg, schema: schema).run
+  rescue SchemaInvalide => e
+    warn e.message
+    exit 1
+  end
 end

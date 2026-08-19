@@ -2,13 +2,13 @@ require_relative "chord_diagram"
 
 # Lit les `schemas.txt` (un par dossier de lettre, format décidé par Phil 2026-08-17 :
 # "<Nom>-<case> : <6 tokens>", un token par corde 1(aiguë/e)..6(grave/E), chaque token
-# "<corde><frette>[/<doigt>]", frette = 0-4 ou "x" (étouffée). Génère le SVG manquant
+# "<corde><frette>[/<doigt>]", frette = 0-15 ou "x" (étouffée). Génère le SVG manquant
 # correspondant, jamais ceux déjà présents (sauf demande explicite, non gérée ici).
 module GenerateChordDiagrams
   # Parenthèses autour d'un token entier : note FACULTATIVE (même doigt qu'une autre
   # corde, qui peut s'étendre là en plus) — NE COMPTE JAMAIS pour la détection de barré,
   # même si elle partage frette et doigt avec une autre corde (Phil, 2026-08-17).
-  TOKEN_RE = /\A(\()?([1-6])(x|\d)(?:\/(\w+))?(\))?\z/
+  TOKEN_RE = /\A(\()?([1-6])(x|\d{1,2})(?:\/(\w+))?(\))?\z/
   LINE_RE = /\A(\S+)-(\S+)\s*:\s*(.+)\z/
 
   # Nom AFFICHÉ (pas le nom de fichier) : "d"/"b" en 2e lettre = dièse/bémol (♯/♭,
@@ -36,11 +36,19 @@ module GenerateChordDiagrams
   # Grand barré (specs.md : corde 1 à 6) détecté quand 2+ cordes NON facultatives
   # partagent la frette la plus basse de l'accord ET LE MÊME DOIGT — explicite (répété,
   # comme F désormais) OU omis partout dans le groupe (implicite, alors doigt "1" par
-  # défaut) — dessiné pleine largeur, même si certaines cordes de cet intervalle ont en
-  # réalité une note individuelle plus haute (comme pour F). Une corde à cette même
-  # frette mais avec un doigté DIFFÉRENT et explicite (ex. G-3, corde sol, doigt 2)
-  # n'appartient PAS au barré — juste une note qui tombe sur la même frette, gardée
-  # telle quelle (bug trouvé et corrigé, 2026-08-17).
+  # défaut). Une corde à cette même frette mais avec un doigté DIFFÉRENT et explicite
+  # (ex. G-3, corde sol, doigt 2) n'appartient PAS au barré — juste une note qui tombe
+  # sur la même frette, gardée telle quelle (bug trouvé et corrigé, 2026-08-17).
+  #
+  # `indices` (cordes candidates réelles) sert à masquer leur point/chiffre individuel
+  # — jamais les autres cordes de l'intervalle, qui gardent leur propre note même plus
+  # haute (comme pour F). `span` sert SEULEMENT à la ligne dessinée : un doigt à plat ne
+  # peut physiquement tenir des cordes non adjacentes sans aussi couvrir celles entre
+  # les deux — sauf REPLI complet sur les 6 cordes. Donc un span de 2, 3 ou 4 cordes
+  # (ex. cordes 3 à 6) est IMPOSSIBLE et remplacé par le grand barré (span 1-6), sauf
+  # l'exception réelle des cordes 5-6 (repli partiel sur les 2 graves, technique connue)
+  # (Phil, 2026-08-19, cas trouvé sur Dm6-5 : candidats cordes 3/5/6, corde 4 séparée à
+  # une frette plus haute — un span 3-6 est impossible sans couvrir aussi la 4).
   # Décode "<6 tokens>" en {positions:, fingers:, barre:, optionals:}, prêt pour
   # `ChordDiagram.build`.
   def self.decode(tokens_str)
@@ -54,7 +62,12 @@ module GenerateChordDiagrams
       groups = at_min_fret.group_by { |t| t[:finger] || :implicit }
       key, candidates = groups.max_by { |_, v| v.size }
       if candidates.size >= 2
-        barre = { fret: min_fret, finger: key == :implicit ? "1" : key, indices: candidates.map { |t| 6 - t[:string] } }
+        strings = candidates.map { |t| t[:string] }
+        min_s, max_s = strings.minmax
+        width = max_s - min_s + 1
+        indices = candidates.map { |t| 6 - t[:string] }
+        span = ([2, 3, 4].include?(width) && [min_s, max_s] != [5, 6]) ? (0..5).to_a : indices
+        barre = { fret: min_fret, finger: key == :implicit ? "1" : key, indices: indices, span: span }
       end
     end
 
@@ -100,9 +113,8 @@ module GenerateChordDiagrams
   # Renvoie la liste des fichiers créés : [{path:, name:, kase:}]. Une ligne mal
   # formée (ex. schema encore en cours d'écriture) n'arrête jamais le lot : elle est
   # rapportée à part (`skipped`), les autres lignes valides sont générées quand même.
-  # `only:` restreint la génération à un seul accord (ex. "Gsus-0" = nom "Gsus",
-  # case "0"). Sans lui, RIEN n'est généré — le run global sur tous les schemas.txt
-  # ne doit se produire que sur demande explicite (Phil, 2026-08-18).
+  # `only:` restreint la génération à une liste d'accords (ex. ["Gsus-0", "A-0"]).
+  # Sans lui, tous les diags manquants sont générés.
   def self.run(root = File.expand_path("../../assets/chords_diags", __dir__), only: nil)
     created = []
     skipped = []
@@ -119,7 +131,7 @@ module GenerateChordDiagrams
         end
 
         name, kase, tokens_str = m[1], m[2], m[3]
-        next if only && "#{name}-#{kase}" != only
+        next if only && !only.include?("#{name}-#{kase}")
         next if existing?(dir, name, kase)
 
         begin

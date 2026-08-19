@@ -132,9 +132,9 @@ module GabaritEssai1
   # Table par TYPE d'élément (:diags, :title, :score, :tabla, :strophe...) — clé absente ⇒
   # valeur de :default. Seul :diags a une valeur propre pour l'instant (Phil, 2026-08-16),
   # les autres types tomberont sur :default tant qu'aucun besoin distinct n'est apparu.
-  MIN_V_DIST = { default: 20.0, diags: 10.0 }.freeze
+  MIN_V_DIST = { default: 20.0, diags: 5.0 }.freeze
   MIN_H_DIST = { default: 8.0, diags: 4.0 }.freeze
-  MAX_V_DIST = { default: 80.0 }.freeze
+  MAX_V_DIST = { default: 80.0, diags: 5.0 }.freeze
   MAX_H_DIST = { default: 40.0 }.freeze
 
   def self.min_v_dist(type = :default)
@@ -601,24 +601,49 @@ module GabaritEssai1
   # Renvoie [Hash{nom => Block}, Array<nom>] — le Hash pour être pioché par nom depuis le
   # `.gab` (`{song: nom}`), l'Array pour l'ordre réel d'apparition (avec répétitions) utilisé
   # par `default_items`.
+  # Reconnaît un paragraphe comme réapparition d'un bloc déjà vu quand son CONTENU est
+  # identique à un bloc déjà stocké — que ce soit via `{nom}` répété (avec ou sans corps)
+  # ou un paragraphe sans nom recopiant mot pour mot un couplet/refrain déjà défini (ex.
+  # AYNL, dernier refrain recopié en entier sans `{refrain}`). Sans ça, le paragraphe
+  # récupère le mauvais "type" (`couplet-N` auto), ce qui casse le pairage par type (RAO5).
+  # Deux paragraphes de MÊME NOM mais de contenu DIFFÉRENT restent une vraie redéfinition :
+  # au lieu d'écraser (perte de contenu, interdit — Phil 2026-08-18), le 2nd est renommé en
+  # suffixe (`nom-2`, `nom-3`...) pour que les deux soient rendus.
   def self.parse_lyr(path)
     blocks = {}
     order = []
+    raw_bodies = {}
     paragraphs = File.read(path).split(/\n{2,}/).map(&:strip).reject(&:empty?)
     paragraphs.each_with_index do |para, i|
       lines = para.split("\n")
       header = lines.first
       if header =~ /\A\{([^:;}]+)\}\z/
-        name = Regexp.last_match(1).strip
+        given_name = Regexp.last_match(1).strip
         body = lines[1..] || []
       else
-        name = "couplet-#{i + 1}"
+        given_name = nil
         body = lines
       end
-      order << name
-      next if body.empty? && blocks.key?(name)
 
-      conflict!("bloc \"#{name}\" redéfini", solution: "dernière définition conservée") if blocks.key?(name) && !body.empty?
+      key = body.join("\n")
+      existing_name = body.empty? ? nil : raw_bodies[key]
+
+      if existing_name
+        name = existing_name
+      elsif given_name && blocks.key?(given_name) && !body.empty?
+        original = given_name
+        n = 2
+        n += 1 while blocks.key?("#{original}-#{n}")
+        name = "#{original}-#{n}"
+        conflict!("bloc \"#{original}\" redéfini", solution: "renommé en \"#{name}\" pour conserver les deux contenus")
+      else
+        name = given_name || "couplet-#{i + 1}"
+      end
+
+      order << name
+      next if blocks.key?(name) # contenu déjà stocké (répétition par nom ou par contenu)
+
+      raw_bodies[key] = name
       blocks[name] = Block.new(lines: body.map { |l| Line.new(segments: parse_lyr_line(l)) }, directives: {}, paired_with_previous: false)
     end
     [blocks, order]
@@ -707,9 +732,24 @@ module GabaritEssai1
   # Bloc sans corps (`{nom}` sans ligne dessous — voir `parse_lyr`) EXCLU du pairage : sinon
   # il gaspille toute une colonne de la row où il tombe (bug trouvé, 2026-08-18, sur "Au fur
   # et à mesure" — 2 rows sur 3 pages n'affichaient qu'un seul couplet, l'autre colonne vide).
+  def self.block_kind(name)
+    name.sub(/-\d+\z/, "")
+  end
+
   def self.default_items(lyr_blocks, order)
     items = [GabItem.new(:title, { title: DEFAULT_HEADER_STYLE }), GabItem.new(:diags, { position: DEFAULT_DIAG_POSITION })]
-    order.reject { |name| lyr_blocks.fetch(name).lines.empty? }.each_slice(2) { |pair| items << GabItem.new(:row, pair) }
+    names = order.reject { |name| lyr_blocks.fetch(name).lines.empty? }
+    pending = nil
+    names.each do |name|
+      if pending && block_kind(pending) == block_kind(name)
+        items << GabItem.new(:row, [pending, name])
+        pending = nil
+      else
+        items << GabItem.new(:row, [pending]) if pending
+        pending = name
+      end
+    end
+    items << GabItem.new(:row, [pending]) if pending
     items
   end
 
@@ -1109,7 +1149,7 @@ module GabaritEssai1
         draw_block(pdf_, nxt, x0 + h_gutter + col1_w + h_gutter, y, chord_ascent, text_ascent)
       else
         block = row[0]
-        centered = block.directives[:block_align] == "center"
+        centered = block.directives[:block_align] != "left"
         bx = if centered
                x0 + [(width - block_width(pdf_, block)) / 2.0, 0].max
              else
@@ -1157,7 +1197,7 @@ module GabaritEssai1
       # une page d'un seul élément par ce mécanisme — bug trouvé (remarques.txt Carnet-1,
       # 2026-08-18) où 2 couplets pleins étaient repoussés à 1 seul pour "corriger" une
       # page suivante elle-même peu remplie, résultat pire que le problème visé.
-      while idx - start > 2 && idx < elements.length && !pinned.include?(idx - 1) &&
+      while type != :diags && idx - start > 2 && idx < elements.length && !pinned.include?(idx - 1) &&
             heights[idx...elements.length].sum < REBALANCE_MIN_FILL * page_height
         idx -= 1
         page_sum -= heights[idx]
@@ -1166,6 +1206,24 @@ module GabaritEssai1
       pages << { start: start, finish: idx, avail_h: avail_h }
       avail_h = page_height
     end
+
+    # RAD5 : un diag seul ne doit jamais rester seul sur une page — le ramener sur la
+    # page précédente SEULEMENT s'il y tient réellement (sinon on ferait pire : ça
+    # déborderait la zone sûre, RAO3). Bug trouvé (2026-08-19) : la 1re version fusionnait
+    # sans vérifier la place, provoquant justement ce débordement. Cas "ça ne tient pas" :
+    # RAD6 (regroupement en excès), pas encore implémenté — le diag reste seul pour l'instant.
+    if type == :diags && pages.size > 1 && pages.last[:finish] - pages.last[:start] == 1
+      prev = pages[-2]
+      prev_count = prev[:finish] - prev[:start]
+      prev_sum = heights[prev[:start]...prev[:finish]].sum
+      extra_h = heights[pages.last[:start]]
+      fits = prev_sum + extra_h + min_v_dist(type) * (prev_count + 3) <= prev[:avail_h]
+      if fits
+        last = pages.pop
+        pages.last[:finish] = last[:finish]
+      end
+    end
+
     pages
   end
 
@@ -1277,7 +1335,8 @@ module GabaritEssai1
       draw_chord_label(pdf, seg.chord, cx, y, size: chord_size) if seg.chord
       text_y = has_chord ? y - chord_size - LINE_GAP : y
       pdf.draw_text seg.text, at: [cx, text_y], size: text_size
-      cx += pdf.width_of(seg.text, size: text_size)
+      advance_text = seg.chord && seg.text.empty? ? "   " : seg.text
+      cx += pdf.width_of(advance_text, size: text_size)
     end
   end
 

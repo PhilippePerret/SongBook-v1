@@ -31,9 +31,10 @@ module ChordDiagram
   #   Integer (1..VC, ou au-delà si position décalée) -> numéro de case
   # fingers : 6 entrées parallèles (nil, "1".."4", ou "p" pour le pouce) — ignoré
   #   pour :open/:muted.
-  # barre : optionnel { fret:, finger:, indices: [0..5, ...] } — `indices` = cordes
-  #   RÉELLEMENT couvertes par le barré, toujours dessiné borné à ces cordes (petit
-  #   ou grand barré).
+  # barre : optionnel { fret:, finger:, indices:, span: } — `indices` = cordes qui SONT
+  #   la note du barré (leur point individuel est masqué) ; `span` = étendue de la
+  #   ligne dessinée, peut couvrir des cordes hors `indices` (note individuelle plus
+  #   haute par-dessus le barré, comme pour F) — ces cordes gardent leur propre point.
   # bass : nom de la basse si accord renversé (ex. "F♯"), sinon nil.
   # optionals : 6 entrées parallèles (bool) — note FACULTATIVE (même doigt qu'une
   #   autre corde, qui peut s'étendre là en plus), affichée en gris entre parenthèses.
@@ -67,11 +68,10 @@ module ChordDiagram
       when Integer
         x = fret_x(pos - base_fret + 1)
         svg << fretted_note(x, y, fingers[i], color: optionals[i] ? "999999" : "000000")
-        svg << parentheses(x, y) if optionals[i]
       end
     end
 
-    svg << barre_line(barre[:fret] - base_fret + 1, barre[:finger], barre[:indices]) if barre
+    svg << barre_line(barre[:fret] - base_fret + 1, barre[:finger], barre[:span]) if barre
 
     svg << "</svg>\n"
     svg
@@ -99,8 +99,13 @@ module ChordDiagram
 
   def self.name_label(name, bass)
     root, quality = split_name(name)
-    main = name_tspans(root, size: 56)
-    main += name_tspans(quality, size: 34, accidental_dx: 2, leading_dx: 2) unless quality.empty?
+    # Le glyphe ♭ garde, même resserré sur la lettre, une avance naturelle plus large
+    # que le ♯ dans cette police — écarts calés visuellement par Phil, 2026-08-19
+    # (comparatif lettré, choix "G") : ♭ tiré davantage vers la lettre (-14 contre -6
+    # pour ♯), et ce qui suit (qualité) tiré vers le ♭ à son tour (-7), sinon ça flotte.
+    bemol = root.end_with?("♭")
+    main = name_tspans(root, size: 56, accidental_dx: bemol ? -14 : -6)
+    main += name_tspans(quality, size: 34, accidental_dx: 2, leading_dx: bemol ? -7 : 2) unless quality.empty?
     if bass
       %(<text x="150" y="-60" dy="0.35em" text-anchor="middle">#{main}<tspan font-size="34" font-weight="bold" dx="6">/</tspan>#{name_tspans(bass, size: 34, accidental_dx: 2, leading_dx: 4)}</text>\n)
     else
@@ -146,13 +151,6 @@ module ChordDiagram
 
   def self.fretted_note(x, y, finger, color: "000000")
     %(<circle cx="#{x}" cy="#{y}" r="22" fill="##{color}"/>\n) + finger_label(x, y, finger)
-  end
-
-  # Note facultative (entre parenthèses) affichée moins forte — gris, y compris les
-  # parenthèses.
-  def self.parentheses(x, y, color: "999999")
-    %(<text x="#{x - 30}" y="#{y}" dy="0.35em" font-size="26" font-weight="bold" fill="##{color}" text-anchor="middle">(</text>\n) +
-      %(<text x="#{x + 30}" y="#{y}" dy="0.35em" font-size="26" font-weight="bold" fill="##{color}" text-anchor="middle">)</text>\n)
   end
 
   # Ligne bornée aux cordes RÉELLEMENT couvertes (`indices`) — petit barré (ex. 2
