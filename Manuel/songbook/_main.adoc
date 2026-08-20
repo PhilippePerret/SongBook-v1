@@ -4,6 +4,9 @@
 // Présentation
 include::presentation.adoc[]
 
+// Fichier des informations
+include::infos.adoc[]
+
 // Bonnes pratiques
 include::best-practices.adoc[]
 

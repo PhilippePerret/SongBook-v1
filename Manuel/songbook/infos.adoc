@@ -1,0 +1,48 @@
+[[songbook-infos]]
+=== Fichier infos du carnet ===
+
+Toutes les informations concernant le carnet se rangent dans le fichier `.infos`, par exemple `carnet-gabriel.infos` à la racine du carent de chant. Par exemple :
+
+----
+Carnet-de-chant-Peter-Gabriel
+  |— carnet.infos
+----
+
+Ce fichier définit les éléments suivant :
+
+----
+title: Le titre du carnet (couverture)
+id: Une identifiant éventuel
+format: Largeur et hauteur du carnet (A5 en paysage par défaut)
+layout: le format par défaut d'affichage des chansons (regular-B par défaut)
+subtitle: Le sous-titre
+editor: 
+  name: Nom de l'éditeur
+
+# Les pages liminaires
+# --------------------
+front_matter:
+  half_title_page: false # faux-titre
+  title_page: true
+  # Définition des tables des matières
+  table_of_contents:
+    per_song: true
+    per_performer: true
+    per_composer: false
+    per_author: false
+  forword: false # Avant propos (false, ou le fichier)
+  preface: preface.md # préface
+  acknowledgments: false # (false ou le fichier remerciements)
+copyright: @2026 Icare éditions Tous droits réservés
+
+# Pages finales
+# -------------
+credits:
+  book_designer: Philippe Perret
+  typesetter: Philippe Perret
+  proofreader: Marion Michel
+  programming: Claude
+  
+----
+
+Pour le `layout`, voir <<song-layout>>.

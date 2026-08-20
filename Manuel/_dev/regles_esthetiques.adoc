@@ -28,7 +28,7 @@ Cette partie concerne les règles esthétiques qui doivent être appliquée pour
 | RAO4 | Un object quelconque ne devrait JAMAIS pouvoir chevaucher un autre objet de quelque nature que ce soit | Sauf demande expresse dans le gabarit (`overlap: true` dans la définition de l'objet).
 | RAO5 | Sauf indication explicite, deux objets différents (un couplet et un refrain par exemple) ne doivent jamais se trouver côte à côte | Demande explicite : `{intro ...} // {couplet ...}`
 | RAO6 | Sauf indication explicite, deux objets identiques côte à côte ne doivent jamais être être éloignés de plus que la distance définie par `MAX_H_DIST[:<objet>]` (horizontalement) et `MAX_V_DIST[:<objet>]` (verticalement). | indication explicite : `{couplet; margin-left: 100pt;}`
-
+| RAO7 | Sauf indication explicite, deux objets ne devraient JAMAIS se retrouver l'un contre l'autre | 
 |====
 
 

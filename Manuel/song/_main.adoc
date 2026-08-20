@@ -14,3 +14,6 @@ include::strophes.adoc[]
 
 // Tablatures et partitions
 include::tablas-et-scores.adoc[]
+
+// Layout
+include::layout.adoc[]

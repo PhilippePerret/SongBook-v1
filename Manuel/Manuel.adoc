@@ -14,7 +14,7 @@ a {
 // include::_dev/en-cas-derreur.adoc[]
 
 // Introduction
-include::app/presentation.adoc[]
+include::app/_main.adoc[]
 
 // Chanson
 include::song/_main.adoc[]

@@ -1,0 +1,14 @@
+[[app-options, options de l'application]]
+=== Options ===
+
+
+
+[cols="1,3,3", options="header"]
+|====
+| Option | Description | Valeurs
+
+| `build_unknown_song`
+| Détermine si les dossiers des chansons doivent être créés lorsque le titre est trouvé dans le fichier `.tdm` mais que la chanson n'est pas trouvée.
+| Défaut : `true` (oui, le dossier est créé)
+
+|====
