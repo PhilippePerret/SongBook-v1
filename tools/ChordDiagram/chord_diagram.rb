@@ -169,6 +169,6 @@ module ChordDiagram
   # Case de départ : au-dessus de la 1ère case, pour une position décalée (pas de
   # sillet dans ce cas).
   def self.position_label(base_fret)
-    %(<text x="#{fret_x(1)}" y="-35" dy="0.35em" font-family="Georgia, serif" text-anchor="middle"><tspan font-size="30" font-weight="bold">#{base_fret}</tspan><tspan font-size="18" font-weight="bold" dy="-0.5em">e</tspan></text>\n)
+    %(<text y="-47" dy="0.35em" font-family="Georgia, serif" text-anchor="middle"><tspan x="#{fret_x(1)}" font-size="40" font-weight="bold">#{base_fret}</tspan><tspan font-size="28" font-weight="bold" dy="-0.5em">e</tspan></text>\n)
   end
 end

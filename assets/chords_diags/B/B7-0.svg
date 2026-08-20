@@ -14,9 +14,6 @@
 <line x1="0" y1="-6" x2="0" y2="261" stroke="black" stroke-width="10"/>
 <circle cx="112.5" cy="255" r="22" fill="#999999"/>
 <text x="112.5" y="255" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">2</text>
-<text x="82.5" y="255" dy="0.35em" font-size="26" font-weight="bold" fill="#999999" text-anchor="middle">(</text>
-) +
-      %(<text x="142.5" y="255" dy="0.35em" font-size="26" font-weight="bold" fill="#999999" text-anchor="middle">)</text>
 <circle cx="112.5" cy="204" r="22" fill="#000000"/>
 <text x="112.5" y="204" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">2</text>
 <circle cx="37.5" cy="153" r="22" fill="#000000"/>

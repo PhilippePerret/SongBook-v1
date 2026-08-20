@@ -11,7 +11,7 @@
 <line x1="150" y1="0" x2="150" y2="255" stroke="black" stroke-width="3"/>
 <line x1="225" y1="0" x2="225" y2="255" stroke="black" stroke-width="3"/>
 <line x1="300" y1="0" x2="300" y2="255" stroke="black" stroke-width="3"/>
-<text x="37.5" y="-35" dy="0.35em" font-family="Georgia, serif" text-anchor="middle"><tspan font-size="30" font-weight="bold">6</tspan><tspan font-size="18" font-weight="bold" dy="-0.5em">e</tspan></text>
+<text y="-47" dy="0.35em" font-family="Georgia, serif" text-anchor="middle"><tspan x="37.5" font-size="40" font-weight="bold">6</tspan><tspan font-size="28" font-weight="bold" dy="-0.5em">e</tspan></text>
 <circle cx="187.5" cy="153" r="22" fill="#000000"/>
 <text x="187.5" y="153" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">3</text>
 <circle cx="187.5" cy="51" r="22" fill="#000000"/>
