@@ -1,4 +1,5 @@
 require_relative "layout"
+require_relative "app_options"
 
 # Rendu minimal des sections "front matter" (préface, avant-propos, remerciements) —
 # reconnaissance directe adaptée à Prawn, pas de dépendance Markdown externe (Phil,
@@ -14,6 +15,10 @@ module MarkdownPage
   BLOCK_GAP = 10
   LIST_INDENT = 14
   BULLET = "•  "
+  # RATX1 (Manuel/regles_esthetiques.adoc) : texte autre que lyrics, à phrases longues,
+  # sur 2 colonnes dès que la page dépasse 15cm de large — gouttière fixe (`text_column_guter`,
+  # options.yaml).
+  TWO_COL_THRESHOLD_PT = AppOptions.length_pt("15cm")
 
   Block = Struct.new(:type, :level, :lines)
 
@@ -48,37 +53,76 @@ module MarkdownPage
 
   # Dessine tout le fichier `md_path` dans les bounds courantes de `pdf` (déjà margées/
   # numérotées par l'appelant), sur UNE SEULE page — pas de flux multi-page pour l'instant
-  # (limitation connue, Phil 2026-08-20). Signale plutôt que de couper silencieusement si
-  # le contenu déborde.
-  def self.render(pdf, md_path, width)
-    y = pdf.bounds.height
-    parse(File.read(md_path)).each { |block| y = draw_block(pdf, block, y, width) }
-
-    return unless y < -0.01
-
-    Layout.conflict!("contenu Markdown (#{File.basename(md_path)}) dépasse la page de #{-y.round(2)}pt",
-      solution: "dessiné quand même, hors zone sûre")
+  # (limitation connue, Phil 2026-08-20). RATX1 : 2 colonnes si `width` > 15cm. RATX2 :
+  # police dédiée (`text_font`, options.yaml), différente de celle des lyrics.
+  def self.render(pdf, md_path, width, top: pdf.bounds.height)
+    blocks = parse(File.read(md_path))
+    pdf.font(AppOptions.get("text_font")) do
+      if width > TWO_COL_THRESHOLD_PT
+        render_two_columns(pdf, blocks, top, width)
+      else
+        y = top
+        blocks.each { |block| y = draw_block(pdf, block, 0, y, width) }
+      end
+    end
   end
 
-  def self.draw_block(pdf, block, y, width)
+  def self.render_two_columns(pdf, blocks, top, width)
+    gutter = AppOptions.length_pt(AppOptions.get("text_column_guter"))
+    col_w = (width - gutter) / 2.0
+    x = [0, col_w + gutter]
+    col = 0
+    y = top
+    blocks.each do |block|
+      h = block_height(pdf, block, col_w)
+      if col.zero? && y - h < 0
+        col = 1
+        y = top
+      end
+      y = draw_block(pdf, block, x[col], y, col_w)
+    end
+  end
+
+  # Hauteur qu'occuperait `block` (dont l'espace après, `BLOCK_GAP`) — calcul PUR, aucun
+  # dessin, sert à décider AVANT de dessiner s'il faut changer de colonne.
+  def self.block_height(pdf, block, width)
+    case block.type
+    when :header
+      H_SIZES.fetch(block.level, H_DEFAULT_SIZE) + BLOCK_GAP
+    when :list
+      total = block.lines.sum { |line| pdf.height_of_formatted(inline_fragments(line, TEXT_SIZE), width: width - LIST_INDENT) + LINE_GAP }
+      total + BLOCK_GAP - LINE_GAP
+    else
+      pdf.height_of_formatted(inline_fragments(block.lines.first, TEXT_SIZE), width: width) + BLOCK_GAP
+    end
+  end
+
+  def self.draw_block(pdf, block, x, y, width)
     case block.type
     when :header
       size = H_SIZES.fetch(block.level, H_DEFAULT_SIZE)
-      pdf.draw_text block.lines.first, at: [0, y - size], size: size, style: :bold
+      descent = Layout.font_metric(pdf, size) { pdf.font.descender }
+      Layout.engrave(bottom: y - size - descent, context: "titre Markdown") { pdf.draw_text block.lines.first, at: [x, y - size], size: size, style: :bold }
       y - size - BLOCK_GAP
     when :list
+      bullet_descent = Layout.font_metric(pdf, TEXT_SIZE) { pdf.font.descender }
       block.lines.each do |line|
         fragments = inline_fragments(line, TEXT_SIZE)
         h = pdf.height_of_formatted(fragments, width: width - LIST_INDENT)
-        pdf.draw_text BULLET, at: [0, y - TEXT_SIZE], size: TEXT_SIZE
-        pdf.formatted_text_box fragments, at: [LIST_INDENT, y], width: width - LIST_INDENT
+        Layout.engrave(bottom: [y - TEXT_SIZE - bullet_descent, y - h].min, context: "liste Markdown") do
+          pdf.draw_text BULLET, at: [x, y - TEXT_SIZE], size: TEXT_SIZE
+          # RATX3 : justifié (Manuel/regles_esthetiques.adoc), comme le reste des textes
+          # hors lyrics.
+          pdf.formatted_text_box fragments, at: [x + LIST_INDENT, y], width: width - LIST_INDENT, align: :justify
+        end
         y -= h + LINE_GAP
       end
       y - BLOCK_GAP + LINE_GAP
     else # :paragraph
       fragments = inline_fragments(block.lines.first, TEXT_SIZE)
       h = pdf.height_of_formatted(fragments, width: width)
-      pdf.formatted_text_box fragments, at: [0, y], width: width
+      # RATX3 : justifié.
+      Layout.engrave(bottom: y - h, context: "paragraphe Markdown") { pdf.formatted_text_box fragments, at: [x, y], width: width, align: :justify }
       y - h - BLOCK_GAP
     end
   end

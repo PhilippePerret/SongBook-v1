@@ -12,22 +12,34 @@ module ChordDiagrams
   # Phil, 2026-08-18 — plusieurs cases existeront à terme pour un même accord). Accord ou
   # case introuvable : signalé via `Layout.conflict!` (l'user peut se tromper d'accord),
   # jamais une erreur silencieuse ni un crash.
+  # Fichiers SVG nommés en ascii (`Bb7M-1.svg`) — un accord transposé sort en unicode
+  # (`Transpose.transpose_chord`, "B♭7M", jamais #/b — voir `transpose.rb`). Sans
+  # normalisation ici, un accord transposé ne matchait JAMAIS son diagramme pourtant
+  # présent (bug constaté 2026-08-21, "À bicyclette" transposée Em->Am : Bb7/Bb7M/Eb7M
+  # signalés manquants alors que leurs SVG existent).
+  def self.file_chord(chord)
+    chord.tr("♭♯", "b#")
+  end
+
   def self.diag_path(chord, fret: nil)
     letter = chord[0].upcase
     dir = File.join(ASSETS, letter)
     unless Dir.exist?(dir)
       Layout.conflict!("accord inconnu: #{chord}#{fret ? "-#{fret}" : ""}", solution: "diagramme omis")
+      Layout.track_missing_chord(chord)
       return nil
     end
 
-    entries = Dir.glob(File.join(dir, "#{Regexp.escape(chord)}-*.svg")).filter_map do |f|
-      m = File.basename(f).match(/\A#{Regexp.escape(chord)}-(\d+)\.svg\z/)
+    fc = file_chord(chord)
+    entries = Dir.glob(File.join(dir, "#{Regexp.escape(fc)}-*.svg")).filter_map do |f|
+      m = File.basename(f).match(/\A#{Regexp.escape(fc)}-(\d+)\.svg\z/)
       [f, m[1].to_i] if m
     end
     entries.select! { |_, kase| kase == fret.to_i } if fret
 
     if entries.empty?
       Layout.conflict!("accord inconnu ou case absente: #{chord}#{fret ? "-#{fret}" : ""}", solution: "diagramme omis")
+      Layout.track_missing_chord(chord)
       return nil
     end
 
@@ -42,8 +54,9 @@ module ChordDiagrams
     dir = File.join(ASSETS, letter)
     return [] unless Dir.exist?(dir)
 
-    Dir.glob(File.join(dir, "#{Regexp.escape(chord)}-*.svg")).filter_map do |f|
-      m = File.basename(f).match(/\A#{Regexp.escape(chord)}-(\d+)\.svg\z/)
+    fc = file_chord(chord)
+    Dir.glob(File.join(dir, "#{Regexp.escape(fc)}-*.svg")).filter_map do |f|
+      m = File.basename(f).match(/\A#{Regexp.escape(fc)}-(\d+)\.svg\z/)
       m[1].to_i if m
     end
   end

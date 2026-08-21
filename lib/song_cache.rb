@@ -1,4 +1,5 @@
 require_relative "page_builder"
+require_relative "file_finder"
 
 # Cache des infos de chansons, un fichier Marshal par `chansons_dir` — évite de relire/
 # parser tous les `.infos` à chaque recherche (Phil, 2026-08-20 : `stat()` quasi gratuit,
@@ -31,32 +32,38 @@ module SongCache
   end
 
   def self.infos_path(chansons_dir, folder_name)
-    Dir.glob(File.join(chansons_dir, folder_name, "*.infos")).first
+    FileFinder.find(File.join(chansons_dir, folder_name), :inf)
   end
 
   # `name` = nom de dossier, titre OU id — cherché dans les 3 tables du cache. Trouvé :
-  # `refresh` (relit le `.infos` SEULEMENT si sa mtime a bougé depuis `checked_at`).
-  # Pas trouvé en cache : scan disque (`find_on_disk`) — chanson déjà là mais jamais
-  # encore mise en cache. Toujours introuvable : le bloc fourni par l'appelant décide
-  # (ex. création automatique) ; `nil` du bloc (ou absence de bloc) -> `resolve` renvoie
-  # `nil`. Dans tous les cas où quelque chose est trouvé/créé : consigné dans le cache.
+  # `refresh` (relit le `.infos` SEULEMENT si sa mtime a bougé depuis `checked_at`) — `nil`
+  # si le dossier en cache n'existe plus (renommé/déplacé/supprimé depuis) : traité comme
+  # un cache-miss, retombe sur `find_on_disk` (jamais une entrée périmée renvoyée telle
+  # quelle). Pas trouvé en cache : scan disque (`find_on_disk`) — chanson déjà là mais
+  # jamais encore mise en cache. Toujours introuvable : le bloc fourni par l'appelant
+  # décide (ex. création automatique) ; `nil` du bloc (ou absence de bloc) -> `resolve`
+  # renvoie `nil`. Dans tous les cas où quelque chose est trouvé/créé : consigné dans le
+  # cache.
   def self.resolve(chansons_dir, name)
     cache = load(chansons_dir)
     id = cache[:by_folder][name] || cache[:by_title][name] || (cache[:by_id].key?(name) ? name : nil)
-    return refresh(chansons_dir, id) if id
-
-    entry = find_on_disk(chansons_dir, name)
+    entry = refresh(chansons_dir, id) if id
+    entry ||= find_on_disk(chansons_dir, name)
     entry ||= yield(name) if block_given?
     return nil unless entry
 
     register(chansons_dir, entry[:folder], entry[:infos])
   end
 
+  # `nil` si le `.infos` en cache n'existe plus (dossier renommé/déplacé/supprimé) —
+  # JAMAIS une entrée périmée renvoyée telle quelle (bug constaté, 2026-08-20 : dossier
+  # renommé à la main entre deux builds, l'ancien nom cassait le rendu au lieu de retomber
+  # sur une recherche fraîche).
   def self.refresh(chansons_dir, id)
     cache = load(chansons_dir)
     entry = cache[:by_id][id]
     path = infos_path(chansons_dir, entry[:folder])
-    return entry unless path
+    return nil unless path
 
     mtime = File.mtime(path).to_f
     return entry if mtime <= entry[:checked_at]
@@ -81,7 +88,7 @@ module SongCache
   # `.infos`) — seulement en cas d'échec du cache (chanson pas encore consignée).
   def self.find_on_disk(chansons_dir, name)
     direct = File.join(chansons_dir, name)
-    if Dir.exist?(direct) && !Dir.glob(File.join(direct, "*.lyr")).empty?
+    if Dir.exist?(direct) && FileFinder.find(direct, :lyr)
       path = infos_path(chansons_dir, name)
       return { folder: name, infos: path ? PageBuilder.parse_infos(path) : {} }
     end

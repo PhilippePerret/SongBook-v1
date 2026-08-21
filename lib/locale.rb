@@ -1,28 +1,21 @@
 require "yaml"
 
-# Fichiers `Locales/<lang>/<file>.yaml`, clé/valeur PLATES (pas d'imbrication, pas de path
-# à séparer — Phil, 2026-08-20). `loc.yaml` : termes affichés (ex. libellés des rôles du
-# colophon). `infos_keys.yaml` : alias -> clé canonique pour les `.infos` de chanson
-# écrits dans une autre langue (ex. `performer` -> `interprete`).
-module Locale
+# Locale de l'utilisateur chargée UNE SEULE FOIS pour toute l'appli — langue système
+# (`LANG`), ou forcée via `--lang=xx` en argument. `Loc.get(cle)` lit dans le `loc.yaml`
+# de cette langue (`Locales/<lang>/loc.yaml`, clé/valeur PLATES) ; clé absente -> la clé
+# elle-même (jamais nil, jamais de crash).
+class Loc
   DIR = File.expand_path("../Locales", __dir__)
   DEFAULT_LANG = "fr"
 
-  @cache = {}
+  forced = ARGV.find { |a| a.start_with?("--lang=") }
+  system_lang = ENV["LANG"].to_s[0, 2]
+  LANG = forced ? forced.split("=", 2).last : (system_lang.empty? ? DEFAULT_LANG : system_lang)
 
-  # Chargé une seule fois par (langue, fichier) — mémoïsé. Hash vide si le fichier
-  # n'existe pas (langue non traduite : `t` retombe alors sur `default`/la clé elle-même).
-  def self.load(lang, file: "loc")
-    @cache[[lang, file]] ||= begin
-      path = File.join(DIR, lang, "#{file}.yaml")
-      File.exist?(path) ? (YAML.safe_load_file(path) || {}) : {}
-    end
-  end
+  path = File.join(DIR, LANG, "loc.yaml")
+  @table = File.exist?(path) ? (YAML.safe_load_file(path) || {}) : {}
 
-  # "book_designer" -> cherche dans `lang`, puis `DEFAULT_LANG`, puis `default` (donné par
-  # l'appelant), puis renvoie `key` tel quel en dernier recours — jamais nil, jamais de
-  # crash sur une traduction manquante.
-  def self.t(key, lang: DEFAULT_LANG, file: "loc", default: nil)
-    load(lang, file: file)[key] || load(DEFAULT_LANG, file: file)[key] || default || key
+  def self.get(key)
+    @table[key] || key
   end
 end

@@ -1,5 +1,6 @@
 require "prawn"
 require "prawn-svg"
+require_relative "app_options"
 
 # Moteur de mise en page : primitives de dessin (police, en-tête, couplets/accords,
 # diagrammes, tabla) et pagination générique — indépendant du format source d'une
@@ -20,10 +21,58 @@ module Layout
   # à côté du PDF produit (remarques.txt Carnet-1, 2026-08-18 : un log par production, pas
   # un fichier global partagé).
   @conflict_log_path = File.expand_path("../_dev/conflicts.log", __dir__)
+  # Trace des décisions de construction (Phil, 2026-08-20) — PAS le log de conflits :
+  # aucun problème ici, juste ce que l'algo a choisi et pourquoi, pour comprendre son
+  # comportement sans avoir à relire le code. Même redirection par production que
+  # `conflict_log_path` (voir `CarnetBuilder.build`).
+  @building_log_path = File.expand_path("../_dev/building.log", __dir__)
   class << self
-    attr_accessor :conflict_log_path, :current_song, :current_page
+    attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page
   end
   CONFLICTS = []
+  @missing_chords = Hash.new { |h, k| h[k] = [] }
+
+  def self.log_build(message)
+    line = "#{current_song || "?"} p.#{current_page || "?"} : #{message}"
+    File.open(building_log_path, "a") { |f| f.puts line }
+  end
+
+  # Accord introuvable (`ChordDiagrams.diag_path`) — consigné à part du log de conflits
+  # ligne par ligne, pour un récapitulatif dédupliqué en fin de production (Phil,
+  # 2026-08-20) : `accord (chanson 1, chanson 2, ...)`.
+  def self.track_missing_chord(chord)
+    song = current_song || "?"
+    @missing_chords[chord] << song unless @missing_chords[chord].include?(song)
+  end
+
+  # "ACCORDS MANQUANTS : Am9 (À bicyclette), G7M (À bicyclette, Belle île en mer)" — ou
+  # `nil` si aucun accord manquant sur toute la production.
+  def self.missing_chords_summary
+    return nil if @missing_chords.empty?
+
+    "ACCORDS MANQUANTS : #{@missing_chords.map { |chord, songs| "#{chord} (#{songs.join(', ')})" }.join(', ')}"
+  end
+
+  # Point de passage OBLIGATOIRE avant toute gravure dans le PDF (Phil, 2026-08-20) :
+  # AUCUN autre endroit du code n'appelle `pdf.svg`/`draw_text`/`text_box`/`fill_rectangle`
+  # directement — tout passe par ici. Vérifie AVANT de graver que l'élément rentre dans le
+  # cadre (jamais après-coup, contrairement à l'ancien système) : `bottom` = le point le
+  # plus bas (coordonnées `pdf.bounds`, 0 = bord bas de la zone de contenu) que l'élément
+  # atteindra une fois dessiné — calculé par l'appelant, seul à connaître la convention
+  # d'ancrage (haut/bas/ligne de base) de ce qu'il dessine. Hors cadre -> signalé, RIEN
+  # gravé, renvoie `false` (l'appelant peut alors reconstruire/rétrécir et retenter) ;
+  # dans le cadre -> le bloc s'exécute, renvoie `true`.
+  # Exception documentée : `draw_page_number` dessine volontairement DANS la marge (son
+  # rôle), via `pdf.canvas` — hors du système de coordonnées `pdf.bounds`, donc hors
+  # périmètre de ce garde-fou par nature, pas par oubli.
+  def self.engrave(bottom:, context: nil)
+    if bottom < -0.01
+      conflict!("gravure refusée#{context ? " (#{context})" : ""} — déborderait de #{-bottom.round(2)}pt", solution: "rien dessiné")
+      return false
+    end
+    yield
+    true
+  end
 
   # Format de ligne imposé (remarques-v4.txt Carnet-1, point 1) : ni horodatage par ligne
   # (un seul temps début/fin pour tout le run, écrit par le script de production autour de
@@ -62,6 +111,12 @@ module Layout
   # déterminer, en constatant la diminution du texte"), PAS définitive.
   MIN_TEXT_SIZE = TEXT_SIZE - 2
   LINE_GAP = 4
+  # RAA1 (Manuel/regles_esthetiques.adoc) : deux accords ne doivent JAMAIS être en
+  # contact — un pas d'avancée strictement égal à la largeur du label précédent les
+  # laissait TOUCHER (constaté sur l'intro d'À bicyclette, accords collés sans séparation
+  # quand le texte entre eux est vide/un simple séparateur "/", Phil 2026-08-20). Valeur
+  # provisoire, jamais validée par Phil.
+  CHORD_GAP = 2.0
   DIAG_W = 60
   DIAG_TEXT_GAP = 26
   # RAD3 : largeur plancher sous laquelle un diag ne doit jamais être réduit (valeur
@@ -76,6 +131,7 @@ module Layout
 
   GEORGIA_DIR = File.expand_path("../assets/fonts/Georgia", __dir__)
   HELVETICA_NEUE_DIR = File.expand_path("../assets/fonts/HelveticaNeue", __dir__)
+  FONTS_DIR = File.expand_path("../assets/fonts", __dir__)
   # Taille de départ, standard éditorial courant pour un numéro de page — à ajuster
   # visuellement sur le livre-test (Phil, 2026-08-17).
   PAGE_NUMBER_SIZE = 10
@@ -493,12 +549,34 @@ module Layout
       bold_italic: File.join(HELVETICA_NEUE_DIR, "HelveticaNeue-BoldItalic.ttf"),
     }
     pdf.font_families.update("HelveticaNeue" => helvetica_neue, "sans-serif" => helvetica_neue)
+
+    text_font_name = AppOptions.get("text_font")
+    pdf.font_families.update(text_font_name => resolve_font_files(text_font_name))
+
     pdf.font "HelveticaNeue"
+  end
+
+  # `text_font` (options.yaml) est, par convention, le nom du DOSSIER sous
+  # `assets/fonts/` — jamais un nom de fichier en dur (Phil, 2026-08-20 : la convention de
+  # nommage des .ttf varie d'une police à l'autre, ex. Cormorant_Garamond utilise
+  # "-Regular"/"-Bold", Garamond utilise "Book"/pas de suffixe). Résolution par motif
+  # (gras/italique dans le nom de fichier) plutôt qu'un nom de fichier attendu.
+  def self.resolve_font_files(font_name)
+    files = Dir.glob(File.join(FONTS_DIR, font_name, "*.ttf"))
+    raise "aucune police .ttf dans assets/fonts/#{font_name}/" if files.empty?
+
+    bold_italic = files.find { |f| File.basename(f) =~ /bold.*italic|italic.*bold/i }
+    bold = files.find { |f| File.basename(f) =~ /bold/i && f != bold_italic }
+    italic = files.find { |f| File.basename(f) =~ /italic/i && f != bold_italic }
+    claimed = [bold, italic, bold_italic].compact
+    regular = files.find { |f| !claimed.include?(f) && File.basename(f) =~ /regular|book|roman/i } || (files - claimed).first || files.first
+
+    { normal: regular, bold: bold || regular, italic: italic || regular, bold_italic: bold_italic || bold || italic || regular }
   end
 
   # "(interprète, année)" — entre parenthèses, jamais de label (Phil, 2026-08-16).
   def self.format_interprete(meta)
-    parts = [meta["interprete"], meta["date"]].compact
+    parts = [meta["performer"], meta["year"]].compact
     parts.empty? ? "" : "(#{parts.join(', ')})"
   end
 
@@ -508,7 +586,7 @@ module Layout
   # 2026-08-16). Identique pour :inline et :band — le bandeau ne doit RIEN changer à la
   # position du titre, seulement ajouter un fond derrière.
   def self.draw_header_row(pdf, meta, y, title_color:, info_color:)
-    title = meta["titre"].to_s
+    title = meta["title"].to_s
     draw_text_colored(pdf, title, at: [HEADER_PAD_X, y], size: TITLE_SIZE, style: :bold, color: title_color)
     title_w = pdf.width_of(title, size: TITLE_SIZE, style: :bold)
     left_edge = HEADER_PAD_X + title_w
@@ -519,7 +597,9 @@ module Layout
       left_edge += INFO_GAP + pdf.width_of(interprete, size: INTERPRETE_SIZE)
     end
 
-    pc = [meta["parolier"], meta["compositeur"]].compact.join(" / ")
+    # RAT1 (Manuel/regles_esthetiques.adoc) : même personne aux deux -> le nom une seule
+    # fois, jamais "X / X".
+    pc = [meta["lyrics"], meta["composer"]].compact.uniq.join(" / ")
     unless pc.empty?
       w = pdf.width_of(pc, size: PC_SIZE)
       right_edge = pdf.bounds.width - HEADER_PAD_X - w
@@ -535,11 +615,15 @@ module Layout
   # pdf-core — jamais lue) : seul `fill_color`, posé AVANT le dessin, fixe la couleur
   # réelle. Restaure le noir après, pour ne pas laisser fuiter la couleur sur la suite.
   def self.draw_text_colored(pdf, text, at:, size:, color:, style: nil)
-    pdf.fill_color color
-    opts = { at: at, size: size }
-    opts[:style] = style if style
-    pdf.draw_text text, **opts
-    pdf.fill_color "000000"
+    _, y = at
+    descent = font_metric(pdf, size) { pdf.font.descender }
+    engrave(bottom: y - descent, context: "texte \"#{text[0, 20]}\"") do
+      pdf.fill_color color
+      opts = { at: at, size: size }
+      opts[:style] = style if style
+      pdf.draw_text text, **opts
+      pdf.fill_color "000000"
+    end
   end
 
   def self.title_baseline_y(pdf)
@@ -566,15 +650,17 @@ module Layout
   # ce jour avec les essais KDP réels, à respecter partout, pas seulement pour le texte).
   def self.draw_header_band(pdf, meta)
     y = title_baseline_y(pdf)
-    ink_top, ink_bottom = ink_extent(pdf, meta["titre"].to_s, TITLE_SIZE, style: :bold)
+    ink_top, ink_bottom = ink_extent(pdf, meta["title"].to_s, TITLE_SIZE, style: :bold)
 
     band_top = y + ink_top + BAND_GAP
     band_bottom = y - ink_bottom - BAND_GAP
     band_h = band_top - band_bottom
 
-    pdf.fill_color BAND_COLOR
-    pdf.fill_rectangle [0, band_top], pdf.bounds.width, band_h
-    pdf.fill_color "000000"
+    engrave(bottom: band_bottom, context: "bandeau de titre") do
+      pdf.fill_color BAND_COLOR
+      pdf.fill_rectangle [0, band_top], pdf.bounds.width, band_h
+      pdf.fill_color "000000"
+    end
 
     draw_header_row(pdf, meta, y, title_color: "FFFFFF", info_color: "FFFFFF")
 
@@ -684,23 +770,49 @@ module Layout
     line && line.segments.any?(&:chord)
   end
 
-  def self.line_step(line, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
-    line_has_chord?(line) ? chord_size + LINE_GAP + text_size + LINE_GAP : text_size + LINE_GAP
+  # Ligne sans AUCUN mot réel (que des accords + séparateurs "/" espaces...) — intro/outro
+  # instrumentale, voir `draw_chords_only_line`.
+  def self.line_has_words?(line)
+    line.segments.any? { |seg| seg.text =~ /[[:alpha:]]/ }
+  end
+
+  def self.chords_only_line?(line)
+    line_has_chord?(line) && !line_has_words?(line)
+  end
+
+  # `width` : largeur de colonne dispo (`nil` = jamais de RAL2, pas de ligne
+  # supplémentaire ajoutée). RAL2 (Manuel/regles_esthetiques.adoc) : vers trop long ->
+  # ligne d'excédent en plus SOUS ce vers, donc un pas de ligne de plus. Ligne sans mot
+  # (accords seuls) : jamais de ligne de texte réservée en dessous (`draw_chords_only_line`
+  # tient tout sur la ligne d'accords), donc jamais de RAL2 non plus.
+  def self.line_step(pdf, line, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
+    return chord_size + LINE_GAP if chords_only_line?(line)
+
+    step = line_has_chord?(line) ? chord_size + LINE_GAP + text_size + LINE_GAP : text_size + LINE_GAP
+    step += text_size + LINE_GAP if line_overflows?(pdf, line, width, chord_size, text_size)
+    step
   end
 
   # Hauteur RÉELLE (visuelle) d'un bloc : hampe du premier élément (accord si la 1re ligne
   # en a un, sinon celle du texte) + l'enchaînement des lignes selon qu'elles ont un accord
   # ou non + descente du dernier texte. Condition pour qu'aucun chevauchement ne soit
   # possible : toute distance donnée à une row (gouttière, marge de page) est mesurée sur
-  # CETTE hauteur, jamais sur une approximation en tailles de police fixes.
-  def self.block_visual_height(chord_ascent, text_ascent, text_descent, lines, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
+  # CETTE hauteur, jamais sur une approximation en tailles de police fixes. `width` :
+  # largeur de colonne dispo pour ce bloc, sert au RAL2 (une ligne qui déborde compte pour
+  # deux, voir `line_step`).
+  def self.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, lines, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
     return 0 if lines.empty?
 
     baseline = line_has_chord?(lines.first) ? chord_ascent : text_ascent
     last_text_offset = 0
     lines.each_with_index do |line, i|
-      last_text_offset = baseline + (line_has_chord?(line) ? chord_size + LINE_GAP : 0)
-      baseline += line_step(line, chord_size: chord_size, text_size: text_size) if i < lines.length - 1
+      last_text_offset = if chords_only_line?(line)
+                            baseline
+                          else
+                            baseline + (line_has_chord?(line) ? chord_size + LINE_GAP : 0)
+                          end
+      last_text_offset += text_size + LINE_GAP if !chords_only_line?(line) && line_overflows?(pdf, line, width, chord_size, text_size)
+      baseline += line_step(pdf, line, width, chord_size: chord_size, text_size: text_size) if i < lines.length - 1
     end
     last_text_offset + text_descent
   end
@@ -761,22 +873,27 @@ module Layout
     text_ascent = font_metric(pdf, text_size) { pdf.font.ascender }
     text_descent = font_metric(pdf, text_size) { pdf.font.descender }
     col1_w = block_width(pdf, row[0], text_size: text_size)
+    col2_w = block_width(pdf, row[1], text_size: text_size)
 
-    height = row.map { |b| block_visual_height(chord_ascent, text_ascent, text_descent, b.lines, chord_size: chord_size, text_size: text_size) }.max
+    height = [
+      block_visual_height(pdf, chord_ascent, text_ascent, text_descent, row[0].lines, col1_w, chord_size: chord_size, text_size: text_size),
+      block_visual_height(pdf, chord_ascent, text_ascent, text_descent, row[1].lines, col2_w, chord_size: chord_size, text_size: text_size),
+    ].max
     draw = lambda do |pdf_, y|
-      draw_block(pdf_, row[0], x0 + h_gutter, y, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size)
-      draw_block(pdf_, row[1], x0 + h_gutter + col1_w + h_gutter, y, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size)
+      draw_block(pdf_, row[0], x0 + h_gutter, y, col1_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size)
+      draw_block(pdf_, row[1], x0 + h_gutter + col1_w + h_gutter, y, col2_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size)
     end
     PageElement.new(height, draw)
   end
 
   def self.row_to_element(pdf, row, x0, width, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
-    height = row.map { |b| block_visual_height(chord_ascent, text_ascent, text_descent, b.lines) }.max
+    widths = row.size == 2 ? [col1_w, col2_w] : [width]
+    height = row.each_with_index.map { |b, i| block_visual_height(pdf, chord_ascent, text_ascent, text_descent, b.lines, widths[i]) }.max
     draw = lambda do |pdf_, y|
       if row.size == 2
         block, nxt = row
-        draw_block(pdf_, block, x0 + h_gutter, y, chord_ascent, text_ascent)
-        draw_block(pdf_, nxt, x0 + h_gutter + col1_w + h_gutter, y, chord_ascent, text_ascent)
+        draw_block(pdf_, block, x0 + h_gutter, y, col1_w, chord_ascent, text_ascent)
+        draw_block(pdf_, nxt, x0 + h_gutter + col1_w + h_gutter, y, col2_w, chord_ascent, text_ascent)
       else
         block = row[0]
         centered = block.directives[:block_align] != "left"
@@ -785,7 +902,7 @@ module Layout
              else
                x0 + h_gutter # même retrait que la colonne 1, pour rester aligné avec elle
              end
-        draw_block(pdf_, block, bx, y, chord_ascent, text_ascent)
+        draw_block(pdf_, block, bx, y, width, chord_ascent, text_ascent)
       end
     end
     PageElement.new(height, draw)
@@ -866,7 +983,7 @@ module Layout
   # diags). Elle est bornée au nombre de pages du texte ; les diags en trop ("excès") sont
   # regroupés horizontalement, plusieurs par ligne, sur une ou des pages dédiées après la
   # chanson (`draw_diags_grid`) — seulement si RAD5 (jamais un diag seul) ne suffit plus.
-  def self.paginate_and_draw(pdf, elements, first_avail_h, kdp:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil)
+  def self.paginate_and_draw(pdf, elements, first_avail_h, kdp:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, text_x: 0, text_w: nil)
     heights = elements.map(&:height)
     pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned)
 
@@ -879,7 +996,9 @@ module Layout
         h = side_col[:heights][i]
         x = side_col[:x]
         w = side_col[:width]
-        PageElement.new(h, lambda { |pdf_, y| pdf_.svg(IO.read(path), at: [x, y], width: w, position: :left, enable_web_requests: false) })
+        PageElement.new(h, lambda do |pdf_, y|
+          engrave(bottom: y - h, context: "diagramme") { pdf_.svg(IO.read(path), at: [x, y], width: w, position: :left, enable_web_requests: false) }
+        end)
       end
       side_pages_all = paginate(side_elements, first_avail_h, pdf.bounds.height, type: :diags)
       if side_pages_all.size > pages.size
@@ -889,6 +1008,45 @@ module Layout
         excess_heights = side_col[:heights][excess_start..] || []
       else
         side_pages = side_pages_all
+      end
+    end
+
+    # Passe VIRTUELLE (aucun dessin) : les diags en trop, réagencés en grille à la largeur
+    # de la colonne TEXTE (`text_w`, PAS la colonne de diags), tiennent-ils avec le reste
+    # de la DERNIÈRE page de texte (E1, E2...) ? Décidé AVANT tout dessin : impossible de
+    # supprimer une page déjà construite avec Prawn (Phil, 2026-08-20). Règles Manuel/
+    # regles_esthetiques.adoc :
+    #   RAD7 : le bloc de lignes de diags reste TOUT EN BAS de la page — le reste (E1, E2)
+    #          s'équilibre normalement dans l'espace qui reste AU-DESSUS, jamais mélangé.
+    #   RAD8 : écartement FIXE entre les lignes de diags (jamais équilibré/étiré).
+    #   RAD9 : une ligne plus courte (moins de diags) s'aligne vers la reliure — ici
+    #          toujours à gauche (`text_x`), la position des diags n'étant pas encore
+    #          sensible à la parité recto/verso (voir `layout_diags`).
+    #   RAD10 : > 5 diags en trop -> taille réduite (70% provisoire, jamais validé par
+    #          Phil, comme `MIN_SIZE[:diags][:width]`).
+    merged_last_page = nil
+    unless excess_paths.empty? || text_w.nil? || pages.empty?
+      gap_h = min_h_dist(:diags)
+      gap_v = min_v_dist(:diags)
+      grid_diag_w = excess_paths.size > 5 ? [DIAG_W * 0.7, MIN_SIZE[:diags][:width]].max : DIAG_W
+      grid_diag_h = svg_height_for(File.read(excess_paths.first), grid_diag_w)
+      cols = [((text_w + gap_h) / (grid_diag_w + gap_h)).floor, 1].max
+      rows = excess_paths.each_slice(cols).to_a
+      block_h = rows.size * grid_diag_h + [rows.size - 1, 0].max * gap_v
+
+      last_page = pages.last
+      page_els = elements[last_page[:start]...last_page[:finish]]
+      page_heights = page_els.map(&:height)
+      remaining_h = last_page[:avail_h] - block_h - gap_v
+      fits = remaining_h.positive? && (paginate(page_els, remaining_h, remaining_h).size == 1)
+
+      if fits
+        merged_last_page = { rows: rows, diag_w: grid_diag_w, diag_h: grid_diag_h, remaining_h: remaining_h }
+        log_build("#{excess_paths.size} diags en trop réagencés en #{rows.size} ligne(s) fixes, calés en bas de la dernière page (RAD7/8/9/10)")
+        excess_paths = []
+        excess_heights = []
+      else
+        log_build("#{excess_paths.size} diags en trop -> page dédiée (ne tiennent pas en bas de la dernière page)")
       end
     end
 
@@ -905,15 +1063,42 @@ module Layout
       page = pages[i]
       if page
         page_els = elements[page[:start]...page[:finish]]
-        page_heights = heights[page[:start]...page[:finish]]
-        gutters = distribute_v_gutters(page[:avail_h], page_heights, top_type: i.zero? ? :band_strophe : :default)
+        merging_here = merged_last_page && i == pages.size - 1
+        avail_for_text = merging_here ? merged_last_page[:remaining_h] : page[:avail_h]
+        page_heights = page_els.map(&:height)
+        gutters = distribute_v_gutters(avail_for_text, page_heights, top_type: i.zero? ? :band_strophe : :default)
 
+        # Les gouttières sont calculées sur le budget RÉDUIT (`avail_for_text`, pour
+        # laisser la place à la grille fusionnée en dessous), mais le texte part TOUJOURS
+        # du HAUT réel de la page (`page[:avail_h]`) — sinon il démarre plus bas que prévu
+        # et vient chevaucher la grille au lieu de s'arrêter juste au-dessus (bug constaté
+        # v22, "Ad libitum" recouvert par la 1re ligne de diags).
         y = page[:avail_h] - gutters[0]
         page_els.each_with_index do |el, j|
           el.draw.call(pdf, y)
           y -= page_heights[j] + gutters[j + 1]
         end
         conflict!("contenu dépasse la zone sûre de #{-y.round(2)}pt", solution: "dessiné quand même, hors zone sûre") if y < -0.01
+
+        if merging_here
+          gap_h = min_h_dist(:diags)
+          gap_v = min_v_dist(:diags)
+          rows = merged_last_page[:rows]
+          diag_w = merged_last_page[:diag_w]
+          diag_h = merged_last_page[:diag_h]
+          rows.each_with_index do |row, ri|
+            # `at:[x,y]` de `pdf.svg` ancre le HAUT de l'image (elle descend de `y` vers
+            # `y - diag_h`) — bug corrigé ici (2026-08-20) : `row_y` doit inclure `diag_h`,
+            # sinon le bas de la dernière ligne tombe sous 0, dans la marge.
+            row_y = gap_v + diag_h + (rows.size - 1 - ri) * (diag_h + gap_v)
+            row.each_with_index do |path, ci|
+              cx = text_x + ci * (diag_w + gap_h) # RAD9 : jamais centré, toujours vers la reliure (text_x)
+              engrave(bottom: row_y - diag_h, context: "diagramme fusionné") do
+                pdf.svg(IO.read(path), at: [cx, row_y], width: diag_w, position: :left, enable_web_requests: false)
+              end
+            end
+          end
+        end
       end
 
       side_page = side_pages[i]
@@ -962,18 +1147,21 @@ module Layout
         y = pdf.bounds.height - gap_v - ri * (diag_h + gap_v)
         row.each_with_index do |path, ci|
           x = x0 + ci * (DIAG_W + gap_h)
-          pdf.svg(IO.read(path), at: [x, y], width: DIAG_W, position: :left, enable_web_requests: false)
+          engrave(bottom: y - diag_h, context: "diagramme (page dédiée)") do
+            pdf.svg(IO.read(path), at: [x, y], width: DIAG_W, position: :left, enable_web_requests: false)
+          end
         end
       end
     end
   end
 
-  # Dessine le bloc : y0 = haut visuel réel (sommet de la hampe du 1er élément).
-  def self.draw_block(pdf, block, x, y0, chord_ascent, text_ascent, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
+  # Dessine le bloc : y0 = haut visuel réel (sommet de la hampe du 1er élément). `width` :
+  # largeur de colonne dispo pour ce bloc, sert au RAL2 (`nil` = jamais de RAL2).
+  def self.draw_block(pdf, block, x, y0, width, chord_ascent, text_ascent, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
     y = y0 - (line_has_chord?(block.lines.first) ? chord_ascent : text_ascent)
     block.lines.each do |line|
-      draw_line(pdf, line, x, y, chord_size: chord_size, text_size: text_size)
-      y -= line_step(line, chord_size: chord_size, text_size: text_size)
+      draw_line(pdf, line, x, y, width, chord_size: chord_size, text_size: text_size)
+      y -= line_step(pdf, line, width, chord_size: chord_size, text_size: text_size)
     end
   end
 
@@ -1010,10 +1198,53 @@ module Layout
 
   def self.draw_chord_label(pdf, chord, x, y, size: CHORD_SIZE)
     main, suffix = chord_label_parts(chord)
-    pdf.draw_text main, at: [x, y], size: size, style: :bold
+    descent = font_metric(pdf, size) { pdf.font.descender }
+    engrave(bottom: y - descent, context: "accord #{chord}") { pdf.draw_text main, at: [x, y], size: size, style: :bold }
     return if suffix.empty?
 
-    pdf.draw_text suffix, at: [x + pdf.width_of(main, size: size, style: :bold), y], size: size - 2, style: :bold
+    suffix_descent = font_metric(pdf, size - 2) { pdf.font.descender }
+    engrave(bottom: y - suffix_descent, context: "accord #{chord} (suffixe)") do
+      pdf.draw_text suffix, at: [x + pdf.width_of(main, size: size, style: :bold), y], size: size - 2, style: :bold
+    end
+  end
+
+  # Largeur totale qu'occuperait `segments` s'ils étaient dessinés (même règle d'avancée
+  # que `draw_line` : MAX(largeur texte, largeur label d'accord) par segment, + CHORD_GAP
+  # si le segment porte un accord — RAA1, jamais deux accords en contact).
+  def self.line_width(pdf, segments, chord_size, text_size)
+    segments.sum do |seg|
+      text_w = pdf.width_of(seg.text, size: text_size)
+      chord_w = seg.chord ? chord_label_width(pdf, seg.chord, chord_size) : 0
+      [text_w, chord_w].max + (seg.chord ? CHORD_GAP : 0)
+    end
+  end
+
+  def self.line_overflows?(pdf, line, width, chord_size, text_size)
+    return false unless width
+
+    line_width(pdf, line.segments, chord_size, text_size) > width
+  end
+
+  # RAL2 (Manuel/regles_esthetiques.adoc) : vers trop long -> raccourci par la FIN, mots
+  # entiers, jusqu'à tenir dans `width` ; les mots retirés forment l'excédent (affiché
+  # ensuite SOUS le vers, aligné à droite). Ne trimme que le DERNIER segment — cas
+  # courant (l'accord du dernier segment porte sur les derniers mots) ; un débordement
+  # qui mangerait plusieurs segments n'est pas géré pour l'instant.
+  def self.split_overflow(pdf, segments, width, chord_size, text_size)
+    return [segments, nil] if segments.empty? || !line_overflows?(pdf, Line.new(segments: segments), width, chord_size, text_size)
+
+    segs = segments.map(&:dup)
+    last = segs.last
+    words = last.text.split(" ")
+    overflow_words = []
+
+    while words.size > 1 && line_width(pdf, segs, chord_size, text_size) > width
+      overflow_words.unshift(words.pop)
+      last.text = "#{words.join(' ')} "
+    end
+
+    overflow_text = overflow_words.join(" ")
+    [segs, overflow_text.empty? ? nil : overflow_text]
   end
 
   # L'avancée horizontale ne doit JAMAIS être inférieure à la largeur du label d'accord
@@ -1022,16 +1253,53 @@ module Layout
   # espaces 9.17pt < largeur label "C9" 11.67pt, chevauchement constaté malgré le fix —
   # AYNL puis À bicyclette, 2026-08-19). On avance donc du MAX(largeur du texte, largeur
   # du label d'accord) : garantie mathématique, jamais un réglage à ajuster à la main.
-  def self.draw_line(pdf, line, x, y, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
+  # `width` : largeur de colonne disponible, sert au RAL2 (`nil` = jamais de RAL2, ex.
+  # appelants qui ne connaissent pas encore leur largeur).
+  def self.draw_line(pdf, line, x, y, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
+    return draw_chords_only_line(pdf, line, x, y, chord_size: chord_size) if line_has_chord?(line) && !line_has_words?(line)
+
     has_chord = line_has_chord?(line)
+    segs, overflow_text = split_overflow(pdf, line.segments, width, chord_size, text_size)
     cx = x
-    line.segments.each do |seg|
+    segs.each do |seg|
       draw_chord_label(pdf, seg.chord, cx, y, size: chord_size) if seg.chord
       text_y = has_chord ? y - chord_size - LINE_GAP : y
-      pdf.draw_text seg.text, at: [cx, text_y], size: text_size
+      text_descent = font_metric(pdf, text_size) { pdf.font.descender }
+      engrave(bottom: text_y - text_descent, context: "texte \"#{seg.text[0, 20]}\"") { pdf.draw_text seg.text, at: [cx, text_y], size: text_size }
       text_w = pdf.width_of(seg.text, size: text_size)
       chord_w = seg.chord ? chord_label_width(pdf, seg.chord, chord_size) : 0
-      cx += [text_w, chord_w].max
+      cx += [text_w, chord_w].max + (seg.chord ? CHORD_GAP : 0)
+    end
+
+    return unless overflow_text
+
+    text_y = has_chord ? y - chord_size - LINE_GAP : y
+    overflow_y = text_y - text_size - LINE_GAP
+    overflow_w = pdf.width_of(overflow_text, size: text_size)
+    overflow_descent = font_metric(pdf, text_size) { pdf.font.descender }
+    engrave(bottom: overflow_y - overflow_descent, context: "excédent de vers \"#{overflow_text[0, 20]}\"") do
+      pdf.draw_text overflow_text, at: [x + width - overflow_w, overflow_y], size: text_size
+    end
+  end
+
+  # Ligne SANS aucun mot réel — juste des accords séparés par de la ponctuation ("/",
+  # espaces), typique d'une intro/outro instrumentale (ex. À bicyclette, `/Em://Em9:`) —
+  # tout tenu sur la ligne d'accords elle-même (jamais de ligne de texte vide en dessous,
+  # jamais le séparateur affiché sous l'accord — Phil, 2026-08-20). Espacement RAA1
+  # (`CHORD_GAP`) partout, y compris entre accord et séparateur.
+  def self.draw_chords_only_line(pdf, line, x, y, chord_size: CHORD_SIZE)
+    cx = x
+    descent = font_metric(pdf, chord_size) { pdf.font.descender }
+    line.segments.each do |seg|
+      if seg.chord
+        draw_chord_label(pdf, seg.chord, cx, y, size: chord_size)
+        cx += chord_label_width(pdf, seg.chord, chord_size) + CHORD_GAP
+      end
+      sep = seg.text.strip
+      next if sep.empty?
+
+      engrave(bottom: y - descent, context: "séparateur accords \"#{sep}\"") { pdf.draw_text sep, at: [cx, y], size: chord_size }
+      cx += pdf.width_of(sep, size: chord_size) + CHORD_GAP
     end
   end
 
@@ -1040,12 +1308,8 @@ module Layout
     y = avail_h - gutters[0]
     diag_paths.each_with_index do |path, i|
       svg_data = IO.read(path)
-      pdf.svg(svg_data, at: [x, y], width: width, position: :left, enable_web_requests: false)
+      engrave(bottom: y - heights[i], context: "diagramme") { pdf.svg(svg_data, at: [x, y], width: width, position: :left, enable_web_requests: false) }
       y -= heights[i] + gutters[i + 1]
-    end
-    # Garde-fou (règle absolue, 2026-08-17) : rien ne doit jamais empiéter sur la marge.
-    if y < -0.01
-      conflict!("diagrammes dépassent la zone sûre de #{-y.round(2)}pt (avail_h=#{avail_h})", solution: "dessinés quand même, hors zone sûre")
     end
   end
 
@@ -1077,7 +1341,9 @@ module Layout
     gutter = distribute_gutter(avail_w, Array.new(diag_paths.size, w), type: :diags)
     x = x0 + gutter
     diag_paths.each do |path|
-      pdf.svg(IO.read(path), at: [x, y_top], width: w, position: :left, enable_web_requests: false)
+      svg_data = IO.read(path)
+      h = svg_height_for(svg_data, w)
+      engrave(bottom: y_top - h, context: "diagramme (rangée)") { pdf.svg(svg_data, at: [x, y_top], width: w, position: :left, enable_web_requests: false) }
       x += w + gutter
     end
   end
@@ -1207,7 +1473,7 @@ module Layout
       if title
         draw_text_colored(pdf_, title, at: [x0, y - title_ascent], size: TAB_TITLE_SIZE, style: :bold, color: TAB_TITLE_COLOR)
       end
-      pdf_.svg(svg_data, at: [x0, y - title_h], width: embed_w, position: :left, enable_web_requests: false)
+      engrave(bottom: y - title_h - svg_h, context: "tabla") { pdf_.svg(svg_data, at: [x0, y - title_h], width: embed_w, position: :left, enable_web_requests: false) }
     end
 
     PageElement.new(title_h + svg_h, draw)
@@ -1237,7 +1503,7 @@ module Layout
     svg_x = align == "center" ? x0 + [(width - embed_w) / 2.0, 0].max : x0
     draw = lambda do |pdf_, y|
       draw_text_colored(pdf_, title, at: [svg_x, y - title_ascent], size: TAB_TITLE_SIZE, style: :bold, color: TAB_TITLE_COLOR) if title
-      pdf_.svg(svg_data, at: [svg_x, y - title_h], width: embed_w, position: :left, enable_web_requests: false)
+      engrave(bottom: y - title_h - svg_h, context: "tabla") { pdf_.svg(svg_data, at: [svg_x, y - title_h], width: embed_w, position: :left, enable_web_requests: false) }
     end
     PageElement.new(title_h + svg_h, draw)
   end

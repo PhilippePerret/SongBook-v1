@@ -4,6 +4,7 @@ require_relative "chord_diagrams"
 require_relative "transpose"
 require_relative "kdp"
 require_relative "locale"
+require_relative "file_finder"
 
 # Construit les pages PDF d'UNE chanson — point d'entrée réutilisable (API : "je veux
 # juste cette chanson"), orchestrant `DSLParser`/le format `.lyr`+`.gab`+`.infos`,
@@ -11,19 +12,30 @@ require_relative "locale"
 module PageBuilder
   TABLATOR_PATH = File.expand_path("../tools/tablator/tablator.rb", __dir__)
 
-  # `.infos` : métadonnées, une par ligne "clé: valeur" (pas de YAML/---).
-  # Clés canoniques attendues par le gabarit : titre/date/parolier/compositeur/interprete.
-  # Clés alternatives tolérées (Phil, 2026-08-17 : "tu les prends comme possibles dans le
-  # code" — pas de réécriture de fichier imposée) : n'écrasent JAMAIS la clé canonique si
-  # elle est déjà présente. Alias tirés de `Locales/en/infos_keys.yaml` (Phil, 2026-08-20 :
-  # pas codés en dur, même mécanisme que les autres traductions).
+  # Clés canoniques (anglais) attendues par le gabarit : title/year/lyrics/composer/performer.
+  # Table des alias construite en INVERSANT `Loc.get` sur ces clés (Phil, 2026-08-20) :
+  # `TABLE[Loc.get(canon)] = canon`. Mémoïsée une fois (`Loc` lui-même ne charge qu'une
+  # langue, celle de l'utilisateur — voir `lib/locale.rb`).
+  INFOS_CANONICAL_KEYS = %w[title performer composer lyrics year transpose].freeze
+
+  def self.infos_key_aliases
+    @infos_key_aliases ||= INFOS_CANONICAL_KEYS.each_with_object({}) do |canon, table|
+      term = Loc.get(canon)
+      table[term] = canon if term != canon
+    end
+  end
+
+  # `.infos` : métadonnées, une par ligne "clé: valeur" (pas de YAML/---). Clés alternatives
+  # tolérées (Phil, 2026-08-17 : "tu les prends comme possibles dans le code" — pas de
+  # réécriture de fichier imposée) : n'écrasent JAMAIS la clé canonique si elle est déjà
+  # présente.
   def self.parse_infos(path)
     meta = {}
     File.foreach(path) do |line|
       k, v = line.strip.split(":", 2)
       meta[k.strip] = v.strip if k && v && !k.strip.empty?
     end
-    Locale.load("en", file: "infos_keys").each { |alt, canon| meta[canon] ||= meta[alt] }
+    infos_key_aliases.each { |alt, canon| meta[canon] ||= meta[alt] }
     meta
   end
 
@@ -138,7 +150,7 @@ module PageBuilder
   # Valeurs par défaut (Phil, 2026-08-17 : "le moins de définitions possibles" — un `.gab`
   # ne sert qu'à ÉCARTER ces défauts, jamais à les répéter). PLUS TARD : fichier YAML de
   # config SongBook, pour qui veut les changer sans toucher au code.
-  DEFAULT_HEADER_STYLE = "band"
+  DEFAULT_TITLE_BAND = true
   DEFAULT_DIAG_POSITION = "left" # = "intérieur"
 
   # `.gab` absent : couplets du `.lyr` pairés côte à côte 2 par 2, dans leur ordre
@@ -152,16 +164,18 @@ module PageBuilder
     name.sub(/-\d+\z/, "")
   end
 
-  # `header_style`/`diag_position` : défauts de CE dossier (Manuel/song/layout.adoc, voir
-  # `header_style`/`diag_position` par défaut, remplacés par le `layout:` du carnet quand
-  # il est fourni — voir `build`). `stacking: :paired` (défaut, "côte à côte") pair les
-  # blocs 2 par 2 comme avant ; `:stacked` ("l'une en dessous de l'autre", layouts Column/
-  # Column-B) ne pair jamais, chaque bloc a sa propre row.
-  def self.default_items(lyr_blocks, order, header_style: DEFAULT_HEADER_STYLE, diag_position: DEFAULT_DIAG_POSITION, stacking: :paired)
-    items = [GabItem.new(:title, { title: header_style.to_s }), GabItem.new(:diags, { position: diag_position })]
+  # `title_band`/`diag_position` : défauts de CE dossier (Manuel/song/layout.adoc, voir
+  # `title_band`/`diag_position` par défaut, remplacés par le `layout:` du carnet quand
+  # il est fourni — voir `build`). `lyrics_flux: :side` (défaut, "côte à côte") pair les
+  # blocs 2 par 2 comme avant ; `:vertical` ("l'une en dessous de l'autre", layouts Column/
+  # Column-B) ne pair jamais, chaque bloc a sa propre row. `:free` pas encore implémenté.
+  def self.default_items(lyr_blocks, order, title_band: DEFAULT_TITLE_BAND, diag_position: DEFAULT_DIAG_POSITION, lyrics_flux: :side)
+    items = [GabItem.new(:title, { title: title_band ? "band" : "inline" }), GabItem.new(:diags, { position: diag_position })]
     names = order.reject { |name| lyr_blocks.fetch(name).lines.empty? }
 
-    if stacking == :stacked
+    raise "lyrics_flux :free (Manuel/song/layout.adoc) pas encore implémenté" if lyrics_flux == :free
+
+    if lyrics_flux == :vertical
       names.each { |name| items << GabItem.new(:row, [name]) }
       return items
     end
@@ -189,30 +203,49 @@ module PageBuilder
     Block.new(lines: parts.flat_map(&:lines), directives: parts.first.directives, paired_with_previous: false)
   end
 
+  # "intro-1" -> "intro" (Phil, 2026-08-20 : "le premier mot dans un {...}, découpé selon
+  # les '-', le deuxième élément étant souvent le numéro").
+  def self.block_name_kind(name)
+    name.split("-").first
+  end
+
+  # `intro_align` (layout du carnet, voir `CarnetBuilder::LAYOUTS`) : alignement par
+  # défaut du bloc "intro" — un `block_align` déjà posé explicitement (`.gab`/directive)
+  # garde TOUJOURS la priorité, jamais écrasé. Renvoie un bloc neuf (jamais de mutation en
+  # place : `resolve_block` peut partager le même Hash `directives` entre plusieurs blocs
+  # concaténés par "+").
+  def self.with_intro_align(block, name, layout)
+    return block unless layout && layout[:intro_align]
+    return block if block.directives.key?(:block_align)
+    return block unless block_name_kind(name) == "intro"
+
+    Block.new(lines: block.lines, directives: block.directives.merge(block_align: layout[:intro_align].to_s), paired_with_previous: block.paired_with_previous)
+  end
+
   # Orchestrateur .gab/.lyr/.infos : un dossier = une chanson + une mise en page. `.gab`
   # OPTIONNEL (voir `default_items`). page_count/first_page_no : voir `build_from_dsl`.
-  # `layout:` (Hash header_style:/diag_position:/stacking:, voir `CarnetBuilder::LAYOUTS`
+  # `layout:` (Hash title_band:/diag_position:/lyrics_flux:, voir `CarnetBuilder::LAYOUTS`
   # et Manuel/song/layout.adoc) : défauts du CARNET pour cette chanson — un `.gab` explicite
   # garde priorité (une chanson peut toujours s'écarter du layout général, Manuel : "on
   # peut le faire chanson par chanson ou de façon générale... ou les deux").
   def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout: nil)
-    gab_path = Dir.glob(File.join(folder, "*.gab")).first
-    lyr_path = Dir.glob(File.join(folder, "*.lyr")).first
-    infos_path = Dir.glob(File.join(folder, "*.infos")).first
-    raise "fichiers .lyr/.infos introuvables dans #{folder}" unless lyr_path && infos_path
+    gab_path = FileFinder.find(folder, :gab)
+    lyr_path = FileFinder.find(folder, :lyr)
+    infos_path = FileFinder.find(folder, :inf)
+    raise "fichiers .lyr/.lyrics ou .infos/.inf introuvables dans #{folder}" unless lyr_path && infos_path
 
     meta = parse_infos(infos_path)
-    Layout.current_song = meta["titre"] || File.basename(folder)
+    Layout.current_song = meta["title"] || File.basename(folder)
     Layout.current_page = first_page_no
     lyr_blocks, lyr_order = parse_lyr(lyr_path)
     if meta["transpose"]
       decalage_lettres, decalage_demitons = Transpose.parser_entete(meta["transpose"])
       ChordDiagrams.transpose_blocks!(lyr_blocks, decalage_lettres, decalage_demitons)
     end
-    header_style_default = layout&.fetch(:header_style, nil) || DEFAULT_HEADER_STYLE
+    title_band_default = layout&.key?(:title_band) ? layout[:title_band] : DEFAULT_TITLE_BAND
     diag_position_default = layout&.fetch(:diag_position, nil) || DEFAULT_DIAG_POSITION
-    stacking = layout&.fetch(:stacking, nil) || :paired
-    items = gab_path ? parse_gab(gab_path) : default_items(lyr_blocks, lyr_order, header_style: header_style_default, diag_position: diag_position_default, stacking: stacking)
+    lyrics_flux = layout&.fetch(:lyrics_flux, nil) || :side
+    items = gab_path ? parse_gab(gab_path) : default_items(lyr_blocks, lyr_order, title_band: title_band_default, diag_position: diag_position_default, lyrics_flux: lyrics_flux)
     page_size = page_size_in.map { |v| v * 72 }
     page_w_pt, page_h_pt = page_size
     kdp = KDP.new(page_count: page_count, trim_width: page_size_in[0], trim_height: page_size_in[1],
@@ -234,7 +267,7 @@ module PageBuilder
       text_ascent = Layout.font_metric(pdf, Layout::TEXT_SIZE) { pdf.font.ascender }
       text_descent = Layout.font_metric(pdf, Layout::TEXT_SIZE) { pdf.font.descender }
 
-      rows = items.select { |i| i.type == :row }.map { |i| i.data.map { |name| resolve_block(lyr_blocks, name) } }
+      rows = items.select { |i| i.type == :row }.map { |i| i.data.map { |name| with_intro_align(resolve_block(lyr_blocks, name), name, layout) } }
       col1_w, col2_w, h_gutter = Layout.row_column_widths(pdf, rows, text_w)
 
       row_idx = 0
@@ -279,7 +312,7 @@ module PageBuilder
         )
       end
 
-      Layout.paginate_and_draw(pdf, elements, first_avail_h, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col)
+      Layout.paginate_and_draw(pdf, elements, first_avail_h, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col, text_x: text_x, text_w: text_w)
     end
   end
 
