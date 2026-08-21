@@ -4,6 +4,9 @@
 // Terminologie
 include::terminology.adoc[]
 
+// Extensions drivent
+include::extension-driven.adoc[]
+
 // Propriétés
 include::properties.adoc[]
 

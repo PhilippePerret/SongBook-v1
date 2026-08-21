@@ -1,0 +1,20 @@
+[[app-extension-driven, application conduite par les extension]]
+=== Dirigée par ses extensions ===
+
+**__SongBook__** est un outil __dirigé par ses extensions__. Cela signifie que l'extension de tout fichier détermine son contenu et comment il faut le traiter (l'extension est le « mot » après le dernier point dans le nom, par exemple le `odt` dans `mon-roman.odt`).
+
+==== Liste des extensions ====
+
+Trouvez ci-dessous la liste complète des extensions et leur utilité.
+
+__Note : la version courte de l'extension contient toujours 3 lettres seulement.__
+
+|====
+| Extension | Version courte  | Exemple | Signification
+| `infos`   | `inf`           | `c.inf` | Contient les <<infos-file, informations générales sur la chanson>> ou <<songbook-infos, le carnet>>.
+| `lyrics`  | `lyr`           | `c.lyr` | Définit les <<lyrics-file, paroles, les accords et les bouts de musique>> de la chanson.
+| `layout`  | `lay`           | `c.lay` | Définit les <<song-layout>>.
+| `gabarit` | `gab`           | `c.gab` | Définit le <<gabarit-file, gabarit précis>> (souvent pour une chanson en particulier)
+| `tdm`     | `toc`           | `c.toc` | Définit la table des matières du carnet.
+| 
+|====

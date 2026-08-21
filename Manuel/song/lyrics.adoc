@@ -1,5 +1,5 @@
-[[strophes, les strophes]]
-=== Les Strophes ===
+[[lyrics-file, les strophes]]
+=== Les paroles ===
 
 Conformément à la <<terminology>> de __**SongBook**__, on appelle __STROPHE__ les groupes de vers formant un couplet, un refrain ou autre texte parlé ou chanté au cours de la chanson.
 

@@ -6,7 +6,7 @@ Dans cette partie vous trouverez des conseils pour gérer au mieux vos cahiers d
 [[songs-folder, dossier des chansons]]
 ==== Dossier des chansons ====
 
-Les chansons pouvont servir à former plusieurs carnets^*^, vous avez tout intérêt à les rassemblez dans un dossier séparé de vos carnets de chant.
+Les chansons pourront servir à former plusieurs carnets^*^, vous avez tout intérêt à les rassemblez dans un dossier séparé de vos carnets de chant.
 
 ^*^ Par exemple, la chanson __Don't Give Up__ pourrait faire partie du __Carnet des meilleurs duo__, du __Carnet des tubes de l'année 1986__ et du __Carnet Peter Gabriel__.
 
@@ -26,6 +26,8 @@ title: Don't Give Up
 interprete: Peter Gabriel et Kate Bush
 ...
 ----
+
+Nous verrons dans les <<bestpract-songbook-tdm, bonnes pratiques concernant la table des matières>> en quoi l'usage d'un identifiant est une bonne chose.
 
 [[songbooks-folder, dossier des carnets]]
 ==== Dossier des carnets ====
@@ -67,6 +69,8 @@ Dans le fichier `Carnet-tubes-1986/c.tdm` :
 - dont-give-up-peter-gabriel-1986
 ...
 ----
+
+L'usage d'un __identifiant__ dans la table des matières permet aussi de modifier un titre sans avoir à la modifier dans tous les carnets où la chanson est insérée.
 
 À partir de là, sans aucune autre précision, si vos fichiers chansons sont bien définis, tout peut se faire tout seul (`songbook .` dans le Terminal ouvert au dossier) pour générer le carnet prêt à être imprimé ou envoyé à votre imprimeur.
 

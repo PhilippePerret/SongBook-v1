@@ -9,11 +9,26 @@ Cette partie concerne les règles esthétiques qui doivent être appliquée pour
 [cols="1,6,2", options="header"]
 |====
 | Num. | Règle | Note
-| RAG1 | L'erreur doit être signalée à l'user en fonction du **degré de sensibilité** défini dans le <<config, fichier de configuration>> | cf. `sensitivity`
-| RAG2 | En cas d'erreur, le programme doit s'arrêter à la première erreur rencontrée si `sensitivity: high` |
-| RAG3 | En cas d'erreur, le programme soit afficher clairement la liste des erreurs à la fin de la production si `sensitivity: errors` |
-| RAG4 | En cas d'erreur, le programme doit afficher une message « Des erreurs sont produites (x), voir le fichier <fichier> si `sensitivity: log` |
-| RAG5 | En cas d'erreur, le programme ne doit rien signaler ni afficher de particulier. |
+
+| RAG1
+| L'erreur doit être signalée à l'user en fonction du **degré de sensibilité** défini dans le <<config, fichier de configuration>>
+| cf. `sensitivity`
+
+| RAG2
+| En cas d'erreur, le programme doit s'arrêter à la première erreur rencontrée si `sensitivity: high`
+|
+
+| RAG3
+| En cas d'erreur, le programme soit afficher clairement la liste des erreurs à la fin de la production si `sensitivity: errors`
+|
+
+| RAG4
+| En cas d'erreur, le programme doit afficher une message « Des erreurs sont produites (x), voir le fichier <fichier> si `sensitivity: log`
+|
+
+| RAG5
+| En cas d'erreur, le programme ne doit rien signaler ni afficher de particulier.
+|
 |====
 
 [[object-rules, règles concernant les éléments]]
@@ -22,13 +37,34 @@ Cette partie concerne les règles esthétiques qui doivent être appliquée pour
 [cols="1,6,2", options="header"]
 |====
 | Num. | Règle | Note
-| RAO1 | Un <<object-list, objet>> autre que les tablatures et les partitions ne doit JAMAIS pouvoir être coupé. |
-| RAO2 | Si une partition ou une tablature doit être coupée, il faut que ce soit par système seulement, jamais à l'intérieur d'un système. |
-| RAO3 | Un object quelconque ne devrait JAMAIS pouvoir chevaucher une des marges, que ce soit en partie ou complètement. | 
-| RAO4 | Un object quelconque ne devrait JAMAIS pouvoir chevaucher un autre objet de quelque nature que ce soit | Sauf demande expresse dans le gabarit (`overlap: true` dans la définition de l'objet).
-| RAO5 | Sauf indication explicite, deux objets différents (un couplet et un refrain par exemple) ne doivent jamais se trouver côte à côte | Demande explicite : `{intro ...} // {couplet ...}`
-| RAO6 | Sauf indication explicite, deux objets identiques côte à côte ne doivent jamais être être éloignés de plus que la distance définie par `MAX_H_DIST[:<objet>]` (horizontalement) et `MAX_V_DIST[:<objet>]` (verticalement). | indication explicite : `{couplet; margin-left: 100pt;}`
-| RAO7 | Sauf indication explicite, deux objets ne devraient JAMAIS se retrouver l'un contre l'autre | 
+
+| RAO1
+| Un <<object-list, objet>> autre que les tablatures et les partitions ne doit JAMAIS pouvoir être coupé.
+|
+
+| RAO2
+| Si une partition ou une tablature doit être coupée, il faut que ce soit par système seulement, jamais à l'intérieur d'un système.
+|
+
+| RAO3
+| Un object quelconque ne devrait JAMAIS pouvoir chevaucher une des marges, que ce soit en partie ou complètement.
+|
+
+| RAO4
+| Un object quelconque ne devrait JAMAIS pouvoir chevaucher un autre objet de quelque nature que ce soit 
+| Sauf demande expresse dans le gabarit (`overlap: true` dans la définition de l'objet).
+
+| RAO5
+| Sauf indication explicite, deux objets différents (un couplet et un refrain par exemple) ne doivent jamais se trouver côte à côte
+| Demande explicite : `{intro ...} // {couplet ...}`
+
+| RAO6
+| Sauf indication explicite, deux objets identiques côte à côte ne doivent jamais être être éloignés de plus que la distance définie par `MAX_H_DIST[:<objet>]` (horizontalement) et `MAX_V_DIST[:<objet>]` (verticalement).
+| indication explicite : `{couplet; margin-left: 100pt;}`
+
+| RAO7
+| Sauf indication explicite, deux objets ne devraient JAMAIS se retrouver l'un contre l'autre.
+|
 |====
 
 
@@ -54,10 +90,56 @@ Solution proposée ?
 |====
 | Num. | Règle | Note
 
-| RATDM1 | La table des matières doit tenir sur deux colonnes |
-| RATDM2 | Si la table des matières est moins grande que deux colonnes complètes, on doit répartir le MÊME NOMBRE DE LIGNES de chaque côté |
-| RATDM3 | L'éloignement du chiffre doit être calculé par rapport au plus long titre de la liste des titres, auquel on ajoute la valeur MIN_H_DIST['tdm_num'] | (valeur fixée à 20pt pour l'essai)
-| RATDM4 | Un filet de conduite doit relier les titres à leur numéro de page | TDM[:leader_character] = '.' et TDM[:leader_space] = '3pt' (espaces entre les caractères du filet) réglables.
+| RATDM1 
+| La table des matières doit tenir sur deux colonnes 
+|
+
+| RATDM2 
+| Si la table des matières est moins grande que deux colonnes complètes, on doit répartir le MÊME NOMBRE DE LIGNES de chaque côté 
+|
+
+| RATDM3 
+| L'éloignement du chiffre doit être calculé par rapport au plus long titre de la liste des titres, auquel on ajoute la valeur MIN_H_DIST['tdm_num'] 
+| (valeur fixée à 20pt pour l'essai)
+
+| RATDM4 
+| Un filet de conduite doit relier les titres à leur numéro de page.
+| TDM[:leader_character] = '.' et TDM[:leader_space] = '3pt' (espaces entre les caractères du filet) réglables.
+
+| RATDM5
+| Dans la TdM par interprète (performer), mettre en exergue l'interprète (gras) et décaler ses chansons sous son nom.
+|
+
+| RATDM6
+| Séparer d'une ligne les blocs de chaque interprète (donc espace libre au-dessus de chaque interprète, sauf le premier de chaque colonne).
+|
+
+| RATDM7
+| Dans la TdM par interprète (performer), ne jamais se retrouver avec l'interprète en bas de colonne et sa ou ses chansons en haut de la colonne suivante.
+|
+
+| RATDM8
+| Si la gouttière et les espaces avant les marges sont suffisantes (somme > 2 cm ?), augmenter la longueur des filets de conduite (1 cm ?). 
+| 
+
+| RATDM9.1
+| Quand une TdM est courte (en hauteur), passer à un saut de ligne de 1,5.
+|
+
+| RATDM9.2
+| Quand une TdM est courte en hauteur, l'équilibrer dans la page (la séparer de son titre, sans la mettre au milieu)
+|
+
+| RATDM10
+| Jamais de numéro de page à une TdM
+|
+
+| RATDM11.1
+| Pour le classement alphabétique des performers, si `performer_name` n'est pas défini, prendre le nom, pas le prénom.
+|
+| RATDM11.2
+| Pour le classement alphabétique des performers, supprimer les articles de noms de groupe ("the", "le", "les", "la")s
+| 
 
 |====
 
@@ -69,12 +151,39 @@ Solution proposée ?
 |====
 | Num. | Règle | Note
 
-| RAT1 | Lorsque le compositeur ou la compositrice (`composer`) et l'auteur ou l'autrice (`lyrics`) sont la même personne, on indique qu'une fois le nom, sans "/". | Sauf si option `labels_in_title_band: true`
+| RAT1 
+| Lorsque le compositeur ou la compositrice (`composer`) et l'auteur ou l'autrice (`lyrics`) sont la même personne, on indique qu'une fois le nom, sans "/". 
+| Sauf si option `labels_in_title_band: true`
 
-| RAT2 | Si `composer` et `lyrics` sont la ou les mêmes personnes, et que l'option `labels_in_title_band` est appliquée, on utilise la mention « Paroles et musiques : nom » | 
+| RAT2 
+| Si `composer` et `lyrics` sont la ou les mêmes personnes, et que l'option `labels_in_title_band` est appliquée, on utilise la mention « Paroles et musiques : nom » 
+| 
+
+| RAT3
+| Lorsqu'il y a un sous-titre (`subtitle`), il faut l'ajouter à la page de titre si elle est affichée.
+|
 
 |====
 
+[[textes-rules, règles concernant les textes]]
+==== Règles concernant les textes ====
+
+[cols="1,6,2", options="header"]
+|====
+| Num. | Règle | Note
+
+| RATX1 | Pour les textes **autres que lyrics**, à phrases longues, si la largeur de la page est > 15 cm, ils doivent être écrits sur deux colonnes avec une gouttière fixée.
+| cf. options application `text_column_guter`
+
+| RATX2 
+| Pour les textes **autres que les lyrics**, utiliser une autre police que pour les paroles.
+| cf. options application `text_font`
+
+| RATX3
+| Les textes **autres que les lyrics** doivent être justifiés.
+|
+
+|====
 
 [[lyrics-rules, règles concernant les textes]]
 ==== Règles concernant les lyrics ====
@@ -82,7 +191,15 @@ Solution proposée ?
 [cols="1,6,2", options="header"]
 |====
 | Num. | Règle | Note
-| RAL1 | Deux <<strophes, strophes>> côte à côté ne peux pas avoir deux tailles de polices différentes | Sauf mention explicite dans la <<strophe-definition, définition de la strophe>>.
+
+| RAL1
+| Deux <<lyrics-file, strophes>> côte à côté ne peux pas avoir deux tailles de polices différentes
+| Sauf mention explicite dans la <<strophe-definition, définition de la strophe>>.
+
+| RAL2 
+| Lorsqu'un vers est trop long et déborde sur la marge droite, il doit être raccourci d'autant de mots que nécessaire, **par la fin**, pour tenir sur la ligne. L'excédent est placé sous le vers, aligné à droite.
+| Peut s'appliquer aux vers de deux strophes côte à côte.
+
 |====
 
 
@@ -93,7 +210,10 @@ Solution proposée ?
 [cols="1,6,2", options="header"]
 |====
 | Num. | Règle | Note
-| RAA1 | Deux accords ne doivent JAMAIS être écrits l'un sur l'autre. | 
+
+| RAA1
+| Deux accords ne doivent JAMAIS être écrits l'un sur l'autre.
+|
 |====
 
 
@@ -103,9 +223,19 @@ Solution proposée ?
 [cols="1,6,2", options="header"]
 |====
 | Num. | Règle | Note
-| RAC1 | Les chansons de plus de deux pages sont présentées de préférence en vis à vis (page gauche + page droite). |
-| RAC2 | Si une chanson ne peut pas être mise en vis à vis, trouver un chanson suivante d'une seule page et l'insérer avant. | Sauf `mode: strict` ou `keep_order: true`.
-| RAC3 | Si aucune chanson après ne peut être trouvée, en chercher une deux avant, à la suite, et les mettre après la chanson concernée | Sauf `mode: strict` ou `keep_order: true`
+
+| RAC1
+| Les chansons de plus de deux pages sont présentées de préférence en vis à vis (page gauche + page droite).
+|
+
+| RAC2
+| Si une chanson ne peut pas être mise en vis à vis, trouver un chanson suivante d'une seule page et l'insérer avant.
+| Sauf `mode: strict` ou `keep_order: true`.
+
+| RAC3
+| Si aucune chanson après ne peut être trouvée, en chercher une deux avant, à la suite, et les mettre après la chanson concernée
+| Sauf `mode: strict` ou `keep_order: true`
+
 |====
 
 
@@ -117,10 +247,49 @@ Solution proposée ?
 [cols="1,6,2", options="header"]
 |====
 | Num. | Règle | Note
-| RAD1 | les diags peuvent passer d'une page sur l'autre |
-| RAD2 | Mais lorsqu'un seul diagramme doit passer sur l'autre page, on doit essayer de le ramener sur la page précédente en RÉDUISANT L'ÉCART entre les diags | sans dépasser `MIN_H_DIST[:diags]` (disposition horizontale) ou `MIN_V_DIST[:diags]` (disposition verticale).
-| RAD3 | Si la méthode précédente ne suffit pas, on peut RÉDUIRE LA TAILLE des diags | Sauf si `shrink_diag: false` et sans dépasser `MIN_SIZE[:diags].width/heigh`
-| RAD4 | On doit toujours mettre autant de diags qu'on peut sur la première page |
-| RAD5 | sauf indication explicite, les diagrammes en colonne gauche ou droite ne doivent JAMAIS être seuls sur une page | Les mettre dans dans l'espace disponible de la page précédente ou adopter la règle RAD6.
-| RAD6 | En l'absence d'autres solutions, les diags en excès peuvent se retrouver rassemblés horizontalement, de lignes en lignes, dans tout l'espace vierge d'une page vierge après la chanson. | Seulement si la solution de la règle RAD5 n'a pas peu être appliquée.
+
+| RAD1
+| les diags peuvent passer d'une page sur l'autre
+|
+
+| RAD2
+| Mais lorsqu'un seul diagramme doit passer sur l'autre page, on doit essayer de le ramener sur la page précédente en RÉDUISANT L'ÉCART entre les diags
+| sans dépasser `MIN_H_DIST[:diags]` (disposition horizontale) ou `MIN_V_DIST[:diags]` (disposition verticale).
+
+| RAD3 
+| Si la méthode précédente ne suffit pas, on peut RÉDUIRE LA TAILLE des diags 
+| Sauf si `shrink_diag: false` et sans dépasser `MIN_SIZE[:diags].width/heigh`
+
+| RAD4 
+| On doit toujours mettre autant de diags qu'on peut sur la première page 
+|
+
+| RAD5 
+| sauf indication explicite, les diagrammes en colonne gauche ou droite ne doivent JAMAIS être seuls sur une page 
+| Les mettre dans dans l'espace disponible de la page précédente ou adopter la règle RAD6.
+
+| RAD6 
+| En l'absence d'autres solutions, les diags en excès peuvent se retrouver rassemblés horizontalement, de lignes en lignes, dans tout l'espace vierge d'une page vierge après la chanson. 
+| Seulement si la solution de la règle RAD5 n'a pas peu être appliquée.
+
+| RAD7 
+| Lorsqu'une ligne de diags doit être affichée sous un bloc de paroles, elle doit être placée tout en bas dans la page. C'est une règle d'équilibrage, pas une règle qui le contredit.
+| 
+
+| RAD8
+| Lorsque plusieurs (>1) lignes de diags doivent être affichées horizontalement les unes au-dessus des autres, l'écartement entre chaque ligne doit rester fixe, ne pas être équilibré.
+|
+
+| RAD9
+| Lorsque plusieurs lignes de diags doivent être affichés horizontalement les unes au-dessus des autres et qu'une lignes est plus courte (i.e. a moins de diags), l'alignement se fait toujours vers la reliure.
+|
+
+| RAD10
+| Sauf indication contraire, lorsque le nombre de diags est > 5, la dimension de chaque diag doit être réduite.
+| Indication contraire : dimension fixée pour les diags (`diags_size` dans le layout), option de non redimensionnement des diags (options: redim_diags: false).
+
+| RAD11
+| Lorsque plusieurs (>1) colonnes de diags doivent être affichées verticalement les unes à côté des autres, l'écartement entre chaque colonnes doit rester fixe, ne pas être équilibré.
+|
+
 |====

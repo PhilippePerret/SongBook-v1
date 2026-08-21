@@ -451,6 +451,12 @@ a {
 </div>
 <h1 id="_songbook_manuel" class="sect0">SongBook manuel</h1>
 <div class="sect1">
+<h2 id="_songbook">SongBook</h2>
+<div class="sectionbody">
+
+</div>
+</div>
+<div class="sect1">
 <h2 id="_présentation">Présentation</h2>
 <div class="sectionbody">
 <div class="paragraph">
@@ -476,6 +482,45 @@ a {
 </div>
 <div class="paragraph">
 <p>… puis cliquer <a href=""><kbd style="font-size:1.25em;">↩︎</kbd></a>… Impressionnant, non ?</p>
+</div>
+<div class="sect2">
+<h3 id="app-options">Options</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 42.8571%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Option</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tdm_position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Position de la table des matières, en début (<code>front</code>) ou fin (<code>end</code>) du carnet.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>end</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>build_unknown_song</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Détermine si les dossiers des chansons doivent être créés lorsque le titre est trouvé dans le fichier <code>.tdm</code> mais que la chanson n&#8217;est pas trouvée.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>true</code> (oui, le dossier est créé)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>text_column_guter</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Détermine la largeur de gouttière par défaut, pour les textes à phrases longues.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>1cm</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>text_font</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fonte pour les textes hors paroles/lyrics</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>Times</code></p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -658,6 +703,195 @@ Près d'un lac je m'étais endormie</pre>
 </div>
 </div>
 </div>
+<div class="sect2">
+<h3 id="song-layout">Layout (mise en page) de chanson</h3>
+<div class="paragraph">
+<p>Le <em>layout</em> de la chanson détermine la façon dont les éléments (couplets, refrains, partition, tablatures, diagrammes, images…) seront répartis sur la page.</p>
+</div>
+<div class="paragraph">
+<p>Dans <em>SongBook</em>, on peut le faire chanson par chanson ou de façon générale pour un carnet. Ou les deux, ce qui est le mieux : déterminer un <em>layout</em> général et, au cas par cas, faire un gabarit pour certaines chansons qui le nécessitent.</p>
+</div>
+<div class="paragraph">
+<p>Chaque <em>layout</em> doit définir les caractéristiques suivantes :</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 42.8571%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Caractéristique</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title_band</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Titre en bandeau ou pas.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code> = titre mis en bandeau</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lyrics_flux</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Définit le flux, l&#8217;enchainement des strophes, couplets, refrains et autres paroles.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>side</code> (pour "side by side", "côte à côte") ou <code>vertical</code> (pour "stacked vertically" ou "l&#8217;un au-dessous de l&#8217;autre") ou <code>free</code> (pour "free positioning", aucune contrainte).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Position des diagrammes d&#8217;accords, par défaut, dans la page</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Top</code>, <code>Bot</code>, <code>Int</code>, <code>Ext</code> ou combinaison : <code>Int+Ext</code>, <code>Bot+Int</code> etc.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dimensions des diags lorsque cette dimension doit être fixe et non touchée.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>auto</code>, <code>Nptx</code> (largeur de N points), <code>xNpt</code> (hauteur de N points), <code>NptxMpt</code> (largeur de N points et hauteur de M points)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>music_position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Position des partitions comme des tablatures, de façon générale.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>beginning</code> ou <code>front</code> (au début, avant les premières paroles), <code>end</code> (à la fin, après les premières paroles), <code>wherever</code> (pour "flexible", se placera là où il y a de la place libre).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>intro_align</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alignement d&#8217;un bloc désigné par "intro"</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>left</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect3">
+<h4 id="common-layouts">Mises en page par défaut</h4>
+<div class="sect4">
+<h5 id="_regular_b">Regular-B</h5>
+<div class="paragraph">
+<p>Caractéristiques</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 66.6668%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Propriété</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title_band</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Titre dans le bandeau</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lyrics_flux</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">couplets/refrain côte à côte</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Int</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Diagrammes proches des reliures</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>auto</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Taille automatique (?possible)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>music_position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>end</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La musique sera mise à la fin.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>intro_align</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Left</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Les parties « intro » sont mises à gauche.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="ulist">
+<ul>
+<li>
+<p>Couplets côte à côte</p>
+</li>
+<li>
+<p>diagrammes d&#8217;accords à l&#8217;intérieur</p>
+</li>
+<li>
+<p>intro à gauche</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_regular">Regular</h5>
+<div class="paragraph">
+<p><em>Comme le "regular-B" mais le titre sans bandeau</em></p>
+</div>
+<div class="paragraph">
+<p>Caractéristiques</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>titre simple, sans bandeau</p>
+</li>
+<li>
+<p>Couplets côte à côte</p>
+</li>
+<li>
+<p>diagrammes d&#8217;accords à l&#8217;intérieur</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_column_b">Column-B</h5>
+<div class="paragraph">
+<p>Caractéristiques</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>titre dans un bandeau</p>
+</li>
+<li>
+<p>strophes l&#8217;une ou dessous de l&#8217;autre</p>
+</li>
+<li>
+<p>diagrammes d&#8217;accords des deux côtés</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_column">Column</h5>
+<div class="paragraph">
+<p><em>Comme le layout « Column-B » mais titre sans bandeau</em></p>
+</div>
+<div class="paragraph">
+<p>Caractéristiques</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>titre sans bandeau</p>
+</li>
+<li>
+<p>strophes l&#8217;une ou dessous de l&#8217;autre</p>
+</li>
+<li>
+<p>diagrammes d&#8217;accords des deux côtés</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -667,6 +901,63 @@ Près d'un lac je m'étais endormie</pre>
 <h3 id="songbook-presentation">Présentation</h3>
 <div class="paragraph">
 <p>La grande force de <em><strong>SongBook</strong></em> est de permettre de produire des carnets de chant ("songbook" en anglais) très facilement.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="songbook-infos">Fichier infos du carnet</h3>
+<div class="paragraph">
+<p>Toutes les informations concernant le carnet se rangent dans le fichier <code>.infos</code>, par exemple <code>carnet-gabriel.infos</code> à la racine du carent de chant. Par exemple :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Carnet-de-chant-Peter-Gabriel
+  |— carnet.infos</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Ce fichier définit les éléments suivant :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>title: Le titre du carnet (couverture)
+id: Une identifiant éventuel
+format: Largeur et hauteur du carnet (A5 en paysage par défaut)
+layout: le format par défaut d'affichage des chansons (regular-B par défaut)
+subtitle: Le sous-titre
+editor:
+  name: Nom de l'éditeur
+
+# Les pages liminaires
+# --------------------
+front_matter:
+  half_title_page: false # faux-titre
+  title_page: true
+  # Définition des tables des matières
+  table_of_contents:
+    per_song: true
+    per_performer: true
+    per_composer: false
+    per_author: false
+  forword: false # Avant propos (false, ou le fichier)
+  preface: preface.md # préface
+  acknowledgments: false # (false ou le fichier remerciements)
+copyright: @2026 Icare éditions Tous droits réservés
+
+# Pages finales
+# -------------
+credits:
+  book_designer: Philippe Perret
+  typesetter: Philippe Perret
+  proofreader: Marion Michel
+  programming: Claude
+
+# Options
+options:
+  redim_diags: true # false pour ne pas redimensionner les diags</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Pour le <code>layout</code>, voir <a href="#song-layout">Layout (mise en page) de chanson</a>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1185,6 +1476,31 @@ Près d'un lac je m'étais endormie</pre>
 </table>
 </div>
 </div>
+<div class="sect2">
+<h3 id="_outils">Outils</h3>
+<div class="paragraph">
+<p>La commande <code>diag -o</code> permet de construire très rapidement des schémas et des images SVG de diagrammes d&#8217;accord.</p>
+</div>
+<div class="paragraph">
+<p>Pour faire la commande :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>ln -s /Applications/SongBook.app/tools/DiagSchem/diagschem.rb /usr/local/bin/diag</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Si les schémas sont placés dans des fichiers <code>schemas.txt</code>, la commande <code>build-diags</code> permet de construire ou reconstruire tous les SVG manquants.</p>
+</div>
+<div class="paragraph">
+<p>Pour faire la commande :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>ln -s /Applications/SongBook.app/tools/ChordDiagram/build_diags.rb /usr/local/bin/build-diags</pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -1288,6 +1604,11 @@ Près d'un lac je m'étais endormie</pre>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Sauf indication explicite, deux objets identiques côte à côte ne doivent jamais être être éloignés de plus que la distance définie par <code>MAX_H_DIST[:&lt;objet&gt;]</code> (horizontalement) et <code>MAX_V_DIST[:&lt;objet&gt;]</code> (verticalement).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">indication explicite : <code>{couplet; margin-left: 100pt;}</code></p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAO7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sauf indication explicite, deux objets ne devraient JAMAIS se retrouver l&#8217;un contre l&#8217;autre.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
@@ -1324,6 +1645,45 @@ Solution proposée ?</p>
 </div>
 </div>
 <div class="sect3">
+<h4 id="tdm-rules">Règles concernant la table des matières</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 11.1111%;">
+<col style="width: 66.6666%;">
+<col style="width: 22.2223%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Num.</th>
+<th class="tableblock halign-left valign-top">Règle</th>
+<th class="tableblock halign-left valign-top">Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RATDM1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La table des matières doit tenir sur deux colonnes</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RATDM2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Si la table des matières est moins grande que deux colonnes complètes, on doit répartir le MÊME NOMBRE DE LIGNES de chaque côté</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RATDM3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;éloignement du chiffre doit être calculé par rapport au plus long titre de la liste des titres, auquel on ajoute la valeur MIN_H_DIST['tdm_num']</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(valeur fixée à 20pt pour l&#8217;essai)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RATDM4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Un filet de conduite doit relier les titres à leur numéro de page.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TDM[:leader_character] = '.' et TDM[:leader_space] = '3pt' (espaces entre les caractères du filet) réglables.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
 <h4 id="title-rules">Règles concernant la bande de titres (infos)</h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1349,6 +1709,45 @@ Solution proposée ?</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Si <code>composer</code> et <code>lyrics</code> sont la ou les mêmes personnes, et que l&#8217;option <code>labels_in_title_band</code> est appliquée, on utilise la mention « Paroles et musiques : nom »</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAT3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lorsqu&#8217;il y a un sous-titre (<code>subtitle</code>), il faut l&#8217;ajouter à la page de titre si elle est affichée.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="textes-rules">Règles concernant les textes</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 11.1111%;">
+<col style="width: 66.6666%;">
+<col style="width: 22.2223%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Num.</th>
+<th class="tableblock halign-left valign-top">Règle</th>
+<th class="tableblock halign-left valign-top">Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RATX1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pour les textes <strong>autres que lyrics</strong>, à phrases longues, si la largeur de la page est &gt; 15 cm, ils doivent être écrits sur deux colonnes avec une gouttière fixée.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cf. options application <code>text_column_guter</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RATX2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pour les textes <strong>autres que les lyrics</strong>, utiliser une autre police que pour les paroles.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cf. options application <code>text_font</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RATX3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Les textes <strong>autres que les lyrics</strong> doivent être justifiés.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1372,6 +1771,11 @@ Solution proposée ?</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RAL1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Deux <a href="#strophes">strophes</a> côte à côté ne peux pas avoir deux tailles de polices différentes</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Sauf mention explicite dans la <a href="#strophe-definition">définition de la strophe</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAL2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lorsqu&#8217;un vers est trop long et déborde sur la marge droite, il doit être raccourci d&#8217;autant de mots que nécessaire, <strong>par la fin</strong>, pour tenir sur la ligne. L&#8217;excédent est placé sous le vers, aligné à droite.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peut s&#8217;appliquer aux vers de deux strophes côte à côte.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1487,6 +1891,31 @@ Solution proposée ?</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">En l&#8217;absence d&#8217;autres solutions, les diags en excès peuvent se retrouver rassemblés horizontalement, de lignes en lignes, dans tout l&#8217;espace vierge d&#8217;une page vierge après la chanson.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Seulement si la solution de la règle RAD5 n&#8217;a pas peu être appliquée.</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAD7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lorsqu&#8217;une ligne de diags doit être affichée sous un bloc de paroles, elle doit être placée tout en bas dans la page. C&#8217;est une règle d&#8217;équilibrage, pas une règle qui le contredit.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAD8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lorsque plusieurs (&gt;1) lignes de diags doivent être affichées horizontalement les unes au-dessus des autres, l&#8217;écartement entre chaque ligne doit rester fixe, ne pas être équilibré.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAD9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lorsque plusieurs lignes de diags doivent être affichés horizontalement les unes au-dessus des autres et qu&#8217;une lignes est plus courte (i.e. a moins de diags), l&#8217;alignement se fait toujours vers la reliure.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAD10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sauf indication contraire, lorsque le nombre de diags est &gt; 5, la dimension de chaque diag doit être réduite.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Indication contraire : dimension fixée pour les diags (<code>diags_size</code> dans le layout), option de non redimensionnement des diags (options: redim_diags: false).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAD11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lorsque plusieurs (&gt;1) colonnes de diags doivent être affichées verticalement les unes à côté des autres, l&#8217;écartement entre chaque colonnes doit rester fixe, ne pas être équilibré.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1590,7 +2019,7 @@ Ne doit pas regrouper avec une strophe de type "refrain"</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-08-19 07:41:41 +0200
+Last updated 2026-08-20 09:26:51 +0200
 </div>
 </div>
 </body>

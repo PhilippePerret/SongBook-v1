@@ -1,0 +1,43 @@
+[[gabarit-file, gabarit de la chanson]]
+=== Gabarit de la chanson ===
+
+Alors que <<layout-file, le fichier `.layout`>> définit les __règles__ régissant la mise en forme de la chanson, laissant la liberté à __**SongBook**__ de prendre toutes les décisions pour produire un affichage cohérent et esthétique, le fichier `.gabarit` va définir très précisément le positionnement des éléments de la chanson.
+
+On peut trouver ce fichier : 
+
+- dans le <<song-folder>>, avec n'importe quel nom à extension `.gabarit` ou `.gab`. Dans ce cas, il définira l'affichage de la chanson quel que soit le carnet où elle est utilisée.
+- dans le <<songbook-folder>>, pouvant définir le gabarit de toutes les chansons du carnet (extrêmement rare et dangereux) ou le bagarit de certaines chansons. Dans ce cas, le nom doit être impérativement `<id chanson>.gab`.
+
+==== Définir le gabarit ====
+
+Le fichier gabarit reprend les éléments définis entre crochets dans le <<lyrics-file, fichier des paroles>>.
+
+Par exemple, si on trouve ça dans le fichier `.lyr` : 
+
+----
+{couplet-1}
+Le premier couplet
+...
+
+{couplet-2}
+Le deuxième couplet
+...
+
+{couplet-3}
+Le troisième couplet
+...
+----
+
+… alors on peut définir dans le gabarit des choses comme : 
+
+----
+{couplet-1; margin-left: 1cm;}
+{couplet-2; margin-right: 1cm; font-size:0.85em;}
+{tabla: mon-fichier-tablature; align:center; width:400pt; }
+{couplet-3; block-align:center; align:center; }
+...
+----
+
+==== Gabarit dans un carnet de chant ====
+
+Comme nous l'avons vu, lorsque le fichier est dans un carnet de chant, et qu'il porte l'identifiant d'une chanson, il définit le gabarit à utiliser pour la chanson spécifiquement pour ce carnet-là et aucun autre (sauf duplication du fichier dans un autre carnet, évidemment). Cela permet d'adapter la chanson à une disposition de carnet particulière.

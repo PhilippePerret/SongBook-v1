@@ -9,11 +9,14 @@ include::song-folder.adoc[]
 // Fichier des informations
 include::infos.adoc[]
 
-// Strophes
-include::strophes.adoc[]
+// Paroles
+include::lyrics.adoc[]
 
 // Tablatures et partitions
 include::tablas-et-scores.adoc[]
 
 // Layout
 include::layout.adoc[]
+
+// Gabarit
+include::gabarit.adoc[]

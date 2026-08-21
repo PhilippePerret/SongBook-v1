@@ -43,6 +43,10 @@ credits:
   proofreader: Marion Michel
   programming: Claude
   
+# Options
+options:
+  redim_diags: true # false pour ne pas redimensionner les diags
+  
 ----
 
 Pour le `layout`, voir <<song-layout>>.

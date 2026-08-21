@@ -1,7 +1,9 @@
-[[song-layout]]
+[[song-layout, règles de mises en forme des chansons]]
 === Layout (mise en page) de chanson ===
 
-Le __layout__ de la chanson détermine la façon dont les éléments (couplets, refrains, partition, tablatures, diagrammes, images…) seront répartis sur la page.
+Le __layout__ de la chanson détermine la façon dont les éléments (couplets, refrains, partition, tablatures, diagrammes, images…) seront répartis sur la page ainsi que toutes les règles qui régissent les éléments.
+
+C'est un fichier qui doit porter l'extension `.layout` ou `.lay` <<app-extension-driven, peu importe son nom>>.
 
 Dans __SongBook__, on peut le faire chanson par chanson ou de façon générale pour un carnet. Ou les deux, ce qui est le mieux : déterminer un __layout__ général et, au cas par cas, faire un gabarit pour certaines chansons qui le nécessitent.
 
@@ -15,7 +17,7 @@ Chaque __layout__ doit définir les caractéristiques suivantes :
 | Titre en bandeau ou pas.
 | `true` = titre mis en bandeau
 
-| `lyrics_flux` 
+| `lyrics_flux`
 | Définit le flux, l'enchainement des strophes, couplets, refrains et autres paroles.
 | `side` (pour "side by side", "côte à côte") ou `vertical` (pour "stacked vertically" ou "l'un au-dessous de l'autre") ou `free` (pour "free positioning", aucune contrainte).
 
@@ -23,9 +25,17 @@ Chaque __layout__ doit définir les caractéristiques suivantes :
 | Position des diagrammes d'accords, par défaut, dans la page
 | `Top`, `Bot`, `Int`, `Ext` ou combinaison : `Int+Ext`, `Bot+Int` etc.
 
+| `diags_size`
+| Dimensions des diags lorsque cette dimension doit être fixe et non touchée.
+| `auto`, `Nptx` (largeur de N points), `xNpt` (hauteur de N points), `NptxMpt` (largeur de N points et hauteur de M points) 
+
 | `music_position`
 | Position des partitions comme des tablatures, de façon générale.
-| `beginning` (au début, avant les premières paroles), `end` (à la fin, après les premières paroles), `wherever` (pour "flexible", se placera là où il y a de la place libre).
+| `beginning` ou `front` (au début, avant les premières paroles), `end` (à la fin, après les premières paroles), `wherever` (pour "flexible", se placera là où il y a de la place libre).
+
+| `intro_align`
+| Alignement d'un bloc désigné par "intro"
+| Défaut : `left`
 
 
 |====
@@ -35,19 +45,30 @@ Chaque __layout__ doit définir les caractéristiques suivantes :
 
 ===== Regular-B =====
 
-[TODO: exemple]
+//TODO: exemple
 
 Caractéristiques
 
-- titre dans un bandeau
+[cols="1,1,4", options="header"]
+|====
+| Propriété         | Valeur  | Description
+| `title_band`      | true    | Titre dans le bandeau
+| `lyrics_flux`     | `size`  | couplets/refrain côte à côte
+| `diags_position`  | `Int`   | Diagrammes proches des reliures
+| `diags_size`      | `auto`  | Taille automatique (?possible)
+| `music_position`  | `end`   | La musique sera mise à la fin.
+| `intro_align`     | `Left`  | Les parties « intro » sont mises à gauche.
+|====
+
 - Couplets côte à côte
 - diagrammes d'accords à l'intérieur
+- intro à gauche
 
 ===== Regular =====
 
 __Comme le "regular-B" mais le titre sans bandeau__
 
-[TODO: exemple]
+//TODO: exemple
 
 Caractéristiques
 
@@ -57,7 +78,7 @@ Caractéristiques
 
 ===== Column-B =====
 
-[TODO: Exemple]
+// TODO: Exemple
 
 Caractéristiques
 
@@ -69,7 +90,7 @@ Caractéristiques
 
 __Comme le layout « Column-B » mais titre sans bandeau__
 
-[TODO: Exemple]
+// TODO: Exemple
 
 Caractéristiques
 
