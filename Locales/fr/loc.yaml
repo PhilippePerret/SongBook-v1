@@ -3,3 +3,11 @@ book_designer: Conception
 typesetter: Mise en pages
 proofreader: Relecture et correction
 programming: Programmation
+
+# champs .infos
+title: titre
+performer: interprete
+composer: compositeur
+lyrics: parolier
+year: date
+transpose: transposition
