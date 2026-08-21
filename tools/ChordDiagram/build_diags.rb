@@ -33,7 +33,7 @@ skipped.each do |s|
 end
 
 if skipped.empty?
-  puts "#{VERT}#{created.size} diag(s) créé(s), aucun échec.#{RESET}"
+  puts "#{VERT}diags créés#{RESET}" if created.size != 1
 else
   puts "#{ROUGE}Échecs :#{RESET}"
   skipped.each do |s|
