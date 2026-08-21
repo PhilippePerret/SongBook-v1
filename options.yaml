@@ -1,0 +1,6 @@
+# Options par défaut de l'application (Manuel/app/options.adoc) 
+# — un carnet peut rédéfinir par son carnet.infos
+tdm_position: end
+build_unknown_song: true
+text_column_guter: 1cm
+text_font: Garamond
