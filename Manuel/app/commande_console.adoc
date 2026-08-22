@@ -2,3 +2,11 @@
 === Commande `console` ===
 
 Utiliser `songbook -h` ou `songbook --help` pour obtenir une aide rapide (moins détaillée qu'ici).
+
+La première chose à apprendre est à construire un carnet une fois <<songbook, toutes les données établies>>.
+
+Ouvrir une console/Terminal au dossier du carnet et jouer simplement :
+
+----
+console build
+----

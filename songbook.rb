@@ -18,7 +18,9 @@ command, arg1 = argv
 
 case command
 when "-h", "--help"
-  puts USAGE
+  system("clear")
+  system("clear")
+  puts colorize_help(USAGE)
 when nil, ".", "build"
   if command == "build" && arg1 == "cover"
     cover = true
@@ -41,5 +43,5 @@ when nil, ".", "build"
     abort "Erreur : #{e.message}"
   end
 else
-  abort USAGE
+  abort colorize_help(USAGE)
 end

@@ -149,7 +149,9 @@ module CarnetBuilder
     folder = File.join(chansons_dir, title)
     Dir.mkdir(folder) unless Dir.exist?(folder)
 
-    infos = { "id" => id, "title" => title }
+    infos = { "id" => id }
+    PageBuilder::INFOS_CANONICAL_KEYS.each { |k| infos[k] = "" }
+    infos["title"] = title
     infos["year"] = year if year
     File.write(File.join(folder, "c.infos"), "#{infos.map { |k, v| "#{k}: #{v}" }.join("\n")}\n")
     File.write(File.join(folder, "c.lyr"), SONG_TEMPLATE)

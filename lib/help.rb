@@ -1,4 +1,8 @@
 USAGE = <<~TXT
+ ===============================================
+      AIDE DE LA COMMANDE SONGBOOK
+===============================================
+ 
   Commande
   --------
     
@@ -67,8 +71,12 @@ Obtenir la liste des chansons
 
   Options
   -------
-  -c/--cover      Produire la couverture
+  -c/--cover      Produire la couverture en même temps que le carnet
   -b/--book PATH  Chemin d'accès au carnet
   -x              Faire apparaitre les repères (marges)      
 
   TXT
+
+def colorize_help(text)
+  text.gsub(/\{\{command:\s*(.+?)\}\}/) { "\e[38;5;208m#{$1}\e[0m" }
+end
