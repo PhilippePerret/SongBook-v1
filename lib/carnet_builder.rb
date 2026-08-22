@@ -1,5 +1,6 @@
 require "prawn"
 require "combine_pdf"
+require "fileutils"
 require_relative "page_builder"
 require_relative "layout"
 require_relative "kdp"
@@ -169,7 +170,35 @@ module CarnetBuilder
     end
   end
 
-  def self.build(carnet_folder)
+  def self.carnet_folder?(dir)
+    !!FileFinder.find(dir, :tdm)
+  end
+
+  def self.song_folder?(dir)
+    !!FileFinder.find(dir, :lyr)
+  end
+
+  # Chanson seule, HORS carnet : format/layout de `_default.yaml` (pas de `.tdm`/`.infos`
+  # de carnet à consulter). Passe 1 (mesure, page_count provisoire) -> passe 2 (page_count
+  # réel), même principe que `build` pour la marge de reliure KDP.
+  def self.build_song(song_folder)
+    layout = DEFAULT_LAYOUT
+    page_size_in = layout.fetch(:format).to_s.split(/\s*x\s*/i).map { |v| AppOptions.length_pt(v) / AppOptions::IN_TO_PT }
+    slug = slugify(File.basename(song_folder))
+    export_dir = File.join(song_folder, "export")
+    FileUtils.mkdir_p(export_dir)
+
+    tmp_out = File.join(export_dir, ".tmp-#{slug}.pdf")
+    PageBuilder.build(song_folder, tmp_out, page_size_in: page_size_in, page_count: 24, first_page_no: 1, layout: layout)
+    page_count = [CombinePDF.load(tmp_out).pages.size, 24].max
+    File.delete(tmp_out)
+
+    out_path = File.join(export_dir, "#{slug}.pdf")
+    PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout: layout)
+    out_path
+  end
+
+  def self.build(carnet_folder, only_song: nil)
     tdm_path = FileFinder.find(carnet_folder, :tdm)
     raise "aucun fichier .tdm/.toc trouvé dans #{carnet_folder}" unless tdm_path
 
@@ -180,7 +209,14 @@ module CarnetBuilder
     title = conf.fetch("title")
     subtitle = conf["subtitle"]
     build_unknown_song = conf.fetch("build_unknown_song", AppOptions.get("build_unknown_song"))
-    page_size_in = conf.fetch("format").split(/\s*x\s*/i).map(&:to_f)
+    # `format` (trim size KDP) : convention historique en POUCES pour un nombre SANS unité
+    # ("8.27 x 6" -> inches, comme le format papier KDP est toujours exprimé) — jamais en
+    # points comme le reste de `AppOptions.length_pt` (bug constaté 2026-08-21 : "8.27"
+    # lu comme 8.27pt, marges KDP en inches soustraites d'une largeur de page presque
+    # nulle, `pdf.bounds.width` négatif, crash Prawn `CannotFit`). Une unité explicite
+    # ("21cm x 15cm") reste convertie normalement.
+    page_size_in = conf.fetch("format").split(/\s*x\s*/i).map { |v| v =~ /[a-z]/i ? AppOptions.length_pt(v) / AppOptions::IN_TO_PT : v.to_f }
+    page_size_pt = page_size_in.map { |v| v * AppOptions::IN_TO_PT }
     layout_name = conf["layout"]
     base_layout = layout_name ? LAYOUTS.fetch(layout_name) { raise "layout inconnu : #{layout_name} (voir CarnetBuilder::LAYOUTS)" } : DEFAULT_LAYOUT
     carnet_layout_path = find_layout_file(carnet_folder)
@@ -191,18 +227,29 @@ module CarnetBuilder
 
     chansons_dir = File.expand_path("../../Chansons", carnet_folder)
     export_dir = File.join(carnet_folder, "export")
+    # Carnet entier -> export/songbooks/ ; chanson isolée (only_song) -> export/songs/
+    # (Phil, 2026-08-21).
+    songbooks_dir = File.join(export_dir, "songbooks")
+    songs_dir = File.join(export_dir, "songs")
+    logs_dir = File.join(export_dir, "xlogs")
+    FileUtils.mkdir_p(songbooks_dir)
+    FileUtils.mkdir_p(songs_dir)
+    FileUtils.mkdir_p(logs_dir)
     songs = File.readlines(tdm_path).map { |l| l.sub(/\A-\s*/, "").strip }.reject(&:empty?)
 
-    existing_versions = Dir.glob(File.join(export_dir, "*-v*.pdf")).filter_map { |f| f[/-v(\d+)\.pdf\z/, 1]&.to_i }
+    existing_versions = Dir.glob(File.join(songbooks_dir, "*-v*.pdf")).filter_map { |f| f[/-v(\d+)\.pdf\z/, 1]&.to_i }
     version = (existing_versions.max || 0) + 1
     slug = File.basename(carnet_folder).downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-|-\z/, "")
-    out_path = File.join(export_dir, "#{slug}-v#{version}.pdf")
-    Layout.conflict_log_path = File.join(export_dir, "#{slug}-v#{version}-conflicts.log")
+    out_path = File.join(songbooks_dir, "#{slug}-v#{version}.pdf")
+    # Logs dans export/logs/ (Phil, 2026-08-21 : revient sur "à côté du PDF").
+    log_dir = logs_dir
+    log_stem = only_song ? "#{slug}-song-#{slugify(only_song)}" : "#{slug}-v#{version}"
+    Layout.conflict_log_path = File.join(log_dir, "#{log_stem}-conflicts.log")
     File.write(Layout.conflict_log_path, "Début : #{Time.now}\n")
-    Layout.building_log_path = File.join(export_dir, "#{slug}-v#{version}-building.log")
+    Layout.building_log_path = File.join(log_dir, "#{log_stem}-building.log")
     File.write(Layout.building_log_path, "Début : #{Time.now}\n")
 
-    page_w_pt, page_h_pt = page_size_in.map { |v| v * 72 }
+    page_w_pt, page_h_pt = page_size_pt
 
     # --- 1) Résolution des dossiers (par nom de dossier, id ou title — jamais seulement
     # un nom littéral) — chanson du .tdm sans dossier : créée (gabarit vide), JAMAIS
@@ -240,8 +287,19 @@ module CarnetBuilder
 
     real_songs.each do |name, entry|
       folder = File.join(chansons_dir, entry[:folder])
-      tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
       meta = entry[:infos]
+      if only_song == name || only_song == entry[:folder]
+        # `only_song` : ISOLE une seule chanson, rendue avec EXACTEMENT les mêmes
+        # paramètres (page_count, first_page_no, layout résolu) que dans ce carnet réel —
+        # même appel `PageBuilder.build`, pas une simulation à part (Phil, 2026-08-21 :
+        # "sortir la chanson EXACTEMENT comme elle sortirait"). Sortie PERSISTANTE, jamais
+        # un temp supprimé.
+        song_out = File.join(songs_dir, "#{slug}-song-#{slugify(name)}.pdf")
+        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout))
+        return song_out
+      end
+
+      tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
       PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout))
       n = real_page_counts[name]
       combined_songs << CombinePDF.load(tmp_out)
@@ -250,6 +308,7 @@ module CarnetBuilder
                    composer: meta["composer"].to_s, lyrics: meta["lyrics"].to_s, first_page: page_no, last_page: page_no + n - 1 }
       page_no += n
     end
+    raise "chanson introuvable pour only_song: #{only_song.inspect} (voir .tdm : #{tdm_path})" if only_song
 
     last_song_page = page_no - 1
 
@@ -278,7 +337,9 @@ module CarnetBuilder
       Prawn::Document.generate(blank_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
         Layout.register_fonts(pdf)
         Layout.apply_kdp_margins(pdf, kdp_final, blank_page_no, page_w_pt, page_h_pt)
-        Layout.draw_page_number(pdf, kdp_final, blank_page_no, page_w_pt)
+        Layout.current_song = "(carnet)"
+        Layout.current_page = blank_page_no
+        Layout.log_build("page blanche insérée (RATDM12)")
       end
       loaded = CombinePDF.load(blank_out)
       File.delete(blank_out)
@@ -295,7 +356,9 @@ module CarnetBuilder
         page_no = i + 1
         pdf.start_new_page if i.positive?
         Layout.apply_kdp_margins(pdf, kdp_final, page_no, page_w_pt, page_h_pt)
-        Layout.draw_page_number(pdf, kdp_final, page_no, page_w_pt) unless spec[:kind] == :toc # RATDM10
+        Layout.current_song = "(carnet)"
+        Layout.current_page = page_no
+        Layout.log_build("front matter (#{spec[:kind]}) rendu (RATDM12)")
         draw_front_matter_page(pdf, spec, title, subtitle, entries, carnet_folder)
       end
     end
@@ -310,7 +373,9 @@ module CarnetBuilder
           page_no = toc_start + i
           pdf.start_new_page if i.positive?
           Layout.apply_kdp_margins(pdf, kdp_final, page_no, page_w_pt, page_h_pt)
-          # RATDM10 : jamais de numéro de page sur une TdM — `end_toc_list` n'est QUE des :toc.
+          Layout.current_song = "(carnet)"
+          Layout.current_page = page_no
+          Layout.log_build("TdM #{spec[:sort]} (page #{spec[:page] + 1}/#{spec[:pages]}) rendue (RATDM10/RATDM12)")
           draw_front_matter_page(pdf, spec, title, subtitle, entries, carnet_folder)
         end
       end
@@ -326,7 +391,9 @@ module CarnetBuilder
     Prawn::Document.generate(colophon_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
       Layout.register_fonts(pdf)
       Layout.apply_kdp_margins(pdf, kdp_final, colophon_page_no, page_w_pt, page_h_pt)
-      Layout.draw_page_number(pdf, kdp_final, colophon_page_no, page_w_pt)
+      Layout.current_song = "(carnet)"
+      Layout.current_page = colophon_page_no
+      Layout.log_build("colophon rendu (RATDM12)")
       draw_credits(pdf, conf.fetch("credits", {}))
     end
 
@@ -438,7 +505,10 @@ module CarnetBuilder
       # Titre centré, éventuellement l'auteur du livre en dessous (Phil, 2026-08-20) —
       # aucun texte de substitution. RAT3 : sous-titre ajouté en dessous s'il existe.
       draw_centered_text_box(pdf, title, y: pdf.bounds.height / 2 + 10, size: 18, style: :bold)
-      draw_centered_text_box(pdf, subtitle, y: pdf.bounds.height / 2 + 10 - 26, size: 13) if subtitle
+      if subtitle
+        Layout.log_build("page de garde : sous-titre \"#{subtitle}\" ajouté sous le titre (RAT3)")
+        draw_centered_text_box(pdf, subtitle, y: pdf.bounds.height / 2 + 10 - 26, size: 13)
+      end
     when :copyright
       # "en bas de page" (Phil, 2026-08-20) — PAS centré verticalement comme le reste du
       # front matter, une simple mention en pied de fausse-page.
@@ -449,7 +519,7 @@ module CarnetBuilder
       draw_heading(pdf, "Table des matières #{TOC_LABELS.fetch(spec[:sort])}")
       rows_per_page = toc_rows_per_page(pdf.bounds.height)
       rows = toc_rows(entries, spec[:sort])[spec[:page] * rows_per_page, rows_per_page] || []
-      draw_toc_2col(pdf, rows, top: pdf.bounds.height - TOC_HEADING_RESERVE)
+      draw_toc_2col(pdf, rows, top: pdf.bounds.height - TOC_HEADING_RESERVE, sort: spec[:sort])
     when :markdown
       md_path = File.join(carnet_folder, spec[:file])
       unless File.exist?(md_path)
@@ -503,13 +573,21 @@ module CarnetBuilder
   TOC_SORT_ARTICLES_RE = /\A(the|les|le|la)\s+/i
 
   def self.toc_sort_key(entry)
-    base = entry[:performer_name].to_s.empty? ? entry[:performer].to_s.split.last.to_s : entry[:performer_name]
-    base.sub(TOC_SORT_ARTICLES_RE, "")
+    if entry[:performer_name].to_s.empty?
+      base = entry[:performer].to_s.split.last.to_s
+    else
+      base = entry[:performer_name]
+      Layout.log_build("TdM performer \"#{entry[:performer]}\" : tri sur performer_name=\"#{base}\" (RATDM11.1)")
+    end
+    stripped = base.sub(TOC_SORT_ARTICLES_RE, "")
+    Layout.log_build("TdM performer \"#{base}\" : article de tête retiré pour le tri -> \"#{stripped}\" (RATDM11.2)") if stripped != base
+    stripped
   end
 
   def self.grouped_toc_rows(entries, field)
     named, unnamed = entries.partition { |e| !e[field].empty? }
     sort_key = field == :performer ? ->(group_first) { toc_sort_key(group_first) } : ->(group_first) { group_first[field] }
+    Layout.log_build("TdM #{field} : #{named.map { |e| e[field] }.uniq.size} groupe(s), #{unnamed.size} chanson(s) au champ vide (RATDM5)")
     rows = []
     named.group_by { |e| e[field] }.sort_by { |name, group| sort_key.call(group.first) }.each do |name, group|
       rows << { kind: :header, label: name, page: nil, indent: false }
@@ -563,7 +641,7 @@ module CarnetBuilder
     chunks
   end
 
-  def self.draw_toc_2col(pdf, rows, top: pdf.bounds.height)
+  def self.draw_toc_2col(pdf, rows, top: pdf.bounds.height, sort: :song)
     size = 11
     # Interligne "1" d'un traitement de texte = la hauteur naturelle d'une ligne à cette
     # taille, sans rien ajouter — PAS l'équilibrage habituel (`distribute_v_gutters`), qui
@@ -581,21 +659,25 @@ module CarnetBuilder
       count += chunk.size
     end
     col2_chunks = chunks[col1_chunks.size..] || []
+    Layout.log_build("TdM #{sort} : #{rows.size} ligne(s) réparties en #{chunks.size} bloc(s) (RATDM7), #{col1_chunks.sum(&:size)}/#{col2_chunks.sum(&:size)} lignes col1/col2 (RATDM1/2)")
 
-    # RATDM6 : espace au-dessus de chaque bloc interprète, sauf le 1er de la colonne —
-    # essai Phil 2026-08-21 : 1/2 ligne au lieu d'1 ligne pleine (même si ça désaligne les
-    # 2 colonnes — juste pour voir).
-    header_gap_factor = 0.5
+    # RATDM6 : espace au-dessus de CHAQUE bloc interprète, sauf le 1er de la colonne — 1,5
+    # ligne ENTRE les blocs (Phil, 2026-08-21) ; À L'INTÉRIEUR d'un bloc (header -> ses
+    # chansons, ou chanson -> chanson suivante du même bloc), toujours 1 ligne pleine,
+    # jamais touché.
+    header_gap_factor = 1.5
     col_lines = lambda do |chunks_|
       chunks_.each_with_index.sum { |chunk, i| chunk.size + (i.positive? && chunk.first[:kind] == :header ? header_gap_factor : 0) }
     end
     content_lines = [col_lines.call(col1_chunks), col_lines.call(col2_chunks)].max
 
     # RATDM9.1 (Phil, 2026-08-21, valeur provisoire) : TdM courte en hauteur -> interligne
-    # 1,5 (décidé sur l'interligne "1" de base, AVANT tout étirement, pour ne pas se
-    # rebalancer soi-même hors de la zone "courte").
-    short = (content_lines * row_h) < top
+    # 1,5 — SEULEMENT pour la TdM par chanson (`sort: :song`) : Phil, 2026-08-21, "l'autre
+    # [la TdM par interprète] ne sera jamais courte". Décidé sur l'interligne "1" de base,
+    # AVANT tout étirement, pour ne pas se rebalancer soi-même hors de la zone "courte".
+    short = sort == :song && (content_lines * row_h) < top
     effective_row_h = short ? row_h * 1.5 : row_h
+    Layout.log_build("TdM #{sort} courte en hauteur : interligne passé à 1,5 (RATDM9.1)") if short
     content_h = content_lines * effective_row_h
 
     # RATDM9.2 (Phil, 2026-08-21, valeur provisoire — "sans la mettre au milieu" : un tiers
@@ -603,6 +685,7 @@ module CarnetBuilder
     # un espace, jamais glued dessous ni centrée dans la page.
     slack = [top - content_h, 0].max
     top -= slack / 3.0
+    Layout.log_build("TdM #{sort} courte : décalée de #{(slack / 3.0).round(1)}pt sous son titre (RATDM9.2)") if slack.positive?
 
     label_w = ->(row) { pdf.width_of(row[:label], size: size, style: row[:kind] == :header ? :bold : nil) + (row[:indent] ? TOC_INDENT_W : 0) }
     max_title_w = rows.map(&label_w).max || 0
@@ -630,6 +713,7 @@ module CarnetBuilder
       natural_col_w += AppOptions::CM_TO_PT
       h_gutter = gutter_for.call(natural_col_w)
       x1 = [(pdf.bounds.width - (natural_col_w * 2 + h_gutter)) / 2.0, 0].max
+      Layout.log_build("TdM #{sort} : gouttière+marge généreuses, filets allongés de 1cm (RATDM8)")
     end
     x2 = x1 + natural_col_w + h_gutter
 

@@ -26,8 +26,18 @@ module Layout
   # comportement sans avoir à relire le code. Même redirection par production que
   # `conflict_log_path` (voir `CarnetBuilder.build`).
   @building_log_path = File.expand_path("../_dev/building.log", __dir__)
+  # EXPÉRIMENTAL (Phil, 2026-08-21) : espacement des caractères du texte des paroles,
+  # `pdf.character_spacing` — pour chercher jusqu'où RAL2.1 (réduction d'espace avant
+  # d'abandonner au raccourcissement RAL2.2) peut aller. 0 = comportement normal, jamais
+  # touché par défaut. PAS encore une règle appliquée automatiquement.
+  @char_spacing = 0.0
+  # EXPÉRIMENTAL (Phil, 2026-08-21) : espacement des ESPACES seulement (entre les mots),
+  # jamais les lettres à l'intérieur d'un mot — RAL2.1 : "réduire l'espace entre les mots".
+  # Prawn n'expose pas Tw (word spacing PDF natif) publiquement, donc chaque mot est
+  # dessiné séparément avec un espace ajusté (voir `draw_words_with_spacing`).
+  @word_spacing = 0.0
   class << self
-    attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page
+    attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing
   end
   CONFLICTS = []
   @missing_chords = Hash.new { |h, k| h[k] = [] }
@@ -599,6 +609,9 @@ module Layout
 
     # RAT1 (Manuel/regles_esthetiques.adoc) : même personne aux deux -> le nom une seule
     # fois, jamais "X / X".
+    if meta["lyrics"] && meta["lyrics"] == meta["composer"]
+      log_build("parolier=compositeur (\"#{meta["lyrics"]}\") : nom affiché une seule fois (RAT1)")
+    end
     pc = [meta["lyrics"], meta["composer"]].compact.uniq.join(" / ")
     unless pc.empty?
       w = pdf.width_of(pc, size: PC_SIZE)
@@ -800,10 +813,14 @@ module Layout
   # CETTE hauteur, jamais sur une approximation en tailles de police fixes. `width` :
   # largeur de colonne dispo pour ce bloc, sert au RAL2 (une ligne qui déborde compte pour
   # deux, voir `line_step`).
-  def self.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, lines, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
+  # RAL3 (Manuel/regles_esthetiques.adoc, "aucune exception") : une strophe SANS accord
+  # posée à côté d'une strophe AVEC accord aligne sa 1re ligne sur celle de l'autre —
+  # `force_chord_baseline` (posé par `row_to_element` selon le voisin de row) impose
+  # l'ancrage "1re ligne avec accord" même si CE bloc-ci n'en a pas lui-même.
+  def self.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, lines, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE, force_chord_baseline: false)
     return 0 if lines.empty?
 
-    baseline = line_has_chord?(lines.first) ? chord_ascent : text_ascent
+    baseline = force_chord_baseline || line_has_chord?(lines.first) ? chord_ascent : text_ascent
     last_text_offset = 0
     lines.each_with_index do |line, i|
       last_text_offset = if chords_only_line?(line)
@@ -817,8 +834,13 @@ module Layout
     last_text_offset + text_descent
   end
 
-  def self.block_width(pdf, block, text_size: TEXT_SIZE)
-    block.lines.map { |l| pdf.width_of(l.segments.map(&:text).join, size: text_size) }.max || 0
+  # Même formule que `draw_line`/`line_width` (MAX texte/accord + CHORD_GAP par segment) —
+  # sinon la largeur MESURÉE ici (pour aligner col1_w/col2_w globalement) sous-estime une
+  # ligne où le label d'accord est plus large que le mot ("Dm7" vs "LOVE,"), et le rendu
+  # RÉEL déborde de la colonne qui lui a été allouée, empiétant sur la colonne suivante
+  # (chevauchement constaté 2026-08-21, "All You Need Is Love" p.6, intro/couplet pairés).
+  def self.block_width(pdf, block, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
+    block.lines.map { |l| line_width(pdf, l.segments, chord_size, text_size) }.max || 0
   end
 
   # Texte TOUJOURS aligné à gauche (sauf demande expresse) : `block_align: center`
@@ -872,28 +894,35 @@ module Layout
     chord_ascent = font_metric(pdf, chord_size) { pdf.font.ascender }
     text_ascent = font_metric(pdf, text_size) { pdf.font.ascender }
     text_descent = font_metric(pdf, text_size) { pdf.font.descender }
-    col1_w = block_width(pdf, row[0], text_size: text_size)
-    col2_w = block_width(pdf, row[1], text_size: text_size)
+    col1_w = block_width(pdf, row[0], chord_size: chord_size, text_size: text_size)
+    col2_w = block_width(pdf, row[1], chord_size: chord_size, text_size: text_size)
+    # RAL3 : voir `row_to_element`.
+    force_chord = row.any? { |b| line_has_chord?(b.lines.first) }
 
     height = [
-      block_visual_height(pdf, chord_ascent, text_ascent, text_descent, row[0].lines, col1_w, chord_size: chord_size, text_size: text_size),
-      block_visual_height(pdf, chord_ascent, text_ascent, text_descent, row[1].lines, col2_w, chord_size: chord_size, text_size: text_size),
+      block_visual_height(pdf, chord_ascent, text_ascent, text_descent, row[0].lines, col1_w, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord),
+      block_visual_height(pdf, chord_ascent, text_ascent, text_descent, row[1].lines, col2_w, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord),
     ].max
     draw = lambda do |pdf_, y|
-      draw_block(pdf_, row[0], x0 + h_gutter, y, col1_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size)
-      draw_block(pdf_, row[1], x0 + h_gutter + col1_w + h_gutter, y, col2_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size)
+      draw_block(pdf_, row[0], x0 + h_gutter, y, col1_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord)
+      draw_block(pdf_, row[1], x0 + h_gutter + col1_w + h_gutter, y, col2_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord)
     end
     PageElement.new(height, draw)
   end
 
+  # RAL3 (Manuel/regles_esthetiques.adoc, "aucune exception") : dans une row côte à côte,
+  # si UN des deux blocs a un accord sur sa 1re ligne, les DEUX alignent leur 1re ligne de
+  # texte sur cet ancrage — un bloc sans accord ne "remonte" jamais au-dessus de son voisin.
   def self.row_to_element(pdf, row, x0, width, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
     widths = row.size == 2 ? [col1_w, col2_w] : [width]
-    height = row.each_with_index.map { |b, i| block_visual_height(pdf, chord_ascent, text_ascent, text_descent, b.lines, widths[i]) }.max
+    force_chord = row.size == 2 && row.any? { |b| line_has_chord?(b.lines.first) }
+    log_build("bloc sans accord aligné sur son voisin avec accord (RAL3)") if force_chord && row.any? { |b| !line_has_chord?(b.lines.first) }
+    height = row.each_with_index.map { |b, i| block_visual_height(pdf, chord_ascent, text_ascent, text_descent, b.lines, widths[i], force_chord_baseline: force_chord) }.max
     draw = lambda do |pdf_, y|
       if row.size == 2
         block, nxt = row
-        draw_block(pdf_, block, x0 + h_gutter, y, col1_w, chord_ascent, text_ascent)
-        draw_block(pdf_, nxt, x0 + h_gutter + col1_w + h_gutter, y, col2_w, chord_ascent, text_ascent)
+        draw_block(pdf_, block, x0 + h_gutter, y, col1_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
+        draw_block(pdf_, nxt, x0 + h_gutter + col1_w + h_gutter, y, col2_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
       else
         block = row[0]
         centered = block.directives[:block_align] != "left"
@@ -968,6 +997,7 @@ module Layout
       if fits
         last = pages.pop
         pages.last[:finish] = last[:finish]
+        log_build("diag seul en fin de pagination ramené sur la page précédente (RAD5)")
       end
     end
 
@@ -1046,7 +1076,7 @@ module Layout
         excess_paths = []
         excess_heights = []
       else
-        log_build("#{excess_paths.size} diags en trop -> page dédiée (ne tiennent pas en bas de la dernière page)")
+        log_build("#{excess_paths.size} diags en trop -> page dédiée (dépasse la place disponible en bas de la dernière page)")
       end
     end
 
@@ -1157,8 +1187,8 @@ module Layout
 
   # Dessine le bloc : y0 = haut visuel réel (sommet de la hampe du 1er élément). `width` :
   # largeur de colonne dispo pour ce bloc, sert au RAL2 (`nil` = jamais de RAL2).
-  def self.draw_block(pdf, block, x, y0, width, chord_ascent, text_ascent, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
-    y = y0 - (line_has_chord?(block.lines.first) ? chord_ascent : text_ascent)
+  def self.draw_block(pdf, block, x, y0, width, chord_ascent, text_ascent, chord_size: CHORD_SIZE, text_size: TEXT_SIZE, force_chord_baseline: false)
+    y = y0 - (force_chord_baseline || line_has_chord?(block.lines.first) ? chord_ascent : text_ascent)
     block.lines.each do |line|
       draw_line(pdf, line, x, y, width, chord_size: chord_size, text_size: text_size)
       y -= line_step(pdf, line, width, chord_size: chord_size, text_size: text_size)
@@ -1208,14 +1238,55 @@ module Layout
     end
   end
 
-  # Largeur totale qu'occuperait `segments` s'ils étaient dessinés (même règle d'avancée
-  # que `draw_line` : MAX(largeur texte, largeur label d'accord) par segment, + CHORD_GAP
-  # si le segment porte un accord — RAA1, jamais deux accords en contact).
-  def self.line_width(pdf, segments, chord_size, text_size)
-    segments.sum do |seg|
+  # Positions x de chaque segment d'une ligne NORMALE (texte + accords éventuels) — avance
+  # de MAX(largeur texte, largeur label d'accord) + CHORD_GAP si accord (RAA1). UNE SEULE
+  # formule pour le dessin (`draw_line`) ET la mesure (`line_width`) : jamais deux formules
+  # à tenir synchronisées à la main (bug récurrent — `block_width` mesurait le texte SEUL,
+  # `draw_line` avançait sur MAX(texte, accord) : le rendu réel débordait de la largeur
+  # mesurée, chevauchement constaté 2026-08-21, "All You Need Is Love" p.6 — Phil : "quelque
+  # chose qui mesure VRAIMENT la taille d'un bloc").
+  def self.text_line_steps(pdf, segments, chord_size, text_size)
+    cx = 0
+    steps = segments.map do |seg|
       text_w = pdf.width_of(seg.text, size: text_size)
       chord_w = seg.chord ? chord_label_width(pdf, seg.chord, chord_size) : 0
-      [text_w, chord_w].max + (seg.chord ? CHORD_GAP : 0)
+      step = { x: cx, seg: seg, text_w: text_w }
+      cx += [text_w, chord_w].max + (seg.chord ? CHORD_GAP : 0)
+      step
+    end
+    [steps, cx]
+  end
+
+  # Positions x d'une ligne "chords-only" (voir `draw_chords_only_line`) — accord et texte
+  # d'un même segment avancent l'un APRÈS l'autre (jamais un MAX), formule différente de
+  # `text_line_steps` par nature de ce type de ligne, mais même principe : dessin et mesure
+  # partagent le même générateur de positions.
+  def self.chords_only_steps(pdf, segments, chord_size)
+    cx = 0
+    steps = []
+    segments.each do |seg|
+      if seg.chord
+        steps << { x: cx, chord: seg.chord }
+        cx += chord_label_width(pdf, seg.chord, chord_size) + CHORD_GAP
+      end
+      sep = seg.text.strip
+      next if sep.empty?
+
+      steps << { x: cx, sep: sep }
+      cx += pdf.width_of(sep, size: chord_size) + CHORD_GAP
+    end
+    [steps, cx]
+  end
+
+  # Largeur totale qu'occuperait `segments` s'ils étaient dessinés — dispatch IDENTIQUE à
+  # `draw_line` (chords-only vs ligne normale), sinon la mesure et le dessin peuvent à
+  # nouveau diverger pour ce type de ligne précisément.
+  def self.line_width(pdf, segments, chord_size, text_size)
+    line = Line.new(segments: segments)
+    if line_has_chord?(line) && !line_has_words?(line)
+      chords_only_steps(pdf, segments, chord_size).last
+    else
+      text_line_steps(pdf, segments, chord_size, text_size).last
     end
   end
 
@@ -1225,26 +1296,118 @@ module Layout
     line_width(pdf, line.segments, chord_size, text_size) > width
   end
 
-  # RAL2 (Manuel/regles_esthetiques.adoc) : vers trop long -> raccourci par la FIN, mots
-  # entiers, jusqu'à tenir dans `width` ; les mots retirés forment l'excédent (affiché
-  # ensuite SOUS le vers, aligné à droite). Ne trimme que le DERNIER segment — cas
-  # courant (l'accord du dernier segment porte sur les derniers mots) ; un débordement
-  # qui mangerait plusieurs segments n'est pas géré pour l'instant.
-  def self.split_overflow(pdf, segments, width, chord_size, text_size)
-    return [segments, nil] if segments.empty? || !line_overflows?(pdf, Line.new(segments: segments), width, chord_size, text_size)
+  # RAL2.2 (Manuel/regles_esthetiques.adoc) : SEULEMENT si RAL2.1 (resserrement mots puis
+  # lettres, `resolve_line_spacing`) ne suffit toujours pas -> vers raccourci par la FIN,
+  # mots entiers, jusqu'à tenir dans `width` ; les mots retirés forment l'excédent (affiché
+  # ensuite SOUS le vers, aligné à droite). Mesure au resserrement DÉJÀ choisi (`ws`/`cs`),
+  # jamais à 0 (sinon on retrimme un texte qui, resserré, tenait peut-être déjà). Ne trimme
+  # que le DERNIER segment — cas courant (l'accord du dernier segment porte sur les
+  # derniers mots) ; un débordement qui mangerait plusieurs segments n'est pas géré pour
+  # l'instant.
+  def self.split_overflow(pdf, segments, width, text_size, ws, cs)
+    return [segments, nil] if segments.empty? || !width
+
+    fits = -> { line_tokens_x(pdf, segments.map(&:text).join, text_size, word_spacing: ws, char_spacing: cs).last <= width }
+    return [segments, nil] if fits.call
 
     segs = segments.map(&:dup)
     last = segs.last
     words = last.text.split(" ")
     overflow_words = []
 
-    while words.size > 1 && line_width(pdf, segs, chord_size, text_size) > width
+    fits_segs = -> { line_tokens_x(pdf, segs.map(&:text).join, text_size, word_spacing: ws, char_spacing: cs).last <= width }
+    while words.size > 1 && !fits_segs.call
       overflow_words.unshift(words.pop)
       last.text = "#{words.join(' ')} "
     end
 
     overflow_text = overflow_words.join(" ")
-    [segs, overflow_text.empty? ? nil : overflow_text]
+    return [segs, nil] if overflow_text.empty?
+
+    log_build("vers trop long malgré le resserrement RAL2.1 (word_spacing=#{ws}, char_spacing=#{cs}), excédent \"#{overflow_text}\" renvoyé sous la ligne, aligné à droite (RAL2.2)")
+    [segs, overflow_text]
+  end
+
+  # RAL2.1 (Phil 2026-08-21) : le VERS ENTIER est mesuré/dessiné EN CONTINU (mots +
+  # espaces), jamais segment par segment — un segment par segment laissait des trous
+  # béants dans le texte à chaque frontière d'accord (bug constaté 2026-08-21, essais
+  # word-spacing sur "L'Aigle noir" : l'avancée d'un segment était mesurée SANS resserrement
+  # alors que le texte suivant démarrait, lui, décalé par le resserrement). Découpe en
+  # tokens mot/espace ; seule l'espace change de largeur (`word_spacing`), jamais les
+  # lettres à l'intérieur d'un mot.
+  def self.word_tokens(text)
+    text.scan(/[^ ]+| +/)
+  end
+
+  # Position x (et offset caractère dans `text`) de chaque token — sert à la fois à
+  # dessiner les mots UNE SEULE FOIS pour tout le vers, et à replacer chaque accord à la
+  # bonne position après coup (`chord_x_at_offset`), y compris un accord tombé EN PLEIN
+  # MILIEU d'un mot (ex. "cre/c:ver").
+  def self.line_tokens_x(pdf, text, size, word_spacing: self.word_spacing, char_spacing: self.char_spacing)
+    cx = 0
+    co = 0
+    tokens = word_tokens(text).map do |tok|
+      token = { co: co, x: cx, text: tok }
+      # Un mot dessiné passe par `pdf.character_spacing` (Tc, ajouté après CHAQUE
+      # caractère affiché) — sa largeur RÉELLE inclut donc `char_spacing * tok.length`,
+      # sinon la mesure sous-estime le mot dès que `char_spacing` != 0 (bug de la même
+      # famille que `word_spacing`, constaté 2026-08-21 : trous grandissants entre les
+      # mots). Un token espace n'est JAMAIS dessiné (voir `draw_line`) donc jamais
+      # concerné par `char_spacing`, seulement par `word_spacing` (mécanisme manuel, pas Tc).
+      cx += tok.start_with?(" ") ? pdf.width_of(tok, size: size) + word_spacing * tok.length : pdf.width_of(tok, size: size) + char_spacing * tok.length
+      co += tok.length
+      token
+    end
+    [tokens, cx]
+  end
+
+  def self.chord_x_at_offset(pdf, tokens, offset, size, char_spacing: self.char_spacing)
+    return 0 if tokens.empty?
+
+    tok = tokens.reverse_each.find { |t| t[:co] <= offset } || tokens.first
+    prefix = tok[:text][0...(offset - tok[:co])]
+    tok[:x] + pdf.width_of(prefix, size: size) + char_spacing * prefix.length
+  end
+
+  # RAL2.1 (Manuel/regles_esthetiques.adoc) : valeurs limites décidées par Phil,
+  # 2026-08-21, sur "L'Aigle noir" — jamais dépassées. Mots resserrés en PREMIER (jusqu'à
+  # `RAL2_1_WORD_SPACING_MAX`) ; lettres resserrées SEULEMENT si ça ne suffit toujours pas
+  # (jusqu'à `RAL2_1_CHAR_SPACING_MAX`, en PLUS du resserrement des mots déjà au max).
+  RAL2_1_WORD_SPACING_MAX = -1.0
+  RAL2_1_CHAR_SPACING_MAX = -0.2
+  RAL2_1_STEP = -0.2
+
+  # Cherche le MINIMUM de resserrement qui fait tenir `full_text` dans `width` — [0, 0] si
+  # la ligne tient déjà nature, ou si même le maximum autorisé ne suffit pas (RAL2.2
+  # prend alors le relais, voir `split_overflow`).
+  def self.resolve_line_spacing(pdf, full_text, width, text_size)
+    return [0.0, 0.0] unless width
+
+    fits = ->(ws, cs) { line_tokens_x(pdf, full_text, text_size, word_spacing: ws, char_spacing: cs).last <= width }
+    return [0.0, 0.0] if fits.call(0.0, 0.0)
+
+    ws = 0.0
+    until fits.call(ws, 0.0) || ws <= RAL2_1_WORD_SPACING_MAX
+      ws = [ws + RAL2_1_STEP, RAL2_1_WORD_SPACING_MAX].max
+    end
+    return [ws, 0.0] if fits.call(ws, 0.0)
+
+    cs = 0.0
+    until fits.call(ws, cs) || cs <= RAL2_1_CHAR_SPACING_MAX
+      cs = [cs + RAL2_1_STEP, RAL2_1_CHAR_SPACING_MAX].max
+    end
+    [ws, cs]
+  end
+
+  # RAA1 : deux labels d'accord ne doivent JAMAIS se toucher — plus question de distordre
+  # l'avancée du TEXTE pour ça (RAL2.1 : le texte reste sa propre mesure, continue, intacte)
+  # ; c'est le LABEL d'accord qui est repoussé à droite si besoin, jamais le texte déplacé.
+  def self.spread_chord_positions(pdf, chord_steps, chord_size)
+    min_x = nil
+    chord_steps.each do |step|
+      step[:x] = min_x if min_x && step[:x] < min_x
+      min_x = step[:x] + chord_label_width(pdf, step[:chord], chord_size) + CHORD_GAP
+    end
   end
 
   # L'avancée horizontale ne doit JAMAIS être inférieure à la largeur du label d'accord
@@ -1259,16 +1422,39 @@ module Layout
     return draw_chords_only_line(pdf, line, x, y, chord_size: chord_size) if line_has_chord?(line) && !line_has_words?(line)
 
     has_chord = line_has_chord?(line)
-    segs, overflow_text = split_overflow(pdf, line.segments, width, chord_size, text_size)
-    cx = x
-    segs.each do |seg|
-      draw_chord_label(pdf, seg.chord, cx, y, size: chord_size) if seg.chord
-      text_y = has_chord ? y - chord_size - LINE_GAP : y
-      text_descent = font_metric(pdf, text_size) { pdf.font.descender }
-      engrave(bottom: text_y - text_descent, context: "texte \"#{seg.text[0, 20]}\"") { pdf.draw_text seg.text, at: [cx, text_y], size: text_size }
-      text_w = pdf.width_of(seg.text, size: text_size)
-      chord_w = seg.chord ? chord_label_width(pdf, seg.chord, chord_size) : 0
-      cx += [text_w, chord_w].max + (seg.chord ? CHORD_GAP : 0)
+    text_y = has_chord ? y - chord_size - LINE_GAP : y
+    text_descent = font_metric(pdf, text_size) { pdf.font.descender }
+
+    # `word_spacing`/`char_spacing` (accesseurs globaux) : forcés SI Phil les a réglés
+    # explicitement (essais manuels, `songbook.rb song`) — sinon RAL2.1 décide seul, par
+    # ligne, le minimum de resserrement nécessaire.
+    natural_text = line.segments.map(&:text).join
+    if word_spacing.zero? && char_spacing.zero?
+      ws, cs = resolve_line_spacing(pdf, natural_text, width, text_size)
+      log_build("vers resserré pour tenir dans sa colonne : word_spacing=#{ws}, char_spacing=#{cs} (RAL2.1)") if ws.nonzero? || cs.nonzero?
+    else
+      ws, cs = word_spacing, char_spacing
+    end
+
+    segs, overflow_text = split_overflow(pdf, line.segments, width, text_size, ws, cs)
+    full_text = segs.map(&:text).join
+    tokens, = line_tokens_x(pdf, full_text, text_size, word_spacing: ws, char_spacing: cs)
+
+    seg_offset = 0
+    chord_steps = segs.filter_map do |seg|
+      step = { x: chord_x_at_offset(pdf, tokens, seg_offset, text_size, char_spacing: cs), chord: seg.chord } if seg.chord
+      seg_offset += seg.text.length
+      step
+    end
+    spread_chord_positions(pdf, chord_steps, chord_size)
+    chord_steps.each { |step| draw_chord_label(pdf, step[:chord], x + step[:x], y, size: chord_size) }
+
+    pdf.character_spacing(cs) do
+      tokens.each do |tok|
+        next if tok[:text].start_with?(" ")
+
+        engrave(bottom: text_y - text_descent, context: "texte \"#{tok[:text][0, 20]}\"") { pdf.draw_text tok[:text], at: [x + tok[:x], text_y], size: text_size }
+      end
     end
 
     return unless overflow_text
@@ -1288,18 +1474,15 @@ module Layout
   # jamais le séparateur affiché sous l'accord — Phil, 2026-08-20). Espacement RAA1
   # (`CHORD_GAP`) partout, y compris entre accord et séparateur.
   def self.draw_chords_only_line(pdf, line, x, y, chord_size: CHORD_SIZE)
-    cx = x
     descent = font_metric(pdf, chord_size) { pdf.font.descender }
-    line.segments.each do |seg|
-      if seg.chord
-        draw_chord_label(pdf, seg.chord, cx, y, size: chord_size)
-        cx += chord_label_width(pdf, seg.chord, chord_size) + CHORD_GAP
+    steps, = chords_only_steps(pdf, line.segments, chord_size)
+    steps.each do |step|
+      if step[:chord]
+        draw_chord_label(pdf, step[:chord], x + step[:x], y, size: chord_size)
+        next
       end
-      sep = seg.text.strip
-      next if sep.empty?
 
-      engrave(bottom: y - descent, context: "séparateur accords \"#{sep}\"") { pdf.draw_text sep, at: [cx, y], size: chord_size }
-      cx += pdf.width_of(sep, size: chord_size) + CHORD_GAP
+      engrave(bottom: y - descent, context: "séparateur accords \"#{step[:sep]}\"") { pdf.draw_text step[:sep], at: [x + step[:x], y], size: chord_size }
     end
   end
 

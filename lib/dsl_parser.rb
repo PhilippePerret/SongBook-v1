@@ -9,8 +9,12 @@ class DSLParser
   # Groupe 2 optionnel : "-<case>" (ex. "/Bb-6:") = case (fret) explicite où jouer
   # l'accord, cohérent avec le nommage des fichiers de diag `<Accord>-<case>[-N].svg`
   # (Phil, 2026-08-18). Sans lui, sélection du diagramme au fret le plus bas ("le plus
-  # en haut du manche") — voir `ChordDiagrams.diag_path`.
-  CHORD_RE = /\/((?:[A-Za-zÀ-ÿ0-9#♯♭]+)(?:\/[A-Za-zÀ-ÿ0-9#♯♭]+)?)(?:-(\d+))?:/
+  # en haut du manche") — voir `ChordDiagrams.diag_path`. N'IMPORTE QUOI entre "-" et ":"
+  # (pas seulement des chiffres) : "le nom seul sert à trouver l'accord" (Phil,
+  # 2026-08-21) — le séparateur "-" existe, ce qui le suit n'a pas besoin d'être un
+  # numéro propre pour que le NOM (groupe 1) soit reconnu (bug constaté : "/g2-0C:",
+  # "En rouge et noir"/"Belle île en mer", pas reconnu DU TOUT faute de `-(\d+)` strict).
+  CHORD_RE = /\/((?:[A-Za-zÀ-ÿ0-9#♯♭]+)(?:\/[A-Za-zÀ-ÿ0-9#♯♭]+)?)(?:-([^: ]+))?:/
 
   def self.parse(source)
     new(source).parse

@@ -55,14 +55,23 @@ module MarkdownPage
   # numérotées par l'appelant), sur UNE SEULE page — pas de flux multi-page pour l'instant
   # (limitation connue, Phil 2026-08-20). RATX1 : 2 colonnes si `width` > 15cm. RATX2 :
   # police dédiée (`text_font`, options.yaml), différente de celle des lyrics.
+  # Garamond (quelle que soit la variante — `Garamond`, `Cormorant_Garamond`) rendu trop
+  # serré en prose longue (préface, avant-propos...) — Phil, 2026-08-21 : "écarter un peu
+  # les lettres". Valeur provisoire, jamais validée par Phil.
+  GARAMOND_LETTER_SPACING = 0.15
+
   def self.render(pdf, md_path, width, top: pdf.bounds.height)
     blocks = parse(File.read(md_path))
-    pdf.font(AppOptions.get("text_font")) do
-      if width > TWO_COL_THRESHOLD_PT
-        render_two_columns(pdf, blocks, top, width)
-      else
-        y = top
-        blocks.each { |block| y = draw_block(pdf, block, 0, y, width) }
+    text_font_name = AppOptions.get("text_font")
+    spacing = text_font_name.include?("Garamond") ? GARAMOND_LETTER_SPACING : 0
+    pdf.font(text_font_name) do
+      pdf.character_spacing(spacing) do
+        if width > TWO_COL_THRESHOLD_PT
+          render_two_columns(pdf, blocks, top, width)
+        else
+          y = top
+          blocks.each { |block| y = draw_block(pdf, block, 0, y, width) }
+        end
       end
     end
   end

@@ -78,6 +78,19 @@ module PageBuilder
 
       if existing_name
         name = existing_name
+        # Contenu identique à un bloc déjà stocké (ex. refrain repris mot pour mot sous un
+        # {nom} DIFFÉRENT, "refrain-2" reprenant "refrain-1") : `order`/le pairage auto
+        # continuent de voir le nom canonique (`existing_name`, comportement documenté
+        # ci-dessus, inchangé) — mais le nom littéral écrit dans le fichier (`given_name`)
+        # doit RESTER résolvable tel quel pour un `.gab` qui le référence explicitement par
+        # son propre nom (bug constaté 2026-08-21, "All You Need Is Love" : `{refrain-2}`
+        # existe bien dans le `.lyr`, mais un `.gab` qui l'appelle plantait tout le carnet
+        # — `Hash#fetch` ne trouvait jamais "refrain-2", silencieusement absorbé par
+        # "refrain-1"). Alias, pas une 2e copie : même objet `Block`.
+        if given_name && given_name != name && !blocks.key?(given_name)
+          blocks[given_name] = blocks[name]
+          Layout.log_build("bloc \"#{given_name}\" (contenu identique à \"#{name}\") : alias résolvable vers le même contenu")
+        end
       elsif given_name && blocks.key?(given_name) && !body.empty?
         original = given_name
         n = 2
@@ -108,8 +121,14 @@ module PageBuilder
   # couplet, via `//`). Ex. `{couplet-1} // {refrain-part1-1} + {refrain-part2-1}`.
   ROW_TOKEN_RE = /\A\{[^:;}]+\}(\s*\+\s*\{[^:;}]+\})*\z/.freeze
 
+  # Une ligne = un paragraphe (contrairement au `.lyr`, où une strophe peut s'étaler sur
+  # plusieurs lignes et a donc besoin d'une ligne vide pour savoir où elle s'arrête — un
+  # paragraphe `.gab` tient TOUJOURS sur une seule ligne, `{nom}`/`{song: nom}`/directive,
+  # jamais ambigu : exiger une ligne vide entre chaque n'avait pas de sens ici, imposé sans
+  # concertation par une session précédente — retiré, Phil 2026-08-21). Lignes vides
+  # tolérées (ignorées), ni obligatoires ni interdites.
   def self.parse_gab(path)
-    File.read(path).split(/\n{2,}/).map(&:strip).reject(&:empty?).map do |para|
+    File.read(path).split("\n").map(&:strip).reject(&:empty?).map do |para|
       if para.include?("{song:")
         names = para.split("//").filter_map { |chunk| chunk[/\{song:\s*([^;}]+)/, 1]&.strip }
         GabItem.new(:row, names)
@@ -176,6 +195,7 @@ module PageBuilder
     raise "lyrics_flux :free (Manuel/song/layout.adoc) pas encore implémenté" if lyrics_flux == :free
 
     if lyrics_flux == :vertical
+      Layout.log_build("lyrics_flux=:vertical : #{names.size} bloc(s), chacun sa propre row")
       names.each { |name| items << GabItem.new(:row, [name]) }
       return items
     end
@@ -183,6 +203,7 @@ module PageBuilder
     pending = nil
     names.each do |name|
       if pending && block_kind(pending) == block_kind(name)
+        Layout.log_build("blocs \"#{pending}\"+\"#{name}\" pairés côte à côte (RAO5, même type \"#{block_kind(name)}\")")
         items << GabItem.new(:row, [pending, name])
         pending = nil
       else
@@ -194,12 +215,49 @@ module PageBuilder
     items
   end
 
+  # Bloc `.gab` référencé introuvable TEL QUEL dans le `.lyr` : traitement intelligent
+  # (Phil, 2026-08-21), jamais un crash qui bloquerait tout le carnet pour une chanson en
+  # défaut. `candidates` = blocs RÉELS du `.lyr` du même type (`block_kind`, "couplet" pour
+  # "couplet-3" comme pour "couplet"), dans leur ordre RÉEL d'apparition (`lyr_order`,
+  # dédupliqué : un refrain repris 3 fois n'y compte qu'une fois).
+  # - Un SEUL candidat -> c'est forcément lui (typo de numéro, "{couplet}" pour l'unique
+  #   couplet, etc.) : nom corrigé, signalé, on continue.
+  # - Plusieurs candidats (ex. plusieurs `{couplet}` génériques dans le .gab, sans numéro) ->
+  #   mapping POSITIONNEL : la Nième référence de ce type dans le .gab prend le Nième bloc
+  #   de ce type dans le .lyr (`counters`, compteur par type sur TOUTE la construction de
+  #   la chanson — un seul `Hash.new(0)` passé par `build`, jamais réinitialisé en cours de
+  #   route).
+  # - Aucun candidat (type inconnu du .lyr) -> conflict log, bloc vide rendu à la place.
+  def self.fetch_block(lyr_blocks, name, lyr_order, counters)
+    return lyr_blocks[name] if lyr_blocks.key?(name)
+
+    kind = block_kind(name)
+    candidates = lyr_order.uniq.select { |n| block_kind(n) == kind }
+
+    if candidates.size == 1
+      Layout.log_build("bloc .gab \"#{name}\" introuvable tel quel, corrigé en \"#{candidates.first}\" (seul bloc \"#{kind}\" du .lyr)")
+      return lyr_blocks.fetch(candidates.first)
+    end
+
+    if candidates.size > 1
+      counters[kind] += 1
+      resolved = candidates[counters[kind] - 1]
+      if resolved
+        Layout.log_build("bloc .gab \"#{name}\" générique : #{counters[kind]}e référence \"#{kind}\" -> \"#{resolved}\" (ordre d'apparition dans le .lyr)")
+        return lyr_blocks.fetch(resolved)
+      end
+    end
+
+    Layout.conflict!("bloc \"#{name}\" introuvable (référencé dans le .gab, absent du .lyr)", solution: "bloc vide affiché")
+    Block.new(lines: [], directives: {}, paired_with_previous: false)
+  end
+
   # `name` peut être "nomA+nomB" (voir `parse_gab`, marque `+`) : concatène les lignes des
   # blocs dans l'ordre pour n'en faire qu'un seul, rendu comme un bloc normal.
-  def self.resolve_block(lyr_blocks, name)
-    return lyr_blocks.fetch(name) unless name.include?("+")
+  def self.resolve_block(lyr_blocks, name, lyr_order, counters)
+    return fetch_block(lyr_blocks, name, lyr_order, counters) unless name.include?("+")
 
-    parts = name.split("+").map { |n| lyr_blocks.fetch(n) }
+    parts = name.split("+").map { |n| fetch_block(lyr_blocks, n, lyr_order, counters) }
     Block.new(lines: parts.flat_map(&:lines), directives: parts.first.directives, paired_with_previous: false)
   end
 
@@ -219,6 +277,7 @@ module PageBuilder
     return block if block.directives.key?(:block_align)
     return block unless block_name_kind(name) == "intro"
 
+    Layout.log_build("bloc \"#{name}\" aligné #{layout[:intro_align]} (intro_align du layout)")
     Block.new(lines: block.lines, directives: block.directives.merge(block_align: layout[:intro_align].to_s), paired_with_previous: block.paired_with_previous)
   end
 
@@ -241,11 +300,19 @@ module PageBuilder
     if meta["transpose"]
       decalage_lettres, decalage_demitons = Transpose.parser_entete(meta["transpose"])
       ChordDiagrams.transpose_blocks!(lyr_blocks, decalage_lettres, decalage_demitons)
+      Layout.log_build("transposition \"#{meta["transpose"]}\" appliquée (#{decalage_lettres} lettre(s)/#{decalage_demitons} demi-ton(s))")
     end
     title_band_default = layout&.key?(:title_band) ? layout[:title_band] : DEFAULT_TITLE_BAND
     diag_position_default = layout&.fetch(:diag_position, nil) || DEFAULT_DIAG_POSITION
     lyrics_flux = layout&.fetch(:lyrics_flux, nil) || :side
-    items = gab_path ? parse_gab(gab_path) : default_items(lyr_blocks, lyr_order, title_band: title_band_default, diag_position: diag_position_default, lyrics_flux: lyrics_flux)
+    Layout.log_build("layout résolu : title_band=#{title_band_default} diag_position=#{diag_position_default} lyrics_flux=#{lyrics_flux} (source=#{layout ? "carnet" : "défauts app"})")
+    if gab_path
+      Layout.log_build(".gab trouvé (#{gab_path}) : mise en page explicite, layout du carnet ignoré pour l'agencement")
+      items = parse_gab(gab_path)
+    else
+      Layout.log_build("agencement auto (default_items, RAO5 pairage par type)")
+      items = default_items(lyr_blocks, lyr_order, title_band: title_band_default, diag_position: diag_position_default, lyrics_flux: lyrics_flux)
+    end
     page_size = page_size_in.map { |v| v * 72 }
     page_w_pt, page_h_pt = page_size
     kdp = KDP.new(page_count: page_count, trim_width: page_size_in[0], trim_height: page_size_in[1],
@@ -256,10 +323,12 @@ module PageBuilder
       Layout.apply_kdp_margins(pdf, kdp, first_page_no, page_w_pt, page_h_pt)
       header_style = items.find { |i| i.type == :title }&.data&.dig(:title) == "band" ? :band : :inline
       header_bottom = header_style == :band ? Layout.draw_header_band(pdf, meta) : Layout.draw_header_inline(pdf, meta)
+      Layout.log_build("titre en #{header_style == :band ? "bandeau" : "ligne simple"} (header_style)")
 
       chord_frets = ChordDiagrams.collect_chord_frets(lyr_blocks.values)
       diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret) }
       diag_position = (items.find { |i| i.type == :diags }&.data&.dig(:position) || diag_position_default).to_sym
+      Layout.log_build("#{diag_paths.size} diagramme(s) d'accord, position=#{diag_position}")
 
       text_x, text_w, first_avail_h, side_col = Layout.layout_diags(pdf, diag_paths, diag_position, header_bottom)
 
@@ -267,7 +336,8 @@ module PageBuilder
       text_ascent = Layout.font_metric(pdf, Layout::TEXT_SIZE) { pdf.font.ascender }
       text_descent = Layout.font_metric(pdf, Layout::TEXT_SIZE) { pdf.font.descender }
 
-      rows = items.select { |i| i.type == :row }.map { |i| i.data.map { |name| with_intro_align(resolve_block(lyr_blocks, name), name, layout) } }
+      bare_kind_counters = Hash.new(0)
+      rows = items.select { |i| i.type == :row }.map { |i| i.data.map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters), name, layout) } }
       col1_w, col2_w, h_gutter = Layout.row_column_widths(pdf, rows, text_w)
 
       row_idx = 0
@@ -307,6 +377,7 @@ module PageBuilder
         max_h = page[:avail_h] - others_h
         next if elements[job[:index]].height <= max_h
 
+        Layout.log_build("tabla \"#{job[:title] || job[:svg_path]}\" (shrink: true) réduite à #{max_h.round(1)}pt de haut pour tenir sur sa page")
         elements[job[:index]] = Layout.build_tabla_element_v2(
           pdf, job[:svg_path], text_x, text_w, align: job[:align], title: job[:title], max_height: max_h
         )
