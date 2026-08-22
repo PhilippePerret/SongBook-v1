@@ -141,6 +141,10 @@ Solution proposée ?
 | Pour le classement alphabétique des performers, supprimer les articles de noms de groupe ("the", "le", "les", "la")s
 | 
 
+| RATDM12
+| Seules les pages des chansons doivent être numérotées.
+|
+
 |====
 
 
@@ -186,7 +190,7 @@ Solution proposée ?
 |====
 
 [[lyrics-rules, règles concernant les textes]]
-==== Règles concernant les lyrics ====
+==== Règles concernant les paroles ====
 
 [cols="1,6,2", options="header"]
 |====
@@ -197,8 +201,18 @@ Solution proposée ?
 | Sauf mention explicite dans la <<strophe-definition, définition de la strophe>>.
 
 | RAL2 
-| Lorsqu'un vers est trop long et déborde sur la marge droite, il doit être raccourci d'autant de mots que nécessaire, **par la fin**, pour tenir sur la ligne. L'excédent est placé sous le vers, aligné à droite.
+| Lorsqu'un vers est trop long et déborde sur la marge droite ou le bloc à côté, il faut le raccourcir selon la règles RAL2.1, et en cas d'échec la règle RAL2.2
 | Peut s'appliquer aux vers de deux strophes côte à côte.
+| RAL2.1
+| En cas de texte trop long, essayer de réduire l'espace entre les mots jusqu'à la valeur X [todo: à  définir]
+| En cas d'impossibilité, appliquer la règle suivante.
+| RAL2.2
+| Si le moyen précédent ne fonctionne pas, il doit être raccourci d'autant de mots que nécessaire, **par la fin**, pour tenir sur la ligne. L'excédent est placé sous le vers, aligné à droite.
+|
+
+| RAL3
+| Si une strophe sans accords est à côté d'une strophe avec accord, celle sans accords doit aligner sa première ligne à la première ligne de celle avec accord.
+| Aucune exception.
 
 |====
 
