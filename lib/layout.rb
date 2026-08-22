@@ -264,7 +264,8 @@ module Layout
   INFO_GAP = 16
 
   BAND_COLOR = "3A3A3A"
-  BAND_GAP = 8
+  BAND_GAP = 10
+  PC_BOTTOM_PAD = 5
   # Respiration horizontale entre le texte du bandeau (titre à gauche, parolier/
   # compositeur à droite) et les bords du bandeau — même valeur des deux côtés.
   HEADER_PAD_X = 12
@@ -658,25 +659,26 @@ module Layout
     y - title_descent
   end
 
-  # Fond plein derrière le titre (aspect v13/14 repris), texte clair dessus — dimensionné
-  # pour NE PAS toucher à la marge haute : bandeau à 8px de l'encre RÉELLE du titre (voir
-  # `ink_extent`, pas l'ascender/descender approximatifs) des deux côtés, donc réellement
-  # centré quel que soit le titre/police/taille — pas une valeur mesurée à la main une
-  # fois puis figée (Phil, 2026-08-16). Le TOP du titre (sa position, `y`) ne bouge jamais
-  # (= pdf.bounds.height − ascender, identique à :inline).
-  # Bandeau CONTENU dans la zone sûre KDP : `band_top` plafonné à `pdf.bounds.height` —
-  # sans ce plafond, `y + ink_top + BAND_GAP` dépasse systématiquement `bounds.height` dès
-  # que l'encre réelle du titre (majuscules accentuées notamment) approche l'ascender
-  # nominal, plus BAND_GAP en trop (bug réel constaté à l'upload KDP, ~2pt, 2026-08-22 —
-  # le commentaire précédent affirmait le bandeau "contenu" sans que le calcul le
-  # garantisse réellement).
+  # Bandeau ANCRÉ au sommet de la page. `BAND_GAP` (10pt, Phil 2026-08-22) = espace noir
+  # au-dessus de l'encre du titre == espace noir en dessous de l'encre du titre — bandeau/
+  # titre/interprète : jamais touchés par ce qui suit. Parolier/compositeur ANCRÉ SUR
+  # `band_bottom` (PAS sur le titre) : `PC_BOTTOM_PAD` (5pt) entre son encre et le bas du
+  # bandeau — tient toujours dans le bandeau quelle que soit sa taille, par construction
+  # (Phil, 2026-08-22 : l'ancien calcul le positionnait juste sous le titre, sans rapport
+  # avec la place réellement dispo plus bas dans le bandeau — d'où le débordement).
   def self.draw_header_band(pdf, meta)
-    y = title_baseline_y(pdf)
     ink_top, ink_bottom = ink_extent(pdf, meta["title"].to_s, TITLE_SIZE, style: :bold)
 
-    band_top = [y + ink_top + BAND_GAP, pdf.bounds.height].min
+    band_top = pdf.bounds.height
+    y = band_top - BAND_GAP - ink_top
     band_bottom = y - ink_bottom - BAND_GAP
     band_h = band_top - band_bottom
+
+    pc = [meta["lyrics"], meta["composer"]].compact.uniq.join(" / ")
+    # Place dispo sous le titre, dans le bandeau, avant `PC_BOTTOM_PAD` : `band_bottom` est
+    # à `BAND_GAP` de l'encre du titre (voir ci-dessus) — jamais plus que ça.
+    pc_size, pc_ink_bottom = fit_pc_size(pdf, pc, BAND_GAP - PC_BOTTOM_PAD)
+    y_pc = band_bottom + PC_BOTTOM_PAD + pc_ink_bottom
 
     engrave(bottom: band_bottom, context: "bandeau de titre") do
       pdf.fill_color BAND_COLOR
@@ -684,9 +686,55 @@ module Layout
       pdf.fill_color "000000"
     end
 
-    draw_header_row(pdf, meta, y, title_color: "FFFFFF", info_color: "FFFFFF")
+    draw_header_band_rows(pdf, meta, y, y_pc, pc_size, title_color: "FFFFFF", info_color: "FFFFFF")
 
     band_bottom
+  end
+
+  # Taille de parolier/compositeur qui tient dans la place RÉELLEMENT dispo sous le titre
+  # (`budget`, en pt d'encre) — jamais fixe (PC_SIZE) sans vérifier que ça tient (bug
+  # constaté 2026-08-22 : texte débordant du bandeau). Ne touche NI au bandeau NI au titre
+  # NI à l'interprète, SEULEMENT ce texte-là (Phil, 2026-08-22) : réduit la taille
+  # (proportionnellement, l'encre HelveticaNeue scale linéairement avec `size` — voir
+  # `ink_extent`) seulement si l'encre naturelle à PC_SIZE dépasse ce budget.
+  def self.fit_pc_size(pdf, pc, budget)
+    return [PC_SIZE, 0] if pc.empty?
+
+    top, bottom = ink_extent(pdf, pc, PC_SIZE)
+    natural = top + bottom
+    return [PC_SIZE, bottom] if natural <= budget || natural.zero?
+
+    size = PC_SIZE * (budget / natural)
+    Layout.log_build("parolier/compositeur \"#{pc}\" réduit de #{PC_SIZE}pt à #{size.round(1)}pt pour tenir dans le bandeau (Phil, 2026-08-22)")
+    _, bottom = ink_extent(pdf, pc, size)
+    [size, bottom]
+  end
+
+  # Titre + interprète sur `y` ; parolier/compositeur (fer à droite, taille `pc_size` —
+  # voir `fit_pc_size`) sur `y_pc`, en dessous — variante band-only de `draw_header_row`
+  # (Phil, 2026-08-22 : plus "identique pour :inline et :band", seul :inline garde les 3
+  # sur la même ligne de base).
+  def self.draw_header_band_rows(pdf, meta, y, y_pc, pc_size, title_color:, info_color:)
+    title = meta["title"].to_s
+    draw_text_colored(pdf, title, at: [HEADER_PAD_X, y], size: TITLE_SIZE, style: :bold, color: title_color)
+    title_w = pdf.width_of(title, size: TITLE_SIZE, style: :bold)
+
+    interprete = format_interprete(meta)
+    unless interprete.empty?
+      draw_text_colored(pdf, interprete, at: [HEADER_PAD_X + title_w + INFO_GAP, y], size: INTERPRETE_SIZE, color: info_color)
+    end
+
+    # RAT1 (Manuel/regles_esthetiques.adoc) : même personne aux deux -> le nom une seule
+    # fois, jamais "X / X".
+    if meta["lyrics"] && meta["lyrics"] == meta["composer"]
+      log_build("parolier=compositeur (\"#{meta["lyrics"]}\") : nom affiché une seule fois (RAT1)")
+    end
+    pc = [meta["lyrics"], meta["composer"]].compact.uniq.join(" / ")
+    return if pc.empty?
+
+    w = pdf.width_of(pc, size: pc_size)
+    right_edge = pdf.bounds.width - HEADER_PAD_X - w
+    draw_text_colored(pdf, pc, at: [right_edge, y_pc], size: pc_size, color: info_color)
   end
 
   # Option `cote_a_cote` (frontmatter, défaut true) : ON = pairage 2 par 2 par défaut dans

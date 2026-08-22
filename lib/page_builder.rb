@@ -321,7 +321,16 @@ module PageBuilder
     Prawn::Document.generate(out_path, page_size: page_size, margin: 0) do |pdf|
       Layout.register_fonts(pdf)
       Layout.apply_kdp_margins(pdf, kdp, first_page_no, page_w_pt, page_h_pt)
-      header_style = items.find { |i| i.type == :title }&.data&.dig(:title) == "band" ? :band : :inline
+      title_item = items.find { |i| i.type == :title }
+      # `.gab` explicite sans directive `{title: ...}` (ex. w.gab de "À bicyclette") :
+      # retombe sur `title_band_default` (layout résolu du carnet), jamais un :inline
+      # imposé en silence — bug constaté 2026-08-22 : chanson sans bandeau alors que le
+      # carnet le demande, simplement parce que son .gab ne redéfinit pas le titre.
+      header_style = if title_item
+        title_item.data[:title] == "band" ? :band : :inline
+      else
+        title_band_default ? :band : :inline
+      end
       header_bottom = header_style == :band ? Layout.draw_header_band(pdf, meta) : Layout.draw_header_inline(pdf, meta)
       Layout.log_build("titre en #{header_style == :band ? "bandeau" : "ligne simple"} (header_style)")
 
