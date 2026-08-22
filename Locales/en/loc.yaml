@@ -3,3 +3,8 @@ book_designer: Book designer
 typesetter: Typesetter
 proofreader: Proofreader
 programming: Programming
+
+# cover
+cover_price: "Price: %s"
+cover_isbn: "ISBN: %s"
+cover_designed_by: "Songbook designed by %s"

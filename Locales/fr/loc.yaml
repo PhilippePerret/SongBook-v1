@@ -11,3 +11,8 @@ composer: compositeur
 lyrics: parolier
 year: date
 transpose: transposition
+
+# couverture
+cover_price: "Prix : %s"
+cover_isbn: "ISBN : %s"
+cover_designed_by: "Carnet conçu par %s"

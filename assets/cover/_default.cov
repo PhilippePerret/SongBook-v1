@@ -1,0 +1,17 @@
+1.
+{cover_image} |
+              |  {title; font-size: 30pt;}
+              | {subtitle; font-size: 24pt;}
+              |
+              |{author|book_designer; font-size:10pt; align:Right Bot;}
+              |
+              |{editor_logo|editor_name}
+
+4.
+        {editor_name; align: center; font-size:10pt;}
+        
+{performer-list; format: inline;}
+{song-list; format: column; column: 3;}
+
+{price; font-size:16pt; weight:bold;}   |{code_barres}
+{isbn; font-size:16pt}                  | 
