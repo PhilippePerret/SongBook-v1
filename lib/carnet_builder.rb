@@ -4,6 +4,7 @@ require "fileutils"
 require_relative "page_builder"
 require_relative "layout"
 require_relative "kdp"
+require_relative "cover_builder"
 require_relative "markdown_page"
 require_relative "locale"
 require_relative "song_cache"
@@ -198,7 +199,7 @@ module CarnetBuilder
     out_path
   end
 
-  def self.build(carnet_folder, only_song: nil)
+  def self.build(carnet_folder, only_song: nil, cover: false, debug_marks: false)
     tdm_path = FileFinder.find(carnet_folder, :tdm)
     raise "aucun fichier .tdm/.toc trouvé dans #{carnet_folder}" unless tdm_path
 
@@ -215,7 +216,7 @@ module CarnetBuilder
     # lu comme 8.27pt, marges KDP en inches soustraites d'une largeur de page presque
     # nulle, `pdf.bounds.width` négatif, crash Prawn `CannotFit`). Une unité explicite
     # ("21cm x 15cm") reste convertie normalement.
-    page_size_in = conf.fetch("format").split(/\s*x\s*/i).map { |v| v =~ /[a-z]/i ? AppOptions.length_pt(v) / AppOptions::IN_TO_PT : v.to_f }
+    page_size_in = conf.fetch("format") { AppOptions.get("format") }.split(/\s*x\s*/i).map { |v| v =~ /[a-z]/i ? AppOptions.length_pt(v) / AppOptions::IN_TO_PT : v.to_f }
     page_size_pt = page_size_in.map { |v| v * AppOptions::IN_TO_PT }
     layout_name = conf["layout"]
     base_layout = layout_name ? LAYOUTS.fetch(layout_name) { raise "layout inconnu : #{layout_name} (voir CarnetBuilder::LAYOUTS)" } : DEFAULT_LAYOUT
@@ -232,9 +233,11 @@ module CarnetBuilder
     songbooks_dir = File.join(export_dir, "songbooks")
     songs_dir = File.join(export_dir, "songs")
     logs_dir = File.join(export_dir, "xlogs")
+    cover_dir = File.join(export_dir, "cover")
     FileUtils.mkdir_p(songbooks_dir)
     FileUtils.mkdir_p(songs_dir)
     FileUtils.mkdir_p(logs_dir)
+    FileUtils.mkdir_p(cover_dir)
     songs = File.readlines(tdm_path).map { |l| l.sub(/\A-\s*/, "").strip }.reject(&:empty?)
 
     existing_versions = Dir.glob(File.join(songbooks_dir, "*-v*.pdf")).filter_map { |f| f[/-v(\d+)\.pdf\z/, 1]&.to_i }
@@ -408,12 +411,21 @@ module CarnetBuilder
     SongCache.save(chansons_dir)
     Layout.report_conflicts!
     combined.save(out_path)
+
+    if cover
+      cover_out = File.join(cover_dir, "#{slug}-v#{version}-cover.pdf")
+      cov_path = File.expand_path("../assets/cover/_default.cov", __dir__)
+      CoverBuilder.build(cover_out, cov_path: cov_path, kdp: kdp_final, conf: conf,
+        entries: entries, carnet_folder: carnet_folder, debug_marks: debug_marks)
+    end
+
     missing_chords_summary = Layout.missing_chords_summary
     File.open(Layout.conflict_log_path, "a") { |f| f.puts missing_chords_summary } if missing_chords_summary
     File.open(Layout.conflict_log_path, "a") { |f| f.puts "Fin : #{Time.now}" }
     File.open(Layout.building_log_path, "a") { |f| f.puts "Fin : #{Time.now}" }
 
     puts "#{File.basename(out_path)} généré : #{total_page_count} pages"
+    puts "#{File.basename(cover_out)} généré" if cover
     out_path
   end
 

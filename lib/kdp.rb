@@ -1,6 +1,7 @@
 # Calculs de gabarit imprimeur KDP (marges, dos, couverture).
 # Sources : https://kdp.amazon.com/en_US/help/topic/GVBQ3CMEQW3W2VL6
 #           https://kdp.amazon.com/en_US/help/topic/G201953020
+#           https://kdp.amazon.com/en_US/help/topic/G5HDYGP4BXLX4RUW (barcode)
 class KDP
   BLEED_IN                    = 0.125
   OUTSIDE_MARGIN_NO_BLEED_MIN = 0.25
@@ -8,6 +9,15 @@ class KDP
 
   COVER_TEXT_SAFE_MARGIN_MIN = 0.125
   SPINE_TEXT_SAFE_MARGIN_MIN = 0.0625
+
+  # Zone réservée au code-barres ISBN, 4e de couverture (KDP fournit son propre
+  # code-barres gratuit si aucun ISBN propre n'est fourni — la zone reste
+  # réservée dans les deux cas).
+  BARCODE_WIDTH_IN     = 2.0
+  BARCODE_HEIGHT_IN    = 1.2
+  BARCODE_WIDTH_MIN_IN = 1.4
+  BARCODE_HEIGHT_MIN_IN = 0.8
+  BARCODE_MARGIN_IN    = 0.25
 
   # Minimums documentés par KDP, mais confirmés insuffisants par test réel
   # (essai KDP du 2026-08-17, format 8.27x6in/24p/blanc) : un élément posé
@@ -86,6 +96,18 @@ class KDP
 
   def spine_text_safe_margin
     SPINE_TEXT_SAFE_MARGIN_MIN + SAFETY_BUFFER_IN
+  end
+
+  # Zone code-barres ISBN, bas droite de la 4e de couverture (bord adjacent
+  # au dos) — coordonnées en pouces, origine bas gauche du fichier couverture
+  # complet (bleed inclus), même repère que `inside_cover_safe_zone?`.
+  def barcode_zone(width: BARCODE_WIDTH_IN, height: BARCODE_HEIGHT_IN)
+    spine_x0 = BLEED_IN + trim_width
+    x1 = spine_x0 - BARCODE_MARGIN_IN
+    x0 = x1 - width
+    y0 = BLEED_IN + BARCODE_MARGIN_IN
+    y1 = y0 + height
+    { x0: x0, y0: y0, x1: x1, y1: y1 }
   end
 
   def spine_width

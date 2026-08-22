@@ -72,9 +72,10 @@ module Layout
   # d'ancrage (haut/bas/ligne de base) de ce qu'il dessine. Hors cadre -> signalé, RIEN
   # gravé, renvoie `false` (l'appelant peut alors reconstruire/rétrécir et retenter) ;
   # dans le cadre -> le bloc s'exécute, renvoie `true`.
-  # Exception documentée : `draw_page_number` dessine volontairement DANS la marge (son
-  # rôle), via `pdf.canvas` — hors du système de coordonnées `pdf.bounds`, donc hors
-  # périmètre de ce garde-fou par nature, pas par oubli.
+  # Exception documentée : `draw_page_number` dessine via `pdf.canvas` (page ENTIÈRE),
+  # hors du système de coordonnées `pdf.bounds` — donc hors périmètre de ce garde-fou par
+  # nature. Sa position reste néanmoins DANS la zone sûre KDP (recalculée depuis
+  # `kdp.bottom_margin`), pas dans la marge — corrigé 2026-08-22 après rejet KDP réel.
   def self.engrave(bottom:, context: nil)
     if bottom < -0.01
       conflict!("gravure refusée#{context ? " (#{context})" : ""} — déborderait de #{-bottom.round(2)}pt", solution: "rien dessiné")
@@ -145,9 +146,11 @@ module Layout
   # Taille de départ, standard éditorial courant pour un numéro de page — à ajuster
   # visuellement sur le livre-test (Phil, 2026-08-17).
   PAGE_NUMBER_SIZE = 10
-  # Distance entre le numéro et le bord physique de la page, à l'intérieur de la marge
-  # basse (jamais collé au bord). Doit rester < marge basse KDP courante.
-  PAGE_NUMBER_BOTTOM_INSET_PT = 9
+  # Air entre le numéro et la limite haute de la marge basse (le numéro reste DANS la
+  # zone sûre KDP, pas dans la marge — un essai KDP réel, 2026-08-22, a rejeté un numéro
+  # posé dans la marge malgré la décision précédente de l'y mettre volontairement ; le
+  # vérificateur KDP ne fait aucune exception pour un numéro de page).
+  PAGE_NUMBER_TOP_INSET_PT = 2
 
   def self.in_pt(inches)
     inches * 72.0
@@ -168,9 +171,10 @@ module Layout
   end
 
   # Numéro de page, coin extérieur bas (droite en recto, gauche en verso — convention
-  # livre), à l'intérieur de la marge KDP (jamais flush au bord physique — bug corrigé
-  # 2026-08-17 : `align: :right` sur `page_w_pt` collait le numéro pile sur le bord).
-  # `pdf.canvas` bascule sur la page ENTIÈRE (pas `pdf.bounds`, qui exclut la marge).
+  # livre), DANS la zone sûre KDP (jamais dans la marge — un essai KDP réel a rejeté la
+  # version précédente qui le posait volontairement dans la marge basse, 2026-08-22).
+  # `pdf.canvas` bascule sur la page ENTIÈRE (pas `pdf.bounds`), donc `y` est recalculé
+  # ici depuis `kdp.bottom_margin` plutôt que d'hériter de `apply_kdp_margins`.
   def self.draw_page_number(pdf, kdp, page_no, page_w_pt)
     pdf.font_families.update("Georgia" => {
       normal: File.join(GEORGIA_DIR, "Georgia-Regular.ttf"),
@@ -179,11 +183,12 @@ module Layout
       bold_italic: File.join(GEORGIA_DIR, "Georgia-BoldItalic.ttf"),
     })
     recto = kdp.recto?(page_no)
+    y = in_pt(kdp.bottom_margin) + PAGE_NUMBER_TOP_INSET_PT
     pdf.canvas do
       pdf.font("Georgia") do
         text_w = pdf.width_of(page_no.to_s, size: PAGE_NUMBER_SIZE, style: :bold)
         x = recto ? page_w_pt - in_pt(kdp.right_margin(page_no)) - text_w : in_pt(kdp.left_margin(page_no))
-        pdf.draw_text page_no.to_s, at: [x, PAGE_NUMBER_BOTTOM_INSET_PT], size: PAGE_NUMBER_SIZE, style: :bold
+        pdf.draw_text page_no.to_s, at: [x, y], size: PAGE_NUMBER_SIZE, style: :bold
       end
     end
   end
@@ -659,13 +664,17 @@ module Layout
   # centré quel que soit le titre/police/taille — pas une valeur mesurée à la main une
   # fois puis figée (Phil, 2026-08-16). Le TOP du titre (sa position, `y`) ne bouge jamais
   # (= pdf.bounds.height − ascender, identique à :inline).
-  # Bandeau CONTENU dans la zone sûre KDP (jamais bord à bord sans bleed — limite établie
-  # ce jour avec les essais KDP réels, à respecter partout, pas seulement pour le texte).
+  # Bandeau CONTENU dans la zone sûre KDP : `band_top` plafonné à `pdf.bounds.height` —
+  # sans ce plafond, `y + ink_top + BAND_GAP` dépasse systématiquement `bounds.height` dès
+  # que l'encre réelle du titre (majuscules accentuées notamment) approche l'ascender
+  # nominal, plus BAND_GAP en trop (bug réel constaté à l'upload KDP, ~2pt, 2026-08-22 —
+  # le commentaire précédent affirmait le bandeau "contenu" sans que le calcul le
+  # garantisse réellement).
   def self.draw_header_band(pdf, meta)
     y = title_baseline_y(pdf)
     ink_top, ink_bottom = ink_extent(pdf, meta["title"].to_s, TITLE_SIZE, style: :bold)
 
-    band_top = y + ink_top + BAND_GAP
+    band_top = [y + ink_top + BAND_GAP, pdf.bounds.height].min
     band_bottom = y - ink_bottom - BAND_GAP
     band_h = band_top - band_bottom
 
