@@ -18,6 +18,11 @@ layout: le format par défaut d'affichage des chansons (regular-B par défaut)
 subtitle: Le sous-titre
 editor: 
   name: Nom de l'éditeur
+  logo: path du logo
+
+cover:
+  image: path/to/image
+  binding: true|false # pour dessin marqué de la reliure
 
 # Les pages liminaires
 # --------------------

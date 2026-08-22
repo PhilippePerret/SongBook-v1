@@ -10,11 +10,11 @@ Trouvez ci-dessous la liste complète des extensions et leur utilité.
 __Note : la version courte de l'extension contient toujours 3 lettres seulement.__
 
 |====
-| Extension | Version courte  | Exemple | Signification
-| `infos`   | `inf`           | `c.inf` | Contient les <<infos-file, informations générales sur la chanson>> ou <<songbook-infos, le carnet>>.
-| `lyrics`  | `lyr`           | `c.lyr` | Définit les <<lyrics-file, paroles, les accords et les bouts de musique>> de la chanson.
-| `layout`  | `lay`           | `c.lay` | Définit les <<song-layout>>.
-| `gabarit` | `gab`           | `c.gab` | Définit le <<gabarit-file, gabarit précis>> (souvent pour une chanson en particulier)
-| `tdm`     | `toc`           | `c.toc` | Définit la table des matières du carnet.
-| 
+| Extension   | Version courte  | Exemple | Signification
+| `.infos`    | `.inf`          | `c.inf` | Contient les <<infos-file, informations générales sur la chanson>> ou <<songbook-infos, le carnet>>.
+| `.lyrics`   | `.lyr`          | `c.lyr` | Définit les <<lyrics-file, paroles, les accords et les bouts de musique>> de la chanson.
+| `.layout`   | `.lay`          | `c.lay` | Définit les <<song-layout>>.
+| `.gabarit`  | `.gab`          | `c.gab` | Définit le <<gabarit-file, gabarit précis>> (souvent pour une chanson en particulier)
+| `.tdm`      | `.toc`          | `c.toc` | Définit la table des matières du carnet.
+| `.cover`    | `.cov`          | `c.cov` | Définit la mise en forme de la <<cover, couverture, 1^re^ et 4^e^>>.
 |====

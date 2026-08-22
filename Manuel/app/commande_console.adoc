@@ -1,0 +1,4 @@
+[[console-command]]
+=== Commande `console` ===
+
+Utiliser `songbook -h` ou `songbook --help` pour obtenir une aide rapide (moins détaillée qu'ici).

@@ -307,3 +307,33 @@ Solution proposée ?
 |
 
 |====
+
+
+[[tdm-rules, règles concernant la couverture]]
+==== Règles concernant la couverture ====
+
+[cols="1,6,2", options="header"]
+|====
+| Num. | Règle | Note
+
+| RACO1
+| La couverture doit être construite en fonction du **nombre de pages du carnet**.
+| Pas de couverture si nombre de page incalculable
+|
+
+| RACO2
+| Par défaut d'informations, songbook crée une couverture standard
+|
+
+| RACO3
+| La couverture peut être définie par deux fichiers : `.cover` (`.cov`) et `.infos` (`inf`), les infos du carnet.
+|
+
+| RACO4
+| Le fichier `.cover` contient la définition de la mise en forme de la couverture.
+| Défaut : `./assets/cover/_default.cov`
+
+| RACO5
+| Quand une information de `.cov` n'existe pas, on laisse l'espace vide, mais on le considère dans la mise en forme.
+|
+|====

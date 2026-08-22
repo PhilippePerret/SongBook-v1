@@ -1,0 +1,52 @@
+[[cover, couverture]]
+=== La Couverture ===
+
+On peut construire une table des matières soi-même, mais on peut aussi la produire également automatiquement
+
+==== Construire la cover soi-même ====
+
+Pour demander les dimensions à __**SongBook**--.
+
+----
+songbook cover dims
+----
+
+Pour demander à __**SongBook**-- un modèle PDF qu'il suffira d'ouvrir dans un logiciel comme Affinity Publisher ou autres InDesign.
+
+----
+songbook cover modele-pdf
+----
+
+
+==== Faire construire la cover par Songbook ====
+
+Pour définir la couverture, on produit un fichier `.cover` (ou `.cov`) en indiquant à l'intérieur les éléments à mettre.
+
+NOTE Pour le moment, __**SongBook**__ est assez mauvais pour produire une couverture convainquante, on peut donc produire grossièrement la couverture et la charger ensuite dans un logiciel compétent pour l'ajuster selon ses envies.
+
+----
+1. # ce "1." désigne "première de couverture"
+
+{image_cover}| {title; font-size:28pt;}
+             | {author}
+             
+{editor_logo; block_align: Bot Center;}
+
+
+4. # Ce "4." désigne "quatrième de couverture"
+{editor_name; align:Center;}
+{file: quatrieme.md}
+{price} | {barcode}
+{isbn}  |
+----
+
+Si vous voulez une image qui fasse **toute la hauteur**, avec les éléments disposés à sa droite :
+
+----
+1.
+                        | {author; align:Center;}
+  {image:image/name.ext}| {title; font-size:28pt; margin-top:2cm;}
+                        | {logo; align:Center Bot;}
+----
+
+Noter que ci-dessus, c'est le fait qu'il n'y ait rien au-dessus du premier "|" et rien en dessous du dernier "|"
