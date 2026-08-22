@@ -1,7 +1,7 @@
 [[gabarit-file, gabarit de la chanson]]
 === Gabarit de la chanson ===
 
-Alors que <<layout-file, le fichier `.layout`>> définit les __règles__ régissant la mise en forme de la chanson, laissant la liberté à __**SongBook**__ de prendre toutes les décisions pour produire un affichage cohérent et esthétique, le fichier `.gabarit` va définir très précisément le positionnement des éléments de la chanson.
+Alors que <<song-layout, le fichier `.layout`>> définit les __règles__ régissant la mise en forme de la chanson, laissant la liberté à __**SongBook**__ de prendre toutes les décisions pour produire un affichage cohérent et esthétique, le fichier `.gabarit` va définir très précisément le positionnement des éléments de la chanson.
 
 On peut trouver ce fichier : 
 

@@ -10,3 +10,5 @@ Ouvrir une console/Terminal au dossier du carnet et jouer simplement :
 ----
 console build
 ----
+
+Pour ne produire qu'une chanson, ouvrez la console au dossier de la chanson et utilisez la même commande.

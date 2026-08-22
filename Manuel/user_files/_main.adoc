@@ -1,8 +1,5 @@
 == Les Fichiers utilisateurs ==
 
-// Fichier des paroles
-include::lyrics.adoc[]
-
 // Fichier du gabarit
 include::gabarit.adoc[]
 

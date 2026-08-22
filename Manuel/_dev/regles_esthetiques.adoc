@@ -176,7 +176,8 @@ Solution proposée ?
 |====
 | Num. | Règle | Note
 
-| RATX1 | Pour les textes **autres que lyrics**, à phrases longues, si la largeur de la page est > 15 cm, ils doivent être écrits sur deux colonnes avec une gouttière fixée.
+| RATX1 
+| Pour les textes **autres que lyrics**, à phrases longues, si la largeur de la page est > 15 cm, ils doivent être écrits sur deux colonnes avec une gouttière fixée.
 | cf. options application `text_column_guter`
 
 | RATX2 
@@ -309,7 +310,7 @@ Solution proposée ?
 |====
 
 
-[[tdm-rules, règles concernant la couverture]]
+[[cover-rules, règles concernant la couverture]]
 ==== Règles concernant la couverture ====
 
 [cols="1,6,2", options="header"]
@@ -319,7 +320,6 @@ Solution proposée ?
 | RACO1
 | La couverture doit être construite en fonction du **nombre de pages du carnet**.
 | Pas de couverture si nombre de page incalculable
-|
 
 | RACO2
 | Par défaut d'informations, songbook crée une couverture standard
