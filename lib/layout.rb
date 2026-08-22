@@ -659,30 +659,42 @@ module Layout
     y - title_descent
   end
 
-  # Bandeau ANCRÉ au sommet de la page. `BAND_GAP` (10pt, Phil 2026-08-22) = espace noir
-  # au-dessus de l'encre du titre == espace noir en dessous de l'encre du titre — bandeau/
-  # titre/interprète : jamais touchés par ce qui suit. Parolier/compositeur ANCRÉ SUR
-  # `band_bottom` (PAS sur le titre) : `PC_BOTTOM_PAD` (5pt) entre son encre et le bas du
-  # bandeau — tient toujours dans le bandeau quelle que soit sa taille, par construction
-  # (Phil, 2026-08-22 : l'ancien calcul le positionnait juste sous le titre, sans rapport
-  # avec la place réellement dispo plus bas dans le bandeau — d'où le débordement).
+  # Hauteur du bandeau INFLEXIBLE (Phil, 2026-08-22 : "cohérence visuelle" — jamais deux
+  # chansons avec un bandeau de hauteur différente). Sur métriques NOMINALES de la police
+  # (ascender/descender à TITLE_SIZE), pas l'encre réelle du titre — ce sont les seules
+  # valeurs indépendantes du texte, donc réellement constantes d'une chanson à l'autre.
+  def self.band_height(pdf)
+    ascent = font_metric(pdf, TITLE_SIZE) { pdf.font.ascender }
+    descent = font_metric(pdf, TITLE_SIZE) { pdf.font.descender }
+    ascent + descent + 2 * BAND_GAP
+  end
+
+  # Bandeau ANCRÉ au sommet de la page, hauteur FIXE (`band_height`, jamais recalculée par
+  # chanson) — bandeau/interprète : jamais touchés par ce qui suit. Titre CENTRÉ dans cette
+  # hauteur fixe : `yDiff = HB - HT` (HT = encre réelle du titre, variable), réparti pour
+  # moitié au-dessus, pour moitié en dessous (Phil, 2026-08-22 — jamais un `BAND_GAP` fixe
+  # ajouté à HT, ce qui faisait varier la hauteur du bandeau d'une chanson à l'autre).
+  # Parolier/compositeur ANCRÉ SUR `band_bottom` (PAS sur le titre) : `PC_BOTTOM_PAD` (5pt)
+  # entre son encre et le bas du bandeau, dans la place laissée par `bottom_pad` — tient
+  # toujours dans le bandeau, par construction (voir `fit_pc_size`).
   def self.draw_header_band(pdf, meta)
+    hb = band_height(pdf)
     ink_top, ink_bottom = ink_extent(pdf, meta["title"].to_s, TITLE_SIZE, style: :bold)
+    y_diff = hb - (ink_top + ink_bottom)
+    top_pad = y_diff / 2.0
+    bottom_pad = y_diff - top_pad
 
     band_top = pdf.bounds.height
-    y = band_top - BAND_GAP - ink_top
-    band_bottom = y - ink_bottom - BAND_GAP
-    band_h = band_top - band_bottom
+    band_bottom = band_top - hb
+    y = band_top - top_pad - ink_top
 
     pc = [meta["lyrics"], meta["composer"]].compact.uniq.join(" / ")
-    # Place dispo sous le titre, dans le bandeau, avant `PC_BOTTOM_PAD` : `band_bottom` est
-    # à `BAND_GAP` de l'encre du titre (voir ci-dessus) — jamais plus que ça.
-    pc_size, pc_ink_bottom = fit_pc_size(pdf, pc, BAND_GAP - PC_BOTTOM_PAD)
+    pc_size, pc_ink_bottom = fit_pc_size(pdf, pc, bottom_pad - PC_BOTTOM_PAD)
     y_pc = band_bottom + PC_BOTTOM_PAD + pc_ink_bottom
 
     engrave(bottom: band_bottom, context: "bandeau de titre") do
       pdf.fill_color BAND_COLOR
-      pdf.fill_rectangle [0, band_top], pdf.bounds.width, band_h
+      pdf.fill_rectangle [0, band_top], pdf.bounds.width, hb
       pdf.fill_color "000000"
     end
 
@@ -697,12 +709,21 @@ module Layout
   # NI à l'interprète, SEULEMENT ce texte-là (Phil, 2026-08-22) : réduit la taille
   # (proportionnellement, l'encre HelveticaNeue scale linéairement avec `size` — voir
   # `ink_extent`) seulement si l'encre naturelle à PC_SIZE dépasse ce budget.
+  MIN_PC_SIZE = 4.0
+
   def self.fit_pc_size(pdf, pc, budget)
     return [PC_SIZE, 0] if pc.empty?
 
     top, bottom = ink_extent(pdf, pc, PC_SIZE)
     natural = top + bottom
     return [PC_SIZE, bottom] if natural <= budget || natural.zero?
+
+    if budget <= 0
+      conflict!("bandeau : titre trop haut, aucune place restante pour parolier/compositeur",
+        solution: "affiché à taille minimale (#{MIN_PC_SIZE}pt), déborde peut-être")
+      _, bottom = ink_extent(pdf, pc, MIN_PC_SIZE)
+      return [MIN_PC_SIZE, bottom]
+    end
 
     size = PC_SIZE * (budget / natural)
     Layout.log_build("parolier/compositeur \"#{pc}\" réduit de #{PC_SIZE}pt à #{size.round(1)}pt pour tenir dans le bandeau (Phil, 2026-08-22)")
