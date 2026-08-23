@@ -128,6 +128,11 @@ module Layout
   # quand le texte entre eux est vide/un simple séparateur "/", Phil 2026-08-20). Valeur
   # provisoire, jamais validée par Phil.
   CHORD_GAP = 2.0
+  # Ligne "chords-only" (ex. intro "Am / Am9 G7M / G") : écart accord-accord DOIT être
+  # visiblement plus petit qu'accord-barre, sinon les deux paraissent identiques (Phil,
+  # 2026-08-23, "À bicyclette"). Valeurs choisies par Phil, à ajuster si besoin.
+  CHORD_SEP_GAP = 1.0
+  CHORD_CHORD_GAP = 6.0
   DIAG_W = 60
   DIAG_TEXT_GAP = 26
   # RAD3 : largeur plancher sous laquelle un diag ne doit jamais être réduit (valeur
@@ -1372,18 +1377,33 @@ module Layout
   # `text_line_steps` par nature de ce type de ligne, mais même principe : dessin et mesure
   # partagent le même générateur de positions.
   def self.chords_only_steps(pdf, segments, chord_size)
+    tokens = []
+    segments.each do |seg|
+      tokens << { chord: seg.chord } if seg.chord
+      sep = seg.text.strip
+      tokens << { sep: sep } unless sep.empty?
+    end
+
     cx = 0
     steps = []
-    segments.each do |seg|
-      if seg.chord
-        steps << { x: cx, chord: seg.chord }
-        cx += chord_label_width(pdf, seg.chord, chord_size) + CHORD_GAP
+    tokens.each_with_index do |tok, i|
+      if tok[:chord]
+        steps << { x: cx, chord: tok[:chord] }
+        cx += chord_label_width(pdf, tok[:chord], chord_size)
+      else
+        steps << { x: cx, sep: tok[:sep] }
+        cx += pdf.width_of(tok[:sep], size: chord_size)
       end
-      sep = seg.text.strip
-      next if sep.empty?
-
-      steps << { x: cx, sep: sep }
-      cx += pdf.width_of(sep, size: chord_size) + CHORD_GAP
+      nxt = tokens[i + 1]
+      cx += if nxt.nil?
+              CHORD_GAP
+            elsif tok[:sep] == "/" || nxt[:sep] == "/"
+              CHORD_SEP_GAP
+            elsif tok[:sep] || nxt[:sep]
+              pdf.width_of(" ", size: chord_size)
+            else
+              CHORD_CHORD_GAP
+            end
     end
     [steps, cx]
   end
