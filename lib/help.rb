@@ -67,7 +67,12 @@ Obtenir la liste des chansons
     Ou les uns au dessous des autres : 
       {{command: songbook list songs "{performer}" '\\n'}}
     
+Constructeur de diagramme
+-------------------------
+    {{command: diag -o}}
 
+    {{command: songbook build diag "<schéma>"}}
+    (pour construire le schéma, utilisez l'outil `diag` sans option)
 
   Options
   -------

@@ -3,6 +3,7 @@
 
 require_relative "lib/carnet_builder"
 require_relative "lib/help"
+require_relative "lib/diags_page"
 
 argv = ARGV.dup
 cover = false
@@ -21,6 +22,8 @@ when "-h", "--help"
   system("clear")
   system("clear")
   puts colorize_help(USAGE)
+when "diags"
+  puts DiagsPage.build_and_open!
 when nil, ".", "build"
   if command == "build" && arg1 == "cover"
     cover = true
