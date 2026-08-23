@@ -11,6 +11,9 @@ Ce dépôt (`SongBook-app`, `origin: SongBook-v1.git`) = moteur seul. Les donné
 ## RÈGLE ABSOLUE — ENSEMBLE
 AUCUNE décision, AUCUN choix, même mineur, ne doit être pris seul par Claude. TOUJOURS demander AVANT de prendre la moindre décision, que ça relève du code ou d'autre chose.
 
+## Notes/mémoire
+Toute note doit être écrite ICI (`./.claude` du projet), JAMAIS ailleurs (`~/.claude` et sous-dossiers interdits, cf. `~/.claude/INTERDICTIONS.txt`). Aucune suppression de contenu sans demande explicite.
+
 ## Specs de l'application
 Les deux sources pour les specs de l'application sont le Manuel (pas seulement la partie '_dev') et un peu `_dev/specs/specs.md` — pas ici.
 

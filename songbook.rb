@@ -15,6 +15,18 @@ cover = false
 end
 debug_marks = !!argv.delete("-x")
 
+# `-b/--book PATH` : sortir UNE chanson (arg1) EXACTEMENT comme elle sortirait dans CE
+# carnet-là (layout/page_count/marges résolus du carnet, voir `CarnetBuilder.build`,
+# `only_song:`) — sans reconstruire tout le carnet.
+book_path = nil
+%w[-b --book].each do |flag|
+  if (i = argv.index(flag))
+    book_path = argv[i + 1]
+    argv.delete_at(i + 1)
+    argv.delete_at(i)
+  end
+end
+
 command, arg1 = argv
 
 case command
@@ -34,7 +46,12 @@ when nil, ".", "build"
   abort "dossier introuvable : #{dir}" unless Dir.exist?(dir)
 
   begin
-    if CarnetBuilder.carnet_folder?(dir)
+    if book_path
+      book_dir = File.expand_path(book_path)
+      abort "dossier de carnet introuvable : #{book_dir}" unless Dir.exist?(book_dir)
+      abort "pas un carnet (.tdm/.toc introuvable) : #{book_dir}" unless CarnetBuilder.carnet_folder?(book_dir)
+      out_path = CarnetBuilder.build(book_dir, only_song: File.basename(dir), debug_marks: debug_marks)
+    elsif CarnetBuilder.carnet_folder?(dir)
       out_path = CarnetBuilder.build(dir, cover: cover, debug_marks: debug_marks)
     elsif CarnetBuilder.song_folder?(dir)
       out_path = CarnetBuilder.build_song(dir)
