@@ -2,7 +2,7 @@ require "yaml"
 
 Song    = Struct.new(:meta, :blocks, keyword_init: true)
 Block   = Struct.new(:lines, :directives, :paired_with_previous, keyword_init: true)
-Line    = Struct.new(:segments, keyword_init: true)
+Line    = Struct.new(:segments, :label, :align, keyword_init: true)
 Segment = Struct.new(:chord, :fret, :text, keyword_init: true)
 
 class DSLParser

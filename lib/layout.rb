@@ -121,7 +121,7 @@ module Layout
   # 2026-08-18) — valeur de départ, à ajuster empiriquement (Phil : "un chiffre à
   # déterminer, en constatant la diminution du texte"), PAS définitive.
   MIN_TEXT_SIZE = TEXT_SIZE - 2
-  LINE_GAP = 4
+  LINE_GAP = 2
   # RAA1 (Manuel/regles_esthetiques.adoc) : deux accords ne doivent JAMAIS être en
   # contact — un pas d'avancée strictement égal à la largeur du label précédent les
   # laissait TOUCHER (constaté sur l'intro d'À bicyclette, accords collés sans séparation
@@ -160,7 +160,10 @@ module Layout
   # cette page précise (recto/verso ont une marge de reliure différente) — à rappeler
   # après CHAQUE `start_new_page`, Prawn réinitialisant `bounds` sur la marge du document
   # à chaque nouvelle page.
-  def self.apply_kdp_margins(pdf, kdp, page_no, page_w_pt, page_h_pt)
+  # `debug_marks:` (option CLI `-x`) : rectangle de repère sur la zone utile (`pdf.bounds`,
+  # DONC déjà nette des marges KDP) — même principe/couleur que les repères de couverture
+  # (`CoverBuilder::DEBUG_COLOR`), jamais dessiné en dehors de ce garde-fou explicite.
+  def self.apply_kdp_margins(pdf, kdp, page_no, page_w_pt, page_h_pt, debug_marks: false)
     lm = in_pt(kdp.left_margin(page_no))
     rm = in_pt(kdp.right_margin(page_no))
     tm = in_pt(kdp.top_margin)
@@ -168,6 +171,12 @@ module Layout
     pdf.bounds = Prawn::Document::BoundingBox.new(
       pdf, pdf, [lm, page_h_pt - tm], width: page_w_pt - lm - rm, height: page_h_pt - tm - bm
     )
+    return unless debug_marks
+
+    pdf.stroke_color DEBUG_COLOR
+    pdf.line_width 0.4
+    pdf.stroke_rectangle [0, pdf.bounds.height], pdf.bounds.width, pdf.bounds.height
+    pdf.stroke_color "000000"
   end
 
   # Numéro de page, coin extérieur bas (droite en recto, gauche en verso — convention
@@ -193,13 +202,10 @@ module Layout
     end
   end
 
-  # Équilibre optique haut/bas d'un bloc centré verticalement (page, colonne de diags...) :
-  # un peu moins d'air entre ce qui précède (titre) et le bloc qu'entre le bloc et le bas de
-  # page — poids appliqués aux deux gouttières extrêmes, les gouttières internes (entre
-  # éléments) restent égales entre elles. Demandé par Phil (2026-08-16), pas une évidence
-  # géométrique : NE PAS remettre à 1.0/1.0 sans lui redemander.
+  # Équilibre optique de la gouttière du HAUT (avant le 1er élément) — un peu moins d'air
+  # qu'entre deux éléments. PLUS de gouttière du bas symétrique : supprimée (Phil,
+  # 2026-08-23, voir `distribute_v_gutters`). NE PAS remettre à 1.0 sans redemander.
   TOP_GUTTER_WEIGHT = 0.85
-  BOTTOM_GUTTER_WEIGHT = 1.15
 
   # Distance minimale JAMAIS franchie entre deux éléments (même sans chevauchement, trop
   # proches reste moche) et distance MAXIMALE JAMAIS dépassée (même avec beaucoup de place
@@ -215,9 +221,9 @@ module Layout
   # une plage resserrée pour "entre diags" resserre aussi, à tort, "sous le bandeau".
   # `tdm_num` (RATDM3) : distance entre le titre le plus long de la TDM et le chiffre de
   # page — valeur fixée à 20pt pour l'essai (Manuel, regles_esthetiques.adoc).
-  MIN_V_DIST = { default: 20.0, diags: 2.0, band_diag: 10.0, band_strophe: 20.0 }.freeze
+  MIN_V_DIST = { default: 20.0, diags: 2.0, band_diag: 10.0, band_strophe: 10.0 }.freeze
   MIN_H_DIST = { default: 8.0, diags: 4.0, tdm_num: 20.0 }.freeze
-  MAX_V_DIST = { default: 80.0, diags: 2.0, band_diag: 20.0, band_strophe: 40.0 }.freeze
+  MAX_V_DIST = { default: 40.0, diags: 2.0, band_diag: 20.0, band_strophe: 40.0 }.freeze
   MAX_H_DIST = { default: 40.0 }.freeze
 
   # RATDM4 : filet de conduite entre titre et numéro de page — caractère et espacement
@@ -265,6 +271,9 @@ module Layout
 
   BAND_COLOR = "3A3A3A"
   PC_BOTTOM_PAD = 5
+  # Même couleur que `CoverBuilder::DEBUG_COLOR` (repères `-x`) — copie locale plutôt qu'une
+  # référence croisée entre les deux fichiers.
+  DEBUG_COLOR = "99CCEE"
   # Respiration horizontale entre le texte du bandeau (titre à gauche, parolier/
   # compositeur à droite) et les bords du bandeau — même valeur des deux côtés.
   HEADER_PAD_X = 12
@@ -691,11 +700,9 @@ module Layout
     cap_height, _cap_bottom = ink_extent(pdf, "A", TITLE_SIZE, style: :bold)
     baseline = (band_top + band_bottom - cap_height) / 2.0
     y = baseline
-    bottom_pad = baseline - band_bottom
 
     pc = [meta["lyrics"], meta["composer"]].compact.uniq.join(" / ")
-    pc_size, pc_ink_bottom = fit_pc_size(pdf, pc, bottom_pad - PC_BOTTOM_PAD)
-    y_pc = band_bottom + PC_BOTTOM_PAD + pc_ink_bottom
+    pc_size, y_pc = fit_pc_size(pdf, pc, band_bottom)
 
     engrave(bottom: band_bottom, context: "bandeau de titre") do
       pdf.fill_color BAND_COLOR
@@ -708,32 +715,15 @@ module Layout
     band_bottom
   end
 
-  # Taille de parolier/compositeur qui tient dans la place RÉELLEMENT dispo sous le titre
-  # (`budget`, en pt d'encre) — jamais fixe (PC_SIZE) sans vérifier que ça tient (bug
-  # constaté 2026-08-22 : texte débordant du bandeau). Ne touche NI au bandeau NI au titre
-  # NI à l'interprète, SEULEMENT ce texte-là (Phil, 2026-08-22) : réduit la taille
-  # (proportionnellement, l'encre HelveticaNeue scale linéairement avec `size` — voir
-  # `ink_extent`) seulement si l'encre naturelle à PC_SIZE dépasse ce budget.
-  MIN_PC_SIZE = 4.0
+  # Parolier/compositeur : SEULE règle — posé en bas à droite du bandeau, taille NOMINALE
+  # (`PC_SIZE`) toujours, ancré sur `band_bottom + PC_BOTTOM_PAD` — RIEN À VOIR avec le
+  # titre ni le centrage/`band_height` (Phil, 2026-08-23, "aucun rapport avec tout le
+  # reste, il n'y a rien d'autre à dire sur lui"). Renvoie `[pc_size, y_pc]`.
+  def self.fit_pc_size(pdf, pc, band_bottom)
+    return [PC_SIZE, band_bottom + PC_BOTTOM_PAD] if pc.empty?
 
-  def self.fit_pc_size(pdf, pc, budget)
-    return [PC_SIZE, 0] if pc.empty?
-
-    top, bottom = ink_extent(pdf, pc, PC_SIZE)
-    natural = top + bottom
-    return [PC_SIZE, bottom] if natural <= budget || natural.zero?
-
-    if budget <= 0
-      conflict!("bandeau : titre trop haut, aucune place restante pour parolier/compositeur",
-        solution: "affiché à taille minimale (#{MIN_PC_SIZE}pt), déborde peut-être")
-      _, bottom = ink_extent(pdf, pc, MIN_PC_SIZE)
-      return [MIN_PC_SIZE, bottom]
-    end
-
-    size = PC_SIZE * (budget / natural)
-    Layout.log_build("parolier/compositeur \"#{pc}\" réduit de #{PC_SIZE}pt à #{size.round(1)}pt pour tenir dans le bandeau (Phil, 2026-08-22)")
-    _, bottom = ink_extent(pdf, pc, size)
-    [size, bottom]
+    _, bottom = ink_extent(pdf, pc, PC_SIZE)
+    [PC_SIZE, band_bottom + PC_BOTTOM_PAD + bottom]
   end
 
   # Titre + interprète sur `y` ; parolier/compositeur (fer à droite, taille `pc_size` —
@@ -823,9 +813,12 @@ module Layout
   end
 
   # Gouttières VERTICALES d'un bloc centré (page, colonne de diags) : mêmes parts pour
-  # les gouttières internes, mais la première (haut) et la dernière (bas) sont pondérées
-  # (TOP_GUTTER_WEIGHT / BOTTOM_GUTTER_WEIGHT) pour l'équilibre optique. Retourne un
-  # tableau de n+1 valeurs (avant le 1er élément, entre chaque paire, après le dernier).
+  # les gouttières internes, la première (haut) pondérée (TOP_GUTTER_WEIGHT) pour
+  # l'équilibre optique. AUCUNE gouttière après le DERNIER élément (Phil, 2026-08-23 :
+  # "à quoi sert une gouttière avant la marge bas" — la marge bas EST déjà la respiration,
+  # en rajouter une revenait à exiger deux fois de la place ; bug qui empêchait des
+  # contenus de tenir alors qu'ils tenaient réellement, voir conversation "À bicyclette").
+  # Retourne un tableau de n valeurs (avant le 1er élément, puis entre chaque paire).
   # Chaque valeur bornée par [min_v_dist(type), max_v_dist(type)] — SAUF la gouttière du
   # haut (indice 0) qui utilise `top_type` (ex. `:band_diag`/`:band_strophe` : distance
   # bandeau-titre → 1er élément, plage INDÉPENDANTE de celle entre deux éléments — Phil,
@@ -834,10 +827,9 @@ module Layout
     return [] if sizes.empty?
 
     slack = [avail - sizes.sum, 0].max
-    weights = Array.new(sizes.size + 1, 1.0)
+    weights = Array.new(sizes.size, 1.0)
     weights[0] = TOP_GUTTER_WEIGHT
-    weights[-1] = BOTTOM_GUTTER_WEIGHT
-    types = Array.new(sizes.size + 1, type)
+    types = Array.new(sizes.size, type)
     types[0] = top_type
     unit = slack / weights.sum
     gutters = weights.each_index.map { |i| (weights[i] * unit).clamp(min_v_dist(types[i]), max_v_dist(types[i])) }
@@ -872,8 +864,12 @@ module Layout
     line.segments.any? { |seg| seg.text =~ /[[:alpha:]]/ }
   end
 
+  # `line.label` (voir `PageBuilder.build_lyr_line`) : ligne entre crochets dans le .lyr,
+  # TOUJOURS rendue sur une seule ligne (chords-only), même si elle contient des mots
+  # (ex. "Intro : Em Em9") — sinon indiscernable d'un vers normal (accords au-dessus,
+  # texte en dessous), ce qui était le bug d'origine (Phil, 2026-08-23).
   def self.chords_only_line?(line)
-    line_has_chord?(line) && !line_has_words?(line)
+    line.label || (line_has_chord?(line) && !line_has_words?(line))
   end
 
   # `width` : largeur de colonne dispo (`nil` = jamais de RAL2, pas de ligne
@@ -923,7 +919,7 @@ module Layout
   # RÉEL déborde de la colonne qui lui a été allouée, empiétant sur la colonne suivante
   # (chevauchement constaté 2026-08-21, "All You Need Is Love" p.6, intro/couplet pairés).
   def self.block_width(pdf, block, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
-    block.lines.map { |l| line_width(pdf, l.segments, chord_size, text_size) }.max || 0
+    block.lines.map { |l| line_width(pdf, l.segments, chord_size, text_size, label: l.label) }.max || 0
   end
 
   # Texte TOUJOURS aligné à gauche (sauf demande expresse) : `block_align: center`
@@ -1032,7 +1028,14 @@ module Layout
   # pinned : indices d'éléments qui ne doivent JAMAIS être repoussés à la page suivante
   # (ex. une tabla en `shrink` : sa page est fixée par sa position dans le .gab, jamais
   # déplacée — voir `PageBuilder.build`).
-  def self.paginate(elements, first_avail_h, page_height, pinned: [], type: :default)
+  # `top_type:` (défaut = `type`) : type de la TOUTE PREMIÈRE gouttière de la TOUTE
+  # PREMIÈRE page seulement (entre bandeau et 1er élément — `:band_strophe`/`:band_diag`,
+  # plancher plus bas que `:default`/`:diags` entre éléments) — sinon le test de faisabilité
+  # réservait le plancher `:default` (20pt) même là où le vrai rendu (`distribute_v_gutters`,
+  # même `top_type`) n'en réserve que 15 (`:band_strophe`) : la pagination refusait des
+  # contenus qui, eux, tenaient réellement au rendu (bug constaté 2026-08-23, Phil : "il
+  # prend les valeurs mini et teste").
+  def self.paginate(elements, first_avail_h, page_height, pinned: [], type: :default, top_type: type)
     heights = elements.map(&:height)
     avail_h = first_avail_h
     idx = 0
@@ -1040,10 +1043,13 @@ module Layout
     while idx < elements.length
       start = idx
       page_sum = 0
+      gutter_top = pages.empty? ? min_v_dist(top_type) : min_v_dist(type)
       # La place réservée pour MIN_V_DIST est comptée PENDANT l'accumulation (pas après
       # coup) : sinon, si le dernier élément inclus est épinglé (pinned), impossible de le
       # repousser pour faire de la place au plancher — la marge basse se retrouvait nulle.
-      while idx < elements.length && page_sum + heights[idx] + min_v_dist(type) * (idx - start + 2) <= avail_h
+      # AUCUNE gouttière après le dernier élément (voir `distribute_v_gutters`, Phil,
+      # 2026-08-23) : pour n éléments, gutter_top + (n-1) gouttières `type`, pas n+1.
+      while idx < elements.length && page_sum + heights[idx] + gutter_top + min_v_dist(type) * (idx - start) <= avail_h
         page_sum += heights[idx]
         idx += 1
       end
@@ -1096,9 +1102,9 @@ module Layout
   # diags). Elle est bornée au nombre de pages du texte ; les diags en trop ("excès") sont
   # regroupés horizontalement, plusieurs par ligne, sur une ou des pages dédiées après la
   # chanson (`draw_diags_grid`) — seulement si RAD5 (jamais un diag seul) ne suffit plus.
-  def self.paginate_and_draw(pdf, elements, first_avail_h, kdp:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, text_x: 0, text_w: nil)
+  def self.paginate_and_draw(pdf, elements, first_avail_h, kdp:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, text_x: 0, text_w: nil, debug_marks: false)
     heights = elements.map(&:height)
-    pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned)
+    pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned, top_type: :band_strophe)
 
     side_elements = []
     side_pages = []
@@ -1113,7 +1119,7 @@ module Layout
           engrave(bottom: y - h, context: "diagramme") { pdf_.svg(IO.read(path), at: [x, y], width: w, position: :left, enable_web_requests: false) }
         end)
       end
-      side_pages_all = paginate(side_elements, first_avail_h, pdf.bounds.height, type: :diags)
+      side_pages_all = paginate(side_elements, first_avail_h, pdf.bounds.height, type: :diags, top_type: :band_diag)
       if side_pages_all.size > pages.size
         side_pages = side_pages_all.first(pages.size)
         excess_start = side_pages.empty? ? 0 : side_pages.last[:finish]
@@ -1135,13 +1141,18 @@ module Layout
     #   RAD9 : une ligne plus courte (moins de diags) s'aligne vers la reliure — ici
     #          toujours à gauche (`text_x`), la position des diags n'étant pas encore
     #          sensible à la parité recto/verso (voir `layout_diags`).
-    #   RAD10 : > 5 diags en trop -> taille réduite (70% provisoire, jamais validé par
-    #          Phil, comme `MIN_SIZE[:diags][:width]`).
+    #   RAD10 (Phil, 2026-08-23, RÈGLE ABSOLUE) : TOUS les diagrammes d'une même chanson
+    #          ont TOUJOURS la même taille — les diags "en trop" reprennent EXACTEMENT la
+    #          largeur de la colonne normale (`side_col[:width]`, déjà rétrécie par
+    #          `diag_column_width` si besoin), jamais une taille recalculée à part (bug
+    #          constaté : le dernier diagramme sortait visiblement plus grand que les
+    #          autres). Sans colonne (`side_col` nil, position top/bottom), pas de taille
+    #          de référence à reprendre : `DIAG_W` nominal.
     merged_last_page = nil
     unless excess_paths.empty? || text_w.nil? || pages.empty?
       gap_h = min_h_dist(:diags)
       gap_v = min_v_dist(:diags)
-      grid_diag_w = excess_paths.size > 5 ? [DIAG_W * 0.7, MIN_SIZE[:diags][:width]].max : DIAG_W
+      grid_diag_w = side_col ? side_col[:width] : DIAG_W
       grid_diag_h = svg_height_for(File.read(excess_paths.first), grid_diag_w)
       cols = [((text_w + gap_h) / (grid_diag_w + gap_h)).floor, 1].max
       rows = excess_paths.each_slice(cols).to_a
@@ -1169,7 +1180,7 @@ module Layout
       self.current_page = page_no
       if i.positive?
         pdf.start_new_page
-        apply_kdp_margins(pdf, kdp, page_no, page_w_pt, page_h_pt)
+        apply_kdp_margins(pdf, kdp, page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
       end
       draw_page_number(pdf, kdp, page_no, page_w_pt)
 
@@ -1189,7 +1200,8 @@ module Layout
         y = page[:avail_h] - gutters[0]
         page_els.each_with_index do |el, j|
           el.draw.call(pdf, y)
-          y -= page_heights[j] + gutters[j + 1]
+          y -= page_heights[j]
+          y -= gutters[j + 1] if j + 1 < gutters.size
         end
         conflict!("contenu dépasse la zone sûre de #{-y.round(2)}pt", solution: "dessiné quand même, hors zone sûre") if y < -0.01
 
@@ -1224,7 +1236,8 @@ module Layout
       y = side_page[:avail_h] - side_gutters[0]
       side_page_els.each_with_index do |el, j|
         el.draw.call(pdf, y)
-        y -= side_page_heights[j] + side_gutters[j + 1]
+        y -= side_page_heights[j]
+        y -= side_gutters[j + 1] if j + 1 < side_gutters.size
       end
       if y < -0.01
         conflict!("diagrammes dépassent la zone sûre de #{-y.round(2)}pt", solution: "dessinés quand même, hors zone sûre")
@@ -1234,34 +1247,38 @@ module Layout
     return if excess_paths.empty?
 
     draw_diags_grid(pdf, excess_paths, excess_heights, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt,
-      first_page_no: first_page_no + page_count)
+      first_page_no: first_page_no + page_count, debug_marks: debug_marks, diag_w: side_col ? side_col[:width] : DIAG_W)
   end
 
   # RAD6 : diags en excès — regroupés horizontalement, plusieurs par ligne, sur une ou
   # plusieurs pages dédiées après la chanson (dernier recours, RAD5 ne suffit plus).
-  def self.draw_diags_grid(pdf, paths, heights, kdp:, page_w_pt:, page_h_pt:, first_page_no:)
+  # `diag_w` : RÈGLE ABSOLUE (Phil, 2026-08-23) — TOUS les diagrammes d'une même chanson à
+  # la MÊME taille, donc CELLE de la colonne normale (`heights` est déjà à cette échelle,
+  # voir `layout_diags`/`diag_column_width`), jamais `DIAG_W` nominal redessiné à part
+  # (bug constaté : diags de page dédiée plus grands, tailles/proportions différentes).
+  def self.draw_diags_grid(pdf, paths, heights, kdp:, page_w_pt:, page_h_pt:, first_page_no:, debug_marks: false, diag_w: DIAG_W)
     diag_h = heights.max
     gap_h = min_h_dist(:diags)
     gap_v = min_v_dist(:diags)
-    cols = [((pdf.bounds.width + gap_h) / (DIAG_W + gap_h)).floor, 1].max
+    cols = [((pdf.bounds.width + gap_h) / (diag_w + gap_h)).floor, 1].max
     rows_per_page = [((pdf.bounds.height + gap_v) / (diag_h + gap_v)).floor, 1].max
     per_page = cols * rows_per_page
-    row_w = cols * DIAG_W + (cols - 1) * gap_h
+    row_w = cols * diag_w + (cols - 1) * gap_h
     x0 = [(pdf.bounds.width - row_w) / 2.0, 0].max
 
     paths.each_slice(per_page).with_index do |slice, gi|
       pdf.start_new_page
       page_no = first_page_no + gi
       self.current_page = page_no
-      apply_kdp_margins(pdf, kdp, page_no, page_w_pt, page_h_pt)
+      apply_kdp_margins(pdf, kdp, page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
       draw_page_number(pdf, kdp, page_no, page_w_pt)
 
       slice.each_slice(cols).with_index do |row, ri|
         y = pdf.bounds.height - gap_v - ri * (diag_h + gap_v)
         row.each_with_index do |path, ci|
-          x = x0 + ci * (DIAG_W + gap_h)
+          x = x0 + ci * (diag_w + gap_h)
           engrave(bottom: y - diag_h, context: "diagramme (page dédiée)") do
-            pdf.svg(IO.read(path), at: [x, y], width: DIAG_W, position: :left, enable_web_requests: false)
+            pdf.svg(IO.read(path), at: [x, y], width: diag_w, position: :left, enable_web_requests: false)
           end
         end
       end
@@ -1270,10 +1287,20 @@ module Layout
 
   # Dessine le bloc : y0 = haut visuel réel (sommet de la hampe du 1er élément). `width` :
   # largeur de colonne dispo pour ce bloc, sert au RAL2 (`nil` = jamais de RAL2).
+  # `line.align` (`.gab` UNIQUEMENT, ex. `{intro; align:Right;}` — jamais dans le `.lyr`,
+  # qui ne traite JAMAIS de mise en forme, Phil 2026-08-23) : "right" -> CETTE ligne collée
+  # au bord DROIT de SA colonne (pas de la page), le reste de la colonne (`width`)
+  # inchangé — par LIGNE, pas par bloc entier (un bloc "+"-concaténé peut mélanger des
+  # lignes alignées et des lignes normales, voir `PageBuilder.apply_extra_directives`).
   def self.draw_block(pdf, block, x, y0, width, chord_ascent, text_ascent, chord_size: CHORD_SIZE, text_size: TEXT_SIZE, force_chord_baseline: false)
     y = y0 - (force_chord_baseline || line_has_chord?(block.lines.first) ? chord_ascent : text_ascent)
     block.lines.each do |line|
-      draw_line(pdf, line, x, y, width, chord_size: chord_size, text_size: text_size)
+      line_x = x
+      if width && line.align.to_s.downcase == "right"
+        lw = line_width(pdf, line.segments, chord_size, text_size, label: line.label)
+        line_x = x + [width - lw, 0].max
+      end
+      draw_line(pdf, line, line_x, y, width, chord_size: chord_size, text_size: text_size)
       y -= line_step(pdf, line, width, chord_size: chord_size, text_size: text_size)
     end
   end
@@ -1364,9 +1391,9 @@ module Layout
   # Largeur totale qu'occuperait `segments` s'ils étaient dessinés — dispatch IDENTIQUE à
   # `draw_line` (chords-only vs ligne normale), sinon la mesure et le dessin peuvent à
   # nouveau diverger pour ce type de ligne précisément.
-  def self.line_width(pdf, segments, chord_size, text_size)
-    line = Line.new(segments: segments)
-    if line_has_chord?(line) && !line_has_words?(line)
+  def self.line_width(pdf, segments, chord_size, text_size, label: false)
+    line = Line.new(segments: segments, label: label)
+    if chords_only_line?(line)
       chords_only_steps(pdf, segments, chord_size).last
     else
       text_line_steps(pdf, segments, chord_size, text_size).last
@@ -1376,7 +1403,7 @@ module Layout
   def self.line_overflows?(pdf, line, width, chord_size, text_size)
     return false unless width
 
-    line_width(pdf, line.segments, chord_size, text_size) > width
+    line_width(pdf, line.segments, chord_size, text_size, label: line.label) > width
   end
 
   # RAL2.2 (Manuel/regles_esthetiques.adoc) : SEULEMENT si RAL2.1 (resserrement mots puis
@@ -1502,7 +1529,7 @@ module Layout
   # `width` : largeur de colonne disponible, sert au RAL2 (`nil` = jamais de RAL2, ex.
   # appelants qui ne connaissent pas encore leur largeur).
   def self.draw_line(pdf, line, x, y, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
-    return draw_chords_only_line(pdf, line, x, y, chord_size: chord_size) if line_has_chord?(line) && !line_has_words?(line)
+    return draw_chords_only_line(pdf, line, x, y, chord_size: chord_size) if chords_only_line?(line)
 
     has_chord = line_has_chord?(line)
     text_y = has_chord ? y - chord_size - LINE_GAP : y
@@ -1575,7 +1602,8 @@ module Layout
     diag_paths.each_with_index do |path, i|
       svg_data = IO.read(path)
       engrave(bottom: y - heights[i], context: "diagramme") { pdf.svg(svg_data, at: [x, y], width: width, position: :left, enable_web_requests: false) }
-      y -= heights[i] + gutters[i + 1]
+      y -= heights[i]
+      y -= gutters[i + 1] if i + 1 < gutters.size
     end
   end
 

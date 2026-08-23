@@ -105,9 +105,24 @@ module PageBuilder
       next if blocks.key?(name) # contenu déjà stocké (répétition par nom ou par contenu)
 
       raw_bodies[key] = name
-      blocks[name] = Block.new(lines: body.map { |l| Line.new(segments: DSLParser.parse_line(l)) }, directives: {}, paired_with_previous: false)
+      blocks[name] = Block.new(lines: body.map { |l| build_lyr_line(l) }, directives: {}, paired_with_previous: false)
     end
     [blocks, order]
+  end
+
+  # Ligne ENTIÈREMENT entourée de crochets (ex. `[Intro : /Em://Em9:]`) : étiquette, pas
+  # des paroles — toujours sur une seule ligne (règle trouvée dans le .lyr d'"À bicyclette",
+  # Phil 2026-08-23), jamais accords au-dessus/texte en dessous. Les crochets eux-mêmes ne
+  # sont que la marque de syntaxe, jamais affichés. Aucune ambiguïté possible avec les
+  # crochets de basse d'accord (`/accord[basse]:`, voir Manuel/song/chords.adoc) : ceux-là
+  # sont TOUJOURS précédés de `/`, jamais en tout début de ligne.
+  def self.build_lyr_line(raw)
+    stripped = raw.strip
+    if stripped.start_with?("[") && stripped.end_with?("]")
+      Line.new(segments: DSLParser.parse_line(stripped[1...-1]), label: true)
+    else
+      Line.new(segments: DSLParser.parse_line(raw))
+    end
   end
 
   GabItem = Struct.new(:type, :data)
@@ -119,7 +134,11 @@ module PageBuilder
   # deux `{nom}` CONCATÈNE leurs paroles en un seul bloc rendu (Phil, 2026-08-19 : forcer
   # un pseudo-refrain coupé en plusieurs blocs à s'afficher comme un seul, à côté d'un
   # couplet, via `//`). Ex. `{couplet-1} // {refrain-part1-1} + {refrain-part2-1}`.
-  ROW_TOKEN_RE = /\A\{[^:;}]+\}(\s*\+\s*\{[^:;}]+\})*\z/.freeze
+  # `{nom; clé:valeur;}` : directive(s) inline sur UN bloc précis d'une row — bug constaté
+  # 2026-08-23 (Phil, "À bicyclette") : `{intro; align:Right;} + {couplet-1}` silencieusement
+  # transformé en item `:unknown` (donc disparu du rendu, contenu perdu) — l'ancienne regex
+  # excluait `:`/`;` de CHAQUE token, jamais seulement de la partie nom.
+  ROW_TOKEN_RE = /\A\{[^:;}]+(?:;[^}]*)?\}(\s*\+\s*\{[^:;}]+(?:;[^}]*)?\})*\z/.freeze
 
   # Une ligne = un paragraphe (contrairement au `.lyr`, où une strophe peut s'étaler sur
   # plusieurs lignes et a donc besoin d'une ligne vide pour savoir où elle s'arrête — un
@@ -131,10 +150,22 @@ module PageBuilder
     File.read(path).split("\n").map(&:strip).reject(&:empty?).map do |para|
       if para.include?("{song:")
         names = para.split("//").filter_map { |chunk| chunk[/\{song:\s*([^;}]+)/, 1]&.strip }
-        GabItem.new(:row, names)
+        GabItem.new(:row, { names: names, directives: {} })
       elsif (cols = para.split("//").map(&:strip)).all? { |c| c =~ ROW_TOKEN_RE }
-        names = cols.map { |c| c.scan(/\{([^:;}]+)\}/).flatten.map(&:strip).join("+") }
-        GabItem.new(:row, names)
+        row_directives = {}
+        names = cols.map do |c|
+          c.scan(/\{([^:;}]+)(?:;([^}]*))?\}/).map do |name, dirs_str|
+            name = name.strip
+            dirs_str.to_s.split(";").each do |pair|
+              k, v = pair.split(":", 2)
+              next unless k && v && !k.strip.empty?
+
+              (row_directives[name] ||= {})[k.strip.to_sym] = v.strip.gsub(/\A["']|["']\z/, "")
+            end
+            name
+          end.join("+")
+        end
+        GabItem.new(:row, { names: names, directives: row_directives })
       else
         inner = para[/\A\{(.*)\}\z/m, 1] || ""
         dirs = {}
@@ -196,7 +227,7 @@ module PageBuilder
 
     if lyrics_flux == :vertical
       Layout.log_build("lyrics_flux=:vertical : #{names.size} bloc(s), chacun sa propre row")
-      names.each { |name| items << GabItem.new(:row, [name]) }
+      names.each { |name| items << GabItem.new(:row, { names: [name], directives: {} }) }
       return items
     end
 
@@ -204,14 +235,14 @@ module PageBuilder
     names.each do |name|
       if pending && block_kind(pending) == block_kind(name)
         Layout.log_build("blocs \"#{pending}\"+\"#{name}\" pairés côte à côte (RAO5, même type \"#{block_kind(name)}\")")
-        items << GabItem.new(:row, [pending, name])
+        items << GabItem.new(:row, { names: [pending, name], directives: {} })
         pending = nil
       else
-        items << GabItem.new(:row, [pending]) if pending
+        items << GabItem.new(:row, { names: [pending], directives: {} }) if pending
         pending = name
       end
     end
-    items << GabItem.new(:row, [pending]) if pending
+    items << GabItem.new(:row, { names: [pending], directives: {} }) if pending
     items
   end
 
@@ -254,11 +285,25 @@ module PageBuilder
 
   # `name` peut être "nomA+nomB" (voir `parse_gab`, marque `+`) : concatène les lignes des
   # blocs dans l'ordre pour n'en faire qu'un seul, rendu comme un bloc normal.
-  def self.resolve_block(lyr_blocks, name, lyr_order, counters)
-    return fetch_block(lyr_blocks, name, lyr_order, counters) unless name.include?("+")
+  # `row_directives` (voir `parse_gab`, `{nom; clé:valeur;}`) : directives inline posées sur
+  # UN nom précis de la row — appliquées LIGNE PAR LIGNE, seulement aux lignes de CE
+  # sous-bloc (`nomA`), jamais à celles d'un autre sous-bloc concaténé avec lui via "+"
+  # (Phil, 2026-08-23 : "la ligne contenant l'intro doit être alignée à droite", PAS le
+  # couplet-1 qui la suit dans "{intro; align:Right;} + {couplet-1}").
+  def self.resolve_block(lyr_blocks, name, lyr_order, counters, row_directives: {})
+    return apply_extra_directives(fetch_block(lyr_blocks, name, lyr_order, counters), name, row_directives) unless name.include?("+")
 
-    parts = name.split("+").map { |n| fetch_block(lyr_blocks, n, lyr_order, counters) }
+    parts = name.split("+").map { |n| apply_extra_directives(fetch_block(lyr_blocks, n, lyr_order, counters), n, row_directives) }
     Block.new(lines: parts.flat_map(&:lines), directives: parts.first.directives, paired_with_previous: false)
+  end
+
+  def self.apply_extra_directives(block, name, row_directives)
+    dirs = row_directives[name]
+    return block if dirs.nil? || dirs.empty?
+
+    align = dirs[:align]
+    lines = align ? block.lines.map { |l| Line.new(segments: l.segments, label: l.label, align: align) } : block.lines
+    Block.new(lines: lines, directives: block.directives.merge(dirs), paired_with_previous: block.paired_with_previous)
   end
 
   # "intro-1" -> "intro" (Phil, 2026-08-20 : "le premier mot dans un {...}, découpé selon
@@ -287,7 +332,7 @@ module PageBuilder
   # et Manuel/song/layout.adoc) : défauts du CARNET pour cette chanson — un `.gab` explicite
   # garde priorité (une chanson peut toujours s'écarter du layout général, Manuel : "on
   # peut le faire chanson par chanson ou de façon générale... ou les deux").
-  def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout: nil)
+  def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout: nil, debug_marks: false)
     gab_path = FileFinder.find(folder, :gab)
     lyr_path = FileFinder.find(folder, :lyr)
     infos_path = FileFinder.find(folder, :inf)
@@ -320,7 +365,7 @@ module PageBuilder
 
     Prawn::Document.generate(out_path, page_size: page_size, margin: 0) do |pdf|
       Layout.register_fonts(pdf)
-      Layout.apply_kdp_margins(pdf, kdp, first_page_no, page_w_pt, page_h_pt)
+      Layout.apply_kdp_margins(pdf, kdp, first_page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
       title_item = items.find { |i| i.type == :title }
       # `.gab` explicite sans directive `{title: ...}` (ex. w.gab de "À bicyclette") :
       # retombe sur `title_band_default` (layout résolu du carnet), jamais un :inline
@@ -346,7 +391,7 @@ module PageBuilder
       text_descent = Layout.font_metric(pdf, Layout::TEXT_SIZE) { pdf.font.descender }
 
       bare_kind_counters = Hash.new(0)
-      rows = items.select { |i| i.type == :row }.map { |i| i.data.map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters), name, layout) } }
+      rows = items.select { |i| i.type == :row }.map { |i| i.data[:names].map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: i.data[:directives]), name, layout) } }
       col1_w, col2_w, h_gutter = Layout.row_column_widths(pdf, rows, text_w)
 
       row_idx = 0
@@ -392,7 +437,7 @@ module PageBuilder
         )
       end
 
-      Layout.paginate_and_draw(pdf, elements, first_avail_h, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col, text_x: text_x, text_w: text_w)
+      Layout.paginate_and_draw(pdf, elements, first_avail_h, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col, text_x: text_x, text_w: text_w, debug_marks: debug_marks)
     end
   end
 
@@ -402,7 +447,7 @@ module PageBuilder
   # texte clair). page_count: nombre de pages TOTAL du carnet (détermine la marge de
   # reliure KDP, cf. `KDP#gutter_margin`) ; first_page_no: numéro de la première page de
   # cette chanson dans le carnet complet (recto/verso, numérotation).
-  def self.build_from_dsl(dsl_path, out_path, page_size_in:, page_count:, header_style: :inline, first_page_no: 1)
+  def self.build_from_dsl(dsl_path, out_path, page_size_in:, page_count:, header_style: :inline, first_page_no: 1, debug_marks: false)
     song = DSLParser.parse(File.read(dsl_path))
     chord_frets = ChordDiagrams.collect_chord_frets(song.blocks)
     page_size = page_size_in.map { |v| v * 72 }
@@ -412,7 +457,7 @@ module PageBuilder
 
     Prawn::Document.generate(out_path, page_size: page_size, margin: 0) do |pdf|
       Layout.register_fonts(pdf)
-      Layout.apply_kdp_margins(pdf, kdp, first_page_no, page_w_pt, page_h_pt)
+      Layout.apply_kdp_margins(pdf, kdp, first_page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
       header_bottom = header_style == :band ? Layout.draw_header_band(pdf, song.meta) : Layout.draw_header_inline(pdf, song.meta)
 
       diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret) }
@@ -435,7 +480,7 @@ module PageBuilder
       tabla_el = Layout.build_tabla_element(pdf, song.meta, dsl_path, text_x, text_w)
       elements << tabla_el if tabla_el
 
-      Layout.paginate_and_draw(pdf, elements, header_bottom, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no)
+      Layout.paginate_and_draw(pdf, elements, header_bottom, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, debug_marks: debug_marks)
     end
   end
 end

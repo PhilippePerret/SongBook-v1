@@ -309,9 +309,14 @@ module CarnetBuilder
         # paramètres (page_count, first_page_no, layout résolu) que dans ce carnet réel —
         # même appel `PageBuilder.build`, pas une simulation à part (Phil, 2026-08-21 :
         # "sortir la chanson EXACTEMENT comme elle sortirait"). Sortie PERSISTANTE, jamais
-        # un temp supprimé.
-        song_out = File.join(songs_dir, "#{slug}-song-#{slugify(name)}.pdf")
-        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout))
+        # un temp supprimé — numérotée en version (Phil, 2026-08-23), même convention que
+        # les carnets complets (`existing_versions`/`version` plus haut), sinon un second
+        # essai écrase silencieusement le précédent.
+        song_stem = "#{slug}-song-#{slugify(name)}"
+        song_existing_versions = Dir.glob(File.join(songs_dir, "#{song_stem}-v*.pdf")).filter_map { |f| f[/-v(\d+)\.pdf\z/, 1]&.to_i }
+        song_version = (song_existing_versions.max || 0) + 1
+        song_out = File.join(songs_dir, "#{song_stem}-v#{song_version}.pdf")
+        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), debug_marks: debug_marks)
         return song_out
       end
 
