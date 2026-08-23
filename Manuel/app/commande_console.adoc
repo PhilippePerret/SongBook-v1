@@ -12,3 +12,12 @@ console build
 ----
 
 Pour ne produire qu'une chanson, ouvrez la console au dossier de la chanson et utilisez la même commande.
+
+
+[[diag-builder, constructeur de diagramme]]
+==== Constructeur de diagramme ====
+
+Outils permettant de construire des diagrammes d'accords pour la guitare.
+----
+console build diag "schéma"
+----

@@ -12,6 +12,9 @@ include::infos.adoc[]
 // Paroles
 include::lyrics.adoc[]
 
+// Accords
+include::chords.adoc[]
+
 // Tablatures et partitions
 include::tablas-et-scores.adoc[]
 
