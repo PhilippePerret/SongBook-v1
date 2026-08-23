@@ -1,4 +1,9 @@
-***À TENIR SOIGNEUSEMENT À JOUR***
+***À TENIR À JOUR***
+
+## TENIR CE FICHIER ET LES FICHIERS RELATIFS À JOUR
+- Chaque fois qu'une tâche est accomplie, relire ce fichier et voir si des choses peuvent être supprimées ou actualisées.
+- Régler ci-dessous la date de dernière vérification.
+- Date de dernière vérification : - Jamais effectuée -
 
 ## Séparation moteur/données
 Ce dépôt (`SongBook-app`, `origin: SongBook-v1.git`) = moteur seul. Les données d'un utilisateur (ex. `Carnets-de-chant`) vivent dans un dépôt séparé, avec sa propre mémoire process.
