@@ -21,27 +21,37 @@ module ChordDiagrams
     chord.tr("♭♯", "b#")
   end
 
-  def self.diag_path(chord, fret: nil)
-    letter = chord[0].upcase
-    dir = File.join(ASSETS, letter)
-    unless Dir.exist?(dir)
-      Layout.conflict!("accord inconnu: #{chord}#{fret ? "-#{fret}" : ""}", solution: "diagramme omis")
-      Layout.track_missing_chord(chord)
-      return nil
+  # Précédence : carnet (`carnet_dir`) fait loi, puis chanson (`song_dir`), puis
+  # `assets/chords_diags/` en dernier recours (Phil, 2026-08-23). Recherche RÉCURSIVE
+  # dans `carnet_dir`/`song_dir` (SongBook écrit lui-même dans `images/diags/`, mais
+  # l'user peut avoir placé un SVG n'importe où dans le dossier).
+  def self.diag_path(chord, fret: nil, carnet_dir: nil, song_dir: nil)
+    fc = file_chord(chord)
+
+    [carnet_dir, song_dir].compact.each do |dir|
+      found = find_svg(dir, fc, fret, recursive: true)
+      return found if found
     end
 
-    fc = file_chord(chord)
-    entries = Dir.glob(File.join(dir, "#{Regexp.escape(fc)}-*.svg")).filter_map do |f|
+    letter = chord[0].upcase
+    found = find_svg(File.join(ASSETS, letter), fc, fret, recursive: false)
+    return found if found
+
+    Layout.conflict!("accord inconnu ou case absente: #{chord}#{fret ? "-#{fret}" : ""}", solution: "diagramme omis")
+    Layout.track_missing_chord(chord)
+    nil
+  end
+
+  def self.find_svg(dir, fc, fret, recursive:)
+    return nil unless Dir.exist?(dir)
+
+    pattern = File.join(dir, *(recursive ? ["**"] : []), "#{Regexp.escape(fc)}-*.svg")
+    entries = Dir.glob(pattern).filter_map do |f|
       m = File.basename(f).match(/\A#{Regexp.escape(fc)}-(\d+)\.svg\z/)
       [f, m[1].to_i] if m
     end
     entries.select! { |_, kase| kase == fret.to_i } if fret
-
-    if entries.empty?
-      Layout.conflict!("accord inconnu ou case absente: #{chord}#{fret ? "-#{fret}" : ""}", solution: "diagramme omis")
-      Layout.track_missing_chord(chord)
-      return nil
-    end
+    return nil if entries.empty?
 
     target_case = fret ? fret.to_i : entries.map { |_, kase| kase }.min
     entries.find { |_, kase| kase == target_case }.first

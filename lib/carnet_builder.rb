@@ -10,6 +10,7 @@ require_relative "locale"
 require_relative "song_cache"
 require_relative "app_options"
 require_relative "file_finder"
+require_relative "diags_sync"
 
 # Construit un carnet ENTIER : pages de garde/TOC/textes de front matter (selon le
 # `.infos`/`.inf` du carnet), une page par chanson réelle du `.tdm` (via `PageBuilder.build`),
@@ -208,6 +209,8 @@ module CarnetBuilder
     infos_path = FileFinder.find(carnet_folder, :inf)
     raise "aucun fichier .infos/.inf trouvé dans #{carnet_folder}" unless infos_path
 
+    DiagsSync.sync!(carnet_folder)
+
     conf = parse_nested_infos(infos_path)
     title = conf.fetch("title")
     subtitle = conf["subtitle"]
@@ -270,7 +273,7 @@ module CarnetBuilder
     real_songs.each do |name, entry|
       folder = File.join(chansons_dir, entry[:folder])
       tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
-      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: 1, layout: resolve_song_layout(folder, carnet_layout))
+      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: 1, layout: resolve_song_layout(folder, carnet_layout), carnet_folder: carnet_folder)
       real_page_counts[name] = CombinePDF.load(tmp_out).pages.size
       File.delete(tmp_out)
     end
@@ -316,12 +319,12 @@ module CarnetBuilder
         song_existing_versions = Dir.glob(File.join(songs_dir, "#{song_stem}-v*.pdf")).filter_map { |f| f[/-v(\d+)\.pdf\z/, 1]&.to_i }
         song_version = (song_existing_versions.max || 0) + 1
         song_out = File.join(songs_dir, "#{song_stem}-v#{song_version}.pdf")
-        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), debug_marks: debug_marks)
+        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), debug_marks: debug_marks, carnet_folder: carnet_folder)
         return song_out
       end
 
       tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
-      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout))
+      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), carnet_folder: carnet_folder)
       n = real_page_counts[name]
       combined_songs << CombinePDF.load(tmp_out)
       File.delete(tmp_out)

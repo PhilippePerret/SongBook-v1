@@ -11,6 +11,7 @@ module FileFinder
     tdm: %w[tdm toc],
     lyr: %w[lyrics lyr],
     lay: %w[layout lay],
+    sch: %w[schemas sch],
   }.freeze
 
   def self.find(dir, kind)

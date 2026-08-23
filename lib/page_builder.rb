@@ -5,6 +5,7 @@ require_relative "transpose"
 require_relative "kdp"
 require_relative "locale"
 require_relative "file_finder"
+require_relative "diags_sync"
 
 # Construit les pages PDF d'UNE chanson — point d'entrée réutilisable (API : "je veux
 # juste cette chanson"), orchestrant `DSLParser`/le format `.lyr`+`.gab`+`.infos`,
@@ -332,7 +333,8 @@ module PageBuilder
   # et Manuel/song/layout.adoc) : défauts du CARNET pour cette chanson — un `.gab` explicite
   # garde priorité (une chanson peut toujours s'écarter du layout général, Manuel : "on
   # peut le faire chanson par chanson ou de façon générale... ou les deux").
-  def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout: nil, debug_marks: false)
+  def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout: nil, debug_marks: false, carnet_folder: nil)
+    DiagsSync.sync!(folder)
     gab_path = FileFinder.find(folder, :gab)
     lyr_path = FileFinder.find(folder, :lyr)
     infos_path = FileFinder.find(folder, :inf)
@@ -380,7 +382,7 @@ module PageBuilder
       Layout.log_build("titre en #{header_style == :band ? "bandeau" : "ligne simple"} (header_style)")
 
       chord_frets = ChordDiagrams.collect_chord_frets(lyr_blocks.values)
-      diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret) }
+      diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret, carnet_dir: carnet_folder, song_dir: folder) }
       diag_position = (items.find { |i| i.type == :diags }&.data&.dig(:position) || diag_position_default).to_sym
       Layout.log_build("#{diag_paths.size} diagramme(s) d'accord, position=#{diag_position}")
 
