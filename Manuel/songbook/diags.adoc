@@ -1,0 +1,6 @@
+[[songbook-schemas, diagrammes propres]]
+=== Diagrammes propres ===
+
+Le fichier `.schemas` (ou `.sch`) permet de définir des diagrammes propres au seul carnet qui contient ce fichier.
+
+En général, il est préférable de définir ces schémas (et les SVG qui en résultent) directement <<song-schemas, dans la chanson>> afin que tous les carnets puissent en profiter (voir justement cette partie pour savoir comment les utiliser).

@@ -17,4 +17,5 @@ __Note : la version courte de l'extension contient toujours 3 lettres seulement
 | `.gabarit`  | `.gab`          | `c.gab` | Définit le <<gabarit-file, gabarit précis>> (souvent pour une chanson en particulier)
 | `.tdm`      | `.toc`          | `c.toc` | Définit la table des matières du carnet.
 | `.cover`    | `.cov`          | `c.cov` | Définit la mise en forme de la <<cover, couverture, 1^re^ et 4^e^>>.
+| `.schemas`  | `.sch`          | `c.sch` | Définit les <<songbook-schemas, schémas de diagrammes propres au carnet>> ou <<song-schemas, à la chanson>>.
 |====

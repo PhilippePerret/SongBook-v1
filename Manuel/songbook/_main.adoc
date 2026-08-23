@@ -13,5 +13,8 @@ include::best-practices.adoc[]
 // Table des matières
 include::table-des-matieres.adoc[]
 
+// Diagrammes propres
+include::diags.adoc[]
+
 // Couverture
 include::cover.adoc[]

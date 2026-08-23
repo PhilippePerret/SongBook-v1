@@ -1,0 +1,27 @@
+[[diags, diagrammes d'accords]]
+=== Diagrammes d'accords ===
+
+On appelle __diagrammes d'acccord__ ou tout simplement __diag__ ou __diagrammes les petits schémas représentant les accords à la guitare (__il existe des diagrammes pour d'autres instruments à cordes, mais ils ne sont pas utilisés ici__).
+
+Todo: montrer diagramme d'accord.
+
+==== Liste des diagrammes ====
+
+On peut obtenir la liste de tous les diagrammes, afin de pouvoir choisir ceux qui nous intéressent pour une chanson, en jouant la commande : 
+
+----
+songbook diags
+----
+
+Elle ouvre un fichier HTML où sont présentés tous les diagrammes, et il suffit de cliquer sur leur diagrammes pour mettre le nom dans le presse-papier et le coller dans la chanson.
+
+==== Produire ses propres diagrammes ====
+
+On peut aller plus loin et produire ses propres diagrammes personnalisés. Pour ça
+----
+songbook build diag "<schéma>"
+----
+
+Le schéma est très précis et peut s'obtenir avec la commande `diag`.
+
+On peut même directement, si le schéma ne nous intéresse pas, utiliser la commande `diag -o` pour définir le diagramme et produire son image SVG à insérer dans le carnet.
