@@ -5,6 +5,7 @@ On appelle __diagrammes d'acccord__ ou tout simplement __diag__ ou __diagrammes 
 
 Todo: montrer diagramme d'accord.
 
+[[diags-list, liste des diagrammes existants]]
 ==== Liste des diagrammes ====
 
 On peut obtenir la liste de tous les diagrammes, afin de pouvoir choisir ceux qui nous intéressent pour une chanson, en jouant la commande : 
@@ -25,3 +26,19 @@ songbook build diag "<schéma>"
 Le schéma est très précis et peut s'obtenir avec la commande `diag`.
 
 On peut même directement, si le schéma ne nous intéresse pas, utiliser la commande `diag -o` pour définir le diagramme et produire son image SVG à insérer dans le carnet.
+
+[[song-schema]]
+==== Diagrammes propres à la chanson ====
+
+Une chanson peut définir ses propres schémas dans un fichier `.schemas` (`sche`). Cela est nécessaire lorsque la chanson utilise des accords qui ne sont consignés <<diags-list, nulle part ailleurs>>.
+
+Dans ce fichier, on indique : 
+
+----
+<NOM-DANS-LES-PAROLES> : <SCHÉMA DU DIAGRAMME>
+# etc. les uns sous les autres
+---
+
+Le schéma est obtenu grâce à la commande `diag` qui permet de définir ces diagrammes avec confort et sécurité (l'erreur est pratiquement impossible).
+
+Choisissez bien le nom pour qu'il « n'écrase » pas un accord existant déjà (__rassurez-vous cependant, il ne sera pas vraiment « écrasé »__). C'est ce nom que vous devrez utiliser pour le fichier `.lyr`.
