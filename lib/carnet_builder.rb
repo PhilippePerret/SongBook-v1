@@ -281,7 +281,18 @@ module CarnetBuilder
     # app, voir 4bis). Sections .md : EXACTEMENT une page pour l'instant (limitation connue).
     kdp_probe = KDP.new(page_count: provisional_page_count, trim_width: page_size_in[0], trim_height: page_size_in[1], paper: :white, bleed: false)
     content_h_pt = page_h_pt - Layout.in_pt(kdp_probe.top_margin) - Layout.in_pt(kdp_probe.bottom_margin)
-    toc_page_list = toc_specs(toc_conf, real_songs.size, content_h_pt)
+    # Comptage des rows par TdM AVANT le rendu des chansons (les numéros de page ne sont
+    # pas encore connus) — mais `performer:`/`composer:`/`lyrics:` viennent du `.infos`,
+    # déjà chargés dans `real_songs`, donc le REGROUPEMENT (et donc le nombre de rows,
+    # song + un header par groupe, voir `grouped_toc_rows`) peut être calculé ici, en
+    # amont, avec les mêmes valeurs qu'au rendu final (page: nil, jamais utilisé pour
+    # compter).
+    prelim_entries = real_songs.map do |name, entry|
+      meta = entry[:infos]
+      { name: meta["title"] || name, performer: meta["performer"].to_s, performer_name: meta["performer_name"].to_s,
+        composer: meta["composer"].to_s, lyrics: meta["lyrics"].to_s, first_page: nil, last_page: nil }
+    end
+    toc_page_list = toc_specs(toc_conf, prelim_entries, content_h_pt)
     front_specs = front_matter_specs(fm, conf["copyright"], tdm_position == "front" ? toc_page_list : [])
     front_matter_page_count = front_specs.size
 
@@ -439,23 +450,99 @@ module CarnetBuilder
   # fausse-page, en regard de la page de titre — insérée juste après la 1re page-titre
   # (`half_title`/`garde`, la première présente), pas dans `front_matter_specs` par un
   # réglage dédié puisque le `.infos`/`.inf` du carnet n'en a pas.
-  # Hauteur de ligne + réserve pour le titre "Table des matières — ..." — la 1re ligne de
-  # TOC ne doit JAMAIS partager la même zone que ce titre (bug constaté v14 : la 1re
-  # entrée écrasait le titre, gouttières calculées sur la pleine hauteur de page).
-  # Approximation de la hauteur naturelle d'une ligne à 11pt (interligne "1", voir
-  # `draw_toc_2col`) — pas de `pdf` chargé à ce stade (planification, avant toute page
-  # Prawn réelle), donc pas de mesure exacte possible ici ; `draw_toc_2col` mesure, lui,
-  # la vraie valeur au rendu (léger écart possible, sans conséquence pratique).
-  TOC_ROW_H = 13.0
+  # Réserve pour le titre "Table des matières — ..." — la 1re ligne de TOC ne doit JAMAIS
+  # partager la même zone que ce titre (bug constaté v14 : la 1re entrée écrasait le
+  # titre, gouttières calculées sur la pleine hauteur de page).
   TOC_HEADING_RESERVE = 40.0
 
-  # Nombre de rows (2 colonnes) qui tiennent sur UNE page de TOC — sert à savoir sur
-  # combien de pages étaler chaque TOC (jamais coupée sans page supplémentaire, bug
-  # constaté v14). Interligne "1" (Phil, 2026-08-20) : pas de gouttière entre les rows.
-  def self.toc_rows_per_page(content_h_pt)
-    avail = content_h_pt - TOC_HEADING_RESERVE
-    cols_capacity = (avail / TOC_ROW_H).floor
-    [cols_capacity, 1].max * 2
+  # Taille de police PAR SORT (Phil, 2026-08-23) :
+  # - :performer -> 8,5pt fixe (réduite depuis 11pt par essais successifs).
+  # - :song -> 10pt, SAUF si ça dépasse 2 pages à 10pt (`toc_paginate` à 10pt, pour de
+  #   vrai, pas une estimation) : dans ce cas 9pt, jamais moins.
+  # - toutes les autres (:composer/:author) -> 11pt, jamais touchées.
+  def self.toc_font_size(sort, entries, content_h_pt)
+    case sort
+    when :performer
+      8.5
+    when :song
+      rows = toc_rows(entries, sort)
+      pages_at_10 = toc_paginate(rows, content_h_pt, toc_row_h(10)).size
+      pages_at_10 > 2 ? 9 : 10
+    else
+      11
+    end
+  end
+
+  # Hauteur RÉELLE d'une ligne à `size` (même police/taille que `draw_toc_2col`) — mesurée
+  # sur un `Prawn::Document` jetable, JAMAIS une valeur approchée en dur (bug constaté
+  # 2026-08-23 : une TdM calculée pile à sa capacité, avec une hauteur de ligne approchée,
+  # débordait de quelques points au rendu réel — une row entière tombait DANS LA MARGE,
+  # invisible — interdit, rien ne doit jamais y être posé). Police enregistrée identique à
+  # celle du rendu (`Layout.register_fonts`) : la mesure est EXACTE, pas approchée — le
+  # rendu (`draw_toc_2col`) mesure la même valeur sur son propre `pdf`, forcément identique
+  # (même police, même taille), planification et rendu ne peuvent plus se désaccorder.
+  def self.toc_row_h(size)
+    probe = Prawn::Document.new
+    Layout.register_fonts(probe)
+    Layout.font_metric(probe, size) { probe.font.height }
+  end
+
+  # RATDM6 : 1/2 ligne vide au-dessus de chaque bloc interprète, sauf le 1er de la colonne
+  # (Phil, 2026-08-23, essai) — MÊME valeur que `header_gap_factor` dans `draw_toc_2col`
+  # (sinon la capacité calculée ici ne correspond plus à ce que `draw_toc_2col` dessine
+  # réellement, et des rows débordent hors page, invisibles : bug constaté 2026-08-23,
+  # TdM par interprète incomplète — le compte de pages ignorait le coût des en-têtes de
+  # groupe).
+  TOC_HEADER_GAP_FACTOR = 0.5
+
+  # `rows` (sous-liste, page candidate) tient-il sur UNE page de TOC ? Simule EXACTEMENT le
+  # split 2-colonnes de `draw_toc_2col` (même `half`, mêmes `chunks` jamais coupés).
+  def self.toc_fits?(rows, avail_lines)
+    return true if rows.empty?
+
+    chunks = toc_chunks(rows)
+    half = (rows.size / 2.0).ceil
+    col1 = []
+    count = 0
+    chunks.each do |chunk|
+      break if col1.any? && count >= half
+
+      col1 << chunk
+      count += chunk.size
+    end
+    col2 = chunks[col1.size..] || []
+    content_lines = lambda do |cs|
+      cs.each_with_index.sum { |c, i| c.size + (i.positive? && c.first[:kind] == :header ? TOC_HEADER_GAP_FACTOR : 0) }
+    end
+    content_lines.call(col1) <= avail_lines && content_lines.call(col2) <= avail_lines
+  end
+
+  # Étale `rows` sur autant de pages qu'il faut, chaque page recevant le PLUS GRAND préfixe
+  # (en blocs entiers, RATDM7) qui tient réellement (`toc_fits?`) — jamais un compte de
+  # pages approché sur le nombre brut de rows (bug v14/2026-08-23, voir `toc_fits?`).
+  # Renvoie `[[rows page 1], [rows page 2], ...]`.
+  def self.toc_paginate(rows, content_h_pt, row_h)
+    avail_lines = [(content_h_pt - TOC_HEADING_RESERVE) / row_h, 1.0].max
+    chunks = toc_chunks(rows)
+    pages = []
+    remaining = chunks
+    until remaining.empty?
+      lo = 1
+      hi = remaining.size
+      best = 1
+      while lo <= hi
+        mid = (lo + hi) / 2
+        if toc_fits?(remaining[0...mid].flatten, avail_lines)
+          best = mid
+          lo = mid + 1
+        else
+          hi = mid - 1
+        end
+      end
+      pages << remaining[0...best].flatten
+      remaining = remaining[best..] || []
+    end
+    pages
   end
 
   # `toc_specs_list` : non vide seulement si `tdm_position: front` — insérée AVANT tout
@@ -480,15 +567,22 @@ module CarnetBuilder
 
   # TOC en configuration par défaut : PAS dans le front matter, à la fin, juste avant le
   # colophon (Phil, 2026-08-20). Étalée sur autant de pages qu'il faut (voir
-  # `toc_rows_per_page`) — jamais coupée/chevauchée.
-  def self.toc_specs(toc_conf, song_count, content_h_pt)
+  # `toc_paginate`) — jamais coupée/chevauchée.
+  # `toc_pages` calculé PAR SORT via `toc_paginate` (pas un compte approché sur
+  # `song_count`/nombre brut de rows, bug constaté : la TdM par interprète/compositeur/
+  # parolier a PLUS de rows qu'il n'y a de chansons — un `:header` par groupe en plus de
+  # chaque `:song`, voir `grouped_toc_rows` — ET chaque en-tête de groupe coûte 1,5 ligne
+  # de plus que son rang ne le laisse penser (RATDM6) — un compte approché sur le nombre
+  # brut de rows faisait déborder silencieusement ces vues, rows tronquées).
+  def self.toc_specs(toc_conf, entries, content_h_pt)
     specs = []
-    rows_per_page = toc_rows_per_page(content_h_pt)
-    toc_pages = [(song_count / rows_per_page.to_f).ceil, 1].max
     { song: "per_song", performer: "per_performer", composer: "per_composer", author: "per_author" }.each do |sort, key|
       next unless toc_conf[key]
 
-      toc_pages.times { |i| specs << { kind: :toc, sort: sort, page: i, pages: toc_pages } }
+      size = toc_font_size(sort, entries, content_h_pt)
+      toc_pages = toc_paginate(toc_rows(entries, sort), content_h_pt, toc_row_h(size)).size
+      toc_pages = [toc_pages, 1].max
+      toc_pages.times { |i| specs << { kind: :toc, sort: sort, page: i, pages: toc_pages, font_size: size } }
     end
     specs
   end
@@ -528,12 +622,20 @@ module CarnetBuilder
       # front matter, une simple mention en pied de fausse-page.
       draw_centered_text_box(pdf, spec[:text], y: 40, size: 9)
     when :toc
-      # JAMAIS de "(1/2)"/"(2/2)" dans le titre, même sur plusieurs pages — ça fait
-      # amateur (Phil, 2026-08-20).
-      draw_heading(pdf, "Table des matières #{TOC_LABELS.fetch(spec[:sort])}")
-      rows_per_page = toc_rows_per_page(pdf.bounds.height)
-      rows = toc_rows(entries, spec[:sort])[spec[:page] * rows_per_page, rows_per_page] || []
-      draw_toc_2col(pdf, rows, top: pdf.bounds.height - TOC_HEADING_RESERVE, sort: spec[:sort])
+      # " (suite)" sur les pages 2+ d'une même TdM (Phil, 2026-08-23) — remplace la
+      # décision précédente "jamais de (1/2)/(2/2)" par cette forme-là.
+      suite = spec[:page].positive? ? " (suite)" : ""
+      draw_heading(pdf, "Table des matières #{TOC_LABELS.fetch(spec[:sort])}#{suite}")
+      # Même pagination qu'à la planification (`toc_specs`) — structure des rows identique
+      # (mêmes chansons/groupes), donc mêmes coupures de page, seul `pdf.bounds.height`
+      # remplace le `content_h_pt` calculé hors contexte Prawn (valeurs égales en pratique).
+      # `font_size` DÉCIDÉ à la planification (`toc_specs`), jamais redécidé ici — stocké
+      # dans `spec`, sinon un second calcul pourrait diverger du premier (même bug de
+      # fond que l'ancien désaccord planification/rendu). `row_h` mesuré sur CE `pdf` réel
+      # (même police/taille, voir `toc_row_h`) : exactement la même valeur.
+      row_h = Layout.font_metric(pdf, spec[:font_size]) { pdf.font.height }
+      rows = toc_paginate(toc_rows(entries, spec[:sort]), pdf.bounds.height, row_h)[spec[:page]] || []
+      draw_toc_2col(pdf, rows, top: pdf.bounds.height - TOC_HEADING_RESERVE, sort: spec[:sort], size: spec[:font_size])
     when :markdown
       md_path = File.join(carnet_folder, spec[:file])
       unless File.exist?(md_path)
@@ -655,8 +757,7 @@ module CarnetBuilder
     chunks
   end
 
-  def self.draw_toc_2col(pdf, rows, top: pdf.bounds.height, sort: :song)
-    size = 11
+  def self.draw_toc_2col(pdf, rows, top: pdf.bounds.height, sort: :song, size:)
     # Interligne "1" d'un traitement de texte = la hauteur naturelle d'une ligne à cette
     # taille, sans rien ajouter — PAS l'équilibrage habituel (`distribute_v_gutters`), qui
     # étirait les entrées sur toute la hauteur de page dispo (bug constaté, Phil 2026-08-20).
@@ -675,11 +776,12 @@ module CarnetBuilder
     col2_chunks = chunks[col1_chunks.size..] || []
     Layout.log_build("TdM #{sort} : #{rows.size} ligne(s) réparties en #{chunks.size} bloc(s) (RATDM7), #{col1_chunks.sum(&:size)}/#{col2_chunks.sum(&:size)} lignes col1/col2 (RATDM1/2)")
 
-    # RATDM6 : espace au-dessus de CHAQUE bloc interprète, sauf le 1er de la colonne — 1,5
-    # ligne ENTRE les blocs (Phil, 2026-08-21) ; À L'INTÉRIEUR d'un bloc (header -> ses
-    # chansons, ou chanson -> chanson suivante du même bloc), toujours 1 ligne pleine,
-    # jamais touché.
-    header_gap_factor = 1.5
+    # RATDM6 : 1/2 ligne vide au-dessus de CHAQUE bloc interprète, sauf le 1er de la
+    # colonne (Phil, 2026-08-23, essai — valeur partagée avec `toc_fits?`/
+    # `TOC_HEADER_GAP_FACTOR`, sinon désaccord pagination/rendu).
+    # À L'INTÉRIEUR d'un bloc (header -> ses chansons, ou chanson -> chanson suivante du
+    # même bloc), toujours 1 ligne pleine, jamais touché.
+    header_gap_factor = TOC_HEADER_GAP_FACTOR
     col_lines = lambda do |chunks_|
       chunks_.each_with_index.sum { |chunk, i| chunk.size + (i.positive? && chunk.first[:kind] == :header ? header_gap_factor : 0) }
     end

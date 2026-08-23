@@ -264,7 +264,6 @@ module Layout
   INFO_GAP = 16
 
   BAND_COLOR = "3A3A3A"
-  BAND_GAP = 10
   PC_BOTTOM_PAD = 5
   # Respiration horizontale entre le texte du bandeau (titre à gauche, parolier/
   # compositeur à droite) et les bords du bandeau — même valeur des deux côtés.
@@ -668,46 +667,13 @@ module Layout
     BAND_HEIGHT_PT
   end
 
-  # VERSION A (Phil, 2026-08-22, conservée pour référence — cf TODO-EN-COURS.md, essai
-  # B-version en cours) — bandeau hauteur FIXE (`band_height`), titre CENTRÉ dans cette
-  # hauteur fixe : `yDiff = HB - HT` (HT = encre réelle du titre, variable), réparti pour
-  # moitié au-dessus, pour moitié en dessous. Conséquence : le titre bouge (verticalement)
-  # d'une chanson à l'autre selon son encre réelle. Plus utilisée par le pipeline
-  # (`draw_header_band` = version B ci-dessous) — gardée au cas où on y revienne.
-  def self.draw_header_band_a(pdf, meta)
-    hb = band_height(pdf)
-    ink_top, ink_bottom = ink_extent(pdf, meta["title"].to_s, TITLE_SIZE, style: :bold)
-    y_diff = hb - (ink_top + ink_bottom)
-    top_pad = y_diff / 2.0
-    bottom_pad = y_diff - top_pad
-
-    band_top = pdf.bounds.height
-    band_bottom = band_top - hb
-    y = band_top - top_pad - ink_top
-
-    pc = [meta["lyrics"], meta["composer"]].compact.uniq.join(" / ")
-    pc_size, pc_ink_bottom = fit_pc_size(pdf, pc, bottom_pad - PC_BOTTOM_PAD)
-    y_pc = band_bottom + PC_BOTTOM_PAD + pc_ink_bottom
-
-    engrave(bottom: band_bottom, context: "bandeau de titre") do
-      pdf.fill_color BAND_COLOR
-      pdf.fill_rectangle [0, band_top], pdf.bounds.width, hb
-      pdf.fill_color "000000"
-    end
-
-    draw_header_band_rows(pdf, meta, y, y_pc, pc_size, title_color: "FFFFFF", info_color: "FFFFFF")
-
-    band_bottom
-  end
-
-  # VERSION B (Phil, 2026-08-23, cf TODO-EN-COURS.md) — bandeau ANCRÉ au sommet de la
-  # page, hauteur FIXE (`band_height`, comme version A, jamais recalculée par chanson).
-  # Ligne de base du titre (et de l'interprète, même `y`) FIXE pour TOUTES les chansons du
+  # Bandeau ANCRÉ au sommet de la page, hauteur FIXE (`band_height`, jamais recalculée par
+  # chanson). Ligne de base du titre (et de l'interprète, même `y`) FIXE pour TOUTES les chansons du
   # carnet : celle du "A" majuscule de la police des titres, centré verticalement dans le
   # bandeau — distance(band_top, haut du "A") == distance(band_bottom, ligne de base).
   # Basée UNIQUEMENT sur la métrique du "A" (jamais l'encre réelle du titre affiché) :
   # aucun titre, quels que soient ses accents/jambages, ne peut faire bouger cette ligne.
-  # Parolier/compositeur : ancré sur `band_bottom` comme en A.
+  # Parolier/compositeur : ancré sur `band_bottom`.
   def self.draw_header_band(pdf, meta)
     # `band_top` FIGÉ EN PREMIER, avant tout autre calcul — calé sur la limite KDP haute
     # (`KDP#top_margin`, qui inclut déjà le point de sécurité `SAFETY_BUFFER_IN`, voir
