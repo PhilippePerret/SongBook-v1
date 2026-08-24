@@ -1,0 +1,18 @@
+[[song-assistant]]
+=== Assistant de création de la chanson ===
+
+Pour créer rapidement une chanson, on peut utiliser l'assistant. Dans un Terminal (ouvert n'importe où) jouer la commande : 
+
+----
+songbook create song
+----
+
+Ou, si vous connaissez déjà le titre et l'interprète : 
+
+----
+songbook create song "Le titre de la chanson"
+
+songbook create song "le titre de la chanson" "le chanteur"
+----
+
+L'assistant vous assiste ensuite pour obtenir le maximum d'informations sur la chanson et créer les fichiers nécessaires.
