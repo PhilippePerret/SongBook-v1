@@ -8,7 +8,7 @@ require_relative "cover_builder"
 require_relative "markdown_page"
 require_relative "locale"
 require_relative "song_cache"
-require_relative "app_options"
+require_relative "app_config"
 require_relative "file_finder"
 require_relative "diags_sync"
 
@@ -117,10 +117,24 @@ module CarnetBuilder
   ID_RE = /\A[a-z0-9]+(-[a-z0-9]+)*\z/
   YEAR_RE = /-((?:1[6-9]|20)\d{2})\z/
 
+  # ASCII pur, aucun diacritique (NFKD sépare lettre + marque combinante, l'encodage
+  # ASCII rejette ensuite tout ce qui n'est pas ASCII — marques combinantes comprises).
   def self.slugify(title)
-    title.downcase
-      .gsub(/[àâä]/, "a").gsub(/[éèêë]/, "e").gsub(/[îï]/, "i").gsub(/[ôö]/, "o").gsub(/[ùûü]/, "u").gsub("ç", "c")
-      .gsub(/[^a-z0-9]+/, "-").gsub(/\A-+|-+\z/, "")
+    ascii = title.unicode_normalize(:nfkd).encode("ASCII", invalid: :replace, undef: :replace, replace: "")
+    ascii.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-+|-+\z/, "")
+  end
+
+  # "Le Pénitencier" -> "Pénitencier (Le)", "L'Aigle noir" -> "Aigle noir (L')" — convention
+  # déjà en usage dans CHANSONS/ (Phil). NOM DE DOSSIER SEULEMENT, jamais `title` en .infos.
+  ARTICLES_DISPLAY = { "the" => "The", "les" => "Les", "le" => "Le", "la" => "La", "l'" => "L'" }.freeze
+  ARTICLE_HEAD_RE = /\A(the|les|le|la|l['’])\s*/i
+
+  def self.move_article_to_end(title)
+    m = title.match(ARTICLE_HEAD_RE)
+    return title unless m
+
+    display = ARTICLES_DISPLAY.fetch(m[1].downcase.tr("’", "'"))
+    "#{title[m[0].length..]} (#{display})"
   end
 
   # "a-bicyclette-montand-1968" -> ["A Bicyclette Montand", "1968"] : retire l'année finale
@@ -138,6 +152,29 @@ module CarnetBuilder
   # fin d'id) ; sinon `name` EST le titre -> id dérivé par slugification. Renvoie
   # `{folder:, infos:}` (forme attendue par le bloc de `SongCache.resolve`).
   def self.create_song_folder(chansons_dir, name)
+    result = write_song_folder(chansons_dir, name)
+    Layout.conflict!("chanson \"#{name}\" absente de Chansons/", solution: "dossier \"#{result[:folder]}\" créé automatiquement (gabarit vide à compléter)")
+    result
+  end
+
+  # `songbook create song` : `infos` déjà entièrement résolu par le wizard (id/title/
+  # performer/composer/lyrics/year), `folder_name` déjà traité (article en fin, voir
+  # `move_article_to_end`) — écrit directement, aucune dérivation depuis un `name` unique
+  # (contrairement à `write_song_folder`, pensé pour le rattrapage `.tdm`).
+  def self.create_song_files(chansons_dir, folder_name, infos, lyr_content = SONG_TEMPLATE)
+    folder = File.join(chansons_dir, folder_name)
+    raise "dossier de chanson déjà existant : #{folder}" if Dir.exist?(folder)
+    Dir.mkdir(folder)
+
+    infos_path = File.join(folder, "c.infos")
+    lyr_path = File.join(folder, "c.lyr")
+    File.write(infos_path, "#{infos.map { |k, v| "#{k}: #{v}" }.join("\n")}\n")
+    File.write(lyr_path, lyr_content)
+
+    { folder: folder, infos_path: infos_path, lyr_path: lyr_path }
+  end
+
+  def self.write_song_folder(chansons_dir, name, extra_infos = {})
     if name.match?(ID_RE)
       id = name
       title, year = derive_title_and_year_from_id(id)
@@ -148,16 +185,17 @@ module CarnetBuilder
     end
 
     folder = File.join(chansons_dir, title)
-    Dir.mkdir(folder) unless Dir.exist?(folder)
+    raise "dossier de chanson déjà existant : #{folder}" if Dir.exist?(folder)
+    Dir.mkdir(folder)
 
     infos = { "id" => id }
     PageBuilder::INFOS_CANONICAL_KEYS.each { |k| infos[k] = "" }
     infos["title"] = title
     infos["year"] = year if year
+    extra_infos.each { |k, v| infos[k.to_s] = v unless v.to_s.strip.empty? }
     File.write(File.join(folder, "c.infos"), "#{infos.map { |k, v| "#{k}: #{v}" }.join("\n")}\n")
     File.write(File.join(folder, "c.lyr"), SONG_TEMPLATE)
 
-    Layout.conflict!("chanson \"#{name}\" absente de Chansons/", solution: "dossier \"#{title}\" créé automatiquement (gabarit vide à compléter)")
     { folder: title, infos: infos }
   end
 
@@ -187,7 +225,7 @@ module CarnetBuilder
   # réel), même principe que `build` pour la marge de reliure KDP.
   def self.build_song(song_folder)
     layout = DEFAULT_LAYOUT
-    page_size_in = layout.fetch(:format).to_s.split(/\s*x\s*/i).map { |v| AppOptions.length_pt(v) / AppOptions::IN_TO_PT }
+    page_size_in = layout.fetch(:format).to_s.split(/\s*x\s*/i).map { |v| AppConfig.length_pt(v) / AppConfig::IN_TO_PT }
     slug = slugify(File.basename(song_folder))
     export_dir = File.join(song_folder, "export")
     FileUtils.mkdir_p(export_dir)
@@ -214,22 +252,22 @@ module CarnetBuilder
     conf = parse_nested_infos(infos_path)
     title = conf.fetch("title")
     subtitle = conf["subtitle"]
-    build_unknown_song = conf.fetch("build_unknown_song", AppOptions.get("build_unknown_song"))
+    build_unknown_song = conf.fetch("build_unknown_song", AppConfig.get("build_unknown_song"))
     # `format` (trim size KDP) : convention historique en POUCES pour un nombre SANS unité
     # ("8.27 x 6" -> inches, comme le format papier KDP est toujours exprimé) — jamais en
-    # points comme le reste de `AppOptions.length_pt` (bug constaté 2026-08-21 : "8.27"
+    # points comme le reste de `AppConfig.length_pt` (bug constaté 2026-08-21 : "8.27"
     # lu comme 8.27pt, marges KDP en inches soustraites d'une largeur de page presque
     # nulle, `pdf.bounds.width` négatif, crash Prawn `CannotFit`). Une unité explicite
     # ("21cm x 15cm") reste convertie normalement.
-    page_size_in = conf.fetch("format") { AppOptions.get("format") }.split(/\s*x\s*/i).map { |v| v =~ /[a-z]/i ? AppOptions.length_pt(v) / AppOptions::IN_TO_PT : v.to_f }
-    page_size_pt = page_size_in.map { |v| v * AppOptions::IN_TO_PT }
+    page_size_in = conf.fetch("format") { AppConfig.get("format") }.split(/\s*x\s*/i).map { |v| v =~ /[a-z]/i ? AppConfig.length_pt(v) / AppConfig::IN_TO_PT : v.to_f }
+    page_size_pt = page_size_in.map { |v| v * AppConfig::IN_TO_PT }
     layout_name = conf["layout"]
     base_layout = layout_name ? LAYOUTS.fetch(layout_name) { raise "layout inconnu : #{layout_name} (voir CarnetBuilder::LAYOUTS)" } : DEFAULT_LAYOUT
     carnet_layout_path = find_layout_file(carnet_folder)
     carnet_layout = carnet_layout_path ? base_layout.merge(load_layout_override(carnet_layout_path)) : base_layout
     fm = conf.fetch("front_matter", {})
     toc_conf = fm.fetch("table_of_contents", {})
-    tdm_position = toc_conf.fetch("position", AppOptions.get("tdm_position"))
+    tdm_position = toc_conf.fetch("position", AppConfig.get("tdm_position"))
 
     chansons_dir = File.expand_path("../../Chansons", carnet_folder)
     export_dir = File.join(carnet_folder, "export")
@@ -832,9 +870,9 @@ module CarnetBuilder
     # RATDM8 (Phil, 2026-08-21, valeurs provisoires — "> 2cm ?"/"1cm ?") : gouttière+marge
     # déjà généreuses -> on leur emprunte 1cm pour allonger les filets de conduite, plutôt
     # que de le laisser en blanc pur.
-    if (h_gutter + x1) > AppOptions::CM_TO_PT * 2
-      num_x_offset += AppOptions::CM_TO_PT
-      natural_col_w += AppOptions::CM_TO_PT
+    if (h_gutter + x1) > AppConfig::CM_TO_PT * 2
+      num_x_offset += AppConfig::CM_TO_PT
+      natural_col_w += AppConfig::CM_TO_PT
       h_gutter = gutter_for.call(natural_col_w)
       x1 = [(pdf.bounds.width - (natural_col_w * 2 + h_gutter)) / 2.0, 0].max
       Layout.log_build("TdM #{sort} : gouttière+marge généreuses, filets allongés de 1cm (RATDM8)")

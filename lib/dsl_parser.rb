@@ -14,7 +14,7 @@ class DSLParser
   # 2026-08-21) — le séparateur "-" existe, ce qui le suit n'a pas besoin d'être un
   # numéro propre pour que le NOM (groupe 1) soit reconnu (bug constaté : "/g2-0C:",
   # "En rouge et noir"/"Belle île en mer", pas reconnu DU TOUT faute de `-(\d+)` strict).
-  CHORD_RE = /\/((?:[A-Za-zÀ-ÿ0-9#♯♭]+)(?:\/[A-Za-zÀ-ÿ0-9#♯♭]+)?)(?:-([^: ]+))?:/
+  CHORD_RE = /\/((?:[A-Za-zÀ-ÿ0-9#♯♭\[\]]+)(?:\/[A-Za-zÀ-ÿ0-9#♯♭\[\]]+)?)(?:-([^: ]+))?:/
 
   def self.parse(source)
     new(source).parse
@@ -49,9 +49,15 @@ class DSLParser
 
   # Écriture en minuscule tolérée pour la commodité de frappe ("/am:") — la
   # première lettre de chaque note (fondamentale, basse) doit toujours être
-  # rendue en capitale ("Am"), le reste de la qualité inchangé (ex. "m7b5").
+  # rendue en capitale ("Am"), le reste de la qualité inchangé (ex. "m7b5"). Basse
+  # entre crochets (`A[c]m7`, `Am7[c]`, `[cd]` seule) : même règle appliquée à la
+  # lettre suivant le "[" (Phil, 2026-08-24 — bug basses jamais reconnues, "Plus grand
+  # chapiteau du monde (Le)", crochets absents de `CHORD_RE`).
   def self.normalize_chord(chord)
-    chord.split("/").map { |part| part.sub(/\A./) { |c| c.upcase } }.join("/")
+    chord.split("/").map do |part|
+      part = part.sub(/\A./) { |c| c.upcase }
+      part.gsub(/\[./) { |m| m[0] + m[1].upcase }
+    end.join("/")
   end
 
   def initialize(source)
