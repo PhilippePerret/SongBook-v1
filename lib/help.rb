@@ -25,9 +25,19 @@ USAGE = <<~TXT
 
     {{command: songbook build}}
 
+  Assistant de création de chanson
+  --------------------------------
+    {{command: songbook create song[ "titre de la chanson"]}}
+
+  Assistant de création de carnet de chant
+  ----------------------------------------
+    {{command: songbook create songbook[ "titre du carnet"]}}
+
   Couverture
   ----------
-  Pour la construire, deux moyens :
+  Pour construire la couverture, deux moyens :
+  (cette solution n'est pas très performante au niveau de la couver-
+  ture produite — voir le manuel pour de meilleures solutions)
   
   - au moment de la construction du carnet, ajouter l'option -c ou -cover :
     {{command:songbook build -c}}
