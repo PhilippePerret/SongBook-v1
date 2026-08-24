@@ -1,6 +1,6 @@
 require "prawn"
 require "prawn-svg"
-require_relative "app_options"
+require_relative "app_config"
 
 # Moteur de mise en page : primitives de dessin (police, en-tête, couplets/accords,
 # diagrammes, tabla) et pagination générique — indépendant du format source d'une
@@ -579,7 +579,7 @@ module Layout
     }
     pdf.font_families.update("HelveticaNeue" => helvetica_neue, "sans-serif" => helvetica_neue)
 
-    text_font_name = AppOptions.get("text_font")
+    text_font_name = AppConfig.get("text_font")
     pdf.font_families.update(text_font_name => resolve_font_files(text_font_name))
 
     pdf.font "HelveticaNeue"
@@ -1311,15 +1311,24 @@ module Layout
   end
 
   # "d"/"b" en 2e position d'un nom d'accord = dièse/bémol (convention interne, cf. noms
-  # de fichiers de diags) → symbole réel ♯/♭ à l'affichage, jamais la lettre brute.
+  # de fichiers de diags) → symbole réel ♯/♭ à l'affichage, jamais la lettre brute. Basse
+  # entre crochets (`A[c]m7`, `Am7[cd]`, `[cd]` seule) : même conversion appliquée à la
+  # basse indépendamment de la fondamentale (Phil, 2026-08-24).
   def self.display_chord(chord)
     chord.split("/").map do |part|
-      case part[1]
-      when "d" then part[0] + "♯" + part[2..]
-      when "b" then part[0] + "♭" + part[2..]
-      else part
-      end
+      root, bass = part.include?("[") ? part.split("[", 2) : [part, nil]
+      out = convert_note_symbol(root)
+      out += "[" + convert_note_symbol(bass.chomp("]")) + "]" if bass
+      out
     end.join("/")
+  end
+
+  def self.convert_note_symbol(note)
+    case note[1]
+    when "d" then note[0] + "♯" + note[2..]
+    when "b" then note[0] + "♭" + note[2..]
+    else note
+    end
   end
 
   # Racine (1ère lettre + éventuel ♯/♭) affichée pleine taille, tout le reste de l'accord

@@ -1,5 +1,5 @@
 require_relative "layout"
-require_relative "app_options"
+require_relative "app_config"
 
 # Rendu minimal des sections "front matter" (préface, avant-propos, remerciements) —
 # reconnaissance directe adaptée à Prawn, pas de dépendance Markdown externe (Phil,
@@ -18,7 +18,7 @@ module MarkdownPage
   # RATX1 (Manuel/regles_esthetiques.adoc) : texte autre que lyrics, à phrases longues,
   # sur 2 colonnes dès que la page dépasse 15cm de large — gouttière fixe (`text_column_guter`,
   # options.yaml).
-  TWO_COL_THRESHOLD_PT = AppOptions.length_pt("15cm")
+  TWO_COL_THRESHOLD_PT = AppConfig.length_pt("15cm")
 
   Block = Struct.new(:type, :level, :lines)
 
@@ -62,7 +62,7 @@ module MarkdownPage
 
   def self.render(pdf, md_path, width, top: pdf.bounds.height)
     blocks = parse(File.read(md_path))
-    text_font_name = AppOptions.get("text_font")
+    text_font_name = AppConfig.get("text_font")
     spacing = text_font_name.include?("Garamond") ? GARAMOND_LETTER_SPACING : 0
     pdf.font(text_font_name) do
       pdf.character_spacing(spacing) do
@@ -77,7 +77,7 @@ module MarkdownPage
   end
 
   def self.render_two_columns(pdf, blocks, top, width)
-    gutter = AppOptions.length_pt(AppOptions.get("text_column_guter"))
+    gutter = AppConfig.length_pt(AppConfig.get("text_column_guter"))
     col_w = (width - gutter) / 2.0
     x = [0, col_w + gutter]
     col = 0

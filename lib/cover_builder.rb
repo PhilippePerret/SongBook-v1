@@ -3,7 +3,7 @@ require "shellwords"
 require_relative "layout"
 require_relative "kdp"
 require_relative "cov_parser"
-require_relative "app_options"
+require_relative "app_config"
 require_relative "locale"
 require_relative "markdown_page"
 
@@ -66,7 +66,7 @@ module CoverBuilder
 
     Prawn::Document.generate(out_path, page_size: [cw, ch], margin: 0) do |pdf|
       Layout.register_fonts(pdf)
-      font_name = AppOptions.get("text_font")
+      font_name = AppConfig.get("text_font")
       spacing = font_name.to_s.include?("Garamond") ? MarkdownPage::GARAMOND_LETTER_SPACING : 0
       pdf.fill_color "000000"
 
@@ -373,7 +373,7 @@ module CoverBuilder
 
     size = font_size(item, 8.0)
     align, = parse_align(item)
-    gutter = AppOptions.length_pt(AppOptions.get("text_column_guter"))
+    gutter = AppConfig.length_pt(AppConfig.get("text_column_guter"))
 
     chunk = [(texts.size / cols.to_f).ceil, 1].max
     columns = texts.each_slice(chunk).map { |c| c.join("\n") }
@@ -392,7 +392,7 @@ module CoverBuilder
   def self.prose_columns_dimensions(pdf, item, text, cols, x0, x1)
     size = font_size(item, 8.0)
     align, = parse_align(item)
-    gutter = AppOptions.length_pt(AppOptions.get("text_column_guter"))
+    gutter = AppConfig.length_pt(AppConfig.get("text_column_guter"))
     col_w = (x1 - x0 - (cols - 1) * gutter) / cols
 
     mid = text.length / 2

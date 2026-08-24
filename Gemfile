@@ -5,3 +5,5 @@ gem "prawn-svg"
 
 gem "combine_pdf", "~> 1.0"
 gem "idml"
+gem "tty-prompt"
+gem "tty-spinner"
