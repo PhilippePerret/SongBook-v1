@@ -156,6 +156,14 @@ module Layout
   # posé dans la marge malgré la décision précédente de l'y mettre volontairement ; le
   # vérificateur KDP ne fait aucune exception pour un numéro de page).
   PAGE_NUMBER_TOP_INSET_PT = 2
+  # Hauteur (pt) de la zone d'encre du numéro de page au-dessus de y=0 (contenu) —
+  # approximation généreuse (PAGE_NUMBER_SIZE entier, pas le seul ascendeur, erre du côté
+  # de la sécurité) — sert à vérifier qu'un bloc calé en bas de page (grille RAD7) ne le
+  # recouvre pas (Phil, 2026-08-24 : "jamais collés au numéro de page").
+  PAGE_NUMBER_INK_ZONE_PT = PAGE_NUMBER_TOP_INSET_PT + PAGE_NUMBER_SIZE
+  # Marge visée quand on remonte la grille (cas 1.1, place suffisante au-dessus) — au-delà
+  # de la zone d'encre, pour un espace visuellement net, pas juste "qui ne touche pas".
+  PAGE_NUMBER_TARGET_CLEARANCE_PT = PAGE_NUMBER_INK_ZONE_PT + 8.0
 
   def self.in_pt(inches)
     inches * 72.0
@@ -229,6 +237,15 @@ module Layout
   MIN_V_DIST = { default: 20.0, diags: 2.0, band_diag: 10.0, band_strophe: 10.0 }.freeze
   MIN_H_DIST = { default: 8.0, diags: 4.0, tdm_num: 20.0 }.freeze
   MAX_V_DIST = { default: 40.0, diags: 2.0, band_diag: 20.0, band_strophe: 40.0 }.freeze
+
+  # Rééquilibrage vertical (Phil, 2026-08-24, "L'Aigle noir" p.9 : bloc de paroles collé
+  # en haut, grand vide en bas) : DUP (haut du bloc -> bas du bandeau/marge haut) et DDO
+  # (bas du bloc -> marge basse) — si `(DUP - DDO).abs <= VERTICAL_BALANCE_THRESHOLD_PT`,
+  # le bloc est recentré (DUP = DDO = moyenne) ; sinon laissé tel quel (contenu qui remplit
+  # déjà la page ne doit pas être artificiellement tassé). S'applique à TOUT contenu qui
+  # termine une page (texte, image, partition, tabla) — jamais quand une grille de diags
+  # en trop (RAD7) est calée en dessous : elle EST déjà la référence "bas", pas la marge.
+  VERTICAL_BALANCE_THRESHOLD_PT = 80.0
   MAX_H_DIST = { default: 40.0 }.freeze
 
   # RATDM4 : filet de conduite entre titre et numéro de page — caractère et espacement
@@ -1107,23 +1124,37 @@ module Layout
   # diags). Elle est bornée au nombre de pages du texte ; les diags en trop ("excès") sont
   # regroupés horizontalement, plusieurs par ligne, sur une ou des pages dédiées après la
   # chanson (`draw_diags_grid`) — seulement si RAD5 (jamais un diag seul) ne suffit plus.
-  def self.paginate_and_draw(pdf, elements, first_avail_h, kdp:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, text_x: 0, text_w: nil, debug_marks: false)
+  # `dynamic_mode`/`elements_alt`/`side_col_alt`/`text_x_alt` (Phil, 2026-08-24) : position
+  # `int`/`ext` (voir `PageBuilder.build`) — DEUX variantes gauche/droite pré-construites
+  # (mêmes hauteurs, seul `x` diffère, donc MÊME pagination `pages`/`side_pages` valable
+  # pour les deux), la bonne est choisie ICI, PAGE PAR PAGE, sur la parité recto/verso
+  # réelle de cette page (`kdp.recto?`) — jamais figée sur la 1re page de la chanson (bug
+  # constaté : "À bicyclette" p.4 (verso) et p.5 (recto), même chanson, reliure des deux
+  # côtés, resterait fausse sur l'une des deux si résolue une seule fois pour la chanson).
+  def self.paginate_and_draw(pdf, elements, first_avail_h, kdp:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, text_x: 0, text_w: nil, debug_marks: false,
+      dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil)
     heights = elements.map(&:height)
     pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned, top_type: :band_strophe)
+    want_left_for = ->(page_no) { dynamic_mode.nil? || (dynamic_mode == :int) == kdp.recto?(page_no) }
 
     side_elements = []
+    side_elements_alt = []
     side_pages = []
     excess_paths = []
     excess_heights = []
     if side_col
-      side_elements = side_col[:paths].each_with_index.map do |path, i|
-        h = side_col[:heights][i]
-        x = side_col[:x]
-        w = side_col[:width]
-        PageElement.new(h, lambda do |pdf_, y|
-          engrave(bottom: y - h, context: "diagramme") { pdf_.svg(IO.read(path), at: [x, y], width: w, position: :left, enable_web_requests: false) }
-        end)
+      build_side_elements = lambda do |col|
+        col[:paths].each_with_index.map do |path, i|
+          h = col[:heights][i]
+          x = col[:x]
+          w = col[:width]
+          PageElement.new(h, lambda do |pdf_, y|
+            engrave(bottom: y - h, context: "diagramme") { pdf_.svg(IO.read(path), at: [x, y], width: w, position: :left, enable_web_requests: false) }
+          end)
+        end
       end
+      side_elements = build_side_elements.call(side_col)
+      side_elements_alt = side_col_alt ? build_side_elements.call(side_col_alt) : side_elements
       side_pages_all = paginate(side_elements, first_avail_h, pdf.bounds.height, type: :diags, top_type: :band_diag)
       if side_pages_all.size > pages.size
         side_pages = side_pages_all.first(pages.size)
@@ -1132,6 +1163,31 @@ module Layout
         excess_heights = side_col[:heights][excess_start..] || []
       else
         side_pages = side_pages_all
+      end
+
+      # `DIAG_COLUMN_BOTTOM_SAFETY_PT` (Phil, 2026-08-24, "L'Aigle noir" : dernier diag
+      # collé au numéro de page) : retiré ICI, APRÈS pagination normale — jamais en
+      # réduisant la hauteur passée à `paginate` (essai précédent : décale tout le haut
+      # de la colonne vers le bas au lieu de ne rogner QUE le bas, effet de bord non voulu,
+      # retiré). Un item retiré à la fois (l'écart entre deux items est TOUJOURS un
+      # diagramme entier, jamais un pt près) — passe en "excess", fusionné en ligne
+      # horizontale ou page dédiée comme n'importe quel excédent.
+      unless side_pages.empty?
+        last = side_pages.last
+        loop do
+          els = side_elements[last[:start]...last[:finish]]
+          heights = els.map(&:height)
+          break if heights.empty?
+
+          gutters = distribute_v_gutters(last[:avail_h], heights, type: :diags, top_type: side_pages.size == 1 ? :band_diag : :diags)
+          clearance = last[:avail_h] - gutters.sum - heights.sum
+          break if clearance >= DIAG_COLUMN_BOTTOM_SAFETY_PT || last[:finish] <= last[:start]
+
+          last[:finish] -= 1
+        end
+        excess_start = last[:finish]
+        excess_paths = side_col[:paths][excess_start..] || []
+        excess_heights = side_col[:heights][excess_start..] || []
       end
     end
 
@@ -1143,9 +1199,9 @@ module Layout
     #   RAD7 : le bloc de lignes de diags reste TOUT EN BAS de la page — le reste (E1, E2)
     #          s'équilibre normalement dans l'espace qui reste AU-DESSUS, jamais mélangé.
     #   RAD8 : écartement FIXE entre les lignes de diags (jamais équilibré/étiré).
-    #   RAD9 : une ligne plus courte (moins de diags) s'aligne vers la reliure — ici
-    #          toujours à gauche (`text_x`), la position des diags n'étant pas encore
-    #          sensible à la parité recto/verso (voir `layout_diags`).
+    #   RAD9 : une ligne plus courte (moins de diags) s'aligne vers la reliure — `text_x`
+    #          de la variante (gauche/droite) choisie pour la page où tombe la fusion
+    #          (`want_left_for`, position `int`/`ext` sensible à la parité recto/verso).
     #   RAD10 (Phil, 2026-08-23, RÈGLE ABSOLUE) : TOUS les diagrammes d'une même chanson
     #          ont TOUJOURS la même taille — les diags "en trop" reprennent EXACTEMENT la
     #          largeur de la colonne normale (`side_col[:width]`, déjà rétrécie par
@@ -1164,13 +1220,32 @@ module Layout
       block_h = rows.size * grid_diag_h + [rows.size - 1, 0].max * gap_v
 
       last_page = pages.last
+
+      # `column_bottom_y` (colonne verticale présente sur CETTE page) : "aligner sur le
+      # dernier diag de la colonne" = MÊME HAUTEUR (Y), pas même x (Phil, 2026-08-24) — la
+      # grille reste dans la colonne TEXTE (x inchangé, `text_w`), simplement calée à la
+      # même altitude que le bas du dernier diag de la colonne verticale, PAS collée en
+      # bas de page. Aucun risque de chevauchement AVEC la colonne (x différents, côte à
+      # côte, pas empilés) ; le seul risque est avec le TEXTE (même x) — `remaining_h`
+      # réserve donc la place au-dessus de cette hauteur, comme avant. Sans colonne sur
+      # cette page : ancrée près de la marge basse (`gap_v` + anti-numéro-de-page).
+      last_side_page = side_pages[pages.size - 1]
+      column_bottom_y = nil
+      if last_side_page
+        last_page_no = first_page_no + pages.size - 1
+        cur_side_els_for_last = want_left_for.call(last_page_no) ? side_elements : side_elements_alt
+        last_side_heights = cur_side_els_for_last[last_side_page[:start]...last_side_page[:finish]].map(&:height)
+        last_side_gutters = distribute_v_gutters(last_side_page[:avail_h], last_side_heights, type: :diags, top_type: (pages.size - 1).zero? ? :band_diag : :diags)
+        column_bottom_y = last_side_page[:avail_h] - last_side_gutters.sum - last_side_heights.sum
+      end
+      row_top_y = column_bottom_y ? column_bottom_y + block_h : gap_v + block_h
+
       page_els = elements[last_page[:start]...last_page[:finish]]
-      page_heights = page_els.map(&:height)
-      remaining_h = last_page[:avail_h] - block_h - gap_v
+      remaining_h = last_page[:avail_h] - row_top_y
       fits = remaining_h.positive? && (paginate(page_els, remaining_h, remaining_h).size == 1)
 
       if fits
-        merged_last_page = { rows: rows, diag_w: grid_diag_w, diag_h: grid_diag_h, remaining_h: remaining_h }
+        merged_last_page = { rows: rows, diag_w: grid_diag_w, diag_h: grid_diag_h, remaining_h: remaining_h, block_h: block_h, column_bottom_y: column_bottom_y }
         log_build("#{excess_paths.size} diags en trop réagencés en #{rows.size} ligne(s) fixes, calés en bas de la dernière page (RAD7/8/9/10)")
         excess_paths = []
         excess_heights = []
@@ -1189,20 +1264,36 @@ module Layout
       end
       draw_page_number(pdf, kdp, page_no, page_w_pt)
 
+      want_left = want_left_for.call(page_no)
+      cur_elements = want_left ? elements : (elements_alt || elements)
+      cur_side_elements = want_left ? side_elements : side_elements_alt
+      cur_text_x = want_left ? text_x : (text_x_alt || text_x)
+
       page = pages[i]
       if page
-        page_els = elements[page[:start]...page[:finish]]
+        page_els = cur_elements[page[:start]...page[:finish]]
         merging_here = merged_last_page && i == pages.size - 1
         avail_for_text = merging_here ? merged_last_page[:remaining_h] : page[:avail_h]
         page_heights = page_els.map(&:height)
         gutters = distribute_v_gutters(avail_for_text, page_heights, top_type: i.zero? ? :band_strophe : :default)
+
+        # Rééquilibrage vertical (voir `VERTICAL_BALANCE_THRESHOLD_PT`) : jamais si une
+        # grille de diags en trop occupe déjà le bas (`merging_here`, RAD7) — elle EST la
+        # référence "bas" voulue, pas la marge réelle.
+        dup = gutters[0]
+        ddo = avail_for_text - (page_heights.sum + gutters.sum)
+        balance_shift = if !merging_here && ddo >= 0 && (dup - ddo).abs <= VERTICAL_BALANCE_THRESHOLD_PT
+          (ddo - dup) / 2.0
+        else
+          0.0
+        end
 
         # Les gouttières sont calculées sur le budget RÉDUIT (`avail_for_text`, pour
         # laisser la place à la grille fusionnée en dessous), mais le texte part TOUJOURS
         # du HAUT réel de la page (`page[:avail_h]`) — sinon il démarre plus bas que prévu
         # et vient chevaucher la grille au lieu de s'arrêter juste au-dessus (bug constaté
         # v22, "Ad libitum" recouvert par la 1re ligne de diags).
-        y = page[:avail_h] - gutters[0]
+        y = page[:avail_h] - gutters[0] - balance_shift
         page_els.each_with_index do |el, j|
           el.draw.call(pdf, y)
           y -= page_heights[j]
@@ -1216,13 +1307,64 @@ module Layout
           rows = merged_last_page[:rows]
           diag_w = merged_last_page[:diag_w]
           diag_h = merged_last_page[:diag_h]
+          block_h = merged_last_page[:block_h]
+
+          column_bottom_y = merged_last_page[:column_bottom_y]
+          if column_bottom_y
+            # "Aligner sur le dernier diag de la colonne" = MÊME HAUTEUR (Y), la grille
+            # reste dans la colonne TEXTE (x inchangé) — bas de la ligne du bas EXACTEMENT
+            # au niveau du bas du dernier diag de la colonne (côte à côte, pas empilés,
+            # aucun risque de chevauchement avec elle). Phil, 2026-08-24.
+            effective_gap_v = column_bottom_y
+          else
+            # Pas de colonne sur cette page : ancrée près du bas, `y` = où le texte s'est
+            # RÉELLEMENT arrêté (souvent bien au-dessus du plancher `gap_v`+`block_h`, les
+            # gouttières texte étant PLAFONNÉES — `MIN_V_DIST`, jamais étirées à l'infini)
+            # — `leftover_gap` = place morte entre ce point et le haut de la grille. RÈGLE
+            # (Phil, 2026-08-24) :
+            #   1.1 : place >= 40pt -> la grille remonte jusqu'à une marge nette au-dessus
+            #         du numéro (`PAGE_NUMBER_TARGET_CLEARANCE_PT`), sans jamais dépasser
+            #         la place réellement dispo.
+            #   1.2 : sinon, si la grille est DÉJÀ hors de la zone d'encre du numéro (rare,
+            #         `gap_v` seul suffisant) -> inchangé. Sinon (chevauchement) -> remontée
+            #         forcée de 10pt (ne garantit pas la clarté totale sur une page très
+            #         pleine) + signalé (`conflict!`), pour vérif manuelle.
+            leftover_gap = y - (gap_v + block_h)
+            shift = if leftover_gap >= 40.0
+              [PAGE_NUMBER_TARGET_CLEARANCE_PT - gap_v, leftover_gap].min
+            elsif gap_v >= PAGE_NUMBER_INK_ZONE_PT
+              0.0
+            else
+              conflict!("grille de diags en trop (bas de page) trop proche du numéro de page, place insuffisante pour la dégager pleinement", solution: "remontée de 10pt quand même")
+              10.0
+            end
+            effective_gap_v = gap_v + shift
+          end
+
+          # RAD9 : une ligne plus courte s'aligne vers la reliure — dans la colonne TEXTE
+          # (`cur_text_x`/`text_w`, comme le reste de la mise en page), jamais le x de la
+          # colonne de diags (x différent, voir plus haut : l'alignement demandé est en Y,
+          # pas en x). Écart colonne <-> premier/dernier diag de la ligne : le MÊME `gap_h`
+          # qu'entre deux diags de la ligne (Phil, 2026-08-24, "on s'efforce de faire
+          # quelque chose de beau") — jamais `DIAG_TEXT_GAP` (26pt, écart texte<->diags,
+          # sans rapport), ni un `cur_text_x` qui ignore où la colonne s'arrête vraiment.
+          cur_side_col = want_left ? side_col : side_col_alt
+          diag_on_left = cur_side_col.nil? || cur_side_col[:x].zero?
+          column_edge = cur_side_col && (diag_on_left ? cur_side_col[:x] + cur_side_col[:width] : cur_side_col[:x])
+
           rows.each_with_index do |row, ri|
             # `at:[x,y]` de `pdf.svg` ancre le HAUT de l'image (elle descend de `y` vers
             # `y - diag_h`) — bug corrigé ici (2026-08-20) : `row_y` doit inclure `diag_h`,
             # sinon le bas de la dernière ligne tombe sous 0, dans la marge.
-            row_y = gap_v + diag_h + (rows.size - 1 - ri) * (diag_h + gap_v)
+            row_y = effective_gap_v + diag_h + (rows.size - 1 - ri) * (diag_h + gap_v)
+            row_w = row.size * diag_w + [row.size - 1, 0].max * gap_h
+            row_start_x = if column_edge
+              diag_on_left ? column_edge + gap_h : column_edge - gap_h - row_w
+            else
+              diag_on_left ? cur_text_x : cur_text_x + text_w - row_w
+            end
             row.each_with_index do |path, ci|
-              cx = text_x + ci * (diag_w + gap_h) # RAD9 : jamais centré, toujours vers la reliure (text_x)
+              cx = row_start_x + ci * (diag_w + gap_h)
               engrave(bottom: row_y - diag_h, context: "diagramme fusionné") do
                 pdf.svg(IO.read(path), at: [cx, row_y], width: diag_w, position: :left, enable_web_requests: false)
               end
@@ -1234,7 +1376,7 @@ module Layout
       side_page = side_pages[i]
       next unless side_page
 
-      side_page_els = side_elements[side_page[:start]...side_page[:finish]]
+      side_page_els = cur_side_elements[side_page[:start]...side_page[:finish]]
       side_page_heights = side_page_els.map(&:height)
       side_gutters = distribute_v_gutters(side_page[:avail_h], side_page_heights, type: :diags, top_type: i.zero? ? :band_diag : :diags)
 
@@ -1672,7 +1814,8 @@ module Layout
   end
 
   # Place les diags selon leur position (left/right/top/bottom — les 4 indépendantes de
-  # la parité recto/verso, Ext/Int/OP pas encore implémentées) et renvoie [text_x, text_w,
+  # la parité recto/verso ; `int`/`ext`, résolus en left/right selon la parité recto/verso
+  # AVANT l'appel ici, voir `PageBuilder.build`) et renvoie [text_x, text_w,
   # first_avail_h, side_col] pour le reste de la mise en page.
   # Left/Right : colonne verticale — PAS dessinée ici. `side_col` (Hash x:/width:/paths:/
   # heights:, ou nil) est repris par `paginate_and_draw`, qui la pagine EN PARALLÈLE du
@@ -1707,6 +1850,14 @@ module Layout
     end
     DIAG_W
   end
+
+  # Marge de sécurité (Phil, 2026-08-24, "L'Aigle noir" p.10 : dernier diag de la colonne
+  # descendait jusqu'à toucher la zone du numéro de page) — réservée sur la hauteur RÉELLE
+  # de PAGINATION de la colonne (`paginate_and_draw`), pas sur la largeur choisie par
+  # `diag_column_width` : la taille des diags reste celle calculée normalement (essai
+  # précédent, réservé sur la largeur : diags plus petits -> capacité réelle changée de
+  # façon imprévisible, a provoqué un chevauchement colonne/ligne fusionnée, retiré).
+  DIAG_COLUMN_BOTTOM_SAFETY_PT = 10.0
 
   def self.layout_diags(pdf, diag_paths, position, header_bottom)
     case position

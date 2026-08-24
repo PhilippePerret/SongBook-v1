@@ -5,8 +5,11 @@ require "tty-spinner"
 require "cgi"
 require "net/http"
 require "json"
+require "rbconfig"
 require_relative "carnet_builder"
 require_relative "app_config"
+require_relative "locale"
+require_relative "file_finder"
 
 # `songbook create song` : wizard interactif (TTY::Prompt), étape par étape — le
 # dossier/gabarit n'est créé qu'une fois TOUTES les informations réunies
@@ -18,14 +21,17 @@ module SongCreator
     title ||= prompt.ask("Titre de la chanson :") { |q| q.required true }
     performer ||= prompt.ask("Interprète :") { |q| q.required true }
 
-    folder_title = CarnetBuilder.move_article_to_end(title)
+    songs_dir = AppConfig.songs_dir
+    existing = CarnetBuilder.find_song(songs_dir, title, performer)
+    return handle_existing_song(prompt, existing) if existing
 
-    search_song_info(title, performer)
+    folder_title = CarnetBuilder.move_article_to_end(title)
 
     year = ask_year(prompt, title, performer)
     id = CarnetBuilder.slugify("#{title} #{performer} #{year}")
 
     cl = find_composer_lyricist(title, performer)
+    offer_wikipedia_page(prompt, cl, title, performer)
     composer = prompt.ask("Compositeur :", default: cl[:composer]) { |q| q.required true }
     lyricist = prompt.ask("Parolier :", default: cl[:lyricist]) { |q| q.required true }
 
@@ -41,32 +47,101 @@ module SongCreator
 
     lyr_content = fetch_lyrics(title, performer) || CarnetBuilder::SONG_TEMPLATE
 
-    songs_dir = AppConfig.songs_dir
     result = CarnetBuilder.create_song_files(songs_dir, folder_title, infos, lyr_content)
 
     editor = AppConfig.user_song_editor
     system("open", "-a", editor, result[:infos_path], result[:lyr_path])
 
+    print_success(Loc.get("song_created"), result[:folder])
+    offer_open_folder(prompt, result[:folder])
     result[:folder]
+  end
+
+  # Chanson déjà trouvée (`CarnetBuilder.find_song`) : poursuivre (compléter les champs
+  # vides de la fiche existante) ou juste demander à ouvrir son dossier (même question/
+  # mécanisme que `offer_open_folder`, appelée en fin de création normale).
+  def self.handle_existing_song(prompt, folder)
+    choice = prompt.select(format(Loc.get("song_exists"), folder), [
+      { name: Loc.get("continue_creation"), value: :continue },
+      { name: Loc.get("open_folder_question"), value: :open },
+    ])
+    case choice
+    when :continue then resume_existing_song(prompt, folder)
+    when :open then offer_open_folder(prompt, folder)
+    end
+  end
+
+  # Ne complète QUE les champs vides de la fiche existante (year/composer/lyrics) — ne
+  # touche jamais un champ déjà renseigné. Paroles : remplacées seulement si `c.lyr` est
+  # encore le gabarit vide (`SONG_TEMPLATE`) tel quel, jamais si Phil a déjà écrit dedans.
+  def self.resume_existing_song(prompt, folder)
+    infos_path = FileFinder.find(folder, :inf) || File.join(folder, "c.infos")
+    lyr_path = FileFinder.find(folder, :lyr) || File.join(folder, "c.lyr")
+    infos = File.exist?(infos_path) ? CarnetBuilder.parse_nested_infos(infos_path) : {}
+
+    title = infos["title"]
+    performer = infos["performer"]
+
+    infos["year"] = ask_year(prompt, title, performer) if infos["year"].to_s.strip.empty?
+
+    cl = nil
+    if infos["composer"].to_s.strip.empty? || infos["lyrics"].to_s.strip.empty?
+      cl = find_composer_lyricist(title, performer)
+      offer_wikipedia_page(prompt, cl, title, performer)
+    end
+    infos["composer"] = prompt.ask("Compositeur :", default: cl && cl[:composer]) { |q| q.required true } if infos["composer"].to_s.strip.empty?
+    infos["lyrics"] = prompt.ask("Parolier :", default: cl && cl[:lyricist]) { |q| q.required true } if infos["lyrics"].to_s.strip.empty?
+
+    File.write(infos_path, "#{infos.map { |k, v| "#{k}: #{v}" }.join("\n")}\n")
+
+    lyr_text = File.exist?(lyr_path) ? File.read(lyr_path) : nil
+    if lyr_text.nil? || lyr_text.strip == CarnetBuilder::SONG_TEMPLATE.strip
+      fetched = fetch_lyrics(title, performer)
+      File.write(lyr_path, fetched) if fetched
+    end
+
+    editor = AppConfig.user_song_editor
+    system("open", "-a", editor, infos_path, lyr_path)
+
+    print_success(Loc.get("song_updated"), folder)
+    offer_open_folder(prompt, folder)
+    folder
+  end
+
+  def self.offer_open_folder(prompt, folder)
+    return unless prompt.yes?(Loc.get("open_folder_question"))
+
+    open_in_file_manager(folder)
+  end
+
+  def self.open_in_file_manager(folder)
+    case RbConfig::CONFIG["host_os"]
+    when /darwin/ then system("open", folder)
+    when /mswin|mingw|cygwin/ then system("explorer", folder)
+    else system("xdg-open", folder)
+    end
+  end
+
+  # Couleur demandée (#00b9ff) : pas une couleur nommée standard, ANSI truecolor direct
+  # (`\e[38;2;R;G;Bm`) — Pastel ne prend pas de hex brut.
+  SPINNER_COLOR = "\e[38;2;0;185;255m"
+  SUCCESS_COLOR = "\e[32m"
+  PATH_COLOR = "\e[90m"
+  ANSI_RESET = "\e[0m"
+
+  def self.print_success(message, path)
+    puts "#{SUCCESS_COLOR}👍 #{message}#{ANSI_RESET}"
+    puts "#{PATH_COLOR}#{path}#{ANSI_RESET}"
   end
 
   # `clear: true` : le message disparaît entièrement (ligne effacée) une fois la recherche
   # terminée, ne reste rien à l'écran — pas un simple "Terminé" affiché après.
   def self.with_spinner(message)
-    spinner = TTY::Spinner.new("[:spinner] #{message}", format: :dots, clear: true)
+    spinner = TTY::Spinner.new("#{SPINNER_COLOR}[:spinner] #{message}#{ANSI_RESET}", format: :dots, clear: true)
     spinner.auto_spin
     yield
   ensure
     spinner&.stop
-  end
-
-  # Ouvre une recherche web (comme `DiagsPage.build_and_open!`, `system("open", ...)`) —
-  # Phil lit les résultats, l'année/le compositeur/le parolier proposés ensuite sont
-  # toujours soumis à SA validation.
-  def self.search_song_info(title, performer)
-    query = "#{title} #{performer} chanson paroles musique wiki"
-    url = "https://www.google.com/search?q=#{CGI.escape(query)}"
-    system("open", url)
   end
 
   YEAR_RE = /\b(1[6-9]\d{2}|20\d{2})\b/
@@ -111,11 +186,9 @@ module SongCreator
     years = by_year.keys.map(&:to_i)
 
     if years.empty?
-      prompt.ask("Année (non trouvée sur le net) :") { |q| q.required true }
+      prompt.ask("Année :") { |q| q.required true }
     elsif years.max - years.min <= 1
-      year = years.min.to_s
-      sources = candidates.map { |c| c[:source] }.uniq.join(", ")
-      prompt.ask("Année (trouvée avec assurance, #{sources}) :", default: year) { |q| q.required true }
+      prompt.ask("Année :", default: years.min.to_s) { |q| q.required true }
     else
       choices = by_year.map { |year, cs| { name: "#{year} (#{cs.map { |c| c[:source] }.join(", ")})", value: year } }
       choices << { name: "Autre (saisir)", value: :other }
@@ -145,28 +218,85 @@ module SongCreator
     nil
   end
 
-  # Pas trouvé via un texte parcouru au hasard (Discogs/Wikipédia n'ont pas cette info
-  # structurée) : relations d'œuvre MusicBrainz — recording -> work -> artist-rels
-  # (type "composer"/"lyricist"), testé fiable ("À bicyclette" -> Francis Lai/Pierre
-  # Barouh, exact). `nil`/`nil` si la chanson n'a pas de fiche `work` sur MusicBrainz.
+  # 2 sources, la 1re trouvée pour chaque champ gagne (pas de comparaison, contrairement à
+  # l'année — un nom de personne ne se "moyenne" pas) :
+  # 1. Wikipédia FR, infobox de l'article (wikitexte brut, `| compositeur =`/`| musique =`/
+  #    `| parolier =`/`| paroles =`/`| auteur =`/`| auteur-compositeur =` — ce dernier sert
+  #    aux deux champs) : testé fiable ("(I Can't Get No) Satisfaction" -> Jagger/Richards
+  #    via `auteur-compositeur`).
+  # 2. MusicBrainz (relations d'œuvre recording -> work -> artist-rels, type "composer"/
+  #    "lyricist") : testé fiable ("À bicyclette" -> Francis Lai/Pierre Barouh).
   def self.find_composer_lyricist(title, performer)
     with_spinner("Recherche en cours…") do
-      recording_id = musicbrainz_get("recording/", query: %(recording:"#{title}" AND artist:"#{performer}"), fmt: "json", limit: 1)
-        .dig("recordings", 0, "id")
-      next { composer: nil, lyricist: nil } unless recording_id
-
-      work_id = musicbrainz_get("recording/#{recording_id}", inc: "work-rels", fmt: "json")["relations"]
-        &.find { |r| r["target-type"] == "work" }&.dig("work", "id")
-      next { composer: nil, lyricist: nil } unless work_id
-
-      relations = musicbrainz_get("work/#{work_id}", inc: "artist-rels", fmt: "json")["relations"] || []
-      {
-        composer: relations.find { |r| r["type"] == "composer" }&.dig("artist", "name"),
-        lyricist: relations.find { |r| r["type"] == "lyricist" }&.dig("artist", "name"),
-      }
+      wiki = wikipedia_composer_lyricist(title, performer)
+      mb = (wiki[:composer] && wiki[:lyricist]) ? { composer: nil, lyricist: nil } : musicbrainz_composer_lyricist(title, performer)
+      { composer: wiki[:composer] || mb[:composer], lyricist: wiki[:lyricist] || mb[:lyricist], wikipedia_pageid: wiki[:pageid] }
     end
+  end
+
+  # Compositeur et/ou parolier introuvables : demande (message localisé) avant d'ouvrir
+  # la fiche Wikipédia — page trouvée si `wikipedia_pageid` connu, sinon recherche.
+  def self.offer_wikipedia_page(prompt, cl, title, performer)
+    missing = []
+    missing << Loc.get("composer") if cl[:composer].nil?
+    missing << Loc.get("lyrics") if cl[:lyricist].nil?
+    return if missing.empty?
+
+    items = missing.map { |f| format(Loc.get("wiki_missing_item"), f) }.join(" #{Loc.get('wiki_missing_join')} ")
+    return unless prompt.yes?(format(Loc.get("ask_open_wikipedia"), items))
+
+    url = cl[:wikipedia_pageid] ? "https://fr.wikipedia.org/?curid=#{cl[:wikipedia_pageid]}" : "https://fr.wikipedia.org/w/index.php?search=#{CGI.escape("#{title} #{performer}")}"
+    system("open", url)
+  end
+
+  def self.musicbrainz_composer_lyricist(title, performer)
+    recording_id = musicbrainz_get("recording/", query: %(recording:"#{title}" AND artist:"#{performer}"), fmt: "json", limit: 1)
+      .dig("recordings", 0, "id")
+    return { composer: nil, lyricist: nil } unless recording_id
+
+    work_id = musicbrainz_get("recording/#{recording_id}", inc: "work-rels", fmt: "json")["relations"]
+      &.find { |r| r["target-type"] == "work" }&.dig("work", "id")
+    return { composer: nil, lyricist: nil } unless work_id
+
+    relations = musicbrainz_get("work/#{work_id}", inc: "artist-rels", fmt: "json")["relations"] || []
+    {
+      composer: relations.find { |r| r["type"] == "composer" }&.dig("artist", "name"),
+      lyricist: relations.find { |r| r["type"] == "lyricist" }&.dig("artist", "name"),
+    }
   rescue StandardError
     { composer: nil, lyricist: nil }
+  end
+
+  def self.wikipedia_composer_lyricist(title, performer)
+    pageid = wikipedia_search_pageid("#{title} #{performer} chanson")
+    return { composer: nil, lyricist: nil, pageid: nil } unless pageid
+
+    wikitext = wikipedia_wikitext(pageid)
+    return { composer: nil, lyricist: nil, pageid: pageid } unless wikitext
+
+    combined = wikipedia_infobox_field(wikitext, %w[auteur-compositeur])
+    composer = wikipedia_infobox_field(wikitext, %w[compositeur musique]) || combined
+    lyricist = wikipedia_infobox_field(wikitext, %w[parolier paroles auteur]) || combined
+    { composer: clean_wikitext(composer), lyricist: clean_wikitext(lyricist), pageid: pageid }
+  rescue StandardError
+    { composer: nil, lyricist: nil, pageid: nil }
+  end
+
+  def self.wikipedia_infobox_field(wikitext, field_names)
+    re = /\A\s*\|\s*(?:#{field_names.join("|")})\s*=\s*(.+?)\s*\z/i
+    wikitext.each_line.map { |l| l[re, 1] }.compact.first
+  end
+
+  # "[[Mick Jagger|Jagger]], [[Keith Richards|Richards]]" -> "Jagger, Richards" — retire
+  # les liens/templates wikitexte, garde le texte affiché.
+  def self.clean_wikitext(raw)
+    return nil unless raw
+
+    text = raw.gsub(/\{\{[^{}]*\}\}/, "")
+      .gsub(/\[\[[^\]|]*\|([^\]]*)\]\]/, '\1')
+      .gsub(/\[\[([^\]]*)\]\]/, '\1')
+      .strip
+    text.empty? ? nil : text
   end
 
   # MusicBrainz impose ~1 requête/s (limite constatée : appels rapprochés -> 503,
@@ -226,5 +356,12 @@ module SongCreator
   def self.wikipedia_extract(pageid)
     data = wikipedia_get(action: "query", prop: "extracts", explaintext: true, pageids: pageid, format: "json")
     data.dig("query", "pages", pageid.to_s, "extract")
+  end
+
+  # Wikitexte brut (pas le texte affiché) : seul format où l'infobox ("| compositeur = ...")
+  # est parcourable — `extracts` (utilisé pour l'année) rend le texte affiché, sans elle.
+  def self.wikipedia_wikitext(pageid)
+    data = wikipedia_get(action: "query", pageids: pageid, prop: "revisions", rvprop: "content", rvslots: "main", format: "json")
+    data.dig("query", "pages", pageid.to_s, "revisions", 0, "slots", "main", "*")
   end
 end

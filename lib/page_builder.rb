@@ -34,7 +34,7 @@ module PageBuilder
     meta = {}
     File.foreach(path) do |line|
       k, v = line.strip.split(":", 2)
-      meta[k.strip] = v.strip if k && v && !k.strip.empty?
+      meta[k.strip] = v.strip if k && v && !k.strip.empty? && !v.strip.empty?
     end
     infos_key_aliases.each { |alt, canon| meta[canon] ||= meta[alt] }
     meta
@@ -215,8 +215,8 @@ module PageBuilder
     name.sub(/-\d+\z/, "")
   end
 
-  # `title_band`/`diag_position` : défauts de CE dossier (Manuel/song/layout.adoc, voir
-  # `title_band`/`diag_position` par défaut, remplacés par le `layout:` du carnet quand
+  # `title_band`/`diags_position` : défauts de CE dossier (Manuel/song/layout.adoc, voir
+  # `title_band`/`diags_position` par défaut, remplacés par le `layout:` du carnet quand
   # il est fourni — voir `build`). `lyrics_flux: :side` (défaut, "côte à côte") pair les
   # blocs 2 par 2 comme avant ; `:vertical` ("l'une en dessous de l'autre", layouts Column/
   # Column-B) ne pair jamais, chaque bloc a sa propre row. `:free` pas encore implémenté.
@@ -327,9 +327,38 @@ module PageBuilder
     Block.new(lines: block.lines, directives: block.directives.merge(block_align: layout[:intro_align].to_s), paired_with_previous: block.paired_with_previous)
   end
 
+  # Construit `elements` (rows + tablas, dans l'ordre de `items`) pour UNE position
+  # donnée (`text_x`) — appelé une fois pour une position fixe, deux fois (gauche/droite)
+  # pour une position dynamique `int`/`ext` (voir `build`). `rows` déjà résolu
+  # (`resolve_block`/`with_intro_align`, compteurs `bare_kind_counters`) — ne dépend pas
+  # de `text_x`, jamais recalculé ici (fausserait le mapping positionnel des blocs
+  # génériques si appelé deux fois, Phil, 2026-08-24).
+  def self.build_song_elements(pdf, items, rows, folder, text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
+    row_idx = 0
+    elements = []
+    shrink_jobs = [] # {index:, svg_path:, align:, title:} — tablas à réduire si besoin
+    items.each do |item|
+      case item.type
+      when :row
+        elements.concat(Layout.build_row_or_split(pdf, rows[row_idx], text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent))
+        row_idx += 1
+      when :tabla
+        name = item.data[:tabla]
+        svg_path = ensure_tabla_svg(folder, name)
+        next unless svg_path
+
+        align = item.data[:align]
+        title = item.data[:title]
+        elements << Layout.build_tabla_element_v2(pdf, svg_path, text_x, text_w, align: align, title: title)
+        shrink_jobs << { index: elements.size - 1, svg_path: svg_path, align: align, title: title } if item.data[:shrink] == "true"
+      end
+    end
+    [elements, shrink_jobs]
+  end
+
   # Orchestrateur .gab/.lyr/.infos : un dossier = une chanson + une mise en page. `.gab`
   # OPTIONNEL (voir `default_items`). page_count/first_page_no : voir `build_from_dsl`.
-  # `layout:` (Hash title_band:/diag_position:/lyrics_flux:, voir `CarnetBuilder::LAYOUTS`
+  # `layout:` (Hash title_band:/diags_position:/lyrics_flux:, voir `CarnetBuilder::LAYOUTS`
   # et Manuel/song/layout.adoc) : défauts du CARNET pour cette chanson — un `.gab` explicite
   # garde priorité (une chanson peut toujours s'écarter du layout général, Manuel : "on
   # peut le faire chanson par chanson ou de façon générale... ou les deux").
@@ -350,7 +379,7 @@ module PageBuilder
       Layout.log_build("transposition \"#{meta["transpose"]}\" appliquée (#{decalage_lettres} lettre(s)/#{decalage_demitons} demi-ton(s))")
     end
     title_band_default = layout&.key?(:title_band) ? layout[:title_band] : DEFAULT_TITLE_BAND
-    diag_position_default = layout&.fetch(:diag_position, nil) || DEFAULT_DIAG_POSITION
+    diag_position_default = layout&.fetch(:diags_position, nil) || DEFAULT_DIAG_POSITION
     lyrics_flux = layout&.fetch(:lyrics_flux, nil) || :side
     Layout.log_build("layout résolu : title_band=#{title_band_default} diag_position=#{diag_position_default} lyrics_flux=#{lyrics_flux} (source=#{layout ? "carnet" : "défauts app"})")
     if gab_path
@@ -383,10 +412,22 @@ module PageBuilder
 
       chord_frets = ChordDiagrams.collect_chord_frets(lyr_blocks.values)
       diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret, carnet_dir: carnet_folder, song_dir: folder) }
-      diag_position = (items.find { |i| i.type == :diags }&.data&.dig(:position) || diag_position_default).to_sym
-      Layout.log_build("#{diag_paths.size} diagramme(s) d'accord, position=#{diag_position}")
+      diag_position = (items.find { |i| i.type == :diags }&.data&.dig(:position) || diag_position_default).to_s.downcase.to_sym
+      # `int`/`ext` (Manuel/song/layout.adoc, "Int"/"Ext" — côté reliure/extérieur) : PAS
+      # résolu à une seule valeur left/right ici — le côté reliure change de page en page
+      # (recto/verso) DANS une même chanson (bug constaté 2026-08-24, "À bicyclette" p.4/
+      # p.5 : reliure à droite sur l'une, à gauche sur l'autre, une seule chanson peut
+      # couvrir les deux — "on s'en branle d'où commence la chanson", Phil). Les deux
+      # variantes gauche/droite sont construites ICI (`text_x`/`text_x_r`, `side_col`/
+      # `side_col_r`), `Layout.paginate_and_draw` choisit la bonne PAGE PAR PAGE.
+      dynamic_mode = %i[int ext].include?(diag_position) ? diag_position : nil
+      Layout.log_build("#{diag_paths.size} diagramme(s) d'accord, position=#{dynamic_mode ? "#{dynamic_mode} (résolu page par page)" : diag_position}")
 
-      text_x, text_w, first_avail_h, side_col = Layout.layout_diags(pdf, diag_paths, diag_position, header_bottom)
+      text_x, text_w, first_avail_h, side_col = Layout.layout_diags(pdf, diag_paths, dynamic_mode ? :left : diag_position, header_bottom)
+      text_x_r, side_col_r = if dynamic_mode
+        tx_r, _, _, sc_r = Layout.layout_diags(pdf, diag_paths, :right, header_bottom)
+        [tx_r, sc_r]
+      end
 
       chord_ascent = Layout.font_metric(pdf, Layout::CHORD_SIZE) { pdf.font.ascender }
       text_ascent = Layout.font_metric(pdf, Layout::TEXT_SIZE) { pdf.font.ascender }
@@ -396,27 +437,8 @@ module PageBuilder
       rows = items.select { |i| i.type == :row }.map { |i| i.data[:names].map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: i.data[:directives]), name, layout) } }
       col1_w, col2_w, h_gutter = Layout.row_column_widths(pdf, rows, text_w)
 
-      row_idx = 0
-      elements = []
-      shrink_jobs = [] # {index:, svg_path:, align:, title:} — tablas à réduire si besoin
-      items.each do |item|
-        case item.type
-        when :row
-          elements.concat(Layout.build_row_or_split(pdf, rows[row_idx], text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent))
-          row_idx += 1
-        when :tabla
-          name = item.data[:tabla]
-          svg_path = ensure_tabla_svg(folder, name)
-          next unless svg_path
-
-          align = item.data[:align]
-          title = item.data[:title]
-          elements << Layout.build_tabla_element_v2(pdf, svg_path, text_x, text_w, align: align, title: title)
-          if item.data[:shrink] == "true"
-            shrink_jobs << { index: elements.size - 1, svg_path: svg_path, align: align, title: title }
-          end
-        end
-      end
+      elements, shrink_jobs = build_song_elements(pdf, items, rows, folder, text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
+      elements_r = dynamic_mode ? build_song_elements(pdf, items, rows, folder, text_x_r, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent).first : nil
 
       # `shrink` : RESPECTE la position choisie par l'auteur du .gab — jamais déplacée par
       # la pagination (épinglée), seulement réduite si besoin. L'espace qui lui revient
@@ -437,9 +459,13 @@ module PageBuilder
         elements[job[:index]] = Layout.build_tabla_element_v2(
           pdf, job[:svg_path], text_x, text_w, align: job[:align], title: job[:title], max_height: max_h
         )
+        elements_r[job[:index]] = Layout.build_tabla_element_v2(
+          pdf, job[:svg_path], text_x_r, text_w, align: job[:align], title: job[:title], max_height: max_h
+        ) if dynamic_mode
       end
 
-      Layout.paginate_and_draw(pdf, elements, first_avail_h, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col, text_x: text_x, text_w: text_w, debug_marks: debug_marks)
+      Layout.paginate_and_draw(pdf, elements, first_avail_h, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col, text_x: text_x, text_w: text_w, debug_marks: debug_marks,
+        dynamic_mode: dynamic_mode, elements_alt: elements_r, side_col_alt: side_col_r, text_x_alt: text_x_r)
     end
   end
 

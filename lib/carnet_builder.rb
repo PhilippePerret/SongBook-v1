@@ -23,11 +23,12 @@ require_relative "diags_sync"
 module CarnetBuilder
   # Layouts nommés standards (Manuel/song/layout.adoc) — pas encore finalisés (Phil,
   # 2026-08-20 : "le but sera de fixer les caractéristiques"), axes pour l'instant :
-  # bandeau ou pas (title_band), position des diagrammes (diag_position), enchaînement
+  # bandeau ou pas (title_band), position des diagrammes (diags_position), enchaînement
   # des strophes (lyrics_flux), alignement du bloc "intro" (intro_align). `diags_size`/
-  # `music_position` (Manuel/song/layout.adoc) pas encore implémentés. `diag_position:
+  # `music_position` (Manuel/song/layout.adoc) pas encore implémentés. `diags_position:
   # both` (Column/Column-B) pas encore implémenté — voir `Layout.layout_diags`, lève une
-  # erreur claire si sélectionné.
+  # erreur claire si sélectionné. `int`/`ext` (côté reliure/extérieur) résolus en left/right
+  # sur la parité recto/verso de la 1re page de la chanson (Phil, 2026-08-24).
   # Un fichier YAML par layout sous `assets/layouts/` (nom de fichier = nom du layout,
   # ex. `regular-B.yaml`) — ajouter/modifier un layout ne touche jamais aux autres.
   # `_default.yaml` : valeurs par défaut, jamais un layout nommé lui-même — chaque layout
@@ -144,6 +145,126 @@ module CarnetBuilder
     base = year ? id.sub(/-#{year}\z/, "") : id
     title = base.split("-").map { |w| w.sub(/\A./) { |c| c.upcase } }.join(" ")
     [title, year]
+  end
+
+  # `songbook create song` : vraie vérification, pas juste "le nom de dossier attendu
+  # existe" — parcourt CHAQUE dossier de `chansons_dir`, compare (slugifié, insensible
+  # aux accents/casse) son NOM, et le `title`/`performer` de sa fiche `.infos`/`.inf`
+  # (`c.infos` pour celles créées par le wizard, mais root-name libre comme partout,
+  # `FileFinder`). Dossier existant renvoyé dès que le nom correspond OU que title+performer
+  # correspondent tous les deux (une même chanson peut être reprise par un autre
+  # interprète : entrée légitimement différente, pas un doublon). `nil` si rien ne matche.
+  def self.find_song(chansons_dir, title, performer)
+    target_title = slugify(title)
+    target_performer = slugify(performer)
+
+    Dir.children(chansons_dir).sort.each do |entry|
+      folder = File.join(chansons_dir, entry)
+      next unless File.directory?(folder)
+      return folder if slugify(entry) == target_title
+
+      infos_path = FileFinder.find(folder, :inf)
+      next unless infos_path
+
+      infos = parse_nested_infos(infos_path)
+      next unless slugify(infos["title"].to_s) == target_title
+      return folder if slugify(infos["performer"].to_s) == target_performer
+    end
+    nil
+  end
+
+  # {folder:, name:, title:} pour chaque dossier de `chansons_dir` — base commune à
+  # `find_song_by_title`/`fuzzy_find_songs` (recherche d'un titre TAPÉ PAR L'USER, pas la
+  # recherche title+performer de `find_song`).
+  def self.all_songs(chansons_dir)
+    Dir.children(chansons_dir).sort.filter_map do |entry|
+      folder = File.join(chansons_dir, entry)
+      next unless File.directory?(folder)
+
+      infos_path = FileFinder.find(folder, :inf)
+      title = infos_path ? parse_nested_infos(infos_path)["title"] : nil
+      { folder: folder, name: entry, title: title }
+    end
+  end
+
+  # Titre TAPÉ PAR L'USER (ex. `songbook add chords "titre"`) : correspondance EXACTE,
+  # PRÉFIXE, ou PAR MOTS (slugifiés) sur le nom de dossier OU le `title` de la fiche.
+  # Préfixe : l'user tape souvent juste le début du titre ("where do the" pour "Where Do
+  # The Children Play", bug constaté : sans lui, ce cas ratait la recherche exacte ET la
+  # recherche floue, la distance d'édition complète étant trop grande).
+  # Par mots : l'user tape des mots du titre, pas forcément le début ("chapiteau monde"
+  # -> "Plus grand chapiteau du monde (Le)") — l'ORDRE tapé compte (l'user le connaît,
+  # ce n'est pas un sac de mots) : sous-séquence dans le même ordre, mots pas forcément
+  # consécutifs ("chapiteau monde" matche, "monde chapiteau" non).
+  # Peut renvoyer plusieurs entrées (même titre, interprètes différents, ou plusieurs
+  # titres contenant les mêmes mots), à l'appelant de désambiguïser.
+  def self.find_song_by_title(chansons_dir, name)
+    target = slugify(name)
+    target_words = target.split("-").reject(&:empty?)
+
+    all_songs(chansons_dir).select do |s|
+      [slugify(s[:name]), s[:title] && slugify(s[:title])].compact.any? do |candidate|
+        prefix_match?(target, candidate) || words_match?(target_words, candidate)
+      end
+    end
+  end
+
+  def self.prefix_match?(target, candidate)
+    candidate == target || candidate.start_with?(target) || target.start_with?(candidate)
+  end
+
+  # Sous-séquence ORDONNÉE : chaque mot de `target_words` doit se retrouver dans
+  # `candidate`, dans le même ordre (pas forcément consécutifs), jamais en désordre.
+  def self.words_match?(target_words, candidate)
+    return false if target_words.empty?
+
+    idx = 0
+    candidate.split("-").each do |word|
+      idx += 1 if idx < target_words.length && target_words[idx] == word
+    end
+    idx == target_words.length
+  end
+
+  # Distance de Levenshtein (aucune dépendance externe — implémentation directe, DP
+  # classique O(n*m)).
+  def self.levenshtein(a, b)
+    m = a.length
+    n = b.length
+    return n if m.zero?
+    return m if n.zero?
+
+    prev = (0..n).to_a
+    (1..m).each do |i|
+      curr = [i] + Array.new(n, 0)
+      (1..n).each do |j|
+        cost = a[i - 1] == b[j - 1] ? 0 : 1
+        curr[j] = [prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost].min
+      end
+      prev = curr
+    end
+    prev[n]
+  end
+
+  # Aucune correspondance exacte/préfixe/mots (`find_song_by_title` vide) : les `limit`
+  # chansons les plus proches (Levenshtein, nom de dossier OU title, le meilleur des
+  # deux), SOUS UN SEUIL (Phil : des suggestions n'ayant aucun rapport sont pires que
+  # rien — "chanson introuvable" net plutôt que des propositions ridicules). Résultat
+  # SOUS le seuil proposé à l'user pour choix, jamais retenu tel quel sans confirmation.
+  def self.fuzzy_find_songs(chansons_dir, name, limit: 5)
+    target = slugify(name)
+    threshold = [2, (target.length * 0.35).round].max
+    all_songs(chansons_dir)
+      .map { |s| [s, fuzzy_distance(target, s)] }
+      .select { |_, distance| distance <= threshold }
+      .sort_by { |_, distance| distance }
+      .first(limit)
+      .map(&:first)
+  end
+
+  def self.fuzzy_distance(target, song)
+    candidates = [slugify(song[:name])]
+    candidates << slugify(song[:title]) if song[:title]
+    candidates.map { |c| levenshtein(target, c) }.min
   end
 
   # Chanson listée dans le .tdm mais introuvable (cache + disque, voir `SongCache`) :

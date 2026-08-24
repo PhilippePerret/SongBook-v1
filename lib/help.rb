@@ -46,6 +46,7 @@ USAGE = <<~TXT
   
 Dimensions de la couverture
 ---------------------------
+
 Si on veut créer la couverture soi-même, Songbook peut donner les dimensions à 
 partir du nombre de page du carnet :
     {{command: songbook cover dims}}

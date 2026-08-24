@@ -1,4 +1,5 @@
 require "yaml"
+require "rbconfig"
 
 # Configuration par défaut de l'application (Manuel/app/options.adoc) — `SongBook-app/config.yaml`,
 # clé/valeur plates, chargé une seule fois. Un carnet surcharge via son `.infos`/`.inf`
@@ -37,7 +38,7 @@ module AppConfig
     return dir if dir && !dir.to_s.strip.empty? && Dir.exist?(dir.to_s)
 
     loop do
-      print "Dossier des chansons introuvable (clé songs_dir absente/invalide dans #{PATH}).\nChemin absolu : "
+      print "Dossier des chansons : "
       input = $stdin.gets.to_s.strip
       return set("songs_dir", input) if Dir.exist?(input)
       warn "dossier introuvable : #{input}"
@@ -46,13 +47,34 @@ module AppConfig
 
   # Application (nom ou chemin, `open -a`) utilisée pour éditer les fichiers d'une
   # chanson (`c.infos`/`c.lyr`) — demandée à l'user et enregistrée au premier besoin.
+  # Existence vérifiée (`editor_app?`) avant d'accepter, sinon reboucle.
   def self.user_song_editor
     app = get("user_song_editor")
-    return app if app && !app.to_s.strip.empty?
+    return app if app && editor_app?(app)
 
-    print "Application pour éditer les fichiers de chanson (clé user_song_editor absente de #{PATH}) : "
-    input = $stdin.gets.to_s.strip
-    set("user_song_editor", input)
+    loop do
+      print "Éditer les chansons avec : "
+      input = $stdin.gets.to_s.strip
+      return set("user_song_editor", input) if editor_app?(input)
+      warn "application introuvable : #{input}"
+    end
+  end
+
+  # macOS : `/Applications/<app>.app` (ou `~/Applications`). Windows : cherchée dans le
+  # PATH (`where`). Un chemin direct fourni (fichier/dossier existant) est toujours
+  # accepté tel quel. Autres OS : pas de vérification connue, accepté tel quel.
+  def self.editor_app?(app)
+    return false if app.to_s.strip.empty?
+    return true if File.exist?(app)
+
+    case RbConfig::CONFIG["host_os"]
+    when /darwin/
+      ["/Applications/#{app}.app", "/Applications/#{app}", File.expand_path("~/Applications/#{app}.app")].any? { |p| File.exist?(p) }
+    when /mswin|mingw|cygwin/
+      system("where", app, out: File::NULL, err: File::NULL)
+    else
+      true
+    end
   end
 
   # "1cm" -> 28.35, "10mm" -> 28.35, "0.5in" -> 36.0, "12pt" -> 12.0, "12" -> 12.0.
