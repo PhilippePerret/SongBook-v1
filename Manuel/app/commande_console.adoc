@@ -3,12 +3,7 @@
 
 Les carnets et les chansons se gèrent en ligne de commande grâce à la console.
 
-Un mode interactif existe, avec l'option `-i`. Dans ce mode, toutes les commandes frappées sont interpréter dans __**SongBook**__.
-
-----
-songbook -i
-> build "chanson"
-----
+Un <<interactive-mode, mode interactif>> existe, avec l'option `-i`. Dans ce mode, toutes les commandes frappées sont interpréter dans __**SongBook**__.
 
 Utiliser `songbook -h` ou `songbook --help` pour obtenir une aide rapide (moins détaillée qu'ici) — ou simplement `-h` en mode interactif.
 
@@ -64,4 +59,35 @@ Pour construire le ou les tablatures (fichiers `.tab`) contenus dans le dossier 
 
 ----
 songbook build tab "titre chanson"
+----
+
+[[interactive-mode]]
+==== Version interactive ====
+
+La version interactive de la commande `songbook` permet de ne pas avoir à taper `songbook` chaque fois où même le titre d'une chanson ou d'un carnet.
+
+On entre en mode interactif avec :
+
+----
+songbook -i
+----
+
+À partir de là, on peut faire simplement :
+
+----
+🎸> build "titre chanson"
+----
+
+Où, pour focaliser toutes les commandes suivantes sur une chanson en particulier : 
+
+----
+🎸> use song "chanson cour"
+----
+
+… ou sur un carnet :
+
+----
+🎸> user songbook "mon carnet"
+# ou 
+🎸> user sb "mon carnet"
 ----

@@ -1,0 +1,10 @@
+[[create-song-tool]]
+=== Outil de création de chanson ===
+
+avec cet outil qui recherche sur le net toutes les informations sur la chanson et même les paroles, vous pouvez créer très rapidement vos chansons.
+
+----
+songbook create song
+----
+
+Ou simplement `create song` en <<interactive-mode, version interactive>>.

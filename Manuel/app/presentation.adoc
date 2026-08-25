@@ -8,7 +8,9 @@ __**Song-Book**__ (littéralement « Carnet de chant » en anglais) est une **
 Ne vous laissez pas impressionner par le terme __application en ligne de commande__. Elle signifie juste que pour produire la chanson ou le carnet de chant, vous allez ouvrir un Terminal (sur macOS/Unix) ou une Console (sur Windows) dans le dossier du carnet et taper : 
 
 ----
-songbook .
+songbook build
 ----
 
 … puis cliquer combo:Enter[]… Impressionnant, non ?
+
+Ce qui fait aussi la force de __**SongBook**__, c'est aussi ses <<tools, outils en ligne de commande>> qui facilitent et accèlèrent tous les processus de production des chansons et des carnets.

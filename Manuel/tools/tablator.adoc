@@ -1,0 +1,83 @@
+[[tablator]]
+=== Générateur de tablatures ===
+
+Pour produire les tablatures d'une chanson quelconque :
+
+----
+songbook build tabs "titre chanson"
+----
+
+Un assistant existe pour entrer facilement les notes et produire le fichier `.tab` : 
+
+----
+songbook tab assistant --song "titre chanson" --create
+----
+
+Ou si l'on doit éditer une tablature avec l'assistant :
+
+----
+songbook tab assistant --song "titre chanson" --tab "nom-tablature"
+----
+
+Ou en mode interactif : 
+
+----
+songbook -i
+🎸> use song "titre"
+🎸> tab assistant
+----
+
+==== Conventions du langage ====
+
+[cols="2,4,3", options="header"]
+|====
+| Élément | Code | Exemple/note
+| Note    | `•corde••case•`         | `50` (5^e^ corde, à vide)
+| Note    | `•corde••case•/•duree•` | `60/4`
+| Accord  | `<•notes•>`             | `<11 23 32>`
+| Accord avec durée | `<•notes•>/•duree•` | `<11 23 32>/8`
+| Accord arpégé | `[Arp]<•note•>` | [Arp]`<11 23 32>/8`
+|====
+
+|====
+| •corde• | de 1 (mi aigu) à 6 (mi grave)
+| •case•  | de 0 (corde à vide) à environ 20
+| •duree• | 4 = noire, 2 = blanche, 8 = croche, etc.
+|====
+
+Le document peut commencer par un entête définissant : 
+
+----
+\---
+\# On peut ajouter des commentaires de cette manière
+title: Titre à donner à la tablature (au-dessus)
+metrique: Métrique à écrire, par exemple "6/8"
+capo: Numéro de case, par exemple "4"
+chord: si `true`, écrit les accords (calculés) au-dessus
+keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
+\---
+
+\# Ici les notes
+----
+
+==== Options « vraies » notes ====
+
+Si l'on préfère, on peut entrer les notes de façon classique par leur nom, à la façon de Lilypond. Consulter la https://lilypond.org/doc/v2.26/Documentation/notation/index.fr.html[documentation du langage Lilypond] pour en apprendre plus.
+
+==== Assemblage ====
+
+Le mieux est de construire la tablature par petits segments car il sera possible de les assembler très facilement dans le fichier `.gabarit` de la chanson :
+
+----
+{intro; tab: intro.tab}
+
+{couplet; tab: intro.tab + coup.tab}
+----
+
+La seconde ligne produira le fichier `intro+coup.svg`. Donc, plus tard, pour ne pas forcer la reconstruction, on pourra mettre : 
+
+----
+{intro; tab: intro.svg}
+
+{couplet; tab: intro+coup.svg}
+----

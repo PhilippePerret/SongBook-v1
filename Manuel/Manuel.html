@@ -488,6 +488,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#tools">Outils</a>
 <ul class="sectlevel2">
+<li><a href="#create-song-tool">Outil de création de chanson</a></li>
+<li><a href="#song-chords-assistant">Assistant pour l&#8217;entrée des accords de la chanson</a></li>
 <li><a href="#diag-schema-producer">Production du schéma du diags</a></li>
 <li><a href="#tablator">Générateur de tablatures</a></li>
 </ul>
@@ -549,11 +551,14 @@ a {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>songbook .</pre>
+<pre>songbook build</pre>
 </div>
 </div>
 <div class="paragraph">
 <p>… puis cliquer <a href=""><kbd style="font-size:1.25em;">↩︎</kbd></a>… Impressionnant, non ?</p>
+</div>
+<div class="paragraph">
+<p>Ce qui fait aussi la force de <em><strong>SongBook</strong></em>, c&#8217;est aussi ses <a href="#tools">outils en ligne de commande</a> qui facilitent et accèlèrent tous les processus de production des chansons et des carnets.</p>
 </div>
 <div class="sect2">
 <h3 id="app-options">Options</h3>
@@ -600,13 +605,7 @@ a {
 <p>Les carnets et les chansons se gèrent en ligne de commande grâce à la console.</p>
 </div>
 <div class="paragraph">
-<p>Un mode interactif existe, avec l&#8217;option <code>-i</code>. Dans ce mode, toutes les commandes frappées sont interpréter dans <em><strong>SongBook</strong></em>.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook -i
-&gt; build "chanson"</pre>
-</div>
+<p>Un <a href="#interactive-mode">mode interactif</a> existe, avec l&#8217;option <code>-i</code>. Dans ce mode, toutes les commandes frappées sont interpréter dans <em><strong>SongBook</strong></em>.</p>
 </div>
 <div class="paragraph">
 <p>Utiliser <code>songbook -h</code> ou <code>songbook --help</code> pour obtenir une aide rapide (moins détaillée qu&#8217;ici) — ou simplement <code>-h</code> en mode interactif.</p>
@@ -683,6 +682,46 @@ a {
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="interactive-mode">Version interactive</h4>
+<div class="paragraph">
+<p>La version interactive de la commande <code>songbook</code> permet de ne pas avoir à taper <code>songbook</code> chaque fois où même le titre d&#8217;une chanson ou d&#8217;un carnet.</p>
+</div>
+<div class="paragraph">
+<p>On entre en mode interactif avec :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook -i</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>À partir de là, on peut faire simplement :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; build "titre chanson"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Où, pour focaliser toutes les commandes suivantes sur une chanson en particulier :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; use song "chanson cour"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>… ou sur un carnet :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; user songbook "mon carnet"
+# ou
+🎸&gt; user sb "mon carnet"</pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -713,21 +752,25 @@ songbook create song "le titre de la chanson" "le chanteur"</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>L&#8217;assistant vous assiste ensuite pour obtenir le maximum d&#8217;informations sur la chanson et créer les fichiers nécessaires.</p>
-</div>
-<div class="sect3">
-<h4 id="song-chords-assistant">Assistant de placement des accords</h4>
-<div class="paragraph">
-<p>Il existe aussi un assistant très pratique pour placer les accords :</p>
+<p>En mode interactif, c&#8217;est encore plus facile de travailler sur une chanson :</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>songbook add chords "&lt;extrait titre chanson&gt;"</pre>
+<pre>songbook -i
+🎸&gt; use song "titre chanson
+# Tout le reste concernera la chanson
+open # ouvre ce qu'on veut
+build # construit la chanson
+tab assistant # ouvrir l'assistant tablatures
+build diags # construit les diagrammes
+# etc.</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Cet outils permet de placer les accords très facilement et rapidement.</p>
+<p>L&#8217;assistant vous assiste ensuite pour obtenir le maximum d&#8217;informations sur la chanson et créer les fichiers nécessaires.</p>
 </div>
+<div class="paragraph">
+<p>Il existe aussi un <a href="#song-chords-assistant">assistant très pratique</a> pour placer les accords. Cet outil permet de placer les accords très facilement et rapidement, avec beaucoup de confort.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1802,6 +1845,12 @@ shrink_score: true # idem avec les partitions</pre>
 <div class="ulist">
 <ul>
 <li>
+<p><a href="#create-song-tool">Outil de création de chanson</a></p>
+</li>
+<li>
+<p><a href="#song-chords-assistant">Assistant pour l&#8217;entrée des accords de la chanson</a></p>
+</li>
+<li>
 <p><a href="#diag-schema-producer">Production de schéma de diags</a></p>
 </li>
 <li>
@@ -1811,6 +1860,31 @@ shrink_score: true # idem avec les partitions</pre>
 <p><a href="#tablator">Générateur de tablatures</a></p>
 </li>
 </ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="create-song-tool">Outil de création de chanson</h3>
+<div class="paragraph">
+<p>avec cet outil qui recherche sur le net toutes les informations sur la chanson et même les paroles, vous pouvez créer très rapidement vos chansons.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook create song</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Ou simplement <code>create song</code> en <a href="#interactive-mode">version interactive</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="song-chords-assistant">Assistant pour l&#8217;entrée des accords de la chanson</h3>
+<div class="paragraph">
+<p>La pose des accords peut être grandement facilitée avec l&#8217;aide à l&#8217;entrée des accords.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook add chords "tittre chanson"</pre>
 </div>
 </div>
 </div>
@@ -1850,7 +1924,150 @@ shrink_score: true # idem avec les partitions</pre>
 </div>
 <div class="sect2">
 <h3 id="tablator">Générateur de tablatures</h3>
+<div class="paragraph">
+<p>Pour produire les tablatures d&#8217;une chanson quelconque :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook build tabs "titre chanson"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Un assistant existe pour entrer facilement les notes et produire le fichier <code>.tab</code> :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook tab assistant --song "titre chanson" --create</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Ou si l&#8217;on doit éditer une tablature avec l&#8217;assistant :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook tab assistant --song "titre chanson" --tab "nom-tablature"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Ou en mode interactif :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook -i
+🎸&gt; use song "titre"
+🎸&gt; tab assistant</pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_conventions_du_langage">Conventions du langage</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 22.2222%;">
+<col style="width: 44.4444%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Élément</th>
+<th class="tableblock halign-left valign-top">Code</th>
+<th class="tableblock halign-left valign-top">Exemple/note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Note</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>•corde••case•</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>50</code> (5<sup>e</sup> corde, à vide)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Note</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>•corde••case•/•duree•</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>60/4</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Accord</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>&lt;•notes•&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>&lt;11 23 32&gt;</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Accord avec durée</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>&lt;•notes•&gt;/•duree•</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>&lt;11 23 32&gt;/8</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Accord arpégé</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[Arp]&lt;•note•&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code class="Arp">&lt;11 23 32&gt;/8</code></p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">•corde•</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">de 1 (mi aigu) à 6 (mi grave)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">•case•</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">de 0 (corde à vide) à environ 20</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">•duree•</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 = noire, 2 = blanche, 8 = croche, etc.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Le document peut commencer par un entête définissant :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>\---
+\# On peut ajouter des commentaires de cette manière
+title: Titre à donner à la tablature (au-dessus)
+metrique: Métrique à écrire, par exemple "6/8"
+capo: Numéro de case, par exemple "4"
+chord: si `true`, écrit les accords (calculés) au-dessus
+keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
+\---
 
+\# Ici les notes</pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_options_vraies_notes">Options « vraies » notes</h4>
+<div class="paragraph">
+<p>Si l&#8217;on préfère, on peut entrer les notes de façon classique par leur nom, à la façon de Lilypond. Consulter la <a href="https://lilypond.org/doc/v2.26/Documentation/notation/index.fr.html">documentation du langage Lilypond</a> pour en apprendre plus.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_assemblage">Assemblage</h4>
+<div class="paragraph">
+<p>Le mieux est de construire la tablature par petits segments car il sera possible de les assembler très facilement dans le fichier <code>.gabarit</code> de la chanson :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>{intro; tab: intro.tab}
+
+{couplet; tab: intro.tab + coup.tab}</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>La seconde ligne produira le fichier <code>intro+coup.svg</code>. Donc, plus tard, pour ne pas forcer la reconstruction, on pourra mettre :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>{intro; tab: intro.svg}
+
+{couplet; tab: intro+coup.svg}</pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>

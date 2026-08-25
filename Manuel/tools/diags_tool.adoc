@@ -1,0 +1,25 @@
+[[diag-schema-producer, Production de schéma de diags]]
+=== Production du schéma du diags ===
+
+Utiliser la commande : 
+
+----
+diag
+----
+
+[[diag-svg-producer]]
+==== Production de l'image SVG du diagramme ====
+
+Pour produire une image à partir d'un schéma, utiliser la commande : 
+
+----
+songbook build diag "schéma"
+----
+
+Par exemple :
+
+todo: exemple
+
+… qui produira :
+
+todo: exemple image

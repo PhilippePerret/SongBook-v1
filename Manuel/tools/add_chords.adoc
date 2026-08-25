@@ -1,0 +1,8 @@
+[[song-chords-assistant]]
+=== Assistant pour l'entrée des accords de la chanson ===
+
+La pose des accords peut être grandement facilitée avec l'aide à l'entrée des accords.
+
+----
+songbook add chords "tittre chanson"
+----
