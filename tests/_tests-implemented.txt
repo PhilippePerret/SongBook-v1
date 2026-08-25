@@ -1,0 +1,101 @@
+Tests des chansons
+- Créer une chanson
+  - avec les bonnes données
+  - en retrouvant une chanson déjà créée au lieu d'en refaire une
+  - même si la recherche sur internet échoue
+- Construire une chanson toute seule
+  - avec des paroles
+  - refuser un dossier qui n'a pas de paroles
+- Retrouver une chanson en tapant son titre
+  - le titre exact
+  - juste le début du titre
+  - des mots du titre, dans l'ordre
+  - refuser si les mots sont dans le mauvais ordre
+  - proposer une chanson proche en cas de faute de frappe
+  - ne rien trouver si le titre ne ressemble à rien
+- Écrire les accords en tête de l'assistant d'accords
+  - la lettre seule pour le premier accord
+  - un chiffre seulement à partir du deuxième
+  - ne pas confondre un accord et sa version dièse
+  - sur plusieurs lignes s'il y en a trop
+
+Tests des carnets
+- Construire un carnet complet en PDF
+  - avec des données correctes
+  - refuser un dossier sans table des matières
+- Retrouver un carnet en tapant son titre
+  - le nom exact
+  - des mots de son titre
+  - proposer un carnet proche en cas de faute de frappe
+  - ne pas confondre un dossier de chansons avec un carnet
+- Calculer les marges d'impression
+  - refuser un livre trop petit pour être imprimé
+  - donner plus de marge de reliure à un livre épais
+  - mettre la marge du bon côté selon la page
+
+Tests du mode interactif
+- Se souvenir de la chanson ou du carnet choisi (use)
+  - avec use pour toute la suite
+  - avec --song pour une seule commande
+  - construire le bon carnet même sans rien taper après use
+- Ouvrir la table des matières d'un carnet par son titre
+  - refuser un carnet introuvable
+- Ne pas planter sur une commande mal tapée
+  - un guillemet oublié
+  - une commande inconnue (dire ça simplement)
+
+Tests des outils
+- Lire les paroles et les accords écrits dans une chanson
+  - un accord simple
+  - un accord avec sa case précise
+  - un accord écrit bizarrement (ancien bug)
+  - un accord avec quinte augmentée (ancien bug)
+  - mettre en majuscule un accord tapé en minuscule
+  - mettre en majuscule la basse entre crochets
+  - séparer les informations du début du reste
+  - lire les indications entre accolades
+  - savoir que deux morceaux vont côte à côte
+- Transformer une tablature en musique
+  - une note simple
+  - un accord de plusieurs cordes
+  - garder les barres de mesure
+  - garder les silences invisibles
+  - refuser un texte illisible
+- Changer la tonalité de toute une grille d'accords
+  - vers une tonalité simple
+  - vers une tonalité avec dièse
+  - sans jamais choisir un accord au hasard
+  - refuser une tonalité illisible
+- Retrouver le dessin d'un accord
+  - reconnaître un accord transposé
+  - préférer le dessin du carnet à celui de la chanson
+  - choisir la bonne case
+  - ne pas planter si le dessin n'existe pas
+- Ranger les paroles à l'intérieur d'une page
+  - lire les indications du gabarit
+  - coller ou séparer des blocs de paroles
+  - ne pas perdre un bloc qui a ses propres réglages (ancien bug)
+  - mettre côte à côte deux blocs pareils
+  - ne pas gaspiller de place pour un bloc vide
+  - refuser un réglage pas encore prêt
+- Se souvenir des chansons déjà rencontrées
+  - retrouver une chanson déjà vue
+  - retrouver une chanson par son identifiant
+  - créer une chanson automatiquement si besoin
+  - oublier une chanson dont le dossier a disparu (ancien bug)
+- Trouver un fichier d'une chanson
+  - avec son nom long ou son nom court
+  - même sans nom devant l'extension
+- Lire les informations de couverture
+  - le titre, l'éditeur, l'ISBN
+  - choisir la bonne information s'il y en a plusieurs proposées
+
+Tests des assistants
+- Écrire une tablature au clavier
+  - un trou après une note allonge cette note
+  - un trou avant la première note devient un silence discret
+  - une grille vide ne casse rien
+  - se relire soi-même sans rien perdre
+  - pousser tout ce qui suit vers la droite ou la gauche
+  - accepter les chiffres tapés sans la touche Majuscule
+  - toujours écrire les cordes de mi en majuscule

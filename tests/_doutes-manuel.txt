@@ -1,0 +1,42 @@
+Doutes relevés en comparant le Manuel (Manuel/*.adoc) au code réel — RIEN testé
+là-dessus tant que ce n'est pas tranché, pour ne pas valider un test sur du vent.
+Manuel non touché, juste lu.
+
+COMMANDES DOCUMENTÉES MAIS INTROUVABLES DANS lib/cli.rb
+- `songbook list songs` (+ gabarit de sortie personnalisé) — aucun case "list"
+- `songbook manual` / `songbook manuel` [sujet] — aucun case "manual"/"manuel"
+- `songbook create songbook` / `create sb` — seul "create song" existe
+- `songbook cover dims` / `cover modele-idml` / `cover modele-pdf` — aucun case
+  "cover" ; lib/idml_cover_builder.rb existe mais n'est appelé nulle part
+- `songbook build diag "<schéma>"` — répété dans 4 pages du Manuel, jamais câblé
+- `songbook build tab` / `build tabs "titre"` — le vrai point d'entrée est
+  `songbook tablator assistant` / `tab assistant`
+
+AUTRES ÉCARTS DOC/CODE
+- song/chords.adoc : quasi-copie de song/diags.adoc (copier-coller), ne documente
+  pas vraiment l'outil d'accords (déjà couvert par tools/add_chords.adoc)
+- song/lyrics.adoc "Riffs" (`/riff nom: ...`) : la syntaxe (espace dans le nom)
+  ne peut pas matcher CHORD_RE ; aucun code de gestion des riffs trouvé
+- song/layout.adoc : `diags_size`/`music_position` explicitement "pas encore
+  implémenté" (commentaire du code lui-même) ; `lyrics_flux: free` lève une
+  erreur exprès (pas un bug, un manque assumé)
+- annexes/properties.adoc : sur 6 propriétés de position documentées, seule
+  `block-align` est vraiment lue par le rendu (margin-top/bottom/left/right et
+  block-valign : jamais consommées) ; sur 5 propriétés de texte, seule `align`
+  est lue (font-family/font-size/font-style/font : jamais consommées)
+- user_files/config.adoc : tout le bloc OPTIONS (`sensitivity`, `mode`,
+  `labels_in_title_band`, `keep_order`, `shrink_diag`, `shrink_tabla`,
+  `shrink_score`) : zéro référence trouvée dans le code
+- songbook/infos.adoc : `options.redim_diags` introuvable dans le code ;
+  `front_matter.title_page` jamais lu, le code lit `pages_garde` (non documenté)
+- annexes/extension-driven.adoc : `.cover`/`.cov` documenté comme extension au
+  même titre que .infos/.lyr/etc., mais absent de FileFinder::EXTENSIONS
+- .config/configuration.config (mentionné dans song/song-folder.adoc) : aucune
+  extension dédiée trouvée ; toute la config carnet/chanson vit dans .infos
+- user_files/_main.adoc : lien cassé `include:tablas-et-scores.adoc[]` (syntaxe
+  à deux ":" manquante) vers un fichier qui n'existe pas à cet endroit
+- user_files/gabarit.adoc (page marquée "à placer" par son propre texte) :
+  `title: simple` (le code produit "inline", pas "simple") ; `infos: under|
+  beside` et `{score:...}` introuvables ; `shrink` sur {tabla:...} jamais lu
+- _dev/regles_esthetiques.adoc RAG1-5 (niveaux de sensibilité) : le code a bien
+  une seule constante SENSITIVITY (fixée à 4 en dur), pas un réglage par carnet
