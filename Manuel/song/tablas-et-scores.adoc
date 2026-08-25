@@ -9,7 +9,9 @@ Le système de __partitions__ et de __tablatures__ de __SongBook__ reste rudimen
 [[tablature, tablature]]
 ==== Tablatures ====
 
-Un fichier tablature peut être placé n'importe où dans le dossier de la chanson, mais doit porter l'extension `.tab`. Par défaut, on le place de préférence dans un dossier `/scores`
+Un fichier tablature peut être placé n'importe où dans le dossier de la chanson, mais doit porter l'extension `.tab`. Par défaut, on le place de préférence dans un dossier `/scores`.
+
+Pour l'écriture de la tablature, voir <<tablator, l'outil Tablator>>.
 
 [[score, partition]]
 ==== Partitions ====

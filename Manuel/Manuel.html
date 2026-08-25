@@ -436,6 +436,79 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </head>
 <body class="book">
 <div id="header">
+<h1>SongBook manuel</h1>
+<div id="toc" class="toc">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_songbook">SongBook</a></li>
+<li><a href="#_présentation">Présentation</a>
+<ul class="sectlevel2">
+<li><a href="#app-options">Options</a></li>
+<li><a href="#console-command">Commande <code>console</code></a></li>
+</ul>
+</li>
+<li><a href="#song">Chansons</a>
+<ul class="sectlevel2">
+<li><a href="#song-assistant">Assistant de création de la chanson</a></li>
+<li><a href="#song-folder">Dossier de la chanson</a></li>
+<li><a href="#infos-file">Fichier des informations de la chanson</a></li>
+<li><a href="#lyrics-file">Les paroles</a></li>
+<li><a href="#_fichier_des_paroles_et_accords">Fichier des paroles et accords</a></li>
+<li><a href="#chords-diags">Diagrammes d&#8217;accords</a></li>
+<li><a href="#diags">Diagrammes d&#8217;accords</a></li>
+<li><a href="#_tablatures_et_partitions">Tablatures et Partitions</a></li>
+<li><a href="#song-layout">Layout (mise en page) de chanson</a></li>
+<li><a href="#gabarit-file">Gabarit de la chanson</a></li>
+</ul>
+</li>
+<li><a href="#songbook">Carnet de chant</a>
+<ul class="sectlevel2">
+<li><a href="#songbook-presentation">Présentation</a></li>
+<li><a href="#songbook-assistant">Assistant au carnet de chant</a></li>
+<li><a href="#songbook-infos">Fichier infos du carnet</a></li>
+<li><a href="#best-practices">Les bonnes pratiques</a></li>
+<li><a href="#songbook-tdm">Table des matières du carnet</a></li>
+<li><a href="#songbook-schemas">Diagrammes propres</a></li>
+<li><a href="#cover">La Couverture</a></li>
+</ul>
+</li>
+<li><a href="#_les_fichiers_utilisateurs">Les Fichiers utilisateurs</a>
+<ul class="sectlevel2">
+<li><a href="#gabarit">Fichier gabarit</a></li>
+</ul>
+</li>
+<li><a href="#config">Configuration</a>
+<ul class="sectlevel2">
+<li><a href="#config-file">Fichier de configuration</a></li>
+<li><a href="#universal-properties">Propriétés universelles</a></li>
+<li><a href="#_placement_des_diags">Placement des diags</a></li>
+<li><a href="#_tablatures_et_partitions_2">Tablatures et partitions</a></li>
+<li><a href="#_placement_du_titre_et_infos">Placement du titre et infos</a></li>
+</ul>
+</li>
+<li><a href="#tools">Outils</a>
+<ul class="sectlevel2">
+<li><a href="#diag-schema-producer">Production du schéma du diags</a></li>
+<li><a href="#tablator">Générateur de tablatures</a></li>
+</ul>
+</li>
+<li><a href="#annexes">Annexes</a>
+<ul class="sectlevel2">
+<li><a href="#terminology">Terminologie</a></li>
+<li><a href="#app-extension-driven">Dirigée par ses extensions</a></li>
+<li><a href="#properties">Les propriétés</a></li>
+<li><a href="#_outils">Outils</a></li>
+</ul>
+</li>
+<li><a href="#_développement_de_lapplication">Développement de l&#8217;application</a>
+<ul class="sectlevel2">
+<li><a href="#_règles_esthétiques">Règles esthétiques</a></li>
+<li><a href="#object-list">Liste des objets</a></li>
+<li><a href="#_tests">Tests</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 <div id="content">
 <div id="preamble">
@@ -449,7 +522,6 @@ a {
 </style>
 </div>
 </div>
-<h1 id="_songbook_manuel" class="sect0">SongBook manuel</h1>
 <div class="sect1">
 <h2 id="_songbook">SongBook</h2>
 <div class="sectionbody">
@@ -998,7 +1070,10 @@ Les /am:Portes /c:du pé/d:niten/f:cier</pre>
 <div class="sect3">
 <h4 id="tablature">Tablatures</h4>
 <div class="paragraph">
-<p>Un fichier tablature peut être placé n&#8217;importe où dans le dossier de la chanson, mais doit porter l&#8217;extension <code>.tab</code>. Par défaut, on le place de préférence dans un dossier <code>/scores</code></p>
+<p>Un fichier tablature peut être placé n&#8217;importe où dans le dossier de la chanson, mais doit porter l&#8217;extension <code>.tab</code>. Par défaut, on le place de préférence dans un dossier <code>/scores</code>.</p>
+</div>
+<div class="paragraph">
+<p>Pour l&#8217;écriture de la tablature, voir <a href="#tablator">l&#8217;outil Tablator</a>.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1713,6 +1788,69 @@ shrink_score: true # idem avec les partitions</pre>
 <div class="paragraph">
 <p>include:tablas-et-scores.adoc[]</p>
 </div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="tools">Outils</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Sont présentés ici la liste des outils utiles pour faire les carnets, à savoir :</p>
+</div>
+<div class="sidebarblock toc">
+<div class="content">
+<div class="ulist">
+<ul>
+<li>
+<p><a href="#diag-schema-producer">Production de schéma de diags</a></p>
+</li>
+<li>
+<p><a href="#diag-svg-producer">Production de l&#8217;image SVG du diagramme</a></p>
+</li>
+<li>
+<p><a href="#tablator">Générateur de tablatures</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="diag-schema-producer">Production du schéma du diags</h3>
+<div class="paragraph">
+<p>Utiliser la commande :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>diag</pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="diag-svg-producer">Production de l&#8217;image SVG du diagramme</h4>
+<div class="paragraph">
+<p>Pour produire une image à partir d&#8217;un schéma, utiliser la commande :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook build diag "schéma"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Par exemple :</p>
+</div>
+<div class="paragraph">
+<p>todo: exemple</p>
+</div>
+<div class="paragraph">
+<p>… qui produira :</p>
+</div>
+<div class="paragraph">
+<p>todo: exemple image</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="tablator">Générateur de tablatures</h3>
+
 </div>
 </div>
 </div>
@@ -2621,7 +2759,7 @@ Ne doit pas regrouper avec une strophe de type "refrain"</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-08-25 09:33:58 +0200
+Last updated 2026-08-25 10:11:46 +0200
 </div>
 </div>
 </body>

@@ -7,6 +7,7 @@ Sont présentés ici la liste des outils utiles pour faire les carnets, à savoi
 ****
 * <<diag-schema-producer>>
 * <<diag-svg-producer>>
+* <<tablator>>
 ****
 
 [[diag-schema-producer, Production de schéma de diags]]
@@ -34,3 +35,6 @@ todo: exemple
 … qui produira :
 
 todo: exemple image
+
+[[tablator]]
+=== Générateur de tablatures ===

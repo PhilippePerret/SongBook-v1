@@ -1,4 +1,7 @@
 :doctype: book
+= SongBook manuel
+:toc:
+
 ++++
 <style type="text/css">
 body {font-size:1.2em;}
@@ -8,7 +11,6 @@ a {
 }
 </style>
 ++++
-= SongBook manuel =
 
 // En cas d'erreur (ne mettre que ce fichier)
 // include::_dev/en-cas-derreur.adoc[]
@@ -24,6 +26,9 @@ include::songbook/_main.adoc[]
 
 // Fichiers user
 include::user_files/_main.adoc[]
+
+// Outils
+include::tools/_main.adoc[]
 
 // Annexe
 include::annexes/_main.adoc[]
