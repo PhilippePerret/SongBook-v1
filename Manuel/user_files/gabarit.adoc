@@ -10,7 +10,7 @@ Sa fonction principale est de définir la position et l'aspect des différents �
 Par exemple : 
 
 ----
-# Dans le fichier machanson.gab
+\# Dans le fichier machanson.gab
 
 {title: band; infos: beside;}
 

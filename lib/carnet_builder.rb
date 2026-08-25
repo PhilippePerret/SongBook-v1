@@ -267,6 +267,54 @@ module CarnetBuilder
     candidates.map { |c| levenshtein(target, c) }.min
   end
 
+  # {folder:, name:, title:} pour chaque carnet de `songbooks_dir` — pendant carnet de
+  # `all_songs`, base commune à `find_carnet_by_title`/`fuzzy_find_carnets` (`songbook
+  # build "titre"`).
+  def self.all_carnets(songbooks_dir)
+    Dir.children(songbooks_dir).sort.filter_map do |entry|
+      folder = File.join(songbooks_dir, entry)
+      next unless File.directory?(folder) && carnet_folder?(folder)
+
+      infos_path = FileFinder.find(folder, :inf)
+      title = infos_path ? parse_nested_infos(infos_path)["title"] : nil
+      { folder: folder, name: entry, title: title }
+    end
+  end
+
+  # Pendant carnet de `find_song_by_title` — même logique préfixe/mots.
+  def self.find_carnet_by_title(songbooks_dir, name)
+    target = slugify(name)
+    target_words = target.split("-").reject(&:empty?)
+
+    all_carnets(songbooks_dir).select do |c|
+      [slugify(c[:name]), c[:title] && slugify(c[:title])].compact.any? do |candidate|
+        prefix_match?(target, candidate) || words_match?(target_words, candidate)
+      end
+    end
+  end
+
+  # Pendant carnet de `fuzzy_find_songs` — même seuil.
+  def self.fuzzy_find_carnets(songbooks_dir, name, limit: 5)
+    target = slugify(name)
+    threshold = [2, (target.length * 0.35).round].max
+    all_carnets(songbooks_dir)
+      .map { |c| [c, fuzzy_distance(target, c)] }
+      .select { |_, distance| distance <= threshold }
+      .sort_by { |_, distance| distance }
+      .first(limit)
+      .map(&:first)
+  end
+
+  # `songbook build "titre"`, étape "extrêmement proche" (Phil) : distance <= 1 SEULEMENT
+  # (bien plus strict que le seuil de `fuzzy_find_songs`/`fuzzy_find_carnets`) — au-delà,
+  # rien n'est proposé plutôt qu'une suggestion hasardeuse. UN SEUL résultat (le plus
+  # proche), toujours soumis à confirmation par l'appelant, jamais retenu tel quel.
+  def self.very_close_match(items, name)
+    target = slugify(name)
+    item, distance = items.map { |it| [it, fuzzy_distance(target, it)] }.min_by { |_, d| d }
+    distance && distance <= 1 ? item : nil
+  end
+
   # Chanson listée dans le .tdm mais introuvable (cache + disque, voir `SongCache`) :
   # créée, jamais écartée (Phil, 2026-08-20 : "si cette chanson a été décidée, elle a été
   # décidée"). `name` en forme d'id (kebab-case) -> titre dérivé (+ année si présente en

@@ -1,0 +1,15 @@
+[[songbook-assistant]]
+=== Assistant au carnet de chant ===
+
+Cette section présente des assistants utiles pour la réalisation des cahiers de chant.
+
+[[song-id]]
+==== Id dans la chanson ====
+
+Pour obtenir la marque de la chanson dans la table des matières (tiret avec identifiant de la chanson).
+
+----
+songbook song id "titre" 
+----
+
+Comme pour toutes ces commandes, le titre de la chanson peut être mis de façon très approximative, son début, certains de ses mots seulement, etc.

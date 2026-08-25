@@ -19,9 +19,11 @@ require_relative "locale"
 # programme — pas contournable côté code) : seul Maj+flèche (1 espace) reste.
 module ChordPlacer
   ESC = "\e"
-  # Pavé numérique en mode application (DECKPAM, `\e=`) : `\eOp` = touche "0" du pavé,
-  # distincte du "0" de la ligne du haut — sans ce mode les deux seraient indiscernables.
-  KEYPAD_0_RE = /\AOp\z/
+  # Pavé numérique en mode application (DECKPAM, `\e=`) : `\eOp`.."\eOy" = touches
+  # 0-9 du pavé, distinctes de la ligne du haut du clavier — sans ce mode indiscernables.
+  KEYPAD_DIGIT = { "p" => :kp0, "q" => :kp1, "r" => :kp2, "s" => :kp3, "t" => :kp4,
+                   "u" => :kp5, "v" => :kp6, "w" => :kp7, "x" => :kp8, "y" => :kp9 }.freeze
+  KEYPAD_DIGITS = (1..9).map { |n| :"kp#{n}" }.freeze
 
   MODIFIERS = {
     nil => {},
@@ -54,12 +56,7 @@ module ChordPlacer
 
     chord_lines = editable.to_h { |i| [i, ChordLine.parse(raw_lines[i])] }
     letters = seed_letters(raw_lines)
-    load_cached_chords(song_dir).each do |chord|
-      next if letters.value?(chord)
-
-      letter = next_free_letter(letters)
-      letters[letter] = chord if letter
-    end
+    load_cached_chords(song_dir).each { |chord| register_chord(letters, chord) }
     ask_initial_chords(letters, song_dir) if letters.empty?
 
     save = lambda do
@@ -71,6 +68,11 @@ module ChordPlacer
     cursor = 0
     notice = nil
     dirty = false
+    # {letter:, pos:, cursor:} du DERNIER accord posé via une lettre encore ambiguë
+    # (plusieurs accords partagent cette 1re lettre) — une touche du pavé numérique
+    # juste après corrige CET accord précis, tant qu'aucune autre touche ne s'est
+    # glissée entre les deux (Phil : "a" + "2" = 2e "La" rencontré).
+    pending = nil
 
     begin
       with_raw_terminal do
@@ -78,6 +80,7 @@ module ChordPlacer
           current = chord_lines[editable[pos]]
           render_window(editable, chord_lines, pos, cursor, letters, notice)
           key = read_key
+          keep_pending = false
 
           case key
           when :enter
@@ -86,6 +89,17 @@ module ChordPlacer
             if current.chord_at(cursor)
               current.delete_chord(cursor)
               dirty = true
+            end
+          when *KEYPAD_DIGITS
+            if pending
+              digit = key.to_s.delete_prefix("kp").to_i
+              bucket = letters[pending[:letter]]
+              chord = bucket && bucket[digit - 1]
+              if chord
+                chord_lines[editable[pending[:pos]]].set_chord(pending[:cursor], chord)
+                dirty = true
+                keep_pending = true
+              end
             end
           when "N"
             new_cursor = current.move(cursor, :syllable, 1)
@@ -117,9 +131,8 @@ module ChordPlacer
             name = read_chord_name
             unless name.to_s.strip.empty?
               name = capitalize_chord(name)
-              letter = next_free_letter(letters)
-              letters[letter] = name if letter
-              save_cached_chords(song_dir, letters.values)
+              register_chord(letters, name)
+              save_cached_chords(song_dir, letters.values.flatten)
               current.set_chord(cursor, name)
               notice = chord_notice(name, song_dir)
               dirty = true
@@ -143,11 +156,16 @@ module ChordPlacer
             new_cursor = handle_movement(current, cursor, key)
             cursor = new_cursor if new_cursor
             dirty = true if current.text != before_text
-            if key.is_a?(String) && letters.key?(key)
-              current.set_chord(cursor, letters[key])
+            if key.is_a?(String) && key.match?(/\A[a-z]\z/) && letters.key?(key)
+              chord = letters[key].first
+              current.set_chord(cursor, chord)
               dirty = true
+              pending = { letter: key, pos: pos, cursor: cursor }
+              keep_pending = true
             end
           end
+
+          pending = nil unless keep_pending
         end
       end
     rescue Interrupt
@@ -169,14 +187,32 @@ module ChordPlacer
     name[0].upcase + name[1..].to_s
   end
 
-  # Table lettre -> accord, amorcée à partir de TOUS les accords déjà présents dans le
+  # Raccourci = 1re lettre du NOM de l'accord (Phil : "a" = "A7M", "b" = "Bm9b" — plus
+  # confusionnant qu'un ordre a/b/c/d arbitraire). Collision (plusieurs accords partagent
+  # la même 1re lettre) : `letters[lettre]` = liste, dans l'ordre de rencontre — 1er par
+  # défaut, un chiffre du pavé numérique juste après corrige vers le Nième (voir `run`).
+  def self.register_chord(letters, chord)
+    letter = chord[0].downcase
+    letters[letter] ||= []
+    letters[letter] << chord unless letters[letter].include?(chord)
+    letter
+  end
+
+  # {lettre => [accords]}, amorcée à partir de TOUS les accords déjà présents dans le
   # fichier (ordre d'apparition).
   def self.seed_letters(lines)
+    letters = {}
     seen = []
     lines.each do |raw|
-      raw.scan(%r{/([^:/\s]+):}) { |m| seen << capitalize_chord(m[0]) unless seen.include?(capitalize_chord(m[0])) }
+      raw.scan(%r{/([^:/\s]+):}) do |m|
+        chord = capitalize_chord(m[0])
+        next if seen.include?(chord)
+
+        seen << chord
+        register_chord(letters, chord)
+      end
     end
-    ("a".."z").zip(seen).to_h { |letter, chord| [letter, chord] }.compact
+    letters
   end
 
   # Demandée AVANT toute édition (hors mode brut : lecture de ligne normale). Skip si
@@ -185,18 +221,19 @@ module ChordPlacer
     print Loc.get("ask_song_chords")
     STDOUT.flush
     input = $stdin.gets.to_s.strip
+    added = false
     input.split(/[\s,]+/).each do |raw_chord|
       next if raw_chord.empty?
 
       chord = capitalize_chord(raw_chord)
-      next if letters.value?(chord)
+      next if letters.values.flatten.include?(chord)
 
-      letter = next_free_letter(letters)
-      letters[letter] = chord if letter
+      register_chord(letters, chord)
+      added = true
       notice = chord_notice(chord, song_dir)
       puts notice if notice
     end
-    save_cached_chords(song_dir, letters.values) unless letters.empty?
+    save_cached_chords(song_dir, letters.values.flatten) if added
   end
 
   # `.cached` (dossier de la chanson) : `chord_list:` — conserve les accords donnés/
@@ -241,14 +278,6 @@ module ChordPlacer
     end
   end
 
-  # N/P/A/Z/T/V (majuscules) ne partagent plus l'alphabet des accords (minuscules) —
-  # seul "x" (suppression) reste dans le même espace, à réserver.
-  RESERVED_LETTERS = %w[x].freeze
-
-  def self.next_free_letter(letters)
-    ("a".."z").find { |l| !letters.key?(l) && !RESERVED_LETTERS.include?(l) }
-  end
-
   # Vérifie l'existence d'un diagramme pour cet accord (dossier de la chanson, puis
   # `assets/chords_diags/` de l'app — les 2 sources demandées) — signalé, discret,
   # jamais négatif : `nil` si trouvé (rien à signaler), sinon un message neutre.
@@ -274,7 +303,9 @@ module ChordPlacer
     # 3 lignes RÉSERVÉES ici, toujours (légende + note discrète + séparateur), présentes
     # ou vides — jamais un nombre de lignes qui varie d'un rafraîchissement à l'autre
     # (Phil : les sauts d'écran sont intempestifs).
-    legend = letters.map { |l, c| "#{l} = #{c}" }.join("  ")
+    legend = letters.map do |l, chords|
+      chords.each_with_index.map { |c, i| chords.size > 1 ? "#{l}#{i + 1} = #{c}" : "#{l} = #{c}" }.join("  ")
+    end.join("  ")
     puts legend
     puts "#{HELP_COLOR}#{notice}#{ANSI_RESET}"
     puts
@@ -305,12 +336,17 @@ module ChordPlacer
 
   # Bascule en mode ligne le temps de la saisie (`-icanon -echo` rendait la frappe
   # invisible et cassait `gets` — bug constaté, "l'entrée de l'accord ne fait rien").
+  # DECKPAM désactivé aussi (`\e>`) : sinon les chiffres du pavé numérique tapés dans le
+  # NOM de l'accord (ex. "A9") arrivaient en séquences `\eO..` brutes dans `gets` au lieu
+  # de vrais chiffres (bug constaté, "ça écrit je ne sais quel code").
   def self.read_chord_name
+    print "\e>"
     system("stty icanon echo")
     print "\r\nAccord : "
     STDOUT.flush
     line = $stdin.gets
     system("stty -icanon -echo min 1 time 0")
+    print "\e="
     line&.strip
   end
 
@@ -348,7 +384,7 @@ module ChordPlacer
       read_csi
     elsif c2 == "O"
       c3 = $stdin.getc
-      "O#{c3}" =~ KEYPAD_0_RE ? :kp0 : "\eO#{c3}"
+      KEYPAD_DIGIT[c3] || "\eO#{c3}"
     else
       "\e#{c2}"
     end

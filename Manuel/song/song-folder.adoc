@@ -16,7 +16,7 @@ Ma-chanson/
 
 > __**SongBook**__ étant une __application basée sur les extensions__, seules sont importantes les extensions des fichiers. Peu importe leur racine (mais la racine sert à retrouver les fichiers).
 
-Si vous voulez concentrer l'attention juste sur le suffixe, vous pouvez utiliser :
+Si vous voulez concentrer l'attention juste sur le suffixe, vous pouvez utiliser :
 
 ----
 Ma-chanson/

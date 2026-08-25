@@ -14,6 +14,17 @@ USAGE = <<~TXT
   de produire tout le matériel qu'il faut. Propose aussi de nombreux
   outils pour se faciliter la tâche.
 
+  Aide rapide
+  ------------
+    {{command: songbook create song "titre" "performer"}} 
+        Créer une nouvelle chanson
+    {{command: songbook open song "titre}}  
+        Ouvre les fichiers de la chanson et le dossier
+    {{command: songbook song id "titre"}}   
+        Mets l'ID de la chanson dans le PP
+    {{command: songbook add chords "titre"}}  
+        Assistant accords
+
   Ouvrir le manuel
   ----------------
     {{command: songbook manual|manuel}}

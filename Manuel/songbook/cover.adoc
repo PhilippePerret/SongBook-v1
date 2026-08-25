@@ -25,7 +25,7 @@ Pour définir la couverture, on produit un fichier `.cover` (ou `.cov`) en indiq
 NOTE Pour le moment, __**SongBook**__ est assez mauvais pour produire une couverture convainquante, on peut donc produire grossièrement la couverture et la charger ensuite dans un logiciel compétent pour l'ajuster selon ses envies.
 
 ----
-1. # ce "1." désigne "première de couverture"
+1.
 
 {image_cover}| {title; font-size:28pt;}
              | {author}
@@ -33,7 +33,7 @@ NOTE Pour le moment, __**SongBook**__ est assez mauvais pour produire une couver
 {editor_logo; block_align: Bot Center;}
 
 
-4. # Ce "4." désigne "quatrième de couverture"
+4.
 {editor_name; align:Center;}
 {file: quatrieme.md}
 {price} | {barcode}

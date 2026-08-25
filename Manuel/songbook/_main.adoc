@@ -4,6 +4,9 @@
 // Présentation
 include::presentation.adoc[]
 
+// Assistant
+include::assistant.adoc[]
+
 // Fichier des informations
 include::infos.adoc[]
 

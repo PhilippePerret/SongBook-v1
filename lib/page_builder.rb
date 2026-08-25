@@ -58,11 +58,41 @@ module PageBuilder
   # Deux paragraphes de MÊME NOM mais de contenu DIFFÉRENT restent une vraie redéfinition :
   # au lieu d'écraser (perte de contenu, interdit — Phil 2026-08-18), le 2nd est renommé en
   # suffixe (`nom-2`, `nom-3`...) pour que les deux soient rendus.
+  # Un paragraphe = un bloc, séparé normalement par une ligne vide — MAIS une ligne
+  # `{nom}` démarre TOUJOURS un nouveau bloc, MÊME collée SANS ligne vide à la strophe
+  # précédente, MÊME collée à la fin de la dernière ligne de texte (aucun saut de ligne
+  # du tout — Phil, 2026-08-24, "Au fur et à mesure" : "Je t'écris des mots purs…{final}",
+  # `{final}` sur la MÊME ligne que "purs…", jamais reconnu). `line.split` sur le motif
+  # d'en-tête AVEC capture isole "{nom}" de ce qui l'entoure sur la même ligne, dans
+  # l'ordre — le texte qui précède reste rattaché au bloc EN COURS, "{nom}" ouvre le
+  # suivant.
+  def self.split_lyr_paragraphs(text)
+    paragraphs = []
+    current = []
+    text.each_line do |raw_line|
+      line = raw_line.chomp
+      if line.strip.empty?
+        paragraphs << current.join("\n") unless current.empty?
+        current = []
+        next
+      end
+      line.split(/(\{[^:;}]+\})/).reject(&:empty?).each do |seg|
+        if seg =~ /\A\{[^:;}]+\}\z/ && !current.empty?
+          paragraphs << current.join("\n")
+          current = []
+        end
+        current << seg
+      end
+    end
+    paragraphs << current.join("\n") unless current.empty?
+    paragraphs.map(&:strip).reject(&:empty?)
+  end
+
   def self.parse_lyr(path)
     blocks = {}
     order = []
     raw_bodies = {}
-    paragraphs = File.read(path).split(/\n{2,}/).map(&:strip).reject(&:empty?)
+    paragraphs = split_lyr_paragraphs(File.read(path))
     paragraphs.each_with_index do |para, i|
       lines = para.split("\n")
       header = lines.first
@@ -365,6 +395,9 @@ module PageBuilder
   def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout: nil, debug_marks: false, carnet_folder: nil)
     DiagsSync.sync!(folder)
     gab_path = FileFinder.find(folder, :gab)
+    # `.gab` vide (0 octet ou blanc) : traité comme absent, jamais une page blanche
+    # imprimée pour un fichier sans contenu (Phil, 2026-08-24, "Amstrong" — bon sens).
+    gab_path = nil if gab_path && File.read(gab_path).strip.empty?
     lyr_path = FileFinder.find(folder, :lyr)
     infos_path = FileFinder.find(folder, :inf)
     raise "fichiers .lyr/.lyrics ou .infos/.inf introuvables dans #{folder}" unless lyr_path && infos_path

@@ -11,7 +11,7 @@ format: 8.25 x 6
 songs_dir: /Users/philippeperret/Documents/Musique/Carnets-de-chant/CHANSONS
 
 # Chemin absolu du dossier des carnets
-songbooks_dir: null
+songbooks_dir: /Users/philippeperret/Documents/Musique/Carnets-de-chant/Carnets
 
 # Application (nom ou chemin) utilisée pour éditer les fichiers d'une chanson
 user_song_editor: CotEditor

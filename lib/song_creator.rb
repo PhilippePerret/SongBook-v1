@@ -64,7 +64,7 @@ module SongCreator
     choice = prompt.select(format(Loc.get("song_exists"), folder), [
       { name: Loc.get("continue_creation"), value: :continue },
       { name: Loc.get("open_folder_question"), value: :open },
-    ])
+    ], show_help: false)
     case choice
     when :continue then resume_existing_song(prompt, folder)
     when :open then offer_open_folder(prompt, folder)
@@ -192,7 +192,7 @@ module SongCreator
     else
       choices = by_year.map { |year, cs| { name: "#{year} (#{cs.map { |c| c[:source] }.join(", ")})", value: year } }
       choices << { name: "Autre (saisir)", value: :other }
-      picked = prompt.select("Plusieurs années trouvées, laquelle ?", choices)
+      picked = prompt.select("Plusieurs années trouvées, laquelle ?", choices, show_help: false)
       picked == :other ? prompt.ask("Année :") { |q| q.required true } : picked
     end
   end

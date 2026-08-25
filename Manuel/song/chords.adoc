@@ -1,48 +1,45 @@
-[[chords, accords]]
-=== Les accords ===
+[[chords-diags, diagrammes d'accords]]
+=== Diagrammes d'accords ===
 
-Les accords, dans les chansons, sont placés avant la syllabe sur laquelle ils doivent être joués. Par exemple, dans l'exemple ci-dessous :
+On appelle __diagrammes d'acccord__ ou tout simplement __diag__ ou __diagrammes les petits schémas représentant les accords à la guitare (__il existe des diagrammes pour d'autres instruments à cordes, mais ils ne sont pas utilisés ici__).
 
-----
-Les /am:portes /c:du pé/d:niten/f:cier
-----
+Todo: montrer diagramme d'accord.
 
-… l'accord `Am` (La mineur) est joué sur le « por » de « portes », le `C` (Do majeur) est joué sur « du », le `D` (Ré majeur) est joué sur « ni » et le `F` sur « cier ».
+[[chords-diags-list, liste des diagrammes existants]]
+==== Liste des diagrammes ====
 
-Une fois mise en forme, cela donne :
-
-Todo: image résultante
-
-- le nom des notes se mettent en notation batave (La = `a`, Si = `B), Do = `c`, Ré = `D`, Mi = `E`, Fa = `f`, Sol = `G`)
-- les notes se marquent en majuscule (`F`) ou en minuscule (`f`)
-- la première lettre d'un groupe de lettres est toujours considérée comme une note,
-- le signe dièse se marque `d` et le signe bémol par `b` (`Dd` ou `dd` pour Ré dièse majeur, `bb` pour Si bémol majeur),
-- les basses se marquent entre crochets (`[fd]`)
-- les basses peuvent se marquer juste après la note de l'accord (`A[c]m7`) ou à la fin de l'accord (`Am7[c]`)
-- on peut utiliser les <<only-bass, basses seules>>, sans accords
-- on peut __affiner__ l'accord en mettant des indications après un « - », par exemple la case où l'accord doit être joué sur une guitare (`Am-5`)
-- les accords doivent toujours correspondre à un diagramme (voir la todo: liste des diagrammes),
-- lorsque le diagramme n'existe pas, on peut le produire à l'aide du <<diag-builder, constructeur de diagramme>>.
-- plusieurs accords peuvent s'enchainer sans espaces entre eux : `/c:/dm:/em:`,
-- on peut séparer les accords par n'importe quel signe, souvent une balance pour indiquer qu'ils sont enchainés, joués dans la même mesure : `/c://f:` (noter le `//`, dont le deuxième définit le début de l'accord `/f:`),
-- pour marquer que l'accord est joué hors syllabe, au début du vers, on ajoute un trait plat : `/C:_`
-- à la fin d'un vers, le trait plat <<trait-plat-usages, n'est pas obligatoire>>
-
-[[only-bass]]
-**Basses seules**
-----
-Don't give /am:up [g][fd]
-
-In /em:this proud land
-----
+On peut obtenir la liste de tous les diagrammes, afin de pouvoir choisir ceux qui nous intéressent pour une chanson, en jouant la commande : 
 
 ----
-/c:_ C'est un en/[b]:droit qui res/am:semble
+songbook diags
 ----
 
-[[trait-plat-usages]]
-**Usage du trait plat**
+Elle ouvre un fichier HTML où sont présentés tous les diagrammes, et il suffit de cliquer sur leur diagrammes pour mettre le nom dans le presse-papier et le coller dans la chanson.
+
+==== Produire ses propres diagrammes ====
+
+On peut aller plus loin et produire ses propres diagrammes personnalisés. Pour ça
 
 ----
-/c:_ Au début mais /dm:pas à la fin /g: /g7:
+songbook build diag "<schéma>"
 ----
+
+Le schéma est très précis et peut s'obtenir avec la commande `diag`.
+
+On peut même directement, si le schéma ne nous intéresse pas, utiliser la commande `diag -o` pour définir le diagramme et produire son image SVG à insérer dans le carnet.
+
+[[song-chords-schemas]]
+==== Diagrammes propres à la chanson ====
+
+Une chanson peut définir ses propres schémas dans un fichier `.schemas` (`sche`). Cela est nécessaire lorsque la chanson utilise des accords qui ne sont consignés <<diags-list, nulle part ailleurs>>.
+
+Dans ce fichier, on indique : 
+
+----
+<NOM-DANS-LES-PAROLES> : <SCHÉMA DU DIAGRAMME>
+# etc. les uns sous les autres
+----
+
+Le schéma est obtenu grâce à la commande `diag` qui permet de définir ces diagrammes avec confort et sécurité (l'erreur est pratiquement impossible).
+
+Choisissez bien le nom pour qu'il « n'écrase » pas un accord existant déjà (__rassurez-vous cependant, il ne sera pas vraiment « écrasé »__). C'est ce nom que vous devrez utiliser pour le fichier `.lyr`.

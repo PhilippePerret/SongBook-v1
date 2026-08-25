@@ -19,6 +19,7 @@ Elle ouvre un fichier HTML où sont présentés tous les diagrammes, et il suffi
 ==== Produire ses propres diagrammes ====
 
 On peut aller plus loin et produire ses propres diagrammes personnalisés. Pour ça
+
 ----
 songbook build diag "<schéma>"
 ----
@@ -27,7 +28,8 @@ Le schéma est très précis et peut s'obtenir avec la commande `diag`.
 
 On peut même directement, si le schéma ne nous intéresse pas, utiliser la commande `diag -o` pour définir le diagramme et produire son image SVG à insérer dans le carnet.
 
-[[song-schema]]
+
+[[song-schemas, diagrammes de la chanson]]
 ==== Diagrammes propres à la chanson ====
 
 Une chanson peut définir ses propres schémas dans un fichier `.schemas` (`sche`). Cela est nécessaire lorsque la chanson utilise des accords qui ne sont consignés <<diags-list, nulle part ailleurs>>.
@@ -37,7 +39,7 @@ Dans ce fichier, on indique :
 ----
 <NOM-DANS-LES-PAROLES> : <SCHÉMA DU DIAGRAMME>
 # etc. les uns sous les autres
----
+----
 
 Le schéma est obtenu grâce à la commande `diag` qui permet de définir ces diagrammes avec confort et sécurité (l'erreur est pratiquement impossible).
 

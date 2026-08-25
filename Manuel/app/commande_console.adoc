@@ -1,17 +1,51 @@
 [[console-command]]
 === Commande `console` ===
 
-Utiliser `songbook -h` ou `songbook --help` pour obtenir une aide rapide (moins détaillée qu'ici).
+Les carnets et les chansons se gèrent en ligne de commande grâce à la console.
+
+Un mode interactif existe, avec l'option `-i`. Dans ce mode, toutes les commandes frappées sont interpréter dans __**SongBook**__.
+
+----
+songbook -i
+> build "chanson"
+----
+
+Utiliser `songbook -h` ou `songbook --help` pour obtenir une aide rapide (moins détaillée qu'ici) — ou simplement `-h` en mode interactif.
 
 La première chose à apprendre est à construire un carnet une fois <<songbook, toutes les données établies>>.
 
 Ouvrir une console/Terminal au dossier du carnet et jouer simplement :
 
 ----
-console build
+songbook build
 ----
 
-Pour ne produire qu'une chanson, ouvrez la console au dossier de la chanson et utilisez la même commande.
+On peut aussi ne pas être dans le dossier et taper (si le carnet s'appelle "Mon premier carnet") : 
+
+----
+songbook build "Mon premier carnet"
+----
+
+Noter que la recherche est intelligente, cela signifie que vous pouvez taper :
+
+----
+songbook build "premier"
+----
+
+… si aucun autre carnet ne pote le mot "premier".
+
+Si toutefois une chanson porte le mot "premier", il y aura ambiguïté. Utilisez alors explicitement :
+
+----
+songbook build sb "premier"
+# "sb" pour "songbook"
+----
+
+Pour ne produire qu'une chanson, ouvrez la console au dossier de la chanson et utilisez la même commande avec `build` seul ou :
+
+----
+songbook build song "titre chanson"
+----
 
 
 [[diag-builder, constructeur de diagramme]]
@@ -20,4 +54,14 @@ Pour ne produire qu'une chanson, ouvrez la console au dossier de la chanson et u
 Outils permettant de construire des diagrammes d'accords pour la guitare.
 ----
 console build diag "schéma"
+----
+
+Concernant le schéma à fournir, cf. <<>>.
+
+==== Constructeur de tablatures ====
+
+Pour construire le ou les tablatures (fichiers `.tab`) contenus dans le dossier de la chanson.
+
+----
+songbook build tab "titre chanson"
 ----

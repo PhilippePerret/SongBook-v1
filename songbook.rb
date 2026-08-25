@@ -3,4 +3,8 @@
 
 require_relative "lib/cli"
 
-CLI.run(ARGV)
+if ARGV.delete("-i") || ARGV.delete("--interactive")
+  CLI.run_interactive
+else
+  CLI.run(ARGV)
+end

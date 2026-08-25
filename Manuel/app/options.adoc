@@ -11,11 +11,11 @@
 
 | `tdm_position` 
 | Position de la table des matières, en début (`front`) ou fin (`end`) du carnet.
-| Défaut : `end`
+| Défaut : `end`
 
 | `build_unknown_song`
 | Détermine si les dossiers des chansons doivent être créés lorsque le titre est trouvé dans le fichier `.tdm` mais que la chanson n'est pas trouvée.
-| Défaut : `true` (oui, le dossier est créé)
+| Défaut : `true` (oui, le dossier est créé)
 
 | `text_column_guter`
 | Détermine la largeur de gouttière par défaut, pour les textes à phrases longues.

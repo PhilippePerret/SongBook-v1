@@ -212,8 +212,12 @@ Solution proposée ?
 |
 
 | RAL3
-| Si une strophe sans accords est à côté d'une strophe avec accord, celle sans accords doit aligner sa première ligne à la première ligne de celle avec accord.
+| Si, avec deux strophes côte à côte, l'une a des accords sur la première ligne et l'autre pas, les deux strophes doivent aligner leur première ligne de paroles.
 | Aucune exception.
+
+| RAL4
+| S'il n'y a pas de colonne de diags ou si ces colonnes sont vides (aucun diag), les strophes doivent être alignées au centre de toute la page, horizontalement, donc par rapport aux marges gauche et droite.
+|
 
 |====
 

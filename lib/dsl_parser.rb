@@ -14,7 +14,9 @@ class DSLParser
   # 2026-08-21) — le séparateur "-" existe, ce qui le suit n'a pas besoin d'être un
   # numéro propre pour que le NOM (groupe 1) soit reconnu (bug constaté : "/g2-0C:",
   # "En rouge et noir"/"Belle île en mer", pas reconnu DU TOUT faute de `-(\d+)` strict).
-  CHORD_RE = /\/((?:[A-Za-zÀ-ÿ0-9#♯♭\[\]]+)(?:\/[A-Za-zÀ-ÿ0-9#♯♭\[\]]+)?)(?:-([^: ]+))?:/
+  # "+" (quinte augmentée, ex. "/d75+:", "Amstrong") : absent de la classe de caractères,
+  # accord jamais reconnu du tout (bug constaté 2026-08-24, Phil).
+  CHORD_RE = /\/((?:[A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)(?:\/[A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)?)(?:-([^: ]+))?:/
 
   def self.parse(source)
     new(source).parse

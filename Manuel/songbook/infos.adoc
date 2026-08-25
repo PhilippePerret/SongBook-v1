@@ -24,8 +24,6 @@ cover:
   image: path/to/image
   binding: true|false # pour dessin marqué de la reliure
 
-# Les pages liminaires
-# --------------------
 front_matter:
   half_title_page: false # faux-titre
   title_page: true
@@ -40,8 +38,6 @@ front_matter:
   acknowledgments: false # (false ou le fichier remerciements)
 copyright: @2026 Icare éditions Tous droits réservés
 
-# Pages finales
-# -------------
 credits:
   book_designer: Philippe Perret
   typesetter: Philippe Perret

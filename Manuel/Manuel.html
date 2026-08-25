@@ -481,7 +481,7 @@ a {
 </div>
 </div>
 <div class="paragraph">
-<p>… puis cliquer combo:Enter[]… Impressionnant, non ?</p>
+<p>… puis cliquer <a href=""><kbd style="font-size:1.25em;">↩︎</kbd></a>… Impressionnant, non ?</p>
 </div>
 <div class="sect2">
 <h3 id="app-options">Options</h3>
@@ -502,12 +502,12 @@ a {
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>tdm_position</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Position de la table des matières, en début (<code>front</code>) ou fin (<code>end</code>) du carnet.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>end</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>end</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>build_unknown_song</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Détermine si les dossiers des chansons doivent être créés lorsque le titre est trouvé dans le fichier <code>.tdm</code> mais que la chanson n&#8217;est pas trouvée.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>true</code> (oui, le dossier est créé)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>true</code> (oui, le dossier est créé)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>text_column_guter</code></p></td>
@@ -525,7 +525,19 @@ a {
 <div class="sect2">
 <h3 id="console-command">Commande <code>console</code></h3>
 <div class="paragraph">
-<p>Utiliser <code>songbook -h</code> ou <code>songbook --help</code> pour obtenir une aide rapide (moins détaillée qu&#8217;ici).</p>
+<p>Les carnets et les chansons se gèrent en ligne de commande grâce à la console.</p>
+</div>
+<div class="paragraph">
+<p>Un mode interactif existe, avec l&#8217;option <code>-i</code>. Dans ce mode, toutes les commandes frappées sont interpréter dans <em><strong>SongBook</strong></em>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook -i
+&gt; build "chanson"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Utiliser <code>songbook -h</code> ou <code>songbook --help</code> pour obtenir une aide rapide (moins détaillée qu&#8217;ici) — ou simplement <code>-h</code> en mode interactif.</p>
 </div>
 <div class="paragraph">
 <p>La première chose à apprendre est à construire un carnet une fois <a href="#songbook">toutes les données établies</a>.</p>
@@ -535,20 +547,116 @@ a {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>console build</pre>
+<pre>songbook build</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Pour ne produire qu&#8217;une chanson, ouvrez la console au dossier de la chanson et utilisez la même commande.</p>
+<p>On peut aussi ne pas être dans le dossier et taper (si le carnet s&#8217;appelle "Mon premier carnet") :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook build "Mon premier carnet"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Noter que la recherche est intelligente, cela signifie que vous pouvez taper :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook build "premier"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>… si aucun autre carnet ne pote le mot "premier".</p>
+</div>
+<div class="paragraph">
+<p>Si toutefois une chanson porte le mot "premier", il y aura ambiguïté. Utilisez alors explicitement :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook build sb "premier"
+# "sb" pour "songbook"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Pour ne produire qu&#8217;une chanson, ouvrez la console au dossier de la chanson et utilisez la même commande avec <code>build</code> seul ou :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook build song "titre chanson"</pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="diag-builder">Constructeur de diagramme</h4>
+<div class="paragraph">
+<p>Outils permettant de construire des diagrammes d&#8217;accords pour la guitare.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>console build diag "schéma"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Concernant le schéma à fournir, cf. &lt;&lt;&gt;&gt;.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_constructeur_de_tablatures">Constructeur de tablatures</h4>
+<div class="paragraph">
+<p>Pour construire le ou les tablatures (fichiers <code>.tab</code>) contenus dans le dossier de la chanson.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook build tab "titre chanson"</pre>
+</div>
+</div>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="song">Chanson</h2>
+<h2 id="song">Chansons</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>La <em>chanson</em> est la base de tout carnet de chant. C&#8217;est pour présenter des <em>chansons</em> et les jouer que le <a href="#songbook">carnet de chant</a> est conçu.</p>
+</div>
+<div class="sect2">
+<h3 id="song-assistant">Assistant de création de la chanson</h3>
+<div class="paragraph">
+<p>Pour créer rapidement une chanson, on peut utiliser l&#8217;assistant. Dans un Terminal (ouvert n&#8217;importe où) jouer la commande :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook create song</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Ou, si vous connaissez déjà le titre et l&#8217;interprète :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook create song "Le titre de la chanson"
+
+songbook create song "le titre de la chanson" "le chanteur"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>L&#8217;assistant vous assiste ensuite pour obtenir le maximum d&#8217;informations sur la chanson et créer les fichiers nécessaires.</p>
+</div>
+<div class="sect3">
+<h4 id="song-chords-assistant">Assistant de placement des accords</h4>
+<div class="paragraph">
+<p>Il existe aussi un assistant très pratique pour placer les accords :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook add chords "&lt;extrait titre chanson&gt;"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Cet outils permet de placer les accords très facilement et rapidement.</p>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="song-folder">Dossier de la chanson</h3>
@@ -575,7 +683,7 @@ a {
 </blockquote>
 </div>
 <div class="paragraph">
-<p>Si vous voulez concentrer l&#8217;attention juste sur le suffixe, vous pouvez utiliser :</p>
+<p>Si vous voulez concentrer l&#8217;attention juste sur le suffixe, vous pouvez utiliser :</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -744,6 +852,128 @@ Les /am:Portes /c:du pé/d:niten/f:cier</pre>
 </div>
 <div class="paragraph">
 <p>Pour la définition d&#8217;une tablature ou d&#8217;une partition, voir <a href="#tablature">tablature</a> et <a href="#score">partition</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="chords-diags">Diagrammes d&#8217;accords</h3>
+<div class="paragraph">
+<p>On appelle <em>diagrammes d&#8217;acccord</em> ou tout simplement <em>diag</em> ou <em>diagrammes les petits schémas représentant les accords à la guitare (</em>il existe des diagrammes pour d&#8217;autres instruments à cordes, mais ils ne sont pas utilisés ici__).</p>
+</div>
+<div class="paragraph">
+<p>Todo: montrer diagramme d&#8217;accord.</p>
+</div>
+<div class="sect3">
+<h4 id="chords-diags-list">Liste des diagrammes</h4>
+<div class="paragraph">
+<p>On peut obtenir la liste de tous les diagrammes, afin de pouvoir choisir ceux qui nous intéressent pour une chanson, en jouant la commande :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook diags</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Elle ouvre un fichier HTML où sont présentés tous les diagrammes, et il suffit de cliquer sur leur diagrammes pour mettre le nom dans le presse-papier et le coller dans la chanson.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_produire_ses_propres_diagrammes">Produire ses propres diagrammes</h4>
+<div class="paragraph">
+<p>On peut aller plus loin et produire ses propres diagrammes personnalisés. Pour ça</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook build diag "&lt;schéma&gt;"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Le schéma est très précis et peut s&#8217;obtenir avec la commande <code>diag</code>.</p>
+</div>
+<div class="paragraph">
+<p>On peut même directement, si le schéma ne nous intéresse pas, utiliser la commande <code>diag -o</code> pour définir le diagramme et produire son image SVG à insérer dans le carnet.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="song-chords-schemas">Diagrammes propres à la chanson</h4>
+<div class="paragraph">
+<p>Une chanson peut définir ses propres schémas dans un fichier <code>.schemas</code> (<code>sche</code>). Cela est nécessaire lorsque la chanson utilise des accords qui ne sont consignés <a href="#diags-list">nulle part ailleurs</a>.</p>
+</div>
+<div class="paragraph">
+<p>Dans ce fichier, on indique :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>&lt;NOM-DANS-LES-PAROLES&gt; : &lt;SCHÉMA DU DIAGRAMME&gt;
+# etc. les uns sous les autres</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Le schéma est obtenu grâce à la commande <code>diag</code> qui permet de définir ces diagrammes avec confort et sécurité (l&#8217;erreur est pratiquement impossible).</p>
+</div>
+<div class="paragraph">
+<p>Choisissez bien le nom pour qu&#8217;il « n&#8217;écrase » pas un accord existant déjà (<em>rassurez-vous cependant, il ne sera pas vraiment « écrasé »</em>). C&#8217;est ce nom que vous devrez utiliser pour le fichier <code>.lyr</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="diags">Diagrammes d&#8217;accords</h3>
+<div class="paragraph">
+<p>On appelle <em>diagrammes d&#8217;acccord</em> ou tout simplement <em>diag</em> ou <em>diagrammes les petits schémas représentant les accords à la guitare (</em>il existe des diagrammes pour d&#8217;autres instruments à cordes, mais ils ne sont pas utilisés ici__).</p>
+</div>
+<div class="paragraph">
+<p>Todo: montrer diagramme d&#8217;accord.</p>
+</div>
+<div class="sect3">
+<h4 id="diags-list">Liste des diagrammes</h4>
+<div class="paragraph">
+<p>On peut obtenir la liste de tous les diagrammes, afin de pouvoir choisir ceux qui nous intéressent pour une chanson, en jouant la commande :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook diags</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Elle ouvre un fichier HTML où sont présentés tous les diagrammes, et il suffit de cliquer sur leur diagrammes pour mettre le nom dans le presse-papier et le coller dans la chanson.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_produire_ses_propres_diagrammes_2">Produire ses propres diagrammes</h4>
+<div class="paragraph">
+<p>On peut aller plus loin et produire ses propres diagrammes personnalisés. Pour ça</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook build diag "&lt;schéma&gt;"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Le schéma est très précis et peut s&#8217;obtenir avec la commande <code>diag</code>.</p>
+</div>
+<div class="paragraph">
+<p>On peut même directement, si le schéma ne nous intéresse pas, utiliser la commande <code>diag -o</code> pour définir le diagramme et produire son image SVG à insérer dans le carnet.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="song-schemas">Diagrammes propres à la chanson</h4>
+<div class="paragraph">
+<p>Une chanson peut définir ses propres schémas dans un fichier <code>.schemas</code> (<code>sche</code>). Cela est nécessaire lorsque la chanson utilise des accords qui ne sont consignés <a href="#diags-list">nulle part ailleurs</a>.</p>
+</div>
+<div class="paragraph">
+<p>Dans ce fichier, on indique :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>&lt;NOM-DANS-LES-PAROLES&gt; : &lt;SCHÉMA DU DIAGRAMME&gt;
+# etc. les uns sous les autres</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Le schéma est obtenu grâce à la commande <code>diag</code> qui permet de définir ces diagrammes avec confort et sécurité (l&#8217;erreur est pratiquement impossible).</p>
+</div>
+<div class="paragraph">
+<p>Choisissez bien le nom pour qu&#8217;il « n&#8217;écrase » pas un accord existant déjà (<em>rassurez-vous cependant, il ne sera pas vraiment « écrasé »</em>). C&#8217;est ce nom que vous devrez utiliser pour le fichier <code>.lyr</code>.</p>
 </div>
 </div>
 </div>
@@ -1043,6 +1273,26 @@ Le troisième couplet
 </div>
 </div>
 <div class="sect2">
+<h3 id="songbook-assistant">Assistant au carnet de chant</h3>
+<div class="paragraph">
+<p>Cette section présente des assistants utiles pour la réalisation des cahiers de chant.</p>
+</div>
+<div class="sect3">
+<h4 id="song-id">Id dans la chanson</h4>
+<div class="paragraph">
+<p>Pour obtenir la marque de la chanson dans la table des matières (tiret avec identifiant de la chanson).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook song id "titre"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Comme pour toutes ces commandes, le titre de la chanson peut être mis de façon très approximative, son début, certains de ses mots seulement, etc.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
 <h3 id="songbook-infos">Fichier infos du carnet</h3>
 <div class="paragraph">
 <p>Toutes les informations concernant le carnet se rangent dans le fichier <code>.infos</code>, par exemple <code>carnet-gabriel.infos</code> à la racine du carent de chant. Par exemple :</p>
@@ -1071,8 +1321,6 @@ cover:
   image: path/to/image
   binding: true|false # pour dessin marqué de la reliure
 
-# Les pages liminaires
-# --------------------
 front_matter:
   half_title_page: false # faux-titre
   title_page: true
@@ -1087,8 +1335,6 @@ front_matter:
   acknowledgments: false # (false ou le fichier remerciements)
 copyright: @2026 Icare éditions Tous droits réservés
 
-# Pages finales
-# -------------
 credits:
   book_designer: Philippe Perret
   typesetter: Philippe Perret
@@ -1236,6 +1482,15 @@ interprete: Peter Gabriel et Kate Bush
 </div>
 </div>
 <div class="sect2">
+<h3 id="songbook-schemas">Diagrammes propres</h3>
+<div class="paragraph">
+<p>Le fichier <code>.schemas</code> (ou <code>.sch</code>) permet de définir des diagrammes propres au seul carnet qui contient ce fichier.</p>
+</div>
+<div class="paragraph">
+<p>En général, il est préférable de définir ces schémas (et les SVG qui en résultent) directement <a href="#song-schemas">dans la chanson</a> afin que tous les carnets puissent en profiter (voir justement cette partie pour savoir comment les utiliser).</p>
+</div>
+</div>
+<div class="sect2">
 <h3 id="cover">La Couverture</h3>
 <div class="paragraph">
 <p>On peut construire une table des matières soi-même, mais on peut aussi la produire également automatiquement</p>
@@ -1269,7 +1524,7 @@ interprete: Peter Gabriel et Kate Bush
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>1. # ce "1." désigne "première de couverture"
+<pre>1.
 
 {image_cover}| {title; font-size:28pt;}
              | {author}
@@ -1277,7 +1532,7 @@ interprete: Peter Gabriel et Kate Bush
 {editor_logo; block_align: Bot Center;}
 
 
-4. # Ce "4." désigne "quatrième de couverture"
+4.
 {editor_name; align:Center;}
 {file: quatrieme.md}
 {price} | {barcode}
@@ -1321,7 +1576,7 @@ interprete: Peter Gabriel et Kate Bush
 </div>
 <div class="listingblock">
 <div class="content">
-<pre># Dans le fichier machanson.gab
+<pre>\# Dans le fichier machanson.gab
 
 {title: band; infos: beside;}
 
@@ -1482,7 +1737,7 @@ shrink_score: true # idem avec les partitions</pre>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Élément</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Voir « objet » ci-dessous.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Voir « objet » ci-dessous.</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
@@ -1573,6 +1828,12 @@ shrink_score: true # idem avec les partitions</pre>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>.cov</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>c.cov</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Définit la mise en forme de la <a href="#cover">couverture, 1<sup>re</sup> et 4<sup>e</sup></a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>.schemas</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>.sch</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>c.sch</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Définit les <a href="#songbook-schemas">schémas de diagrammes propres au carnet</a> ou <a href="#song-schemas">à la chanson</a>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2066,8 +2327,13 @@ Solution proposée ?</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RAL3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Si une strophe sans accords est à côté d&#8217;une strophe avec accord, celle sans accords doit aligner sa première ligne à la première ligne de celle avec accord.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Si, avec deux strophes côte à côte, l&#8217;une a des accords sur la première ligne et l&#8217;autre pas, les deux strophes doivent aligner leur première ligne de paroles.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Aucune exception.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAL4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">S&#8217;il n&#8217;y a pas de colonne de diags ou si ces colonnes sont vides (aucun diag), les strophes doivent être alignées au centre de toute la page, horizontalement, donc par rapport aux marges gauche et droite.</p></td>
+<td class="tableblock halign-left valign-top"></td>
 </tr>
 </tbody>
 </table>
@@ -2355,7 +2621,7 @@ Ne doit pas regrouper avec une strophe de type "refrain"</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-08-20 09:26:51 +0200
+Last updated 2026-08-25 09:33:58 +0200
 </div>
 </div>
 </body>

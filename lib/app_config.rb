@@ -45,6 +45,20 @@ module AppConfig
     end
   end
 
+  # Chemin absolu du dossier des carnets — même principe que `songs_dir` (demandé à
+  # l'user et enregistré dans config.yaml au premier besoin si pas encore configuré).
+  def self.songbooks_dir
+    dir = get("songbooks_dir")
+    return dir if dir && !dir.to_s.strip.empty? && Dir.exist?(dir.to_s)
+
+    loop do
+      print "Dossier des carnets : "
+      input = $stdin.gets.to_s.strip
+      return set("songbooks_dir", input) if Dir.exist?(input)
+      warn "dossier introuvable : #{input}"
+    end
+  end
+
   # Application (nom ou chemin, `open -a`) utilisée pour éditer les fichiers d'une
   # chanson (`c.infos`/`c.lyr`) — demandée à l'user et enregistrée au premier besoin.
   # Existence vérifiée (`editor_app?`) avant d'accepter, sinon reboucle.

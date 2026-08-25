@@ -899,10 +899,10 @@ module Layout
   # ligne d'excédent en plus SOUS ce vers, donc un pas de ligne de plus. Ligne sans mot
   # (accords seuls) : jamais de ligne de texte réservée en dessous (`draw_chords_only_line`
   # tient tout sur la ligne d'accords), donc jamais de RAL2 non plus.
-  def self.line_step(pdf, line, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
+  def self.line_step(pdf, line, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE, reserve_chord_row: false)
     return chord_size + LINE_GAP if chords_only_line?(line)
 
-    step = line_has_chord?(line) ? chord_size + LINE_GAP + text_size + LINE_GAP : text_size + LINE_GAP
+    step = line_has_chord?(line) || reserve_chord_row ? chord_size + LINE_GAP + text_size + LINE_GAP : text_size + LINE_GAP
     step += text_size + LINE_GAP if line_overflows?(pdf, line, width, chord_size, text_size)
     step
   end
@@ -924,13 +924,17 @@ module Layout
     baseline = force_chord_baseline || line_has_chord?(lines.first) ? chord_ascent : text_ascent
     last_text_offset = 0
     lines.each_with_index do |line, i|
+      # `reserve_chord_row` (1re ligne seulement) : même réserve "ligne d'accords" que
+      # `draw_block`/`draw_line`, sinon la hauteur mesurée ici (utilisée pour la row
+      # entière) désaccorde de ce qui est réellement dessiné — RAL3.
+      reserve_chord_row = i.zero? && force_chord_baseline
       last_text_offset = if chords_only_line?(line)
                             baseline
                           else
-                            baseline + (line_has_chord?(line) ? chord_size + LINE_GAP : 0)
+                            baseline + (line_has_chord?(line) || reserve_chord_row ? chord_size + LINE_GAP : 0)
                           end
       last_text_offset += text_size + LINE_GAP if !chords_only_line?(line) && line_overflows?(pdf, line, width, chord_size, text_size)
-      baseline += line_step(pdf, line, width, chord_size: chord_size, text_size: text_size) if i < lines.length - 1
+      baseline += line_step(pdf, line, width, chord_size: chord_size, text_size: text_size, reserve_chord_row: reserve_chord_row) if i < lines.length - 1
     end
     last_text_offset + text_descent
   end
@@ -1294,8 +1298,24 @@ module Layout
         # et vient chevaucher la grille au lieu de s'arrêter juste au-dessus (bug constaté
         # v22, "Ad libitum" recouvert par la 1re ligne de diags).
         y = page[:avail_h] - gutters[0] - balance_shift
+
+        # RAL4 (Manuel/regles_esthetiques.adoc) : pas de colonne de diags SUR CETTE PAGE
+        # précise (position sans colonne, OU colonne existante mais épuisée ici — chanson
+        # à cheval sur plusieurs pages, diags déjà tous montrés plus tôt, Phil 2026-08-24,
+        # "La Ballade des gens heureux" p.22) -> strophes centrées sur la page ENTIÈRE
+        # (marges gauche/droite), pas dans la zone `text_w` réduite prévue pour la colonne.
+        # `pdf.translate` (translation pure, aucune distorsion) plutôt que reconstruire les
+        # éléments : `text_x`/`text_w` déjà figés dans chaque `PageElement` à la création.
+        side_page_here = side_pages[i]
+        no_diags_here = !merging_here && (side_col.nil? || side_page_here.nil? || side_page_here[:finish] == side_page_here[:start])
+        ral4_shift = no_diags_here ? (pdf.bounds.width - text_w) / 2.0 - cur_text_x : 0.0
+
         page_els.each_with_index do |el, j|
-          el.draw.call(pdf, y)
+          if ral4_shift.zero?
+            el.draw.call(pdf, y)
+          else
+            pdf.translate(ral4_shift, 0) { el.draw.call(pdf, y) }
+          end
           y -= page_heights[j]
           y -= gutters[j + 1] if j + 1 < gutters.size
         end
@@ -1441,26 +1461,35 @@ module Layout
   # lignes alignées et des lignes normales, voir `PageBuilder.apply_extra_directives`).
   def self.draw_block(pdf, block, x, y0, width, chord_ascent, text_ascent, chord_size: CHORD_SIZE, text_size: TEXT_SIZE, force_chord_baseline: false)
     y = y0 - (force_chord_baseline || line_has_chord?(block.lines.first) ? chord_ascent : text_ascent)
-    block.lines.each do |line|
+    block.lines.each_with_index do |line, i|
       line_x = x
       if width && line.align.to_s.downcase == "right"
         lw = line_width(pdf, line.segments, chord_size, text_size, label: line.label)
         line_x = x + [width - lw, 0].max
       end
-      draw_line(pdf, line, line_x, y, width, chord_size: chord_size, text_size: text_size)
-      y -= line_step(pdf, line, width, chord_size: chord_size, text_size: text_size)
+      # RAL3 : `force_chord_baseline` ne fixe pas QUE le point de départ (`y` ci-dessus) —
+      # sans répercuter la réserve "ligne d'accords" sur CETTE ligne précise (1re ligne
+      # seulement, `i.zero?`) dans `draw_line`/`line_step`, le texte de ce bloc démarrait
+      # bien à la bonne hauteur mais `line_step` le faisait remonter trop tôt vers la
+      # ligne suivante, redésalignant tout à partir de la 2e ligne (bug constaté
+      # 2026-08-24, "La Ballade des gens heureux" p.21).
+      reserve_chord_row = i.zero? && force_chord_baseline
+      draw_line(pdf, line, line_x, y, width, chord_size: chord_size, text_size: text_size, reserve_chord_row: reserve_chord_row)
+      y -= line_step(pdf, line, width, chord_size: chord_size, text_size: text_size, reserve_chord_row: reserve_chord_row)
     end
   end
 
   # "d"/"b" en 2e position d'un nom d'accord = dièse/bémol (convention interne, cf. noms
   # de fichiers de diags) → symbole réel ♯/♭ à l'affichage, jamais la lettre brute. Basse
-  # entre crochets (`A[c]m7`, `Am7[cd]`, `[cd]` seule) : même conversion appliquée à la
-  # basse indépendamment de la fondamentale (Phil, 2026-08-24).
+  # SAISIE entre crochets (`A[c]m7`, `Am7[cd]`, `[cd]` seule, Manuel/song/chords.adoc) mais
+  # AFFICHÉE en notation slash standard (`Gm/B♭`, pas `Gm[B♭]` — Phil, 2026-08-24, "Gm[B♭]"
+  # pas une notation musicale reconnaissable) — même conversion ♯/♭ appliquée à la basse
+  # indépendamment de la fondamentale.
   def self.display_chord(chord)
     chord.split("/").map do |part|
       root, bass = part.include?("[") ? part.split("[", 2) : [part, nil]
       out = convert_note_symbol(root)
-      out += "[" + convert_note_symbol(bass.chomp("]")) + "]" if bass
+      out += "/" + convert_note_symbol(bass.chomp("]")) if bass
       out
     end.join("/")
   end
@@ -1699,10 +1728,10 @@ module Layout
   # du label d'accord) : garantie mathématique, jamais un réglage à ajuster à la main.
   # `width` : largeur de colonne disponible, sert au RAL2 (`nil` = jamais de RAL2, ex.
   # appelants qui ne connaissent pas encore leur largeur).
-  def self.draw_line(pdf, line, x, y, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
+  def self.draw_line(pdf, line, x, y, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE, reserve_chord_row: false)
     return draw_chords_only_line(pdf, line, x, y, chord_size: chord_size) if chords_only_line?(line)
 
-    has_chord = line_has_chord?(line)
+    has_chord = line_has_chord?(line) || reserve_chord_row
     text_y = has_chord ? y - chord_size - LINE_GAP : y
     text_descent = font_metric(pdf, text_size) { pdf.font.descender }
 
@@ -1825,30 +1854,53 @@ module Layout
   # Top/Bot : rangée horizontale pleine largeur, dessinée ici, toujours page 1 seulement
   # (pas concerné par ce bug — pas retouché). Top réduit l'espace disponible par le HAUT
   # (le contenu commence plus bas), Bot le réduit par le BAS de la page 1 SEULEMENT.
-  # RAD3 : si une pleine page de diags (hauteur `page_height`) ne peut en accueillir qu'un
-  # de plus en réduisant la largeur — jamais sous `MIN_SIZE[:diags][:width]` — on prend le
-  # plus PETIT écart qui gagne CETTE unique place (pas une réduction plus grande que
-  # nécessaire : à 0.37% près, un diag de plus peut tenir — Phil, 2026-08-19). Mesuré sur
-  # une pleine page (`page_height`/`page_height`), pas la 1re page (bandeau) : capacité
-  # "normale" d'une page, celle que Phil compare page à page.
+  # Nombre de diags visés par page de colonne, quitte à rétrécir en dessous de `DIAG_W`
+  # (Phil, 2026-08-24, "Angie" — 6 accords au total, seuls 5 tenaient à taille nominale,
+  # le 6e partait seul sur une page entière). "On verra si ça peut être la valeur par
+  # défaut" : pas encore figé ailleurs, ce chiffre-là seulement pour l'instant.
+  DIAG_COLUMN_TARGET_MIN = 6
+
+  # Taille des diags calculée sur la page la PLUS CONTRAINTE où la colonne peut tomber —
+  # `first_avail_h` (page 1, réduite par le bandeau) ET `page_height` (pages suivantes,
+  # pleines) — jamais seulement `page_height` (bug constaté : "Angie", sizing basé sur la
+  # page pleine alors que la colonne commence en page 1/bandeau, 1 diag en moins que prévu
+  # y tenait réellement, débordait sur une page entière pour lui seul). Rétrécit jusqu'à
+  # `DIAG_COLUMN_TARGET_MIN` (ou moins s'il y a moins de diags que ça au total) tiennent,
+  # jamais sous `MIN_SIZE[:diags][:width]` — si même la taille plancher n'y suffit pas,
+  # tant pis, on s'arrête là (RAD6 gère le reste en page dédiée).
   def self.diag_column_width(paths, first_avail_h, page_height)
     return DIAG_W if paths.empty?
 
+    # `DIAG_COLUMN_BOTTOM_SAFETY_PT` réservé DÈS le calcul de taille (Phil, 2026-08-24,
+    # "Angie" : 6 tenaient tout juste sans marge → le rognement séparé anti-numéro-de-page
+    # (voir `paginate_and_draw`) en retirait un aussitôt, annulant ce calcul-ci — les deux
+    # mécanismes doivent viser le MÊME budget, jamais l'un après l'autre sans se parler).
+    # Calcul DIRECT (pas via `paginate`) : `paginate` inclut RAD5 (rescue d'un diag seul
+    # en fin de colonne, formule APPROXIMATIVE `min_v_dist*(n+3)`, pensée pour rattraper
+    # un cas limite, pas pour un calcul de taille précis) — l'utiliser ici laissait passer
+    # des tailles qui "tenaient" selon RAD5 mais dépassaient le budget réel de ~4pt, la
+    # marge de sécurité réservée ci-dessus se faisait donc silencieusement grignoter (bug
+    # constaté : clearance réelle 6.4pt au lieu de 10 visés).
+    measure_height = [first_avail_h, page_height].min - DIAG_COLUMN_BOTTOM_SAFETY_PT
+    gap = min_v_dist(:diags)
+    top = min_v_dist(:band_diag)
     capacity_at = lambda do |w|
       height = svg_height_for(File.read(paths.first), w)
-      elements = Array.new(paths.size) { PageElement.new(height, nil) }
-      page = paginate(elements, page_height, page_height, type: :diags).first
-      page[:finish] - page[:start]
+      n = 0
+      n += 1 while top + (n + 1) * height + n * gap <= measure_height && n < paths.size
+      n
     end
 
-    baseline = capacity_at.call(DIAG_W)
+    target = [paths.size, DIAG_COLUMN_TARGET_MIN].min
+    return DIAG_W if capacity_at.call(DIAG_W) >= target
+
     floor_w = MIN_SIZE[:diags][:width]
     w = DIAG_W
     while w > floor_w
       w = [w - 0.1, floor_w].max
-      return w if capacity_at.call(w) > baseline
+      return w if capacity_at.call(w) >= target
     end
-    DIAG_W
+    floor_w
   end
 
   # Marge de sécurité (Phil, 2026-08-24, "L'Aigle noir" p.10 : dernier diag de la colonne

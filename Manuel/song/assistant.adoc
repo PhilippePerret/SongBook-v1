@@ -16,3 +16,15 @@ songbook create song "le titre de la chanson" "le chanteur"
 ----
 
 L'assistant vous assiste ensuite pour obtenir le maximum d'informations sur la chanson et créer les fichiers nécessaires.
+
+
+[[song-chords-assistant]]
+==== Assistant de placement des accords ====
+
+Il existe aussi un assistant très pratique pour placer les accords : 
+
+----
+songbook add chords "<extrait titre chanson>"
+----
+
+Cet outils permet de placer les accords très facilement et rapidement.
