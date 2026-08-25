@@ -16,24 +16,37 @@ USAGE = <<~TXT
 
   Aide rapide
   ------------
-    {{command: songbook -i}}
-        Ouvre en mode interactif (cf. plus bas)
-    {{command: songbook create song "titre" "performer"}} 
-        Créer une nouvelle chanson
-    {{command: songbook open song "titre}}  
-        Ouvre les fichiers de la chanson et le dossier
-    {{command: songbook song id "titre"}}   
-        Mets l'ID de la chanson dans le PP
-    {{command: songbook add chords "titre"}}  
-        Assistant accords
+  - Ouvre en mode interactif (cf. plus bas)
+        
+        {{command: songbook -i}}
 
-  Ouvrir le manuel
-  ----------------
-    {{command: songbook manual|manuel}}
-    {{command: songbook manual|manuel sujet}} # pour chercher ce texte
+  - Créer une nouvelle chanson
+        
+        {{command: songbook create song "titre" "performer"}} 
 
-  Mode interactif
-  ---------------
+  - Ouvre les fichiers de la chanson et le dossier
+
+        {{command: songbook open song "titre}}  
+
+  - Mets l'ID de la chanson dans le PP
+
+        {{command: songbook song id "titre"}}
+
+  - Ouvrir la TDM d'un carnet
+        
+        {{command: songbook tdm "titre approximatif"}}
+
+  - Assistant accords
+
+        {{command: songbook add chords "titre"}}
+
+  - Ouvrir le manuel
+
+        {{command: songbook manual|manuel}}
+        {{command: songbook manual|manuel sujet}} # pour chercher ce texte
+
+  Passer en mode interactif
+  -------------------------
     {{command: songbook -i}}
 
     🎸> {{command: use song "titre"}} Toutes les commandes suivantes 
