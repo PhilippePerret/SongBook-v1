@@ -1,6 +1,12 @@
 [[songbook-tdm, table des matières]]
 === Table des matières du carnet ===
 
+Pour ouvrir la table des matières d'un carnet :
+
+----
+songbook tdm "titre approximatif"
+----
+
 Après avoir défini les données des chansons (<<lyrics-file>>, <<infos-file>>), vous êtes en mesure de définir la table des matières pour définir la liste des chansons utilisée et leur ordre.
 
 Comme défini dans les <<best-practices>>, il vaut mieux que les chansons soient définies dans un autre dossier, séparé. Dans la table des matières, vous pouvez y faire référence par leur identifiant (`id`), leur titre (`title`) ou encore le nom de leur dossier dans le dossier des chansons.
