@@ -8,6 +8,7 @@ require "json"
 require "rbconfig"
 require_relative "carnet_builder"
 require_relative "app_config"
+require_relative "ansi_colors"
 require_relative "locale"
 require_relative "file_finder"
 
@@ -122,12 +123,10 @@ module SongCreator
     end
   end
 
-  # Couleur demandée (#00b9ff) : pas une couleur nommée standard, ANSI truecolor direct
-  # (`\e[38;2;R;G;Bm`) — Pastel ne prend pas de hex brut.
-  SPINNER_COLOR = "\e[38;2;0;185;255m"
-  SUCCESS_COLOR = "\e[32m"
-  PATH_COLOR = "\e[90m"
-  ANSI_RESET = "\e[0m"
+  SPINNER_COLOR = AnsiColors::BLUE
+  SUCCESS_COLOR = AnsiColors::SUCCESS
+  PATH_COLOR = AnsiColors::GRAY
+  ANSI_RESET = AnsiColors::RESET
 
   def self.print_success(message, path)
     puts "#{SUCCESS_COLOR}👍 #{message}#{ANSI_RESET}"

@@ -4,6 +4,8 @@ require "tty-prompt"
 require_relative "chord_line"
 require_relative "chord_diagrams"
 require_relative "locale"
+require_relative "ansi_colors"
+require_relative "transpose"
 
 # `songbook add chords <chanson>` : pose interactive des accords sur un `.lyr` EXISTANT.
 # Entrée = FINIR l'édition (jamais "ligne suivante" — seules les flèches ↑/↓ déplacent
@@ -41,9 +43,9 @@ module ChordPlacer
   WINDOW_SIZE = 4
   # ≤45 signes par ligne (Phil).
   HELP_LINES = [
-    "x: sup | 0: add | N/P: syllabe | A/Z: vers",
-    "T/V: chanson | ↑/↓: vers",
-    "Entrée/Ctrl+c: finir",
+    "0 add | x sup | N/P next/prev syllabe",
+    "A/Z début/fin vers | T/V début/fin chanson",
+    "Enter Sauver | ^c Annuler",
   ].freeze
   HELP_COLOR = "\e[90m"
   ANSI_RESET = "\e[0m"
@@ -187,6 +189,33 @@ module ChordPlacer
     name[0].upcase + name[1..].to_s
   end
 
+  # Étiquette d'un accord dans la légende : raccourci clavier (lettre + éventuel chiffre,
+  # voir `register_chord`) = vrai nom d'accord entré, jamais tronqué/réencodé.
+  def self.chord_label(letter, index, chord)
+    index.zero? ? "#{letter} = #{chord}" : "#{letter}#{index + 1} = #{chord}"
+  end
+
+  # Nom RÉEL d'un accord (lettre + altération, ex. "D#", "Bb" — `Transpose::CHORD_RE`,
+  # même regex que la transposition, pas de ré-implémentation maison qui risquerait de
+  # mal encoder l'altération, ex. "Dd" au lieu de "D#").
+  def self.chord_nom(chord)
+    Transpose::CHORD_RE.match(chord)&.captures&.first || chord
+  end
+
+  # 1 ligne (tous les raccourcis) tant que c'est lisible, sinon 1 ligne PAR NOM RÉEL
+  # d'accord (Phil : "A" différent de "A#", même s'ils partagent le raccourci "a") dès
+  # que > 4 noms différents OU > 8 accords différents au total.
+  def self.legend_lines(letters)
+    entries = letters.flat_map { |l, chords| chords.each_with_index.map { |c, i| [l, i, c] } }
+    noms = entries.group_by { |(_l, _i, c)| chord_nom(c) }
+
+    if noms.size > 4 || entries.size > 8
+      noms.map { |_nom, group| group.map { |l, i, c| chord_label(l, i, c) }.join("  ") }
+    else
+      [entries.map { |l, i, c| chord_label(l, i, c) }.join("  ")]
+    end
+  end
+
   # Raccourci = 1re lettre du NOM de l'accord (Phil : "a" = "A7M", "b" = "Bm9b" — plus
   # confusionnant qu'un ordre a/b/c/d arbitraire). Collision (plusieurs accords partagent
   # la même 1re lettre) : `letters[lettre]` = liste, dans l'ordre de rencontre — 1er par
@@ -300,13 +329,11 @@ module ChordPlacer
     window_start = (pos / WINDOW_SIZE) * WINDOW_SIZE
 
     print "\e[2J\e[H"
-    # 3 lignes RÉSERVÉES ici, toujours (légende + note discrète + séparateur), présentes
-    # ou vides — jamais un nombre de lignes qui varie d'un rafraîchissement à l'autre
-    # (Phil : les sauts d'écran sont intempestifs).
-    legend = letters.map do |l, chords|
-      chords.each_with_index.map { |c, i| chords.size > 1 ? "#{l}#{i + 1} = #{c}" : "#{l} = #{c}" }.join("  ")
-    end.join("  ")
-    puts legend
+    # Note/séparateur : 2 lignes RÉSERVÉES, toujours (présentes ou vides — Phil : les
+    # sauts d'écran sont intempestifs). La légende, elle, PEUT changer de nombre de
+    # lignes (1 -> plusieurs) en cours d'édition — conséquence assumée du passage en
+    # multi-lignes au-delà du seuil (Phil), pas un saut accidentel.
+    legend_lines(letters).each { |line| puts "#{AnsiColors::BLUE}#{line}#{AnsiColors::RESET}" }
     puts "#{HELP_COLOR}#{notice}#{ANSI_RESET}"
     puts
 

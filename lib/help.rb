@@ -16,6 +16,8 @@ USAGE = <<~TXT
 
   Aide rapide
   ------------
+    {{command: songbook -i}}
+        Ouvre en mode interactif (cf. plus bas)
     {{command: songbook create song "titre" "performer"}} 
         Créer une nouvelle chanson
     {{command: songbook open song "titre}}  
@@ -30,11 +32,26 @@ USAGE = <<~TXT
     {{command: songbook manual|manuel}}
     {{command: songbook manual|manuel sujet}} # pour chercher ce texte
 
+  Mode interactif
+  ---------------
+    {{command: songbook -i}}
+
+    🎸> {{command: use song "titre"}} Toutes les commandes suivantes 
+          utiliseront cette chanson. Toutes les commandes décrites ci-
+          dessous pour les chansons sont valides.
+    🎸> {{command: use songbook "titre"}} Toutes les commandes suivantes
+          utiliseront ce carnet. Toutes les commandes décrites ci-dessous
+          pour les carnets sont valides ({{command:build}}, {{command:open}}, etc.).
+
   Construction du carnet
   -----------------------
   Après avoir défini les fichiers (cf. le Manuel {{command: songbook manual}}) :
 
+  Si on se trouve dans le dossier du carnet :
     {{command: songbook build}}
+
+  Ailleurs :
+    {{command: songbook build sonbgook "titre"}} {{command: songbook build sb "titre"}}
 
   Assistant de création de chanson
   --------------------------------
@@ -43,6 +60,7 @@ USAGE = <<~TXT
   Assistant de création de carnet de chant
   ----------------------------------------
     {{command: songbook create songbook[ "titre du carnet"]}}
+    {{command: songbook create sb[ "titre du carnet"]}}
 
   Couverture
   ----------
@@ -77,7 +95,12 @@ Obtenir la liste des chansons
   
     Un argument permet de définir précisément les informations
     sorties et leur format. par exemple :
+      (en se trouvant dans le dossier du carnet)
       {{command: songbook list songs "{title} ({performer})"}}
+      (en mode interactif)
+      {{command: songbook -i}}
+      🎸> {{command: use sb "titre du carnet}}
+      🎸> {{command: list songs "({performer}) {titre}" }}
     Les balises utilisable sont : 
       title composer lyrics year performer
     ainsi que toute information définies dans les fichiers .infos des
@@ -100,7 +123,8 @@ Constructeur de diagramme
   -------
   -c/--cover      Produire la couverture en même temps que le carnet
   -b/--book PATH  Chemin d'accès au carnet
-  -x              Faire apparaitre les repères (marges)      
+  --song TITRE    Chanson de contexte pour la commande (recherche intelligente, sans persistance)
+  -x              Faire apparaitre les repères (marges)
 
   TXT
 

@@ -59,6 +59,10 @@ module Tablator
 
   CORDE_CASE_RE = %r{\A([1-6])(\d+)(?:/(\S+))?\z}.freeze
   CHORD_RE = %r{\A(\w+)?<([^>]+)>(?:/(\S+))?\z}.freeze
+  # `r<durée>` (silence visible) / `s<durée>` (silence invisible, "skip" — compte pour
+  # le placement des barres sans être marqué, typiquement une levée) — syntaxe LilyPond
+  # brute, valide telle quelle, aucune traduction corde/case nécessaire.
+  REST_RE = /\A([rs])(\S+)\z/.freeze
 
   class ParseError < StandardError; end
 
@@ -188,6 +192,7 @@ module Tablator
   # Convertit un token du corps en fragment LilyPond.
   def convert_token(token, notes_mode:)
     return token if token == '|'
+    return token if REST_RE.match?(token)
 
     if notes_mode
       raise ParseError, "token illisible en mode notes : #{token}" unless token =~ NOTE_TOKEN_RE

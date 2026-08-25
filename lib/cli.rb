@@ -11,6 +11,9 @@ require_relative "song_creator"
 require_relative "chord_placer"
 require_relative "file_finder"
 require_relative "locale"
+require_relative "session"
+require_relative "song_resolver"
+require_relative "tablator_assistant"
 
 # Dispatch de la ligne de commande `songbook` — parsing ARGV + routage vers la
 # logique métier (CarnetBuilder, DiagsPage, ...). `songbook.rb` reste un simple
@@ -54,11 +57,18 @@ module CLI
       break if %w[exit quit].include?(line)
 
       begin
-        run(Shellwords.split(line), interactive: true)
+        # `Shellwords.split` renvoie des tokens taggés ASCII-8BIT quel que soit
+        # l'encoding de la ligne source — `unicode_normalize` (via `CarnetBuilder.
+        # slugify`) plante dessus (Encoding::CompatibilityError), même sur du texte
+        # pur ASCII (Phil, bug constaté 2026-08-25).
+        args = Shellwords.split(line).map { |t| t.force_encoding(Encoding::UTF_8) }
+        run(args, interactive: true)
       rescue Interrupt # Ctrl+C pendant une commande -> annule la commande, pas la boucle
         puts
       rescue SystemExit
         nil
+      rescue ArgumentError => e # ex. guillemet non fermé (`Shellwords.split`) -> pas de crash du REPL
+        puts "commande illisible : #{e.message}"
       end
     end
   ensure
@@ -102,6 +112,22 @@ module CLI
     end
     debug_marks = !!argv.delete("-x")
 
+    # `--create`/`--build` : zappent le 1er choix de `tablator assistant` (voir
+    # `TablatorAssistant.run`).
+    tab_create = !!argv.delete("--create")
+    tab_build = !!argv.delete("--build")
+
+    # `--tab NOM` : édite une tablature existante (cherchée dans `Session.song`) au
+    # lieu du select initial de `tablator assistant`.
+    tab_name = nil
+    %w[--tab].each do |flag|
+      if (i = argv.index(flag))
+        tab_name = argv[i + 1]
+        argv.delete_at(i + 1)
+        argv.delete_at(i)
+      end
+    end
+
     # `-b/--book PATH` : sortir UNE chanson (arg1) EXACTEMENT comme elle sortirait dans CE
     # carnet-là (layout/page_count/marges résolus du carnet, voir `CarnetBuilder.build`,
     # `only_song:`) — sans reconstruire tout le carnet.
@@ -114,8 +140,21 @@ module CLI
       end
     end
 
+    # `--song TITRE` : contexte chanson pour CETTE commande SEULEMENT (recherche
+    # intelligente comme `use song`, mais sans persistance — voir `Session.with_song`).
+    song_opt = nil
+    %w[--song].each do |flag|
+      if (i = argv.index(flag))
+        song_opt = argv[i + 1]
+        argv.delete_at(i + 1)
+        argv.delete_at(i)
+      end
+    end
+    song_override = song_opt ? resolve_song_folder(song_opt) : nil
+
     command, arg1, arg2, arg3 = argv
 
+    Session.with_song(song_override) do
     case command
     when "-h", "--help"
       puts colorize_help(USAGE)
@@ -137,7 +176,7 @@ module CLI
       case arg1
       when "chords"
         begin
-          song_folder = resolve_song_folder(arg2)
+          song_folder = resolve_song_folder(arg2 || Session.song)
           lyr_path = FileFinder.find(song_folder, :lyr)
           abort "aucun .lyr/.lyrics trouvé dans #{song_folder}" unless lyr_path
 
@@ -153,7 +192,7 @@ module CLI
       case arg1
       when "id"
         begin
-          song_folder = resolve_song_folder(arg2)
+          song_folder = resolve_song_folder(arg2 || Session.song)
           infos_path = FileFinder.find(song_folder, :inf)
           infos = infos_path ? CarnetBuilder.parse_nested_infos(infos_path) : {}
           value = infos["id"].to_s.strip.empty? ? (infos["title"] || File.basename(song_folder)) : infos["id"]
@@ -167,11 +206,43 @@ module CLI
       else
         abort unknown_command_message("song #{arg1}")
       end
+    when "tdm"
+      begin
+        carnet_folder = resolve_carnet_folder(arg1 || Session.carnet)
+        tdm_path = FileFinder.find(carnet_folder, :tdm)
+        abort "aucun fichier .tdm/.toc trouvé dans #{carnet_folder}" unless tdm_path
+
+        system("open", "-a", AppConfig.user_song_editor, tdm_path)
+      rescue Interrupt
+        puts
+      end
+    when "use"
+      case arg1
+      when "song", "s"
+        Session.song = resolve_song_folder(arg2)
+        puts format(Loc.get("use_song_set"), SongResolver.display_name(Session.song))
+      when "songbook", "sb"
+        Session.carnet = resolve_carnet_folder(arg2)
+        puts format(Loc.get("use_carnet_set"), SongResolver.display_name(Session.carnet))
+      else
+        abort unknown_command_message("use #{arg1}")
+      end
+    when "tablator", "tab"
+      case arg1
+      when "assistant"
+        begin
+          TablatorAssistant.run(create: tab_create, build: tab_build, tab_name: tab_name)
+        rescue Interrupt
+          puts
+        end
+      else
+        abort unknown_command_message("#{command} #{arg1}")
+      end
     when "open"
       case arg1
       when "song"
         begin
-          song_folder = resolve_song_folder(arg2)
+          song_folder = resolve_song_folder(arg2 || Session.song)
           infos_path = FileFinder.find(song_folder, :inf)
           infos = infos_path ? CarnetBuilder.parse_nested_infos(infos_path) : {}
           title = infos["title"] || File.basename(song_folder)
@@ -216,10 +287,12 @@ module CLI
         arg1 = nil
       end
       begin
-        if command == "build" && arg1 == "song" && arg2
-          target = resolve_song_target(arg2)
-        elsif command == "build" && %w[songbook sb].include?(arg1) && arg2
-          target = resolve_carnet_target(arg2)
+        if command == "build" && arg1 == "song" && (arg2 || Session.song)
+          title = arg2 || Session.song
+          target = Dir.exist?(File.expand_path(title)) ? { kind: :song, folder: File.expand_path(title) } : resolve_song_target(title)
+        elsif command == "build" && %w[songbook sb].include?(arg1) && (arg2 || Session.carnet)
+          title = arg2 || Session.carnet
+          target = Dir.exist?(File.expand_path(title)) ? { kind: :carnet, folder: File.expand_path(title) } : resolve_carnet_target(title)
         elsif command == "build" && arg1 && arg1 != "." && !Dir.exist?(File.expand_path(arg1))
           target = resolve_build_target(arg1)
         else
@@ -250,37 +323,25 @@ module CLI
     else
       abort unknown_command_message(command)
     end
+    end
   end
 
   def self.unknown_command_message(command)
     "commande inconnue : #{command} (aide : songbook -h)"
   end
 
-  # Titre TAPÉ PAR L'USER (ex. `songbook add chords "titre"`) : chemin direct accepté tel
-  # quel, sinon correspondance EXACTE (`find_song_by_title`, sur le nom de dossier ou le
-  # `title` de la fiche). Rien d'exact -> Levenshtein (`fuzzy_find_songs`), proposé à
-  # l'user pour choix — MÊME 1 SEUL résultat, jamais retenu tel quel sans confirmation.
+  # Résolution de titre (chanson/carnet) — voir `SongResolver` (partagé avec
+  # `TablatorAssistant`, extrait de là pour éviter un require circulaire).
   def self.resolve_song_folder(name)
-    return File.expand_path(name) if name && Dir.exist?(File.expand_path(name))
+    SongResolver.resolve_song_folder(name)
+  end
 
-    songs_dir = AppConfig.songs_dir
-    matches = CarnetBuilder.find_song_by_title(songs_dir, name.to_s)
-    return matches.first[:folder] if matches.size == 1
-    return select_song(nil, matches) if matches.size > 1
-
-    candidates = CarnetBuilder.fuzzy_find_songs(songs_dir, name.to_s)
-    abort "chanson introuvable : #{name}" if candidates.empty?
-
-    select_song(Loc.get("song_not_found_did_you_mean"), candidates)
+  def self.resolve_carnet_folder(name)
+    SongResolver.resolve_carnet_folder(name)
   end
 
   def self.select_song(message, songs)
-    choices = songs.map { |s| { name: s[:title] ? "#{s[:name]} (#{s[:title]})" : s[:name], value: s[:folder] } }
-    choices << { name: Loc.get("none_of_these"), value: nil }
-    folder = TTY::Prompt.new.select(message.to_s, choices, show_help: false, filter: true)
-    abort "aucune correspondance retenue" unless folder
-
-    folder
+    SongResolver.select_song(message, songs)
   end
 
   # Chanson : correspondance exacte/préfixe/mots, sinon Levenshtein extrêmement proche
