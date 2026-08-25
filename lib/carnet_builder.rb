@@ -399,6 +399,16 @@ module CarnetBuilder
     export_dir = File.join(song_folder, "export")
     FileUtils.mkdir_p(export_dir)
 
+    # `Layout.building_log_path`/`conflict_log_path` sont un état GLOBAL (module) — les
+    # fixer ICI À CHAQUE build (jamais les laisser hériter d'un build précédent, ex. un
+    # carnet construit juste avant dans le même process REPL) : sinon `log_build` écrit
+    # dans le dossier de logs d'UN AUTRE build, potentiellement déjà nettoyé (bug
+    # constaté 2026-08-25, `tests/songs/build_song_spec.rb` après un build de carnet).
+    Layout.conflict_log_path = File.join(export_dir, "#{slug}-conflicts.log")
+    File.write(Layout.conflict_log_path, "Début : #{Time.now}\n")
+    Layout.building_log_path = File.join(export_dir, "#{slug}-building.log")
+    File.write(Layout.building_log_path, "Début : #{Time.now}\n")
+
     tmp_out = File.join(export_dir, ".tmp-#{slug}.pdf")
     PageBuilder.build(song_folder, tmp_out, page_size_in: page_size_in, page_count: 24, first_page_no: 1, layout: layout)
     page_count = [CombinePDF.load(tmp_out).pages.size, 24].max
@@ -406,6 +416,7 @@ module CarnetBuilder
 
     out_path = File.join(export_dir, "#{slug}.pdf")
     PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout: layout)
+    puts "#{File.basename(out_path)} généré"
     out_path
   end
 

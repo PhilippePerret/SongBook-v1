@@ -53,7 +53,7 @@ module SongCreator
     editor = AppConfig.user_song_editor
     system("open", "-a", editor, result[:infos_path], result[:lyr_path])
 
-    print_success(Loc.get("song_created"), result[:folder])
+    print_success(Loc.get("song_created"))
     offer_open_folder(prompt, result[:folder])
     result[:folder]
   end
@@ -104,7 +104,7 @@ module SongCreator
     editor = AppConfig.user_song_editor
     system("open", "-a", editor, infos_path, lyr_path)
 
-    print_success(Loc.get("song_updated"), folder)
+    print_success(Loc.get("song_updated"))
     offer_open_folder(prompt, folder)
     folder
   end
@@ -125,12 +125,10 @@ module SongCreator
 
   SPINNER_COLOR = AnsiColors::BLUE
   SUCCESS_COLOR = AnsiColors::SUCCESS
-  PATH_COLOR = AnsiColors::GRAY
   ANSI_RESET = AnsiColors::RESET
 
-  def self.print_success(message, path)
+  def self.print_success(message)
     puts "#{SUCCESS_COLOR}👍 #{message}#{ANSI_RESET}"
-    puts "#{PATH_COLOR}#{path}#{ANSI_RESET}"
   end
 
   # `clear: true` : le message disparaît entièrement (ligne effacée) une fois la recherche

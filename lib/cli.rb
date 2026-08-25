@@ -295,6 +295,11 @@ module CLI
           target = Dir.exist?(File.expand_path(title)) ? { kind: :carnet, folder: File.expand_path(title) } : resolve_carnet_target(title)
         elsif command == "build" && arg1 && arg1 != "." && !Dir.exist?(File.expand_path(arg1))
           target = resolve_build_target(arg1)
+        elsif command == "build" && arg1.nil? && (Session.song || Session.carnet)
+          # `build` SANS argument : le contexte `use`/`--song` (REPL) l'EMPORTE TOUJOURS
+          # sur le dossier courant (Phil, bug constaté 2026-08-25 — silencieusement
+          # ignoré avant ce correctif).
+          target = Session.song ? { kind: :song, folder: Session.song } : { kind: :carnet, folder: Session.carnet }
         else
           path = command == "build" ? (arg1 || ".") : "."
           dir = File.expand_path(path)
@@ -308,13 +313,12 @@ module CLI
           book_dir = File.expand_path(book_path)
           abort "dossier de carnet introuvable : #{book_dir}" unless Dir.exist?(book_dir)
           abort "pas un carnet (.tdm/.toc introuvable) : #{book_dir}" unless CarnetBuilder.carnet_folder?(book_dir)
-          out_path = CarnetBuilder.build(book_dir, only_song: File.basename(target[:folder]), debug_marks: debug_marks)
+          CarnetBuilder.build(book_dir, only_song: File.basename(target[:folder]), debug_marks: debug_marks)
         elsif target[:kind] == :carnet
-          out_path = CarnetBuilder.build(target[:folder], cover: cover, debug_marks: debug_marks)
+          CarnetBuilder.build(target[:folder], cover: cover, debug_marks: debug_marks)
         else
-          out_path = CarnetBuilder.build_song(target[:folder])
+          CarnetBuilder.build_song(target[:folder])
         end
-        puts out_path
       rescue Interrupt
         puts
       rescue RuntimeError => e
