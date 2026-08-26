@@ -2,9 +2,3 @@
 
 // Fichier du gabarit
 include::gabarit.adoc[]
-
-// Configuration
-include::config.adoc[]
-
-// Tablatures et Partitions
-include:tablas-et-scores.adoc[]

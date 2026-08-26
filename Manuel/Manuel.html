@@ -454,7 +454,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#infos-file">Fichier des informations de la chanson</a></li>
 <li><a href="#lyrics-file">Les paroles</a></li>
 <li><a href="#_fichier_des_paroles_et_accords">Fichier des paroles et accords</a></li>
-<li><a href="#chords-diags">Diagrammes d&#8217;accords</a></li>
+<li><a href="#chords">Les accords</a></li>
 <li><a href="#diags">Diagrammes d&#8217;accords</a></li>
 <li><a href="#_tablatures_et_partitions">Tablatures et Partitions</a></li>
 <li><a href="#song-layout">Layout (mise en page) de chanson</a></li>
@@ -475,15 +475,6 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_les_fichiers_utilisateurs">Les Fichiers utilisateurs</a>
 <ul class="sectlevel2">
 <li><a href="#gabarit">Fichier gabarit</a></li>
-</ul>
-</li>
-<li><a href="#config">Configuration</a>
-<ul class="sectlevel2">
-<li><a href="#config-file">Fichier de configuration</a></li>
-<li><a href="#universal-properties">Propriétés universelles</a></li>
-<li><a href="#_placement_des_diags">Placement des diags</a></li>
-<li><a href="#_tablatures_et_partitions_2">Tablatures et partitions</a></li>
-<li><a href="#_placement_du_titre_et_infos">Placement du titre et infos</a></li>
 </ul>
 </li>
 <li><a href="#tools">Outils</a>
@@ -555,7 +546,7 @@ a {
 </div>
 </div>
 <div class="paragraph">
-<p>… puis cliquer <a href=""><kbd style="font-size:1.25em;">↩︎</kbd></a>… Impressionnant, non ?</p>
+<p>… puis cliquer combo:Enter[]… Impressionnant, non ?</p>
 </div>
 <div class="paragraph">
 <p>Ce qui fait aussi la force de <em><strong>SongBook</strong></em>, c&#8217;est aussi ses <a href="#tools">outils en ligne de commande</a> qui facilitent et accèlèrent tous les processus de production des chansons et des carnets.</p>
@@ -823,7 +814,7 @@ build diags # construit les diagrammes
 <p>le <a href="#gabarit">le fichier Gabarit</a> optionnel de la chanson (<code>.gab</code>), s&#8217;il est particulier à cette chanson ou qu&#8217;elle ne s&#8217;insère pas dans un <a href="#songbook">carnet</a> définissant son propre gabarit. <em>Notez qu&#8217;utiliser ce fichier dans ce dossier n’est pas considéré comme une <a href="#best-practices">bonne pratique</a></em>.</p>
 </li>
 <li>
-<p>le <a href="#config">Configuration</a> de la chanson, s&#8217;il est particulier à cette chanson ou qu&#8217;elle ne s&#8217;incère pas dans un <a href="#songbook">carnet</a> définissant sa propre configuration. <em>Comme le fichier précédent, ce fichier dans ce dossier n’est pas considéré comme une <a href="#best-practices">bonne pratique</a></em>.</p>
+<p>le <a href="#config">[config]</a> de la chanson, s&#8217;il est particulier à cette chanson ou qu&#8217;elle ne s&#8217;incère pas dans un <a href="#songbook">carnet</a> définissant sa propre configuration. <em>Comme le fichier précédent, ce fichier dans ce dossier n’est pas considéré comme une <a href="#best-practices">bonne pratique</a></em>.</p>
 </li>
 </ul>
 </div>
@@ -971,63 +962,91 @@ Les /am:Portes /c:du pé/d:niten/f:cier</pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="chords-diags">Diagrammes d&#8217;accords</h3>
+<h3 id="chords">Les accords</h3>
 <div class="paragraph">
-<p>On appelle <em>diagrammes d&#8217;acccord</em> ou tout simplement <em>diag</em> ou <em>diagrammes les petits schémas représentant les accords à la guitare (</em>il existe des diagrammes pour d&#8217;autres instruments à cordes, mais ils ne sont pas utilisés ici__).</p>
-</div>
-<div class="paragraph">
-<p>Todo: montrer diagramme d&#8217;accord.</p>
-</div>
-<div class="sect3">
-<h4 id="chords-diags-list">Liste des diagrammes</h4>
-<div class="paragraph">
-<p>On peut obtenir la liste de tous les diagrammes, afin de pouvoir choisir ceux qui nous intéressent pour une chanson, en jouant la commande :</p>
+<p>Les accords, dans les chansons, sont placés avant la syllabe sur laquelle ils doivent être joués. Par exemple, dans l&#8217;exemple ci-dessous :</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>songbook diags</pre>
+<pre>Les /am:portes /c:du pé/d:niten/f:cier</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Elle ouvre un fichier HTML où sont présentés tous les diagrammes, et il suffit de cliquer sur leur diagrammes pour mettre le nom dans le presse-papier et le coller dans la chanson.</p>
+<p>… l&#8217;accord <code>Am</code> (La mineur) est joué sur le « por » de « portes », le <code>C</code> (Do majeur) est joué sur « du », le <code>D</code> (Ré majeur) est joué sur « ni » et le <code>F</code> sur « cier ».</p>
 </div>
-</div>
-<div class="sect3">
-<h4 id="_produire_ses_propres_diagrammes">Produire ses propres diagrammes</h4>
 <div class="paragraph">
-<p>On peut aller plus loin et produire ses propres diagrammes personnalisés. Pour ça</p>
+<p>Une fois mise en forme, cela donne :</p>
+</div>
+<div class="paragraph">
+<p>Todo: image résultante</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>le nom des notes se mettent en notation batave (La = <code>a</code>, Si = <code>B), Do = `c</code>, Ré = <code>D</code>, Mi = <code>E</code>, Fa = <code>f</code>, Sol = <code>G</code>)</p>
+</li>
+<li>
+<p>les notes se marquent en majuscule (<code>F</code>) ou en minuscule (<code>f</code>)</p>
+</li>
+<li>
+<p>la première lettre d&#8217;un groupe de lettres est toujours considérée comme une note,</p>
+</li>
+<li>
+<p>le signe dièse se marque <code>d</code> et le signe bémol par <code>b</code> (<code>Dd</code> ou <code>dd</code> pour Ré dièse majeur, <code>bb</code> pour Si bémol majeur),</p>
+</li>
+<li>
+<p>les basses se marquent entre crochets (<code>[fd]</code>)</p>
+</li>
+<li>
+<p>les basses peuvent se marquer juste après la note de l&#8217;accord (<code>A[c]m7</code>) ou à la fin de l&#8217;accord (<code>Am7[c]</code>)</p>
+</li>
+<li>
+<p>on peut utiliser les <a href="#only-bass">basses seules</a>, sans accords</p>
+</li>
+<li>
+<p>on peut <em>affiner</em> l&#8217;accord en mettant des indications après un « - », par exemple la case où l&#8217;accord doit être joué sur une guitare (<code>Am-5</code>)</p>
+</li>
+<li>
+<p>les accords doivent toujours correspondre à un diagramme (voir la todo: liste des diagrammes),</p>
+</li>
+<li>
+<p>lorsque le diagramme n&#8217;existe pas, on peut le produire à l&#8217;aide du <a href="#diag-builder">constructeur de diagramme</a>.</p>
+</li>
+<li>
+<p>plusieurs accords peuvent s&#8217;enchainer sans espaces entre eux : <code>/c:/dm:/em:</code>,</p>
+</li>
+<li>
+<p>on peut séparer les accords par n&#8217;importe quel signe, souvent une balance pour indiquer qu&#8217;ils sont enchainés, joués dans la même mesure : <code>/c://f:</code> (noter le <code>//</code>, dont le deuxième définit le début de l&#8217;accord <code>/f:</code>),</p>
+</li>
+<li>
+<p>pour marquer que l&#8217;accord est joué hors syllabe, au début du vers, on ajoute un trait plat : <code>/C:_</code></p>
+</li>
+<li>
+<p>à la fin d&#8217;un vers, le trait plat <a href="#trait-plat-usages">n&#8217;est pas obligatoire</a></p>
+</li>
+</ul>
+</div>
+<div id="only-bass" class="paragraph">
+<p><strong>Basses seules</strong></p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>songbook build diag "&lt;schéma&gt;"</pre>
+<pre>Don't give /am:up [g][fd]
+
+In /em:this proud land</pre>
 </div>
-</div>
-<div class="paragraph">
-<p>Le schéma est très précis et peut s&#8217;obtenir avec la commande <code>diag</code>.</p>
-</div>
-<div class="paragraph">
-<p>On peut même directement, si le schéma ne nous intéresse pas, utiliser la commande <code>diag -o</code> pour définir le diagramme et produire son image SVG à insérer dans le carnet.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="song-chords-schemas">Diagrammes propres à la chanson</h4>
-<div class="paragraph">
-<p>Une chanson peut définir ses propres schémas dans un fichier <code>.schemas</code> (<code>sche</code>). Cela est nécessaire lorsque la chanson utilise des accords qui ne sont consignés <a href="#diags-list">nulle part ailleurs</a>.</p>
-</div>
-<div class="paragraph">
-<p>Dans ce fichier, on indique :</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>&lt;NOM-DANS-LES-PAROLES&gt; : &lt;SCHÉMA DU DIAGRAMME&gt;
-# etc. les uns sous les autres</pre>
+<pre>/c:_ C'est un en/[b]:droit qui res/am:semble</pre>
 </div>
 </div>
-<div class="paragraph">
-<p>Le schéma est obtenu grâce à la commande <code>diag</code> qui permet de définir ces diagrammes avec confort et sécurité (l&#8217;erreur est pratiquement impossible).</p>
+<div id="trait-plat-usages" class="paragraph">
+<p><strong>Usage du trait plat</strong></p>
 </div>
-<div class="paragraph">
-<p>Choisissez bien le nom pour qu&#8217;il « n&#8217;écrase » pas un accord existant déjà (<em>rassurez-vous cependant, il ne sera pas vraiment « écrasé »</em>). C&#8217;est ce nom que vous devrez utiliser pour le fichier <code>.lyr</code>.</p>
+<div class="listingblock">
+<div class="content">
+<pre>/c:_ Au début mais /dm:pas à la fin /g: /g7:</pre>
 </div>
 </div>
 </div>
@@ -1054,7 +1073,7 @@ Les /am:Portes /c:du pé/d:niten/f:cier</pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_produire_ses_propres_diagrammes_2">Produire ses propres diagrammes</h4>
+<h4 id="_produire_ses_propres_diagrammes">Produire ses propres diagrammes</h4>
 <div class="paragraph">
 <p>On peut aller plus loin et produire ses propres diagrammes personnalisés. Pour ça</p>
 </div>
@@ -1566,6 +1585,14 @@ interprete: Peter Gabriel et Kate Bush
 <div class="sect2">
 <h3 id="songbook-tdm">Table des matières du carnet</h3>
 <div class="paragraph">
+<p>Pour ouvrir la table des matières d&#8217;un carnet :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook tdm "titre approximatif"</pre>
+</div>
+</div>
+<div class="paragraph">
 <p>Après avoir défini les données des chansons (<a href="#lyrics-file">les strophes</a>, <a href="#infos-file">Fichier des informations de la chanson</a>), vous êtes en mesure de définir la table des matières pour définir la liste des chansons utilisée et leur ordre.</p>
 </div>
 <div class="paragraph">
@@ -1737,99 +1764,6 @@ interprete: Peter Gabriel et Kate Bush
 \# Parties côte à côte (deux couplets par exemple)
 {song: ...} // {song: ...}</pre>
 </div>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="config">Configuration</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>La <em>configuration</em> concerne aussi bient la configuration d&#8217;une seule <a href="#song">chanson</a> ou de tout un <a href="#songbook">carnet de chant</a>.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>OPTIONS
--------
-sensitivity: &lt;value&gt; # degré de sensibilité aux erreurs
-              high/haut # Le programme s'arrête dès la première erreur
-              low/bas # aucune erreur n'est signalée, corrections en coulisses
-mode: strict (aucun changement dans l'ordre des chansons)
-labels_in_title_band: true # =&gt; on met les lables "Paroles", "Musique"
-keep_order: true # =&gt; aucun changement dans l'ordre des chanson
-shrink_diag: true   # =&gt; on peut rétrécir les diagrammes (diags)
-             false  # =&gt; on ne peut pas rétrécir les diags
-shrink_tabla: true # on peut réduire pour que ça tienne
-shrink_score: true # idem avec les partitions</pre>
-</div>
-</div>
-<div class="sect2">
-<h3 id="config-file">Fichier de configuration</h3>
-<div class="paragraph">
-<p>C&#8217;est un fichier YAML qui contient tout ce que le programme doit savoir sur votre carnet de chant pour le construire correctement, et garder une homogénéïté entre toutes les chansons, aussi disparates soit-elles.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="universal-properties">Propriétés universelles</h3>
-<div class="paragraph">
-<p>On appelle <em>propriétés universelles</em> les propriétés qui peuvent être attribuées à un grand nombre de paramètres de configuration.</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 14.2857%;">
-<col style="width: 28.5714%;">
-<col style="width: 57.1429%;">
-</colgroup>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Propriété</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Valeurs</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>font</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">La fonte générale, par défaut. Une  police et une taille.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Par défaut : Helvetica 11pt</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>position</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Position de l&#8217;élément dans la page</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Top = en haut, Left = à gauche, Bot = en bas, Right = à droite, Int = à l&#8217;intérieur (des double-pages), Ext = à l&#8217;extérieur (des double pages)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tabla</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Tout ce qui concerne les tablatures</p></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect2">
-<h3 id="_placement_des_diags">Placement des diags</h3>
-<div class="paragraph">
-<p>Dans le <a href="#config-file">fichier de configuration</a>, c&#8217;est le paramètre principal <code>diags</code> qui peut contenir les propriétés suivantes :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>diags:
-  position: Top
-  scale: 100</pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_tablatures_et_partitions_2">Tablatures et partitions</h3>
-<div class="listingblock">
-<div class="content">
-<pre>tablas:
-  position: Under</pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_placement_du_titre_et_infos">Placement du titre et infos</h3>
-<div class="paragraph">
-<p>include:tablas-et-scores.adoc[]</p>
 </div>
 </div>
 </div>
