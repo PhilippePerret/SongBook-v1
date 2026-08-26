@@ -37,6 +37,10 @@ build_choice_carnet: "a songbook"
 build_choice_song: "a song"
 build_choice_cancel: "cancel"
 build_cancelled: "Build cancelled."
+song_pdf_generated: "Song %s generated as PDF."
+song_build_conflicts_count: "Conflicts were encountered during the build (%s)."
+song_build_open_conflicts_question: "Should I open the conflicts file?"
+song_build_open_pdf_question: "Should I open the generated PDF?"
 
 # tablator assistant
 tablator_assistant_question: "Do you want to:"

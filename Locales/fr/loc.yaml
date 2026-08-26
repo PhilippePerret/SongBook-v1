@@ -45,6 +45,10 @@ build_choice_carnet: "un carnet"
 build_choice_song: "une chanson"
 build_choice_cancel: "renoncer"
 build_cancelled: "Construction annulée."
+song_pdf_generated: "Chanson %s générée en PDF."
+song_build_conflicts_count: "Des conflits ont été rencontrés en cours de construction (%s)."
+song_build_open_conflicts_question: "Dois-je ouvrir le fichier des conflits rencontrés ?"
+song_build_open_pdf_question: "Dois-je ouvrir le PDF généré ?"
 
 # tablator assistant
 tablator_assistant_question: "Voulez-vous :"
