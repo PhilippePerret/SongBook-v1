@@ -61,6 +61,17 @@ Traduit syntaxe simplifiée (corde:case ou notes LilyPond) en tablature LilyPond
 - `export/songbooks/` (carnet entier), `export/songs/` (chanson isolée), `export/xlogs/` (logs).
 - `songbook.rb song <carnet> <nom-du-.tdm>` : réutilise EXACTEMENT le pipeline réel (`CarnetBuilder.build(..., only_song:)`).
 
+## Terminologie éditoriale (Phil, répété ~10 fois, à ne plus redemander)
+- **Page de titre** ≠ **page de garde**. Une page de garde sert à empêcher de voir le
+  titre par transparence (usage imprimeur) — INUTILE sur les carnets de chant,
+  normalement supprimée partout dans ce projet (`pages_garde` dans le code est un
+  reliquat à ne pas confondre avec `title_page`).
+- **Page de titre** (`front_matter.title_page` du `.infos` carnet) contient : le titre,
+  le sous-titre, ET l'auteur du livre — mais un carnet n'a pas d'auteur au sens livre
+  classique, donc à sa place : "Conçu par <book_designer>" (`credits.book_designer`).
+  Elle reprend aussi le nom de l'éditeur, en haut ou en bas de la page — PAR DÉFAUT
+  ici, en haut.
+
 ## Rendu
 - Toutes les règles sont définies dans `./Manuel/_dev/regles_esthetiques.adoc`
 - Le vers entier est mesuré/dessiné EN CONTINU (`word_tokens`/`line_tokens_x`/`chord_x_at_offset`/`spread_chord_positions`, `layout.rb`), jamais segment par segment. Accords repositionnés APRÈS le texte, jamais l'inverse.
