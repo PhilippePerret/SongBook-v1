@@ -1,4 +1,0 @@
-== Les Fichiers utilisateurs ==
-
-// Fichier du gabarit
-include::gabarit.adoc[]

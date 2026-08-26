@@ -1,6 +1,8 @@
 [[infos-file]]
 === Fichier des informations de la chanson ===
 
+TIP: Pour ouvrir directement ce fichier, `songbook open infos --song "titre chanson"`
+
 Les informations de la chanson sont consignés dans son <<song-folder, dossier>> dans une fichier portant l'extension `.infos` (ou `inf` en mode réduit) et un nom racine quelconque (p.e. `mc.inf`).
 
 Ce fichier est un pseudo fichier YAML (pour ceux qui connaissent le format) où chaque élément est défini de cette manière :

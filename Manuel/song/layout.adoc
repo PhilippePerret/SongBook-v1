@@ -1,7 +1,17 @@
 [[song-layout, règles de mises en forme des chansons]]
-=== Layout (mise en page) de chanson ===
+=== Layout de la chanson ===
 
-Le __layout__ de la chanson détermine la façon dont les éléments (couplets, refrains, partition, tablatures, diagrammes, images…) seront répartis sur la page ainsi que toutes les règles qui régissent les éléments.
+TIP: Pour ouvrir directement ce fichier, `songbook open layout --song "titre chanson"`
+
+Le __layout__ de la chanson n'est pas à confondre avec le gabarit : 
+
+- Le **gabarit** définit OÙ les éléments des paroles vont se placer dans la page et l'un par rapport à l'autre.
+- Le **layout** définit les métadonnées de la mise en page, comme la policier et la taille des caractères, les marges, les options de mise en page, etc.
+
+En général, on a souvent besoin de définir le __gabarit__ d'une chanson  pour que tout tiennent bien dans la page, mais on laisse le __layout__ défini pour le carnet s'occuper du reste, pour une mise ne page optimum.
+
+Aussi, si vous voulez en savoir  plus, pour vraiment créer un fichier `.layout` pour votre chanson, consultez la <<songbook-layout, section consacrée>> dans la partie sur les carnets de chant.
+
 
 C'est un fichier qui doit porter l'extension `.layout` ou `.lay` <<app-extension-driven, peu importe son nom>>.
 

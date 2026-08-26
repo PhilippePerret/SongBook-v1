@@ -24,9 +24,6 @@ include::song/_main.adoc[]
 // Carnet de chant
 include::songbook/_main.adoc[]
 
-// Fichiers user
-include::user_files/_main.adoc[]
-
 // Outils
 include::tools/_main.adoc[]
 
