@@ -4,7 +4,7 @@
 La pose des accords peut être incroyablement facilitée avec l'aide à l'entrée des accords.
 
 ----
-songbook add chords "tittre chanson"
+songbook edit chords "tittre chanson"
 ----
 
 Elle permet de : 
