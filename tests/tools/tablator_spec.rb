@@ -15,8 +15,14 @@ RSpec.describe "outil tablator (traduction en musique)" do
     expect(result).to end_with("4")
   end
 
-  it "Garder une barre de mesure telle quelle" do
-    expect(Tablator.convert_token("|", notes_mode: false)).to eq("|")
+  it "Convertir une barre de mesure simple en \\bar Lilypond" do
+    expect(Tablator.convert_token("|", notes_mode: false)).to eq('\bar "|"')
+  end
+
+  it "Reconnaître les 6 formes de barre (Phil, 2026-08-26)" do
+    %w[| |. || :| |: :|:].each do |bar|
+      expect(Tablator.convert_token(bar, notes_mode: false)).to eq(%(\\bar "#{bar}"))
+    end
   end
 
   it "Garder un silence invisible tel quel" do
@@ -33,5 +39,33 @@ RSpec.describe "outil tablator (traduction en musique)" do
     ly = Tablator.to_lilypond(content, notes_mode: false, base_dir: Dir.pwd)
     expect(ly).to include("\\new TabStaff")
     expect(ly).to include("s4")
+  end
+
+  describe "doigtés (main droite p/i/m/a/c + main gauche chiffre, Phil 2026-08-26)" do
+    it "main droite seule" do
+      expect(Tablator.convert_token("60/4-p", notes_mode: false)).to eq('e,4\6-\markup \column { "p" }')
+    end
+
+    it "main gauche seule (\\finger, rendu natif Lilypond)" do
+      expect(Tablator.convert_token("60/4-2", notes_mode: false)).to eq('e,4\6-\markup \column { \finger "2" }')
+    end
+
+    it "les deux combinés, main droite empilée AU-DESSUS (ordre de saisie)" do
+      expect(Tablator.convert_token("60/4-p2", notes_mode: false)).to eq('e,4\6-\markup \column { "p" \finger "2" }')
+    end
+
+    it "sans doigté : aucun markup ajouté (inchangé)" do
+      expect(Tablator.convert_token("60/4", notes_mode: false)).to eq('e,4\6')
+    end
+
+    it "doigté sans durée explicite" do
+      expect(Tablator.convert_token("60-p2", notes_mode: false)).to eq('e,\6-\markup \column { "p" \finger "2" }')
+    end
+
+    it "chaque lettre p/i/m/a/c est acceptée comme doigté main droite" do
+      %w[p i m a c].each do |lettre|
+        expect(Tablator.convert_token("60/4-#{lettre}", notes_mode: false)).to include(%("#{lettre}"))
+      end
+    end
   end
 end

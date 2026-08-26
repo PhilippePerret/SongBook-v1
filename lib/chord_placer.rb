@@ -120,7 +120,7 @@ module ChordPlacer
         loop do
           current = chord_lines[editable[pos]]
           live = typing && (typed_match(typing, letters) || typing)
-          render_window(editable, chord_lines, pos, cursor, letters, notice, live)
+          render_window(editable, chord_lines, pos, cursor, active_letters(letters, chord_lines), notice, live)
           key = read_key
 
           if typing
@@ -210,6 +210,20 @@ module ChordPlacer
   # mal encoder l'altération, ex. "Dd" au lieu de "D#").
   def self.chord_nom(chord)
     Transpose::CHORD_RE.match(chord)&.captures&.first || chord
+  end
+
+  # Légende affichée = seulement les accords RÉELLEMENT posés quelque part dans la
+  # chanson EN CE MOMENT (Phil, 2026-08-26 : bug constaté, la légende gardait tous les
+  # accords jamais tapés/mis en cache, même retirés depuis). `letters` complet (avec
+  # les accords mis en cache mais plus posés) reste utilisé PARTOUT ailleurs (raccourcis
+  # encore disponibles au clavier, `.cached` — voir `save_cached_chords`) : seul
+  # l'AFFICHAGE de la légende est filtré ici.
+  def self.active_letters(letters, chord_lines)
+    used = chord_lines.values.flat_map { |cl| cl.chords.values }.uniq
+    letters.each_with_object({}) do |(letter, chords), h|
+      kept = chords.select { |c| used.include?(c) }
+      h[letter] = kept unless kept.empty?
+    end
   end
 
   # 1 ligne (tous les raccourcis) tant que c'est lisible, sinon 1 ligne PAR NOM RÉEL
@@ -308,8 +322,28 @@ module ChordPlacer
   def self.typed_match(typing, letters)
     return nil if typing[0].match?(/[A-Z]/)
 
+    bucket = letters[typing[0].downcase]
+    return nil unless bucket
+
+    # 1 seule lettre tapée = raccourci immédiat (Phil, 2026-08-26 : "b" -> "Bdim" même
+    # si "B" seul n'existe pas — bug constaté, le nom tapé devait matcher EXACTEMENT,
+    # cassait le raccourci 1 lettre pour tout accord de plus d'1 caractère). Au-delà
+    # d'1 caractère, correspondance EXACTE seulement (nécessaire pour "f"+"7" : "F7"
+    # existant repris seulement si "F7" lui-même est déjà connu, pas juste "F...").
+    return bucket.first if typing.length == 1
+
     candidate = capitalize_chord(typing)
-    letters[typing[0].downcase]&.include?(candidate) ? candidate : nil
+    return candidate if bucket.include?(candidate)
+
+    # "b2" = 2e accord de la lettre "b" (voir `chord_label`, légende "b2 = ...") : raccourci
+    # par INDEX si les chiffres tapés après la lettre pointent une position valide du bucket
+    # ET qu'aucun accord réel ne s'appelle littéralement ainsi (Phil, 2026-08-26 : "b2"
+    # laissé tel quel au lieu de reprendre l'accord existant).
+    m = typing.match(/\A[a-z](\d+)\z/)
+    return nil unless m
+
+    idx = m[1].to_i - 1
+    idx >= 0 && idx < bucket.size ? bucket[idx] : nil
   end
 
   # Un chiffre est un chiffre (Phil, 2026-08-26) : haut du clavier, pavé numérique

@@ -57,12 +57,18 @@ module Tablator
   # suivi d'altérations et d'octaves) pour le mode --notes.
   NOTE_TOKEN_RE = /\A([a-g])(is|es)?([',]*)(\d+\.*)?(\\\d)?\z/.freeze
 
-  CORDE_CASE_RE = %r{\A([1-6])(\d+)(?:/(\S+))?\z}.freeze
+  # Durée restreinte à `[\d.]+` (pas `\S+`) : doit s'arrêter AVANT un éventuel
+  # `-<doigté>` (Phil, 2026-08-26). Groupes 4/5 : doigté main droite (p/i/m/a/c),
+  # doigté main gauche (chiffre) — ex. "60/4-p2" (corde6 case0 noire, pouce + 2e doigt).
+  CORDE_CASE_RE = %r{\A([1-6])(\d+)(?:/([\d.]+))?(?:-([pimac])?(\d)?)?\z}.freeze
   CHORD_RE = %r{\A(\w+)?<([^>]+)>(?:/(\S+))?\z}.freeze
   # `r<durée>` (silence visible) / `s<durée>` (silence invisible, "skip" — compte pour
   # le placement des barres sans être marqué, typiquement une levée) — syntaxe LilyPond
   # brute, valide telle quelle, aucune traduction corde/case nécessaire.
   REST_RE = /\A([rs])(\S+)\z/.freeze
+  # Barres de mesure façon LilyPond (`\bar "..."`) — simple, fin de morceau, double
+  # (fin de partie), reprises (Phil, 2026-08-26 : les 6 formes d'un coup).
+  BAR_RE = /\A(\|\.|\|\||:\|:|:\||\|:|\|)\z/.freeze
 
   class ParseError < StandardError; end
 
@@ -189,9 +195,21 @@ module Tablator
     end
   end
 
+  # Empile main droite (texte) / main gauche (`\finger`, rendu natif LilyPond) sur une
+  # articulation NEUTRE (`-`) — Phil, 2026-08-26 : "laisse Lilypond décider" du
+  # placement (au-dessus/en dessous), jamais forcé (`^`/`_`) côté code.
+  def fingering_markup(rh, lh)
+    return '' unless rh || lh
+
+    parts = []
+    parts << "\"#{rh}\"" if rh
+    parts << "\\finger \"#{lh}\"" if lh
+    "-\\markup \\column { #{parts.join(' ')} }"
+  end
+
   # Convertit un token du corps en fragment LilyPond.
   def convert_token(token, notes_mode:)
-    return token if token == '|'
+    return "\\bar \"#{token}\"" if BAR_RE.match?(token)
     return token if REST_RE.match?(token)
 
     if notes_mode
@@ -212,24 +230,26 @@ module Tablator
     end
 
     if (m = CORDE_CASE_RE.match(token))
-      corde, kase, duree = m.captures
+      corde, kase, duree, rh, lh = m.captures
       note = corde_case_to_note(corde.to_i, kase.to_i)
-      return note.sub(/\\(\d)\z/, "#{duree}\\\\\\1") if duree
-
+      note = note.sub(/\\(\d)\z/, "#{duree}\\\\\\1") if duree
+      note += fingering_markup(rh, lh)
       return note
     end
 
     raise ParseError, "token illisible : #{token}"
   end
 
-  # Découpe les tokens en mesures (séparées par "|") et place, sur le premier
-  # événement de chaque mesure, le nom d'accord — calculé depuis un éventuel
-  # groupe <...> présent n'importe où dans la mesure, ou fourni explicitement
-  # via [Nom] (qui prime toujours sur le calcul).
+  # Découpe les tokens en mesures (séparées par une barre, les 6 formes — `BAR_RE`,
+  # pas seulement "|") et place, sur le premier événement de chaque mesure, le nom
+  # d'accord — calculé depuis un éventuel groupe <...> présent n'importe où dans la
+  # mesure, ou fourni explicitement via [Nom] (qui prime toujours sur le calcul).
   def render_measures(tokens, chord_names:, chord_font: '')
-    mesures = tokens.slice_after { |t| t == '|' }.to_a
+    mesures = tokens.slice_after { |t| BAR_RE.match?(t) }.to_a
     mesures.map do |mesure|
-      bar = mesure.last == '|' ? mesure.pop : nil
+      # `\bar "..."` (pas le token brut) : seul "|" est une syntaxe LilyPond bare
+      # valide (bar check), les 5 autres formes ("|.", "||", ":|:"...) exigent `\bar`.
+      bar = BAR_RE.match?(mesure.last.to_s) ? convert_token(mesure.pop, notes_mode: false) : nil
 
       override = nil
       notes_tokens = mesure.reject do |t|

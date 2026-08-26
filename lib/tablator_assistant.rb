@@ -141,6 +141,20 @@ module TablatorAssistant
     "\e[1;2C" => :shift_right, "\e[1;2D" => :shift_left,
   }.freeze
 
+  # Cellule de la grille : case (fret) + doigté main droite (p/i/m/a/c, `rh`) + doigté
+  # main gauche (chiffre, `lh`) — Phil, 2026-08-26. `rh`/`lh` restent `nil` tant que non
+  # précisés (une cellule "0" seule reste valide, sans aucun doigté).
+  Cell = Struct.new(:kase, :rh, :lh)
+
+  # Lettres de doigté main droite (Manuel/tools/tablator.adoc) — "c" (chiquito,
+  # auriculaire) entre EN COLLISION avec la commande "config" existante ; résolu par
+  # contexte (voir boucle de saisie : seulement pendant la composition d'une note).
+  RH_FINGERS = %w[p i m a c].freeze
+  # "+" : saisie grille pour "pas de doigté main droite", passe direct à la main
+  # gauche (Phil : "0+2" = case 0, pas de main droite, 2e doigt main gauche).
+  RH_SKIP = "+"
+  BAR_CHARS = %w[| : .].freeze
+
   # Éditeur console : curseur déplacé ←/→ et ↑/↓, chiffres 0-9 (case, 2 chiffres max,
   # clavier AZERTY sans Shift accepté), `x` efface, Shift+←/→ repousse tout ce qui
   # suit le curseur (Shift+← écrase la colonne du curseur, le reste se décale dedans),
@@ -167,22 +181,38 @@ module TablatorAssistant
 
     console_width = ($stdin.winsize[1] - ROW_MARGIN) / COL_WIDTH
     width = [console_width, columns_needed(tokens_in, unit)].max
-    matrix = matrix_from_tokens(tokens_in, width, unit)
+    matrix, bars = matrix_from_tokens(tokens_in, width, unit)
     string = 1
     col = 0
-    editing_at = nil
+    # Composition en cours (une note "0p2"/"0+2", OU une barre "|" puis "." -> "|.") —
+    # `nil` tant qu'aucune saisie n'est en cours (Phil, 2026-08-26). Toute touche NON
+    # reconnue par la composition active la CLÔT (une saisie partielle, ex. "0p" sans
+    # main gauche, reste un résultat valide) puis s'exécute normalement — voir fin de
+    # boucle.
+    composing = nil
     # "q" demande confirmation avant d'enregistrer (question bleue, cohérence avec les
     # autres éditeurs de l'app) ; Entrée enregistre directement, sans redemander (Phil,
     # 2026-08-26).
     ask_before_save = false
+    # Valide une barre en cours de composition (si `buffer` forme une barre reconnue,
+    # sinon abandonnée en silence) — appelé à CHAQUE sortie de la composition, y
+    # compris "q"/Entrée (`break` saute le reste de la boucle, bug constaté 2026-08-26 :
+    # une barre commencée juste avant de quitter disparaissait silencieusement).
+    commit_bar = lambda do
+      if composing && composing[:kind] == :bar && Tablator::BAR_RE.match?(composing[:buffer])
+        bars[composing[:col]] = composing[:buffer]
+      end
+      composing = nil
+    end
 
     begin
       begin
         $stdin.raw(intr: true) do
           loop do
-            draw_grid(matrix, string, col, unit)
+            draw_grid(matrix, bars, string, col, unit)
             key = read_key
             key = AZERTY_DIGITS.fetch(key, key) if key.is_a?(String)
+
             case key
             when :up then string = [string - 1, 1].max
             when :down then string = [string + 1, 6].min
@@ -194,7 +224,21 @@ module TablatorAssistant
               shift_left!(matrix, col)
             when "x"
               matrix[string - 1][col] = nil
-              editing_at = nil
+              bars.delete(col)
+            # Doigté main droite (ou "+" = aucun) : SEULEMENT juste après la/les case(s)
+            # d'une note en cours (sinon "c" reprend son sens de commande "config").
+            when ->(k) { composing && composing[:kind] == :note && composing[:stage] == :case && k.is_a?(String) && (RH_FINGERS.include?(k) || k == RH_SKIP) }
+              matrix[composing[:string] - 1][composing[:col]].rh = key unless key == RH_SKIP
+              composing[:stage] = :rh_done
+              next
+            # Doigté main gauche : juste après le doigté droit (ou son "+").
+            when ->(k) { composing && composing[:kind] == :note && composing[:stage] == :rh_done && k.is_a?(String) && k.match?(/\A\d\z/) }
+              matrix[composing[:string] - 1][composing[:col]].lh = key
+              composing = nil
+              next
+            # Barre en cours de composition ("|" puis "." -> "|.", etc.).
+            when ->(k) { composing && composing[:kind] == :bar && k.is_a?(String) && BAR_CHARS.include?(k) }
+              composing[:buffer] += key
               next
             when "c"
               unit, metrique = open_config(unit, metrique)
@@ -202,24 +246,33 @@ module TablatorAssistant
               temp_path, out_base = tab_paths_for(meta, edit_path)
               meta["unit"] = unit
               meta["metrique"] = metrique if metrique
-              File.write(temp_path, serialize(meta, matrix_to_tokens(matrix, unit)))
+              File.write(temp_path, serialize(meta, matrix_to_tokens(matrix, unit, bars: bars)))
               render_tab_svg(temp_path, out_base: out_base)
             when "q"
               ask_before_save = true
+              commit_bar.call
               break
             when "\r", "\n"
+              commit_bar.call
               break
             when /\A\d\z/
-              if editing_at == [string, col] && matrix[string - 1][col]
-                candidate = "#{matrix[string - 1][col]}#{key}".to_i
-                matrix[string - 1][col] = candidate <= MAX_CASE ? candidate : key.to_i
+              if composing && composing[:kind] == :note && composing[:stage] == :case && composing[:string] == string && composing[:col] == col
+                cell = matrix[string - 1][col]
+                candidate = "#{cell.kase}#{key}".to_i
+                cell.kase = candidate <= MAX_CASE ? candidate : key.to_i
               else
-                matrix[string - 1][col] = key.to_i
+                matrix[string - 1][col] = Cell.new(key.to_i, nil, nil)
+                composing = { kind: :note, stage: :case, string: string, col: col }
               end
-              editing_at = [string, col]
+              next
+            when *BAR_CHARS
+              composing = { kind: :bar, col: col, buffer: key }
               next
             end
-            editing_at = nil
+
+            # Toute touche qui arrive ici a été traitée normalement (pas de `next`
+            # ci-dessus) : clôt une composition de barre en cours.
+            commit_bar.call
           end
         end
       rescue Interrupt
@@ -228,7 +281,7 @@ module TablatorAssistant
         return
       end
 
-      tokens = matrix_to_tokens(matrix, unit)
+      tokens = matrix_to_tokens(matrix, unit, bars: bars)
       if tokens.empty?
         puts Loc.get("tablator_write_empty")
         return
@@ -310,14 +363,21 @@ module TablatorAssistant
     "#{haut}/#{bas}"
   end
 
-  def self.draw_grid(matrix, cur_string, cur_col, unit)
+  def self.draw_grid(matrix, bars, cur_string, cur_col, unit)
     print "\e[2J\e[H"
     (1..6).each do |string|
-      row = matrix[string - 1].each_with_index.map do |kase, col|
-        cell = kase.nil? ? "-" * COL_WIDTH : kase.to_s.ljust(COL_WIDTH, "-")
-        string == cur_string && col == cur_col ? "\e[7m#{cell}\e[0m" : cell
+      row = matrix[string - 1].each_with_index.map do |cell, col|
+        text = cell.nil? ? "-" * COL_WIDTH : "#{cell.kase}#{cell.rh}#{cell.lh}".ljust(COL_WIDTH, "-")
+        string == cur_string && col == cur_col ? "\e[7m#{text}\e[0m" : text
       end.join
       puts "#{STRING_LABELS[string - 1]}|#{row}|"
+    end
+    # Ligne des barres (Phil, 2026-08-26) : une frappe par colonne concernée, alignée
+    # sur la 1re colonne de chaque cellule de la grille ci-dessus.
+    unless bars.empty?
+      bar_line = Array.new(matrix.first.length * COL_WIDTH, " ")
+      bars.each { |col, bar| bar.chars.each_with_index { |c, i| bar_line[(col * COL_WIDTH) + i] = c if (col * COL_WIDTH) + i < bar_line.length } }
+      puts " #{bar_line.join}"
     end
     puts "#{AnsiColors::GRAY}#{format(Loc.get('tablator_write_help'), unit)}#{AnsiColors::RESET}"
   end
@@ -342,28 +402,42 @@ module TablatorAssistant
   # aucune corde jouée est ignorée EN TANT QUE COLONNE, mais PAS musicalement (Phil,
   # 2026-08-25 : "sinon tout est faux") — un "trou" (colonnes vides) après une note
   # PROLONGE cette note : sa durée réelle = span de colonnes (elle + le trou) jusqu'à
-  # l'événement suivant (ou la fin), converti en durée LilyPond pointée via
-  # `duration_for`. Plusieurs cordes sur la même colonne -> accord `<corde:case ...>`.
-  # Un trou AVANT la première note (Phil) compte aussi (placement des barres) mais
-  # n'est PAS marqué par défaut (levée) -> silence INVISIBLE (`sN`, "skip" LilyPond),
-  # jamais supprimé silencieusement.
-  def self.matrix_to_tokens(matrix, unit)
+  # l'événement suivant OU une barre (`bars`, Phil 2026-08-26 : "|." doit arrêter la
+  # DERNIÈRE note, pas `width` — dépendait de la largeur du terminal, arbitraire), ou
+  # la fin à défaut des deux, converti en durée LilyPond pointée via `duration_for`.
+  # Plusieurs cordes sur la même colonne -> accord `<corde:case ...>` (doigté ignoré
+  # pour un accord, hors scope). Un trou AVANT la première note (Phil) compte aussi
+  # (placement des barres) mais n'est PAS marqué par défaut (levée) -> silence
+  # INVISIBLE (`sN`, "skip" LilyPond), jamais supprimé silencieusement.
+  def self.matrix_to_tokens(matrix, unit, bars: {})
     width = matrix.first.length
     unit_denominator = DURATIONS.fetch(unit)
     events = (0...width).filter_map do |col|
-      notes = (1..6).filter_map { |string| matrix[string - 1][col] && "#{string}#{matrix[string - 1][col]}" }
+      notes = (1..6).filter_map { |string| matrix[string - 1][col] && [string, matrix[string - 1][col]] }
       [col, notes] unless notes.empty?
     end
-    return [] if events.empty?
+    bar_cols = bars.keys.sort
+    return bar_cols.map { |c| bars[c] } if events.empty?
 
-    notes_tokens = events.each_with_index.map do |(col, notes), i|
-      next_col = i + 1 < events.length ? events[i + 1][0] : width
-      duree = duration_for(next_col - col, unit_denominator)
-      (notes.size == 1 ? notes.first : "<#{notes.join(' ')}>") + "/#{duree}"
+    boundaries = (events.map(&:first) + bar_cols).uniq.sort
+
+    notes_by_col = events.each_with_object({}) do |(col, notes), h|
+      next_boundary = boundaries.find { |b| b > col } || width
+      duree = duration_for(next_boundary - col, unit_denominator)
+      h[col] =
+        if notes.size == 1
+          string, cell = notes.first
+          suffix = cell.rh || cell.lh ? "-#{cell.rh}#{cell.lh}" : ""
+          "#{string}#{cell.kase}/#{duree}#{suffix}"
+        else
+          "<#{notes.map { |s, c| "#{s}#{c.kase}" }.join(' ')}>/#{duree}"
+        end
     end
 
+    ordered = (notes_by_col.keys + bar_cols).sort.map { |c| notes_by_col[c] || bars[c] }
+
     leading = events.first[0]
-    leading.positive? ? ["s#{duration_for(leading, unit_denominator)}"] + notes_tokens : notes_tokens
+    leading.positive? ? ["s#{duration_for(leading, unit_denominator)}"] + ordered : ordered
   end
 
   # Durée LilyPond (dénominateur + points) pour un span de `span` colonnes de valeur de
@@ -389,15 +463,18 @@ module TablatorAssistant
   # durée de chaque token (dénominateur + points éventuels) est reconvertie en span de
   # colonnes SELON `unit` COURANT (peut différer de celui utilisé à la création si la
   # config a changé) — les colonnes vides du span sont laissées vides, reconstituant
-  # visuellement le "trou". Barres `|` non représentées dans la grille (limite connue).
-  # Nombre de colonnes qu'occuperont `tokens` une fois rechargés (span par span, voir
-  # `span_from_duration`) — utilisé pour dimensionner la grille au chargement d'une
-  # tablature existante (`--tab`) si elle dépasse la largeur de la console.
+  # visuellement le "trou". Une barre (`Tablator::BAR_RE`, les 6 formes) occupe 1
+  # colonne, sans note. Nombre de colonnes qu'occuperont `tokens` une fois rechargés
+  # (span par span, voir `span_from_duration`) — utilisé pour dimensionner la grille au
+  # chargement d'une tablature existante (`--tab`) si elle dépasse la largeur console.
   def self.columns_needed(tokens, unit)
     unit_denominator = DURATIONS.fetch(unit)
     col = 0
     tokens.each do |token|
-      next if token == "|"
+      if Tablator::BAR_RE.match?(token)
+        col += 1
+        next
+      end
 
       if (rm = Tablator::REST_RE.match(token))
         col += span_from_duration(rm[2], unit_denominator)
@@ -415,13 +492,22 @@ module TablatorAssistant
     col
   end
 
+  # Renvoie `[matrix, bars]` — `bars` : `{colonne => "|."/"||"/...}` (voir
+  # `matrix_to_tokens`). Le doigté ("-<main droite><main gauche>", groupes 4/5 de
+  # `Tablator::CORDE_CASE_RE`) est reconstruit dans la `Cell` pour une note simple
+  # (jamais dans un accord `<...>`, hors scope).
   def self.matrix_from_tokens(tokens, width, unit)
     matrix = Array.new(6) { Array.new(width) }
+    bars = {}
     unit_denominator = DURATIONS.fetch(unit)
     col = 0
     tokens.each do |token|
-      next if token == "|"
       break if col >= width
+
+      if Tablator::BAR_RE.match?(token)
+        bars[col] = token
+        next
+      end
 
       if (rm = Tablator::REST_RE.match(token))
         col += span_from_duration(rm[2], unit_denominator)
@@ -432,18 +518,19 @@ module TablatorAssistant
         if (m = Tablator::CHORD_RE.match(token))
           m[2].split(/\s+/).each do |pair|
             cm = Tablator::CORDE_CASE_RE.match(pair)
-            matrix[cm[1].to_i - 1][col] = cm[2].to_i if cm
+            matrix[cm[1].to_i - 1][col] = Cell.new(cm[2].to_i, nil, nil) if cm
           end
           m[3]
         elsif (m = Tablator::CORDE_CASE_RE.match(token))
-          matrix[m[1].to_i - 1][col] = m[2].to_i
-          m[3]
+          _corde, kase, d, rh, lh = m.captures
+          matrix[m[1].to_i - 1][col] = Cell.new(kase.to_i, rh, lh)
+          d
         end
       next unless m
 
       col += span_from_duration(duree, unit_denominator)
     end
-    matrix
+    [matrix, bars]
   end
 
   # Inverse de `duration_for` : "4" (0 point) -> 2 colonnes (croche unit_denominator=8) ;

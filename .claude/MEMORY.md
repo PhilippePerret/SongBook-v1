@@ -17,6 +17,12 @@ Toute note doit être écrite ICI (`./.claude` du projet), JAMAIS ailleurs (`~/.
 ## Ne jamais supposer une erreur de l'user
 Phil connaît cette app mieux que quiconque (il l'a conçue de fond en comble). Devant un comportement qui a l'air d'un bug qu'il signale, ne JAMAIS encadrer ça comme "peut-être une incompréhension de sa part" ou lui demander "qu'est-ce que tu veux ?" avant d'avoir d'abord vérifié si une convention/syntaxe existante dans le code explique déjà le cas (ex. "Nom-Case" est la syntaxe canonique du `.lyr`, `DSLParser::CHORD_RE`, pas une faute de frappe). Chercher dans le code AVANT de questionner son intention.
 
+## Résumés : pas de détails, point final
+Résumé de fin de tâche = liste minimale de ce qui a changé, "Fait"/"Corrigé", rien de plus. JAMAIS expliquer la cause technique, le mécanisme du bug, le raisonnement. Zéro détail non demandé = zéro ligne à lire en trop.
+
+## Ne pas raconter mes propres bugs de code en cours de route
+Ne jamais mentionner un bug que J'AI introduit et corrigé pendant l'implémentation (ex. "j'avais oublié de valider X avant break, corrigé") sauf s'il a une incidence directe sur le travail de l'user ou nécessite une décision de sa part. Sinon : le garder pour moi, ne pas polluer/faire perdre du temps. Rapporter le résultat final, pas le cheminement.
+
 ## Résumés de fin de tâche : pas de noms de fichiers
 Jamais citer les chemins/noms de fichiers modifiés dans le résumé donné à l'user (ex. "tests/interactive/open_command_spec.rb"). Décrire CE QUI a changé fonctionnellement, pas où.
 

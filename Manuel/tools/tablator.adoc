@@ -66,7 +66,18 @@ __Voici les conventions de langage employées si vous devez écrire le fichier `
 | •duree• | 4 = noire, 2 = blanche, 8 = croche, etc.
 |====
 
-Le document peut commencer par un entête définissant : 
+Indiquer les doigts de la main droite (chevalet) avec "p" (pouce) "i" (index), "m" (majeur) "a" (annulaire), "c" (chiquito = auriculaire).
+Indiquer les doigts de la main gauche (manche) avec des chiffres (1, 2, 3, 4, 0 pour le pouce, pour le distinguer de "p" de la main droite).
+
+Ces doigts s'indiquent après "-", comme dans Lilypond : 
+
+----
+60:p  # 6e corde à vide, avec le pouce
+52:i4 # 2e case de 5e corde, index et doigt 4
+----
+
+
+Le document peut commencer par une entête (appelée __front matter__) définissant : 
 
 ----
 \---
@@ -98,7 +109,9 @@ Le mieux est de construire la tablature par petits segments car il sera possible
 La seconde ligne produira le fichier `intro+coup.svg`. Donc, plus tard, pour ne pas forcer la reconstruction, on pourra mettre : 
 
 ----
-{intro; tab: intro.svg}
+{intro; tab: intro.svg, count: 2}
 
-{couplet; tab: intro+coup.svg}
+{couplet; tab: intro+couplet.svg }
+
+{refrain: tab: refrain.svg }
 ----

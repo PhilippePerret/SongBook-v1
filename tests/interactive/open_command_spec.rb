@@ -96,8 +96,9 @@ RSpec.describe "commande open" do
       CLI.run(%w[open gabarit], interactive: true)
     end
 
-    it "refuse si le contexte n'a pas de .gab (carnet sans gabarit)" do
+    it "propose de créer le .gab manquant ; refusé -> reste une erreur (carnet sans gabarit)" do
       CLI.run(%w[use songbook Carnet-Test], interactive: true)
+      allow_any_instance_of(TTY::Prompt).to receive(:yes?).and_return(false)
 
       expect { CLI.run(%w[open gabarit], interactive: true) }.to raise_error(SystemExit)
     end
@@ -122,6 +123,49 @@ RSpec.describe "commande open" do
   describe "'open bidule' (sous-commande inconnue)" do
     it "reste une commande inconnue" do
       expect { CLI.run(%w[open bidule], interactive: true) }.to raise_error(SystemExit)
+    end
+  end
+
+  describe "fichier manquant : propose de le créer (Phil, 2026-08-26 — vaut pour tout type de fichier)" do
+    around do |example|
+      Dir.mktmpdir do |dir|
+        @song_dir = dir
+        example.run
+      end
+    end
+
+    before { Session.song = @song_dir }
+
+    it "reprend la racine la PLUS UTILISÉE parmi les fichiers déjà présents" do
+      File.write(File.join(@song_dir, "w.lyr"), "")
+      File.write(File.join(@song_dir, "w.infos"), "")
+
+      allow_any_instance_of(TTY::Prompt).to receive(:yes?).and_return(true)
+      expected = File.join(@song_dir, "w.gab")
+      expect(CLI).to receive(:system).with("open", "-a", AppConfig.user_song_editor, expected)
+
+      CLI.run(%w[open gabarit], interactive: true)
+      expect(File.exist?(expected)).to be true
+    end
+
+    it "\"c\" par défaut si le dossier est entièrement vide" do
+      allow_any_instance_of(TTY::Prompt).to receive(:yes?).and_return(true)
+      expected = File.join(@song_dir, "c.lyr")
+      expect(CLI).to receive(:system).with("open", "-a", AppConfig.user_song_editor, expected)
+
+      CLI.run(%w[open lyrics], interactive: true)
+      expect(File.exist?(expected)).to be true
+    end
+
+    it "'open infos' propose aussi la création, même logique" do
+      File.write(File.join(@song_dir, "chanson.lyr"), "")
+
+      allow_any_instance_of(TTY::Prompt).to receive(:yes?).and_return(true)
+      expected = File.join(@song_dir, "chanson.infos")
+      expect(CLI).to receive(:system).with("open", "-a", AppConfig.user_song_editor, expected)
+
+      CLI.run(%w[open infos], interactive: true)
+      expect(File.exist?(expected)).to be true
     end
   end
 end

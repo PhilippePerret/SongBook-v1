@@ -221,7 +221,11 @@ module PageBuilder
           k, v = pair.split(":", 2)
           next unless k && v && !k.strip.empty?
 
-          dirs[k.strip.to_sym] = v.strip.gsub(/\A["']|["']\z/, "")
+          # "tab" = diminutif toléré pour "tabla" (Phil, 2026-08-26) — même convention
+          # que les formes longues/courtes déjà tolérées ailleurs (`FileFinder`).
+          key = k.strip.to_sym
+          key = :tabla if key == :tab
+          dirs[key] = v.strip.gsub(/\A["']|["']\z/, "")
         end
         # `tabla`/`diags` avant `title` : la directive tabla porte elle-même une clé
         # `title` (sa légende) — sinon elle se ferait passer pour la config d'en-tête.
@@ -231,11 +235,31 @@ module PageBuilder
     end
   end
 
-  # Génère le SVG de la tabla à la demande si absent, ou si le `.tab` source est plus
-  # récent que le `.svg` déjà là (cache invalidé par date de fichier). `name` sans
-  # extension. Renvoie le chemin du SVG, ou nil si ni SVG ni .tab n'existent.
+  # Génère le SVG de la tabla à la demande si absent, ou si le/les `.tab` source(s)
+  # sont plus récent(s) que le `.svg` déjà là (cache invalidé par date de fichier).
+  # `name` sans extension — "intro+couplet" (Phil, 2026-08-26) : FUSION, pure mise
+  # bout à bout des CODES de "intro.tab" et "couplet.tab" (frontmatter du 1er fichier
+  # repris tel quel, corps concaténés), un SEUL SVG produit ("intro+couplet.svg").
+  # Renvoie le chemin du SVG, ou nil si les sources nécessaires n'existent pas toutes.
   def self.ensure_tabla_svg(folder, name)
     svg_path = File.join(folder, "#{name}.svg")
+
+    if name.include?("+")
+      tab_paths = name.split("+").map { |n| File.join(folder, "#{n}.tab") }
+      return nil unless tab_paths.all? { |p| File.exist?(p) }
+      return svg_path if File.exist?(svg_path) && tab_paths.all? { |p| File.mtime(p) <= File.mtime(svg_path) }
+
+      merged_path = File.join(folder, ".~#{name}.tab")
+      File.write(merged_path, merge_tab_contents(tab_paths))
+      begin
+        system("ruby", TABLATOR_PATH, merged_path, "-o", File.join(folder, name), out: File::NULL, err: File::NULL) or
+          raise "échec de tablator sur la fusion #{name}"
+      ensure
+        File.delete(merged_path)
+      end
+      return svg_path
+    end
+
     tab_path = File.join(folder, "#{name}.tab")
     return svg_path if File.exist?(svg_path) && (!File.exist?(tab_path) || File.mtime(tab_path) <= File.mtime(svg_path))
     return nil unless File.exist?(tab_path)
@@ -243,6 +267,18 @@ module PageBuilder
     system("ruby", TABLATOR_PATH, tab_path, "-o", File.join(folder, name), out: File::NULL, err: File::NULL) or
       raise "échec de tablator sur #{tab_path}"
     svg_path
+  end
+
+  # `---\n<frontmatter yaml>\n---\n<corps>` (même format que `Tablator.parse_frontmatter`,
+  # pas rechargé ici — juste une découpe texte, `page_builder.rb` n'appelle jamais
+  # `tools/tablator/tablator.rb` autrement qu'en sous-processus).
+  TAB_FRONTMATTER_RE = /\A(---\n.*?\n---\n)?(.*)\z/m
+
+  def self.merge_tab_contents(tab_paths)
+    parts = tab_paths.map { |p| TAB_FRONTMATTER_RE.match(File.read(p)).captures }
+    frontmatter = parts.first.first.to_s
+    body = parts.map { |_, b| b.to_s.strip }.join(" ")
+    "#{frontmatter}#{body}\n"
   end
 
   # Valeurs par défaut (Phil, 2026-08-17 : "le moins de définitions possibles" — un `.gab`

@@ -70,3 +70,6 @@ diag_inserted: "Schema %s inserted."
 
 # chord assistant (songbook add chords)
 confirm_delete_all_chords: "Delete all chords in the song?"
+
+# open (missing file)
+create_missing_file_question: "Create the .%s file?"

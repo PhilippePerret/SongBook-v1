@@ -78,3 +78,6 @@ diag_inserted: "Schéma %s inséré."
 
 # assistant d'accords (songbook add chords)
 confirm_delete_all_chords: "Supprimer tous les accords de la chanson ?"
+
+# open (fichier manquant)
+create_missing_file_question: "Créer le fichier .%s ?"

@@ -112,6 +112,42 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       letters = { "f" => %w[F F7] }
       expect(ChordPlacer.typed_match("f7", letters)).to eq("F7")
     end
+
+    it "1 SEULE lettre = raccourci immédiat même si le nom de l'accord fait plusieurs caractères (bug 2026-08-26 : 'b' -> 'Bdim' n'écrivait plus rien, exigeait un match EXACT)" do
+      expect(ChordPlacer.typed_match("b", { "b" => ["Bdim"] })).to eq("Bdim")
+    end
+
+    it "1 seule lettre : reprend le PREMIER accord de cette lettre (ordre de rencontre)" do
+      expect(ChordPlacer.typed_match("a", { "a" => %w[Am7 A A7] })).to eq("Am7")
+    end
+
+    it "'b2' = 2e accord de la lettre 'b' par INDEX (légende 'b2 = ...', bug 2026-08-26 : laissé tel quel)" do
+      expect(ChordPlacer.typed_match("b2", { "b" => %w[Bdim Bm9b] })).to eq("Bm9b")
+    end
+
+    it "'b9' = index hors bucket => nil (nouvel accord)" do
+      expect(ChordPlacer.typed_match("b9", { "b" => %w[Bdim Bm9b] })).to be_nil
+    end
+  end
+
+  describe "ChordPlacer.active_letters (légende affichée = accords ACTIVEMENT posés, Phil 2026-08-26)" do
+    it "retire un accord qui n'est plus posé nulle part (bug constaté : restait affiché après suppression)" do
+      chord_lines = { 0 => ChordLine.new("bonjour", { 0 => "A" }) }
+      letters = { "a" => ["A"], "d" => ["D"] } # "D" jamais posé dans chord_lines
+      expect(ChordPlacer.active_letters(letters, chord_lines)).to eq({ "a" => ["A"] })
+    end
+
+    it "garde seulement les accords, d'une même lettre, RÉELLEMENT posés" do
+      chord_lines = { 0 => ChordLine.new("bonjour tout", { 0 => "A", 8 => "Am7" }) }
+      letters = { "a" => %w[A Am7 A7] } # "A7" connu mais jamais posé
+      expect(ChordPlacer.active_letters(letters, chord_lines)).to eq({ "a" => %w[A Am7] })
+    end
+
+    it "aucun accord posé nulle part : légende vide" do
+      chord_lines = { 0 => ChordLine.new("bonjour", {}) }
+      letters = { "a" => ["A"] }
+      expect(ChordPlacer.active_letters(letters, chord_lines)).to eq({})
+    end
   end
 
   describe "ChordPlacer.normalize_digit (un chiffre est un chiffre, Phil 2026-08-26)" do
@@ -186,6 +222,13 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       path = write_lyr(["bonjour tout"])
       simulate(path, "\nBm\e[C\r")
       expect(File.readlines(path).first.chomp).to include("/Bm:bonjour")
+    end
+
+    it "1 seule lettre reprend l'accord existant même s'il a plusieurs caractères (bug 2026-08-26, \"La chanson des vieux amants\" : \"b\" -> \"Bdim\" n'écrivait plus rien)" do
+      path = write_lyr(["/Bdim:bonjour tout"])
+      # "Bdim" déjà enregistré (lu depuis le fichier) => pas de question initiale.
+      simulate(path, "Lb\r\r")
+      expect(File.readlines(path).first.chomp).to eq("/Bdim:bonjour tout/Bdim:")
     end
 
     it "n/p avancent/reculent lettre par lettre (remplace Alt/Ctrl+flèche, abandonnés)" do
