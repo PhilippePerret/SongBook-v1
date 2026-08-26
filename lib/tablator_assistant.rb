@@ -218,6 +218,10 @@ module TablatorAssistant
             when :down then string = [string + 1, 6].min
             when :left then col = [col - 1, 0].max
             when :right then col = [col + 1, width - 1].min
+            # Mêmes lettres que "début/fin de vers" dans l'édition des accords
+            # (`ChordPlacer` : "J"/"L", Phil, 2026-08-27).
+            when "J" then col = 0
+            when "L" then col = width - 1
             when :shift_right
               shift_right!(matrix, col)
             when :shift_left
