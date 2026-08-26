@@ -1,0 +1,109 @@
+[[songbook-layout]]
+=== Layout d'un carnet ===
+
+TIP: Pour ouvrir directement ce fichier, `songbook open layout --sb "titre carnet"`
+
+
+C'est un fichier qui doit porter l'extension `.layout` ou `.lay` <<app-extension-driven, peu importe son nom>>.
+
+Dans __SongBook__, on peut le faire chanson par chanson mais il vaut mieux, pour la cohérence esthétique, le définir pour un carnet.
+
+À nouveau la même mise en garde : le __layout__ de la chanson n'est pas à confondre avec le __gabarit__ : 
+
+- Le **gabarit** (fichier `.gab`) définit OÙ les éléments des paroles vont se placer dans la page et l'un par rapport à l'autre.
+- Le **layout** (fichier `.lay`) définit les métadonnées de la mise en page, comme la policier et la taille des caractères, les marges, les options de mise en page, etc.
+
+En général, dans les carnets, le layout est déterminé par la propriété `layout` qui définit une mise en page par défaut de l'application. La liste des <<app-layouts, layouts de l'application>> suffisent normalement amplement à trouver son compte.
+
+Cependant, si vous voulez modifer certains paramètres, vous pouvez le faire par le biais d'un layout propre au carnet.
+
+Chaque __layout__ doit définir les caractéristiques suivantes :
+
+[cols="1,3,3", options="header"]
+|====
+| Caractéristique | Description | Valeurs
+
+| `title_band` 
+| Titre en bandeau ou pas.
+| `true` = titre mis en bandeau
+
+| `lyrics_flux`
+| Définit le flux, l'enchainement des strophes, couplets, refrains et autres paroles.
+| `side` (pour "side by side", "côte à côte") ou `vertical` (pour "stacked vertically" ou "l'un au-dessous de l'autre") ou `free` (pour "free positioning", aucune contrainte).
+
+| `diags_position` 
+| Position des diagrammes d'accords, par défaut, dans la page
+| `Top`, `Bot`, `Int`, `Ext` ou combinaison : `Int+Ext`, `Bot+Int` etc.
+
+| `diags_size`
+| Dimensions des diags lorsque cette dimension doit être fixe et non touchée.
+| `auto`, `Nptx` (largeur de N points), `xNpt` (hauteur de N points), `NptxMpt` (largeur de N points et hauteur de M points) 
+
+| `music_position`
+| Position des partitions comme des tablatures, de façon générale.
+| `beginning` ou `front` (au début, avant les premières paroles), `end` (à la fin, après les premières paroles), `wherever` (pour "flexible", se placera là où il y a de la place libre).
+
+| `intro_align`
+| Alignement d'un bloc désigné par "intro"
+| Défaut : `left`
+
+
+|====
+
+[[common-layouts, Mises en page]]
+==== Mises en page par défaut ====
+
+===== Regular-B =====
+
+//TODO: exemple
+
+Caractéristiques
+
+[cols="1,1,4", options="header"]
+|====
+| Propriété         | Valeur  | Description
+| `title_band`      | true    | Titre dans le bandeau
+| `lyrics_flux`     | `size`  | couplets/refrain côte à côte
+| `diags_position`  | `Int`   | Diagrammes proches des reliures
+| `diags_size`      | `auto`  | Taille automatique (?possible)
+| `music_position`  | `end`   | La musique sera mise à la fin.
+| `intro_align`     | `Left`  | Les parties « intro » sont mises à gauche.
+|====
+
+- Couplets côte à côte
+- diagrammes d'accords à l'intérieur
+- intro à gauche
+
+===== Regular =====
+
+__Comme le "regular-B" mais le titre sans bandeau__
+
+//TODO: exemple
+
+Caractéristiques
+
+- titre simple, sans bandeau
+- Couplets côte à côte
+- diagrammes d'accords à l'intérieur
+
+===== Column-B =====
+
+// TODO: Exemple
+
+Caractéristiques
+
+- titre dans un bandeau
+- strophes l'une ou dessous de l'autre
+- diagrammes d'accords des deux côtés
+
+===== Column =====
+
+__Comme le layout « Column-B » mais titre sans bandeau__
+
+// TODO: Exemple
+
+Caractéristiques
+
+- titre sans bandeau
+- strophes l'une ou dessous de l'autre
+- diagrammes d'accords des deux côtés

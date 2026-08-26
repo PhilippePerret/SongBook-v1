@@ -445,6 +445,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#app-options">Options</a></li>
 <li><a href="#console-command">Commande <code>songbook</code></a></li>
+<li><a href="#app-layouts">Layouts de l&#8217;application</a></li>
 </ul>
 </li>
 <li><a href="#song">Chansons</a>
@@ -457,7 +458,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#chords">Les accords</a></li>
 <li><a href="#diags">Diagrammes d&#8217;accords</a></li>
 <li><a href="#_tablatures_et_partitions">Tablatures et Partitions</a></li>
-<li><a href="#song-layout">Layout (mise en page) de chanson</a></li>
+<li><a href="#song-layout">Layout de la chanson</a></li>
 <li><a href="#gabarit-file">Gabarit de la chanson</a></li>
 <li><a href="#gabarit">Fichier gabarit</a></li>
 </ul>
@@ -467,6 +468,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#songbook-presentation">Présentation</a></li>
 <li><a href="#songbook-assistant">Assistant au carnet de chant</a></li>
 <li><a href="#songbook-infos">Fichier infos du carnet</a></li>
+<li><a href="#songbook-layout">Layout d&#8217;un carnet</a></li>
 <li><a href="#options">Options de fabrication</a></li>
 <li><a href="#universal-properties">Propriétés universelles</a></li>
 <li><a href="#_placement_des_diags">Placement des diags</a></li>
@@ -713,6 +715,39 @@ a {
 </div>
 </div>
 </div>
+</div>
+<div class="sect2">
+<h3 id="app-layouts">Layouts de l&#8217;application</h3>
+<div class="paragraph">
+<p>Les <em>layouts de l&#8217;application</em> permettent de ne pas avoir à se soucier de mise en page lorsque l&#8217;on conçoit ses carnets.</p>
+</div>
+<div class="paragraph">
+<p>Si toutefois vous vouliez adapter les paramètres de la mise en page de votre carnet, vous pouvez le faire par le biais des <a href="#songbook-layout">layouts de carnet</a>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>regular-B</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mise en page par défaut</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>régular</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Même que le précédent mais le titre n&#8217;est pas mis dans un bandeau noir.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>column-B</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">bandeau noir</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>column</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Comme le précédent mais le titre est sans bandeau noir.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -1161,199 +1196,53 @@ In /em:this proud land</pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="song-layout">Layout (mise en page) de chanson</h3>
-<div class="paragraph">
-<p>Le <em>layout</em> de la chanson détermine la façon dont les éléments (couplets, refrains, partition, tablatures, diagrammes, images…) seront répartis sur la page ainsi que toutes les règles qui régissent les éléments.</p>
-</div>
-<div class="paragraph">
-<p>C&#8217;est un fichier qui doit porter l&#8217;extension <code>.layout</code> ou <code>.lay</code> <a href="#app-extension-driven">peu importe son nom</a>.</p>
-</div>
-<div class="paragraph">
-<p>Dans <em>SongBook</em>, on peut le faire chanson par chanson ou de façon générale pour un carnet. Ou les deux, ce qui est le mieux : déterminer un <em>layout</em> général et, au cas par cas, faire un gabarit pour certaines chansons qui le nécessitent.</p>
-</div>
-<div class="paragraph">
-<p>Chaque <em>layout</em> doit définir les caractéristiques suivantes :</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 14.2857%;">
-<col style="width: 42.8571%;">
-<col style="width: 42.8572%;">
-</colgroup>
-<thead>
+<h3 id="song-layout">Layout de la chanson</h3>
+<div class="admonitionblock tip">
+<table>
 <tr>
-<th class="tableblock halign-left valign-top">Caractéristique</th>
-<th class="tableblock halign-left valign-top">Description</th>
-<th class="tableblock halign-left valign-top">Valeurs</th>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+Pour ouvrir directement ce fichier, <code>songbook open layout --song "titre carnet"</code>
+</td>
 </tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title_band</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Titre en bandeau ou pas.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code> = titre mis en bandeau</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lyrics_flux</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Définit le flux, l&#8217;enchainement des strophes, couplets, refrains et autres paroles.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>side</code> (pour "side by side", "côte à côte") ou <code>vertical</code> (pour "stacked vertically" ou "l&#8217;un au-dessous de l&#8217;autre") ou <code>free</code> (pour "free positioning", aucune contrainte).</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_position</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Position des diagrammes d&#8217;accords, par défaut, dans la page</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Top</code>, <code>Bot</code>, <code>Int</code>, <code>Ext</code> ou combinaison : <code>Int+Ext</code>, <code>Bot+Int</code> etc.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_size</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Dimensions des diags lorsque cette dimension doit être fixe et non touchée.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>auto</code>, <code>Nptx</code> (largeur de N points), <code>xNpt</code> (hauteur de N points), <code>NptxMpt</code> (largeur de N points et hauteur de M points)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>music_position</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Position des partitions comme des tablatures, de façon générale.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>beginning</code> ou <code>front</code> (au début, avant les premières paroles), <code>end</code> (à la fin, après les premières paroles), <code>wherever</code> (pour "flexible", se placera là où il y a de la place libre).</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>intro_align</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Alignement d&#8217;un bloc désigné par "intro"</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>left</code></p></td>
-</tr>
-</tbody>
 </table>
-<div class="sect3">
-<h4 id="common-layouts">Mises en page par défaut</h4>
-<div class="sect4">
-<h5 id="_regular_b">Regular-B</h5>
-<div class="paragraph">
-<p>Caractéristiques</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 16.6666%;">
-<col style="width: 16.6666%;">
-<col style="width: 66.6668%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Propriété</th>
-<th class="tableblock halign-left valign-top">Valeur</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title_band</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Titre dans le bandeau</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lyrics_flux</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>size</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">couplets/refrain côte à côte</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_position</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Int</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Diagrammes proches des reliures</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_size</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>auto</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Taille automatique (?possible)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>music_position</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>end</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">La musique sera mise à la fin.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>intro_align</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Left</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Les parties « intro » sont mises à gauche.</p></td>
-</tr>
-</tbody>
-</table>
-<div class="ulist">
-<ul>
-<li>
-<p>Couplets côte à côte</p>
-</li>
-<li>
-<p>diagrammes d&#8217;accords à l&#8217;intérieur</p>
-</li>
-<li>
-<p>intro à gauche</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_regular">Regular</h5>
-<div class="paragraph">
-<p><em>Comme le "regular-B" mais le titre sans bandeau</em></p>
 </div>
 <div class="paragraph">
-<p>Caractéristiques</p>
+<p>Le <em>layout</em> de la chanson n&#8217;est pas à confondre avec le gabarit :</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>titre simple, sans bandeau</p>
+<p>Le <strong>gabarit</strong> définit OÙ les éléments des paroles vont se placer dans la page et l&#8217;un par rapport à l&#8217;autre.</p>
 </li>
 <li>
-<p>Couplets côte à côte</p>
-</li>
-<li>
-<p>diagrammes d&#8217;accords à l&#8217;intérieur</p>
+<p>Le <strong>layout</strong> définit les métadonnées de la mise en page, comme la policier et la taille des caractères, les marges, les options de mise en page, etc.</p>
 </li>
 </ul>
 </div>
-</div>
-<div class="sect4">
-<h5 id="_column_b">Column-B</h5>
 <div class="paragraph">
-<p>Caractéristiques</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>titre dans un bandeau</p>
-</li>
-<li>
-<p>strophes l&#8217;une ou dessous de l&#8217;autre</p>
-</li>
-<li>
-<p>diagrammes d&#8217;accords des deux côtés</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_column">Column</h5>
-<div class="paragraph">
-<p><em>Comme le layout « Column-B » mais titre sans bandeau</em></p>
+<p>En général, on a souvent besoin de définir le <em>gabarit</em> d&#8217;une chanson  pour que tout tiennent bien dans la page, mais on laisse le <em>layout</em> défini pour le carnet s&#8217;occuper du reste, pour une mise ne page optimum.</p>
 </div>
 <div class="paragraph">
-<p>Caractéristiques</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>titre sans bandeau</p>
-</li>
-<li>
-<p>strophes l&#8217;une ou dessous de l&#8217;autre</p>
-</li>
-<li>
-<p>diagrammes d&#8217;accords des deux côtés</p>
-</li>
-</ul>
-</div>
-</div>
+<p>Aussi, si vous voulez en savoir  plus, pour vraiment créer un fichier <code>.layout</code> pour votre chanson, consultez la <a href="#songbook-layout">section consacrée</a> dans la partie sur les carnets de chant.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="gabarit-file">Gabarit de la chanson</h3>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+Pour ouvrir directement ce fichier, <code>songbook open gabarit --song "titre chanson"</code>
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p>**TODO Ce fichier est à reprendre entièrement pour voir ce qui doit être implémenté.</p>
 </div>
@@ -1564,6 +1453,226 @@ options:
 </div>
 <div class="paragraph">
 <p>Pour le <code>layout</code>, voir <a href="#song-layout">règles de mises en forme des chansons</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="songbook-layout">Layout d&#8217;un carnet</h3>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+Pour ouvrir directement ce fichier, <code>songbook open layout --sb "titre carnet"</code>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>C&#8217;est un fichier qui doit porter l&#8217;extension <code>.layout</code> ou <code>.lay</code> <a href="#app-extension-driven">peu importe son nom</a>.</p>
+</div>
+<div class="paragraph">
+<p>Dans <em>SongBook</em>, on peut le faire chanson par chanson mais il vaut mieux, pour la cohérence esthétique, le définir pour un carnet.</p>
+</div>
+<div class="paragraph">
+<p>À nouveau la même mise en garde : le <em>layout</em> de la chanson n&#8217;est pas à confondre avec le <em>gabarit</em> :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Le <strong>gabarit</strong> (fichier <code>.gab</code>) définit OÙ les éléments des paroles vont se placer dans la page et l&#8217;un par rapport à l&#8217;autre.</p>
+</li>
+<li>
+<p>Le <strong>layout</strong> (fichier <code>.lay</code>) définit les métadonnées de la mise en page, comme la policier et la taille des caractères, les marges, les options de mise en page, etc.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>En général, dans les carnets, le layout est déterminé par la propriété <code>layout</code> qui définit une mise en page par défaut de l&#8217;application. La liste des <a href="#app-layouts">layouts de l&#8217;application</a> suffisent normalement amplement à trouver son compte.</p>
+</div>
+<div class="paragraph">
+<p>Cependant, si vous voulez modifer certains paramètres, vous pouvez le faire par le biais d&#8217;un layout propre au carnet.</p>
+</div>
+<div class="paragraph">
+<p>Chaque <em>layout</em> doit définir les caractéristiques suivantes :</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 42.8571%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Caractéristique</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title_band</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Titre en bandeau ou pas.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code> = titre mis en bandeau</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lyrics_flux</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Définit le flux, l&#8217;enchainement des strophes, couplets, refrains et autres paroles.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>side</code> (pour "side by side", "côte à côte") ou <code>vertical</code> (pour "stacked vertically" ou "l&#8217;un au-dessous de l&#8217;autre") ou <code>free</code> (pour "free positioning", aucune contrainte).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Position des diagrammes d&#8217;accords, par défaut, dans la page</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Top</code>, <code>Bot</code>, <code>Int</code>, <code>Ext</code> ou combinaison : <code>Int+Ext</code>, <code>Bot+Int</code> etc.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dimensions des diags lorsque cette dimension doit être fixe et non touchée.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>auto</code>, <code>Nptx</code> (largeur de N points), <code>xNpt</code> (hauteur de N points), <code>NptxMpt</code> (largeur de N points et hauteur de M points)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>music_position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Position des partitions comme des tablatures, de façon générale.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>beginning</code> ou <code>front</code> (au début, avant les premières paroles), <code>end</code> (à la fin, après les premières paroles), <code>wherever</code> (pour "flexible", se placera là où il y a de la place libre).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>intro_align</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alignement d&#8217;un bloc désigné par "intro"</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>left</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect3">
+<h4 id="common-layouts">Mises en page par défaut</h4>
+<div class="sect4">
+<h5 id="_regular_b">Regular-B</h5>
+<div class="paragraph">
+<p>Caractéristiques</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 16.6666%;">
+<col style="width: 16.6666%;">
+<col style="width: 66.6668%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Propriété</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title_band</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Titre dans le bandeau</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lyrics_flux</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">couplets/refrain côte à côte</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Int</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Diagrammes proches des reliures</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>auto</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Taille automatique (?possible)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>music_position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>end</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La musique sera mise à la fin.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>intro_align</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Left</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Les parties « intro » sont mises à gauche.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="ulist">
+<ul>
+<li>
+<p>Couplets côte à côte</p>
+</li>
+<li>
+<p>diagrammes d&#8217;accords à l&#8217;intérieur</p>
+</li>
+<li>
+<p>intro à gauche</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_regular">Regular</h5>
+<div class="paragraph">
+<p><em>Comme le "regular-B" mais le titre sans bandeau</em></p>
+</div>
+<div class="paragraph">
+<p>Caractéristiques</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>titre simple, sans bandeau</p>
+</li>
+<li>
+<p>Couplets côte à côte</p>
+</li>
+<li>
+<p>diagrammes d&#8217;accords à l&#8217;intérieur</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_column_b">Column-B</h5>
+<div class="paragraph">
+<p>Caractéristiques</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>titre dans un bandeau</p>
+</li>
+<li>
+<p>strophes l&#8217;une ou dessous de l&#8217;autre</p>
+</li>
+<li>
+<p>diagrammes d&#8217;accords des deux côtés</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_column">Column</h5>
+<div class="paragraph">
+<p><em>Comme le layout « Column-B » mais titre sans bandeau</em></p>
+</div>
+<div class="paragraph">
+<p>Caractéristiques</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>titre sans bandeau</p>
+</li>
+<li>
+<p>strophes l&#8217;une ou dessous de l&#8217;autre</p>
+</li>
+<li>
+<p>diagrammes d&#8217;accords des deux côtés</p>
+</li>
+</ul>
+</div>
+</div>
 </div>
 </div>
 <div class="sect2">

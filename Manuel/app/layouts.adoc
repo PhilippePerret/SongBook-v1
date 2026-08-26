@@ -1,0 +1,13 @@
+[[app-layouts]]
+=== Layouts de l'application ===
+
+Les __layouts de l'application__ permettent de ne pas avoir à se soucier de mise en page lorsque l'on conçoit ses carnets.
+
+Si toutefois vous vouliez adapter les paramètres de la mise en page de votre carnet, vous pouvez le faire par le biais des <<songbook-layout, layouts de carnet>>.
+
+|====
+| **regular-B**   | Mise en page par défaut
+| **régular**     | Même que le précédent mais le titre n'est pas mis dans un bandeau noir.
+| **column-B**    | bandeau noir
+| **column**      | Comme le précédent mais le titre est sans bandeau noir.
+|====
