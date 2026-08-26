@@ -5,6 +5,7 @@ require_relative "carnet_builder"
 require_relative "app_config"
 require_relative "file_finder"
 require_relative "locale"
+require_relative "ansi_colors"
 
 # Résolution interactive d'un titre TAPÉ PAR L'USER (chanson OU carnet) vers un dossier —
 # extrait de `CLI` pour être partagé avec `TablatorAssistant` sans require circulaire.
@@ -45,10 +46,15 @@ module SongResolver
   def self.select_song(message, songs)
     choices = songs.map { |s| { name: s[:title] ? "#{s[:name]} (#{s[:title]})" : s[:name], value: s[:folder] } }
     choices << { name: Loc.get("none_of_these"), value: nil }
-    folder = TTY::Prompt.new.select(message.to_s, choices, show_help: false, filter: true)
+    folder = TTY::Prompt.new.select(blue(message.to_s), choices, show_help: false, filter: true)
     abort "aucune correspondance retenue" unless folder
 
     folder
+  end
+
+  # Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil).
+  def self.blue(text)
+    "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
   end
 
   # Titre/nom affichable d'un dossier chanson OU carnet déjà résolu (ex. confirmation de

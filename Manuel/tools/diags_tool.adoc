@@ -23,3 +23,13 @@ todo: exemple
 … qui produira :
 
 todo: exemple image
+
+==== Actualisation des diags ====
+
+Si vous avez ajouté des diags dans l'application, il peut être nécessaire d'actualiser les fichiers SVG et surtout le fichier HTML présentant tous les diags et permettant d'en choisir. Pour ce faire, utiliser la commande : 
+
+----
+songbook update diags
+----
+
+Ou simplement `update diags` en mode interactif.

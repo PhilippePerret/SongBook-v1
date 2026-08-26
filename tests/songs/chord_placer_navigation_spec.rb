@@ -128,6 +128,11 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
     it "'b9' = index hors bucket => nil (nouvel accord)" do
       expect(ChordPlacer.typed_match("b9", { "b" => %w[Bdim Bm9b] })).to be_nil
     end
+
+    it "l'INDEX gagne même si un accord inutilisé porte littéralement le nom tapé (bug 2026-08-27 : un résidu 'B2' en cache volait le raccourci de position 'b2')" do
+      letters = { "b" => %w[B7dim[d]-5 Bdim Bb Bbm B7dim B Bc B2 B3] }
+      expect(ChordPlacer.typed_match("b2", letters)).to eq("Bdim")
+    end
   end
 
   describe "ChordPlacer.active_letters (légende affichée = accords ACTIVEMENT posés, Phil 2026-08-26)" do

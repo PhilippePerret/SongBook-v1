@@ -19,6 +19,7 @@ require_relative "ansi_colors"
 require_relative "idml_cover_builder"
 require_relative "kdp"
 require_relative "../tools/DiagSchem/diagschem"
+require_relative "../tools/ChordDiagram/generate_chord_diagrams"
 
 # Dispatch de la ligne de commande `songbook` — parsing ARGV + routage vers la
 # logique métier (CarnetBuilder, DiagsPage, ...). `songbook.rb` reste un simple
@@ -153,7 +154,21 @@ module CLI
     when "-h", "--help"
       puts colorize_help(USAGE)
     when "diags"
-      puts DiagsPage.build_and_open!
+      puts raccourci(DiagsPage.build_and_open!)
+    when "update"
+      case arg1
+      when "diags"
+        created, skipped = GenerateChordDiagrams.run
+        created.each { |c| puts "#{AnsiColors::SUCCESS}👍 #{raccourci(c[:path])}#{AnsiColors::RESET}" }
+        skipped.each do |s|
+          msg = s[:error] ? "#{s[:line]} — #{s[:error]}" : s[:line]
+          puts "#{AnsiColors::ERROR}👎 #{raccourci(s[:schema_path])} : #{msg}#{AnsiColors::RESET}"
+        end
+        DiagsPage.build!
+        puts "#{AnsiColors::SUCCESS}👍 #{Loc.get("diags_updated")}#{AnsiColors::RESET}"
+      else
+        abort unknown_command_message("update #{arg1}")
+      end
     when "create"
       case arg1
       when "song"
@@ -346,7 +361,7 @@ module CLI
           abort "aucun fichier connu trouvé dans #{song_folder}" if choices.empty?
 
           puts "Ouverture de « #{title} »"
-          selected = TTY::Prompt.new.multi_select(Loc.get("open_which_files"), choices, default: defaults, echo: false, show_help: false)
+          selected = TTY::Prompt.new.multi_select(blue(Loc.get("open_which_files")), choices, default: defaults, echo: false, show_help: false)
           files = selected - [:folder]
           system("open", "-a", AppConfig.user_song_editor, *files) unless files.empty?
           SongCreator.open_in_file_manager(song_folder) if selected.include?(:folder)
@@ -538,6 +553,11 @@ module CLI
     "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
   end
 
+  # Chemin affiché à l'user : jamais le home complet en clair (Phil).
+  def self.raccourci(chemin)
+    chemin.sub(Dir.home, "~")
+  end
+
   # Racine reprise du nom le PLUS UTILISÉ parmi les fichiers déjà présents (ex. "c.lyr"
   # + "c.infos" -> "c") — "c" par défaut si le dossier est vide (Phil, 2026-08-26,
   # valable pour n'importe quel type de fichier manquant).
@@ -624,7 +644,7 @@ module CLI
 
   def self.build_not_found_menu(songs_dir, songbooks_dir)
     puts Loc.get("build_nothing_found")
-    choice = TTY::Prompt.new.select(Loc.get("build_what_to_build"), [
+    choice = TTY::Prompt.new.select(blue(Loc.get("build_what_to_build")), [
       { name: Loc.get("build_choice_carnet"), value: :carnet },
       { name: Loc.get("build_choice_song"), value: :song },
       { name: Loc.get("build_choice_cancel"), value: nil },

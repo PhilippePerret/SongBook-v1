@@ -19,8 +19,8 @@ module SongCreator
   def self.run(title = nil, performer = nil)
     prompt = TTY::Prompt.new
 
-    title ||= prompt.ask("Titre de la chanson :") { |q| q.required true }
-    performer ||= prompt.ask("Interprète :") { |q| q.required true }
+    title ||= prompt.ask(blue("Titre de la chanson :")) { |q| q.required true }
+    performer ||= prompt.ask(blue("Interprète :")) { |q| q.required true }
 
     songs_dir = AppConfig.songs_dir
     existing = CarnetBuilder.find_song(songs_dir, title, performer)
@@ -33,8 +33,8 @@ module SongCreator
 
     cl = find_composer_lyricist(title, performer)
     offer_wikipedia_page(prompt, cl, title, performer)
-    composer = prompt.ask("Compositeur :", default: cl[:composer]) { |q| q.required true }
-    lyricist = prompt.ask("Parolier :", default: cl[:lyricist]) { |q| q.required true }
+    composer = prompt.ask(blue("Compositeur :"), default: cl[:composer]) { |q| q.required true }
+    lyricist = prompt.ask(blue("Parolier :"), default: cl[:lyricist]) { |q| q.required true }
 
     infos = {
       "id" => id,
@@ -62,7 +62,7 @@ module SongCreator
   # vides de la fiche existante) ou juste demander à ouvrir son dossier (même question/
   # mécanisme que `offer_open_folder`, appelée en fin de création normale).
   def self.handle_existing_song(prompt, folder)
-    choice = prompt.select(format(Loc.get("song_exists"), folder), [
+    choice = prompt.select(blue(format(Loc.get("song_exists"), folder)), [
       { name: Loc.get("continue_creation"), value: :continue },
       { name: Loc.get("open_folder_question"), value: :open },
     ], show_help: false)
@@ -90,8 +90,8 @@ module SongCreator
       cl = find_composer_lyricist(title, performer)
       offer_wikipedia_page(prompt, cl, title, performer)
     end
-    infos["composer"] = prompt.ask("Compositeur :", default: cl && cl[:composer]) { |q| q.required true } if infos["composer"].to_s.strip.empty?
-    infos["lyrics"] = prompt.ask("Parolier :", default: cl && cl[:lyricist]) { |q| q.required true } if infos["lyrics"].to_s.strip.empty?
+    infos["composer"] = prompt.ask(blue("Compositeur :"), default: cl && cl[:composer]) { |q| q.required true } if infos["composer"].to_s.strip.empty?
+    infos["lyrics"] = prompt.ask(blue("Parolier :"), default: cl && cl[:lyricist]) { |q| q.required true } if infos["lyrics"].to_s.strip.empty?
 
     File.write(infos_path, "#{infos.map { |k, v| "#{k}: #{v}" }.join("\n")}\n")
 
@@ -110,9 +110,14 @@ module SongCreator
   end
 
   def self.offer_open_folder(prompt, folder)
-    return unless prompt.yes?(Loc.get("open_folder_question"))
+    return unless prompt.yes?(blue(Loc.get("open_folder_question")))
 
     open_in_file_manager(folder)
+  end
+
+  # Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil).
+  def self.blue(text)
+    "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
   end
 
   def self.open_in_file_manager(folder)
@@ -183,14 +188,14 @@ module SongCreator
     years = by_year.keys.map(&:to_i)
 
     if years.empty?
-      prompt.ask("Année :") { |q| q.required true }
+      prompt.ask(blue("Année :")) { |q| q.required true }
     elsif years.max - years.min <= 1
-      prompt.ask("Année :", default: years.min.to_s) { |q| q.required true }
+      prompt.ask(blue("Année :"), default: years.min.to_s) { |q| q.required true }
     else
       choices = by_year.map { |year, cs| { name: "#{year} (#{cs.map { |c| c[:source] }.join(", ")})", value: year } }
       choices << { name: "Autre (saisir)", value: :other }
-      picked = prompt.select("Plusieurs années trouvées, laquelle ?", choices, show_help: false)
-      picked == :other ? prompt.ask("Année :") { |q| q.required true } : picked
+      picked = prompt.select(blue("Plusieurs années trouvées, laquelle ?"), choices, show_help: false)
+      picked == :other ? prompt.ask(blue("Année :")) { |q| q.required true } : picked
     end
   end
 
@@ -240,7 +245,7 @@ module SongCreator
     return if missing.empty?
 
     items = missing.map { |f| format(Loc.get("wiki_missing_item"), f) }.join(" #{Loc.get('wiki_missing_join')} ")
-    return unless prompt.yes?(format(Loc.get("ask_open_wikipedia"), items))
+    return unless prompt.yes?(blue(format(Loc.get("ask_open_wikipedia"), items)))
 
     url = cl[:wikipedia_pageid] ? "https://fr.wikipedia.org/?curid=#{cl[:wikipedia_pageid]}" : "https://fr.wikipedia.org/w/index.php?search=#{CGI.escape("#{title} #{performer}")}"
     system("open", url)

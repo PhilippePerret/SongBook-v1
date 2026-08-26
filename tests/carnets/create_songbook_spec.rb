@@ -17,12 +17,12 @@ RSpec.describe "assistant de création de carnet" do
   after { FileUtils.rm_rf(created_folder) }
 
   it "Créer un carnet avec les bonnes données" do
-    allow(prompt).to receive(:ask).with("Titre du carnet :").and_return("Mon Carnet Test")
-    allow(prompt).to receive(:ask).with("Nom du dossier :", default: "Carnet-mon-carnet-test").and_return("Carnet-De-Test-Assistant")
-    allow(prompt).to receive(:ask).with("Sous-titre (rien si aucun) :").and_return("Le sous-titre")
-    allow(prompt).to receive(:ask).with("Prix (ex. 9,90 € — rien si inconnu) :").and_return("9,90 €")
-    allow(prompt).to receive(:ask).with("Nom de l'éditeur (rien si aucun) :").and_return("")
-    allow(prompt).to receive(:ask).with("Conception du carnet (rien si inconnu) :").and_return("Philippe")
+    allow(prompt).to receive(:ask).with(SongbookCreator.blue("Titre du carnet :")).and_return("Mon Carnet Test")
+    allow(prompt).to receive(:ask).with(SongbookCreator.blue("Nom du dossier :"), default: "Carnet-mon-carnet-test").and_return("Carnet-De-Test-Assistant")
+    allow(prompt).to receive(:ask).with(SongbookCreator.blue("Sous-titre (rien si aucun) :")).and_return("Le sous-titre")
+    allow(prompt).to receive(:ask).with(SongbookCreator.blue("Prix (ex. 9,90 € — rien si inconnu) :")).and_return("9,90 €")
+    allow(prompt).to receive(:ask).with(SongbookCreator.blue("Nom de l'éditeur (rien si aucun) :")).and_return("")
+    allow(prompt).to receive(:ask).with(SongbookCreator.blue("Conception du carnet (rien si inconnu) :")).and_return("Philippe")
     allow(prompt).to receive(:yes?).and_return(false)
 
     folder = SongbookCreator.run
@@ -39,8 +39,8 @@ RSpec.describe "assistant de création de carnet" do
   it "Retrouver un carnet déjà créé au lieu d'en refaire un" do
     FileUtils.mkdir_p(created_folder)
     File.write(File.join(created_folder, "c.infos"), "title: Déjà Là\n")
-    allow(prompt).to receive(:ask).with("Titre du carnet :").and_return("Peu importe")
-    allow(prompt).to receive(:ask).with("Nom du dossier :", default: "Carnet-peu-importe").and_return("Carnet-De-Test-Assistant")
+    allow(prompt).to receive(:ask).with(SongbookCreator.blue("Titre du carnet :")).and_return("Peu importe")
+    allow(prompt).to receive(:ask).with(SongbookCreator.blue("Nom du dossier :"), default: "Carnet-peu-importe").and_return("Carnet-De-Test-Assistant")
     allow(prompt).to receive(:yes?).and_return(false)
 
     result = SongbookCreator.run

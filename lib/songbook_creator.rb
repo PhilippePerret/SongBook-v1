@@ -19,17 +19,17 @@ module SongbookCreator
   def self.run(title = nil)
     prompt = TTY::Prompt.new
 
-    title ||= prompt.ask("Titre du carnet :") { |q| q.required true }
-    folder_name = prompt.ask("Nom du dossier :", default: "Carnet-#{CarnetBuilder.slugify(title)}") { |q| q.required true }
+    title ||= prompt.ask(blue("Titre du carnet :")) { |q| q.required true }
+    folder_name = prompt.ask(blue("Nom du dossier :"), default: "Carnet-#{CarnetBuilder.slugify(title)}") { |q| q.required true }
 
     songbooks_dir = AppConfig.songbooks_dir
     folder = File.join(songbooks_dir, folder_name)
     return handle_existing_songbook(prompt, folder) if Dir.exist?(folder)
 
-    subtitle = prompt.ask("Sous-titre (rien si aucun) :")
-    price = prompt.ask("Prix (ex. 9,90 € — rien si inconnu) :")
-    editor_name = prompt.ask("Nom de l'éditeur (rien si aucun) :")
-    book_designer = prompt.ask("Conception du carnet (rien si inconnu) :")
+    subtitle = prompt.ask(blue("Sous-titre (rien si aucun) :"))
+    price = prompt.ask(blue("Prix (ex. 9,90 € — rien si inconnu) :"))
+    editor_name = prompt.ask(blue("Nom de l'éditeur (rien si aucun) :"))
+    book_designer = prompt.ask(blue("Conception du carnet (rien si inconnu) :"))
 
     infos = default_infos(title: title, subtitle: subtitle, price: price, editor_name: editor_name, book_designer: book_designer)
 
@@ -96,9 +96,14 @@ module SongbookCreator
   end
 
   def self.offer_open_folder(prompt, folder)
-    return unless prompt.yes?(Loc.get("open_folder_question"))
+    return unless prompt.yes?(blue(Loc.get("open_folder_question")))
 
     open_in_file_manager(folder)
+  end
+
+  # Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil).
+  def self.blue(text)
+    "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
   end
 
   def self.open_in_file_manager(folder)

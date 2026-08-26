@@ -187,7 +187,7 @@ module ChordPlacer
     # Terminal déjà restauré ici (ensure de `with_raw_terminal`, qu'on sorte par
     # `break` ou par Ctrl+C). Rien demandé si RIEN n'a changé (Phil) — sinon TOUJOURS
     # soumis à validation, jamais un enregistrement silencieux.
-    save.call if dirty && TTY::Prompt.new.yes?(Loc.get("save_changes_question"))
+    save.call if dirty && TTY::Prompt.new.yes?(blue(Loc.get("save_changes_question")))
   end
 
   def self.editable_line?(line)
@@ -271,7 +271,7 @@ module ChordPlacer
   # Demandée AVANT toute édition (hors mode brut : lecture de ligne normale). Skip si
   # rien à ajouter (Entrée seule).
   def self.ask_initial_chords(letters, song_dir)
-    print Loc.get("ask_song_chords")
+    print blue(Loc.get("ask_song_chords"))
     STDOUT.flush
     input = $stdin.gets.to_s.strip
     added = false
@@ -332,18 +332,21 @@ module ChordPlacer
     # existant repris seulement si "F7" lui-même est déjà connu, pas juste "F...").
     return bucket.first if typing.length == 1
 
-    candidate = capitalize_chord(typing)
-    return candidate if bucket.include?(candidate)
-
     # "b2" = 2e accord de la lettre "b" (voir `chord_label`, légende "b2 = ...") : raccourci
-    # par INDEX si les chiffres tapés après la lettre pointent une position valide du bucket
-    # ET qu'aucun accord réel ne s'appelle littéralement ainsi (Phil, 2026-08-26 : "b2"
-    # laissé tel quel au lieu de reprendre l'accord existant).
+    # par INDEX, PRIORITAIRE sur la correspondance exacte (Phil, 2026-08-27 : un accord
+    # inutilisé mais encore en cache — ex. "B2" — ne doit JAMAIS voler le raccourci de
+    # position, sinon "b2" devient injoignable tant que ce résidu traîne). Correspondance
+    # exacte seulement en repli, si l'index tapé ne pointe aucune position du bucket
+    # (nécessaire pour "f"+"7" : "F7" existant repris seulement si "F7" lui-même est déjà
+    # connu, pas juste "F...").
     m = typing.match(/\A[a-z](\d+)\z/)
-    return nil unless m
+    if m
+      idx = m[1].to_i - 1
+      return bucket[idx] if idx >= 0 && idx < bucket.size
+    end
 
-    idx = m[1].to_i - 1
-    idx >= 0 && idx < bucket.size ? bucket[idx] : nil
+    candidate = capitalize_chord(typing)
+    bucket.include?(candidate) ? candidate : nil
   end
 
   # Un chiffre est un chiffre (Phil, 2026-08-26) : haut du clavier, pavé numérique

@@ -9,6 +9,7 @@ require 'tty-prompt'
 require_relative '../ChordDiagram/chord_diagram'
 require_relative 'schema_library'
 require_relative '../../lib/locale'
+require_relative '../../lib/ansi_colors'
 
 DOIGTS_VALIDES = %w[1 2 3 4 p].freeze
 CORDES_AUTORISEES_POUR_P = [5, 6].freeze
@@ -20,6 +21,9 @@ RESET = "\e[0m"
 GRAS = "\e[1m"
 
 def touche(s) = "#{ORANGE}#{s}#{RESET}"
+
+# Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil).
+def blue(s) = "#{AnsiColors::BLUE}#{s}#{AnsiColors::RESET}"
 
 HELP_TEXT = <<~TXT
   #{GRAS}diag#{RESET} — saisie assistée du schéma d'un diagramme d'accord
@@ -133,35 +137,43 @@ class DiagSchem
   # quand même dans le dossier courant.
   def proposer_enregistrement
     prompt = TTY::Prompt.new
-    if prompt.yes?(Loc.get('diag_save_question'))
+    if prompt.yes?(blue(Loc.get('diag_save_question')))
       enregistrer_dans_application(prompt)
     elsif !@output_svg
-      @svg_path = generer_svg if prompt.yes?(Loc.get('diag_output_question'))
+      @svg_path = generer_svg if prompt.yes?(blue(Loc.get('diag_output_question')))
     end
   end
 
-  # Nom demandé à l'user (texte libre, AUCUN défaut/pré-remplissage — Phil : le nom
-  # "Nom-case" existera presque toujours déjà, le proposer par défaut serait trompeur).
+  # Nom demandé à l'user (texte libre, AUCUN défaut/pré-remplissage) : c'est LE NOM
+  # EXACT, tel quel, à la fois du FICHIER SVG et de l'entrée dans `schemas.txt` (Phil,
+  # 2026-08-26 : rien n'est ajouté derrière, ni case ni autre). `Nom-case` reconnu si
+  # déjà présent dans le texte tapé (case reprise telle quelle) ; sinon la case en cours
+  # dans le tableau est utilisée pour reconstituer la ligne `schemas.txt` (`SchemaLibrary`
+  # exige un `Nom-case`), mais le SVG s'appelle toujours EXACTEMENT le texte tapé.
   # Vérifie 1) le nom (même nom+case) 2) SURTOUT le schéma (mêmes positions, sous
   # n'importe quel autre nom) — refuse l'enregistrement si l'un des deux existe déjà
   # (Phil : "trop dangereux"). Sinon insère (`SchemaLibrary`, ordre dicté par Phil) et
   # produit tout de suite le SVG dans le dossier de la lettre (pas le dossier courant).
   def enregistrer_dans_application(prompt)
-    nom = prompt.ask(Loc.get('diag_name_prompt')).to_s.strip
-    return if nom.empty?
+    texte = prompt.ask(blue(Loc.get('diag_name_prompt'))).to_s.strip
+    return if texte.empty?
+
+    m = texte.match(/\A(.+)-(\d+)\z/)
+    nom, case_ref = m ? [m[1], m[2].to_i] : [texte, @case_ref]
 
     tokens = @sortie.split(':', 2).last.strip
-    case SchemaLibrary.save(nom, @case_ref, tokens)
+    case SchemaLibrary.save(nom, case_ref, tokens)
     when :nom
-      puts "#{ROUGE}#{format(Loc.get('diag_conflict_nom'), "#{nom}-#{@case_ref}")}#{RESET}"
+      puts "#{ROUGE}#{format(Loc.get('diag_conflict_nom'), texte)}#{RESET}"
     when :schema
       doublon = SchemaLibrary.entries(nom).find { |e| e.tokens == tokens }
       puts "#{ROUGE}#{format(Loc.get('diag_conflict_schema'), "#{doublon.nom}-#{doublon.case_ref}")}#{RESET}"
     else
-      puts "#{VERT}👍 #{format(Loc.get('diag_inserted'), nom)}#{RESET}"
+      puts "#{VERT}👍 #{format(Loc.get('diag_inserted'), texte)}#{RESET}"
       @nom = nom
+      @case_ref = case_ref
       dossier = File.dirname(SchemaLibrary.schemas_path(nom))
-      @svg_path = Dir.chdir(dossier) { generer_svg }
+      @svg_path = Dir.chdir(dossier) { generer_svg("#{texte}.svg") }
     end
   end
 
@@ -593,11 +605,11 @@ class DiagSchem
     [positions, doigts, optionnels]
   end
 
-  def generer_svg
+  def generer_svg(chemin = nil)
     positions, doigts, optionnels = positions_et_doigts
     nom, basse = @nom.include?('/') ? @nom.split('/', 2) : [@nom, nil]
     svg = ChordDiagram.build(name: nom, positions: positions, fingers: doigts, bass: basse, optionals: optionnels)
-    chemin = "#{nom}-#{@case_ref}.svg"
+    chemin ||= "#{nom}-#{@case_ref}.svg"
     File.write(chemin, svg)
     chemin
   end

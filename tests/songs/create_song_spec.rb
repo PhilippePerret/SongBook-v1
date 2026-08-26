@@ -20,9 +20,9 @@ RSpec.describe "assistant de création de chanson" do
     allow(SongCreator).to receive(:find_year_candidates).and_return([])
     allow(SongCreator).to receive(:find_composer_lyricist).and_return({ composer: nil, lyricist: nil, wikipedia_pageid: nil })
     allow(SongCreator).to receive(:fetch_lyrics).and_return(nil)
-    allow(prompt).to receive(:ask).with("Année :").and_return("2020")
-    allow(prompt).to receive(:ask).with("Compositeur :", default: nil).and_return("Compositeur Test")
-    allow(prompt).to receive(:ask).with("Parolier :", default: nil).and_return("Parolier Test")
+    allow(prompt).to receive(:ask).with(SongCreator.blue("Année :")).and_return("2020")
+    allow(prompt).to receive(:ask).with(SongCreator.blue("Compositeur :"), default: nil).and_return("Compositeur Test")
+    allow(prompt).to receive(:ask).with(SongCreator.blue("Parolier :"), default: nil).and_return("Parolier Test")
     allow(prompt).to receive(:yes?).and_return(false)
 
     folder = SongCreator.run("Chanson De Test", "Artiste Test")

@@ -1,5 +1,6 @@
 require "yaml"
 require "rbconfig"
+require_relative "ansi_colors"
 
 # Configuration par défaut de l'application (Manuel/app/options.adoc) — `SongBook-app/config.yaml`,
 # clé/valeur plates, chargé une seule fois. Un carnet surcharge via son `.infos`/`.inf`
@@ -17,6 +18,11 @@ module AppConfig
 
   def self.get(key)
     all[key.to_s]
+  end
+
+  # Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil).
+  def self.blue(text)
+    "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
   end
 
   # Écrit/remplace `key: value` dans config.yaml (met à jour la ligne existante, sinon
@@ -38,7 +44,7 @@ module AppConfig
     return dir if dir && !dir.to_s.strip.empty? && Dir.exist?(dir.to_s)
 
     loop do
-      print "Dossier des chansons : "
+      print blue("Dossier des chansons : ")
       input = $stdin.gets.to_s.strip
       return set("songs_dir", input) if Dir.exist?(input)
       warn "dossier introuvable : #{input}"
@@ -52,7 +58,7 @@ module AppConfig
     return dir if dir && !dir.to_s.strip.empty? && Dir.exist?(dir.to_s)
 
     loop do
-      print "Dossier des carnets : "
+      print blue("Dossier des carnets : ")
       input = $stdin.gets.to_s.strip
       return set("songbooks_dir", input) if Dir.exist?(input)
       warn "dossier introuvable : #{input}"
@@ -67,7 +73,7 @@ module AppConfig
     return app if app && editor_app?(app)
 
     loop do
-      print "Éditer les chansons avec : "
+      print blue("Éditer les chansons avec : ")
       input = $stdin.gets.to_s.strip
       return set("user_song_editor", input) if editor_app?(input)
       warn "application introuvable : #{input}"

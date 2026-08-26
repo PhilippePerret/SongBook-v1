@@ -215,12 +215,15 @@ module CarnetBuilder
 
   # Sous-séquence ORDONNÉE : chaque mot de `target_words` doit se retrouver dans
   # `candidate`, dans le même ordre (pas forcément consécutifs), jamais en désordre.
+  # PRÉFIXE d'un mot du candidat, pas égalité stricte (Phil, 2026-08-27 : "vieux amant"
+  # doit retrouver "...vieux amants..." — l'expression tapée est bien EXACTEMENT
+  # présente dans le nom, un pluriel/suffixe en plus ne doit pas casser le match).
   def self.words_match?(target_words, candidate)
     return false if target_words.empty?
 
     idx = 0
     candidate.split("-").each do |word|
-      idx += 1 if idx < target_words.length && target_words[idx] == word
+      idx += 1 if idx < target_words.length && word.start_with?(target_words[idx])
     end
     idx == target_words.length
   end
