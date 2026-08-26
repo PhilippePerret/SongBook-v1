@@ -71,24 +71,50 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
     end
   end
 
-  describe "ChordPlacer.resolve_letter (accord existant vs nouvel accord)" do
-    it "lettre inconnue => nouvel accord" do
-      expect(ChordPlacer.resolve_letter("d", {})).to eq({ new: "d" })
+  describe "ChordPlacer.typed_match (accord existant vs nouvel accord, refait à chaque frappe)" do
+    it "minuscule initiale, correspond à un accord connu => ce nom exact" do
+      expect(ChordPlacer.typed_match("a", { "a" => ["A"] })).to eq("A")
     end
 
-    it "lettre minuscule frappée sur raccourci connu => accord existant" do
-      letters = { "a" => ["Am7"] }
-      expect(ChordPlacer.resolve_letter("a", letters)).to eq({ existing: "Am7", letter: "a" })
+    it "minuscule initiale, ne correspond à rien de connu => nil (nouvel accord)" do
+      expect(ChordPlacer.typed_match("d", {})).to be_nil
     end
 
-    it "même lettre frappée en MAJUSCULE force un nouvel accord (collision)" do
-      letters = { "a" => ["Am7"] }
-      expect(ChordPlacer.resolve_letter("A", letters)).to eq({ new: "A" })
+    it "MAJUSCULE initiale => jamais de correspondance, même si ça matcherait en minuscule" do
+      expect(ChordPlacer.typed_match("A", { "a" => ["A"] })).to be_nil
     end
 
-    it "touche non alphabétique => rien" do
-      expect(ChordPlacer.resolve_letter("3", {})).to be_nil
-      expect(ChordPlacer.resolve_letter(:enter, {})).to be_nil
+    it "se raffine à chaque caractère : 'f' matche 'F', 'f7' ne matche plus rien" do
+      letters = { "f" => ["F"] }
+      expect(ChordPlacer.typed_match("f", letters)).to eq("F")
+      expect(ChordPlacer.typed_match("f7", letters)).to be_nil
+    end
+
+    it "'f7' matche si 'F7' est déjà connu de cette lettre" do
+      letters = { "f" => %w[F F7] }
+      expect(ChordPlacer.typed_match("f7", letters)).to eq("F7")
+    end
+  end
+
+  describe "ChordPlacer.normalize_digit (un chiffre est un chiffre, Phil 2026-08-26)" do
+    it "chiffre du haut du clavier => lui-même" do
+      expect(ChordPlacer.normalize_digit("7")).to eq("7")
+    end
+
+    it "pavé numérique (DECKPAM, symboles :kp0..:kp9) => chiffre correspondant" do
+      expect(ChordPlacer.normalize_digit(:kp7)).to eq("7")
+      expect(ChordPlacer.normalize_digit(:kp0)).to eq("0")
+    end
+
+    it "rangée du haut AZERTY sans Maj => chiffre correspondant" do
+      expect(ChordPlacer.normalize_digit("&")).to eq("1")
+      expect(ChordPlacer.normalize_digit("é")).to eq("2")
+      expect(ChordPlacer.normalize_digit("à")).to eq("0")
+    end
+
+    it "pas un chiffre, sous aucune forme => nil" do
+      expect(ChordPlacer.normalize_digit("a")).to be_nil
+      expect(ChordPlacer.normalize_digit(:enter)).to be_nil
     end
   end
 
@@ -192,6 +218,27 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       path = write_lyr(["bonjour tout"])
       simulate(path, "\nX\r", confirm: true)
       expect(File.readlines(path).first.chomp).to eq("bonjour tout")
+    end
+
+    it "chiffre du PAVÉ NUMÉRIQUE en cours de saisie (bug 2026-08-26, le vrai coupable : pavé inutilisable)" do
+      path = write_lyr(["bonjour tout"])
+      # "F" (nouvel accord) puis "7" via le pavé numérique (\eOw, DECKPAM) au lieu du
+      # clavier normal.
+      simulate(path, "\nF\eOw\r\r")
+      expect(File.readlines(path).first.chomp).to eq("/F7:bonjour tout")
+    end
+
+    it "chiffre AZERTY sans Maj (\"è\" = 7) en cours de saisie" do
+      path = write_lyr(["bonjour tout"])
+      simulate(path, "\nFè\r\r")
+      expect(File.readlines(path).first.chomp).to eq("/F7:bonjour tout")
+    end
+
+    it "une touche-commande (n/p/x/X/J/L/T/V) interrompt aussi la saisie en cours, comme une flèche" do
+      path = write_lyr(["bonjour tout"])
+      # "Gm" tapé, puis "n" (touche-commande) : valide "Gm" ET avance d'une lettre.
+      simulate(path, "\nGmn\r")
+      expect(File.readlines(path).first.chomp).to include("/Gm:")
     end
   end
 end

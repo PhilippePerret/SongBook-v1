@@ -11,11 +11,20 @@ require_relative "transpose"
 # Entrée = FINIR l'édition (jamais "ligne suivante" — seules les flèches ↑/↓ déplacent
 # entre les vers, ←/→ syllabe par syllabe, avec saut de vers en butée). Enregistrement
 # TOUJOURS soumis à validation (Entrée comme Ctrl+C), jamais silencieux.
-# Pose d'accord : taper une lettre — correspond à un raccourci déjà connu (minuscule) =>
-# accord existant posé ; sinon => saisie d'un NOUVEAU nom d'accord (`typing`, affiché en
-# direct sous le curseur), validée par Entrée OU simplement en bougeant (n'importe quelle
-# flèche). Collision minuscule déjà prise ("a" = "Am7") : la MAJUSCULE ("A") force la
-# saisie d'un nouvel accord plutôt que de reprendre l'existant.
+# Pose d'accord : TOUTE lettre démarre `typing` (buffer des caractères tapés tels
+# quels), qu'elle corresponde ou non à un raccourci — la décision "accord existant ou
+# nouveau" (`typed_match`) se refait à CHAQUE frappe, pas une fois pour toutes (Phil,
+# 2026-08-26 : "un chiffre est un chiffre" — plus de distinction clavier/pavé numérique,
+# plus de correction par INDEX du pavé numérique, un chiffre ÉTEND juste le nom en
+# cours). Règle : si `typing` (minuscule initiale) correspond EXACTEMENT à un accord
+# déjà connu de cette lettre => affiché/validé comme CET accord existant ; sinon =>
+# affiché/validé comme nouvel accord (texte tapé tel quel, capitalisé). MAJUSCULE
+# initiale : jamais un raccourci, toujours un nouvel accord, quoi qu'il arrive ensuite.
+# Une touche-commande (flèche, x/X/J/L/T/V/n/p, Entrée) interrompt/valide la saisie en
+# cours avec l'état COURANT (accord existant si ça matchait à cet instant, sinon nouveau
+# accord tel que tapé) — Entrée EN PLUS termine la saisie SANS quitter l'éditeur (il en
+# faut une 2e pour ça), les autres touches-commandes valident ET s'exécutent dans la
+# foulée (Phil : "flèche valide aussi l'accord en cours, sans Entrée" — généralisé).
 # `-icanon -echo` (PAS `stty raw` — `raw` coupe aussi ISIG et OPOST : Ctrl+C ne
 # signalait plus rien, et `\n` n'effectuait plus de retour chariot, d'où le décalage en
 # escalier constaté) : lecture caractère par caractère, ISIG/OPOST intacts, Ctrl+C
@@ -33,6 +42,13 @@ module ChordPlacer
   KEYPAD_DIGIT = { "p" => :kp0, "q" => :kp1, "r" => :kp2, "s" => :kp3, "t" => :kp4,
                    "u" => :kp5, "v" => :kp6, "w" => :kp7, "x" => :kp8, "y" => :kp9 }.freeze
   KEYPAD_DIGITS = (1..9).map { |n| :"kp#{n}" }.freeze
+
+  # Rangée du haut d'un clavier AZERTY français SANS Maj = ces symboles, pas les
+  # chiffres (Phil, 2026-08-26 : "même convention que pour les diags") — un chiffre
+  # tapé "normalement" (sans forcer Maj) arrive comme ça en frappe brute. 8/0
+  # complétés ici (convention AZERTY standard, non listés explicitement par Phil).
+  AZERTY_DIGITS = { "&" => "1", "é" => "2", "\"" => "3", "'" => "4", "(" => "5",
+                     "§" => "6", "è" => "7", "!" => "8", "ç" => "9", "à" => "0" }.freeze
 
   MODIFIERS = {
     nil => {},
@@ -78,17 +94,12 @@ module ChordPlacer
     cursor = 0
     notice = nil
     dirty = false
-    # {letter:, pos:, cursor:} du DERNIER accord posé via une lettre encore ambiguë
-    # (plusieurs accords partagent cette 1re lettre) — une touche du pavé numérique
-    # juste après corrige CET accord précis, tant qu'aucune autre touche ne s'est
-    # glissée entre les deux (Phil : "a" + "2" = 2e "La" rencontré).
-    pending = nil
-    # Nom d'accord en cours de saisie (String) au curseur courant, affiché en direct,
-    # `nil` tant qu'aucune saisie n'est en cours (voir en-tête du fichier).
+    # Caractères tapés tels quels (String), `nil` tant qu'aucune saisie n'est en cours
+    # (voir en-tête du fichier — décision existant/nouveau refaite à chaque frappe).
     typing = nil
 
     commit_typing = lambda do
-      chord = capitalize_chord(typing)
+      chord = typed_match(typing, letters) || capitalize_chord(typing)
       register_chord(letters, chord)
       save_cached_chords(song_dir, letters.values.flatten)
       chord_lines[editable[pos]].set_chord(cursor, chord)
@@ -97,27 +108,42 @@ module ChordPlacer
       typing = nil
     end
 
+    # Touches-commande qui interrompent une saisie en cours ET s'exécutent ensuite
+    # normalement (voir en-tête du fichier) — Entrée/Retour arrière traités À PART
+    # (Entrée valide SANS s'exécuter comme "quitter", Retour arrière édite le buffer).
+    command_key = lambda do |k|
+      (k.is_a?(Hash) && k[:arrow]) || (k.is_a?(String) && %w[x X J L T V n p].include?(k))
+    end
+
     begin
       with_raw_terminal do
         loop do
           current = chord_lines[editable[pos]]
-          render_window(editable, chord_lines, pos, cursor, letters, notice, typing)
+          live = typing && (typed_match(typing, letters) || typing)
+          render_window(editable, chord_lines, pos, cursor, letters, notice, live)
           key = read_key
-          keep_pending = false
 
           if typing
-            case key
-            when :enter
+            digit = normalize_digit(key)
+            if key == :enter
               commit_typing.call
-            when :backspace
+              next
+            elsif key == :backspace
               typing = typing.length > 1 ? typing[0..-2] : nil
-            when ->(k) { k.is_a?(Hash) && k[:arrow] }
+              next
+            elsif command_key.call(key)
               commit_typing.call
-              pos, cursor = apply_arrow(key, pos, cursor, chord_lines, editable)
-            when String
-              typing << key if key.length == 1
+              # PAS de `next` : tombe dans le dispatch normal ci-dessous, MÊME touche
+              # (`typing` vient d'être remis à `nil`).
+            elsif digit
+              typing << digit
+              next
+            elsif key.is_a?(String) && key.length == 1
+              typing << key
+              next
+            else
+              next
             end
-            next
           end
 
           case key
@@ -132,17 +158,6 @@ module ChordPlacer
             if editable.any? { |i| chord_lines[i].chords.any? } && confirm_delete_all
               editable.each { |i| chord_lines[i].chords.clear }
               dirty = true
-            end
-          when *KEYPAD_DIGITS
-            if pending
-              digit = key.to_s.delete_prefix("kp").to_i
-              bucket = letters[pending[:letter]]
-              chord = bucket && bucket[digit - 1]
-              if chord
-                chord_lines[editable[pending[:pos]]].set_chord(pending[:cursor], chord)
-                dirty = true
-                keep_pending = true
-              end
             end
           when "J"
             cursor = 0
@@ -160,40 +175,9 @@ module ChordPlacer
             cursor = 0
           when ->(k) { k.is_a?(Hash) && k[:arrow] }
             pos, cursor = apply_arrow(key, pos, cursor, chord_lines, editable)
-          when ->(k) { pending && k.is_a?(String) && k.match?(/\A\d\z/) }
-            # Chiffre juste après une lettre encore ambiguë (Phil, 2026-08-26, "F7" :
-            # "f" seul plaçait "F" tout de suite, "7" ensuite était juste ignoré,
-            # impossible d'entrer "F7"). "<Lettre>+chiffre" correspond à un AUTRE
-            # accord déjà connu de cette lettre (ex. "a"+"7" = "A7" déjà enregistré) =>
-            # corrige l'accord posé vers celui-là. Sinon => "<Lettre>+chiffre" n'existe
-            # PAS => FORCÉMENT un nouvel accord (Phil) : annule le raccourci posé par
-            # erreur, reprend la saisie comme si la lettre avait lancé `typing`.
-            letter = pending[:letter]
-            candidate = "#{letter.upcase}#{key}"
-            if letters[letter]&.include?(candidate)
-              chord_lines[editable[pending[:pos]]].set_chord(pending[:cursor], candidate)
-              dirty = true
-              keep_pending = true
-            else
-              chord_lines[editable[pending[:pos]]].delete_chord(pending[:cursor])
-              typing = candidate
-              dirty = true
-            end
           else
-            resolved = resolve_letter(key, letters)
-            if resolved
-              if resolved[:existing]
-                current.set_chord(cursor, resolved[:existing])
-                dirty = true
-                pending = { letter: resolved[:letter], pos: pos, cursor: cursor }
-                keep_pending = true
-              else
-                typing = resolved[:new]
-              end
-            end
+            typing = key if key.is_a?(String) && key.match?(/\A[a-zA-Z]\z/)
           end
-
-          pending = nil unless keep_pending
         end
       end
     rescue Interrupt
@@ -244,8 +228,8 @@ module ChordPlacer
 
   # Raccourci = 1re lettre du NOM de l'accord (Phil : "a" = "A7M", "b" = "Bm9b" — plus
   # confusionnant qu'un ordre a/b/c/d arbitraire). Collision (plusieurs accords partagent
-  # la même 1re lettre) : `letters[lettre]` = liste, dans l'ordre de rencontre — 1er par
-  # défaut, un chiffre du pavé numérique juste après corrige vers le Nième (voir `run`).
+  # la même 1re lettre) : `letters[lettre]` = liste, dans l'ordre de rencontre —
+  # désambiguïsée en continuant à taper le nom complet (voir `typed_match`).
   def self.register_chord(letters, chord)
     letter = chord[0].downcase
     letters[letter] ||= []
@@ -318,19 +302,26 @@ module ChordPlacer
     File.write(path, lines.join)
   end
 
-  # Lettre frappée hors saisie en cours : raccourci MINUSCULE déjà connu ET frappé en
-  # minuscule => accord existant repris ; sinon => nouvel accord (la MAJUSCULE force ce
-  # cas même en collision avec un raccourci connu, voir en-tête du fichier). `nil` si la
-  # touche n'est pas une lettre.
-  def self.resolve_letter(key, letters)
-    return nil unless key.is_a?(String) && key.match?(/\A[a-zA-Z]\z/)
+  # `typing` (buffer tel que tapé) correspond-il à un accord déjà connu ? Nom RÉEL de
+  # cet accord si oui, `nil` sinon — MAJUSCULE initiale : jamais de correspondance,
+  # toujours `nil` (voir en-tête du fichier, règle Phil 2026-08-26).
+  def self.typed_match(typing, letters)
+    return nil if typing[0].match?(/[A-Z]/)
 
-    lower = key.downcase
-    if key == lower && letters.key?(lower)
-      { existing: letters[lower].first, letter: lower }
-    else
-      { new: key }
-    end
+    candidate = capitalize_chord(typing)
+    letters[typing[0].downcase]&.include?(candidate) ? candidate : nil
+  end
+
+  # Un chiffre est un chiffre (Phil, 2026-08-26) : haut du clavier, pavé numérique
+  # (`\eOp`..`\eOy`, mode application DECKPAM) ou rangée du haut d'un AZERTY sans Maj
+  # (`AZERTY_DIGITS`) — les trois formes normalisées vers le même caractère "0".."9".
+  # `nil` si `key` n'est pas un chiffre, sous quelque forme que ce soit.
+  def self.normalize_digit(key)
+    return key.to_s.delete_prefix("kp") if key.is_a?(Symbol) && (key == :kp0 || KEYPAD_DIGITS.include?(key))
+    return AZERTY_DIGITS[key] if key.is_a?(String) && AZERTY_DIGITS.key?(key)
+    return key if key.is_a?(String) && key.match?(/\A\d\z/)
+
+    nil
   end
 
   def self.apply_arrow(key, pos, cursor, chord_lines, editable)
