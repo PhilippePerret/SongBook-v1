@@ -54,6 +54,7 @@ tablator_metrique_bottom: "Time signature — bottom number:"
 tablator_write_saved: "Tablature saved."
 tablator_svg_produced: "SVG file produced."
 tablator_build_now_question: "Build the SVG file?"
+tablator_which_one: "Which tablature?"
 
 # use (REPL)
 use_song_set: "Current song: %s"

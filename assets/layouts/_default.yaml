@@ -3,3 +3,7 @@ title_band: true
 diags_position: left
 lyrics_flux: side
 intro_align: left
+shrink_text: false
+shrink_diags: true
+shrink_tabla: false
+shrink_score: true

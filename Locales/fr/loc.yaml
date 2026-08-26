@@ -62,6 +62,7 @@ tablator_metrique_bottom: "Métrique — chiffre du bas :"
 tablator_write_saved: "Tablature enregistrée."
 tablator_svg_produced: "Fichier SVG produit."
 tablator_build_now_question: "Construire le fichier SVG ?"
+tablator_which_one: "Quelle tablature ?"
 
 # use (REPL)
 use_song_set: "Chanson courante : %s"
