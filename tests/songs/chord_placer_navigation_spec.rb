@@ -71,6 +71,24 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
     end
   end
 
+  describe "ChordPlacer.chord_known? (accord simple vs accord précis \"Nom-Case\")" do
+    it "accord simple (pas de \"-\") : trouvé si N'IMPORTE QUELLE case existe" do
+      expect(ChordPlacer.chord_known?("F7M", Dir.mktmpdir)).to be true
+    end
+
+    it "accord précis (\"Nom-Case\") : trouvé SEULEMENT si CETTE case exacte existe (bug 2026-08-26 : cherchait \"Nom-Case-*.svg\")" do
+      expect(ChordPlacer.chord_known?("F7M-1", Dir.mktmpdir)).to be true
+    end
+
+    it "accord précis avec une case qui n'existe pas : PAS de repli sur une autre case" do
+      expect(ChordPlacer.chord_known?("F7M-9", Dir.mktmpdir)).to be false
+    end
+
+    it "accord totalement inconnu : ni simple ni précis" do
+      expect(ChordPlacer.chord_known?("Zzz9", Dir.mktmpdir)).to be false
+    end
+  end
+
   describe "ChordPlacer.typed_match (accord existant vs nouvel accord, refait à chaque frappe)" do
     it "minuscule initiale, correspond à un accord connu => ce nom exact" do
       expect(ChordPlacer.typed_match("a", { "a" => ["A"] })).to eq("A")
