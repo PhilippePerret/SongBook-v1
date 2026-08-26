@@ -4,6 +4,7 @@ require "readline"
 require "shellwords"
 require "tty-prompt"
 require_relative "carnet_builder"
+require_relative "layout"
 require_relative "help"
 require_relative "diags_page"
 require_relative "app_config"
@@ -463,7 +464,15 @@ module CLI
         elsif target[:kind] == :carnet
           CarnetBuilder.build(target[:folder], cover: cover, debug_marks: debug_marks)
         else
-          CarnetBuilder.build_song(target[:folder])
+          pdf_path = CarnetBuilder.build_song(target[:folder])
+          puts "#{AnsiColors::SUCCESS}👍 #{format(Loc.get("song_pdf_generated"), SongResolver.display_name(target[:folder]))}#{AnsiColors::RESET}"
+
+          if Layout.log_conflict_count.to_i.positive?
+            puts "#{AnsiColors::ERROR}#{format(Loc.get("song_build_conflicts_count"), Layout.log_conflict_count)}#{AnsiColors::RESET}"
+            system("open", Layout.conflict_log_path) if TTY::Prompt.new.yes?(blue(Loc.get("song_build_open_conflicts_question")))
+          end
+
+          system("open", pdf_path) if TTY::Prompt.new.yes?(blue(Loc.get("song_build_open_pdf_question")))
         end
       rescue Interrupt
         puts

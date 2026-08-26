@@ -421,11 +421,11 @@ module CarnetBuilder
 
     out_path = File.join(export_dir, "#{slug}.pdf")
     PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout: layout)
-    Layout.report_conflicts!
     # Sur la DERNIÈRE ligne du log de conflits, noms exacts (Phil, 2026-08-26).
     missing_chords_summary = Layout.missing_chords_summary
     File.open(Layout.conflict_log_path, "a") { |f| f.puts missing_chords_summary } if missing_chords_summary
-    puts "#{File.basename(out_path)} généré"
+    # Rapport (succès/conflits/propositions d'ouverture) laissé à l'appelant interactif
+    # (`CLI`, Phil, 2026-08-27) — `build_song` reste une pure fonction de construction.
     out_path
   end
 
