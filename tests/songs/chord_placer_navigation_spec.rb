@@ -168,5 +168,30 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       simulate(path, "Lf7\r\r")
       expect(File.readlines(path).first.chomp).to eq("/F:bon /F7:jour tout/F7:")
     end
+
+    it "x (minuscule) supprime seulement l'accord au curseur" do
+      path = write_lyr(["/Am:bonjour /C:tout"])
+      simulate(path, "x\r")
+      expect(File.readlines(path).first.chomp).to eq("bonjour /C:tout")
+    end
+
+    it "X (majuscule), confirmée, supprime TOUS les accords de la chanson" do
+      path = write_lyr(["/Am:bonjour /C:tout", "/G:le monde"])
+      simulate(path, "X\r", confirm: true)
+      expect(File.readlines(path).map(&:chomp)).to eq(["bonjour tout", "le monde"])
+    end
+
+    it "X (majuscule), refusée, ne touche à AUCUN accord" do
+      path = write_lyr(["/Am:bonjour /C:tout"])
+      original = File.read(path)
+      simulate(path, "X\r", confirm: false)
+      expect(File.read(path)).to eq(original)
+    end
+
+    it "X sans aucun accord dans la chanson : ne demande rien, ne casse rien" do
+      path = write_lyr(["bonjour tout"])
+      simulate(path, "\nX\r", confirm: true)
+      expect(File.readlines(path).first.chomp).to eq("bonjour tout")
+    end
   end
 end

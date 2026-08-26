@@ -28,4 +28,17 @@ RSpec.describe "construction d'une chanson seule" do
   it "reconnaît un dossier de chanson valide" do
     expect(CarnetBuilder.song_folder?(song_folder)).to be true
   end
+
+  it "log de conflits : liste des accords manquants sur la DERNIÈRE ligne, avec leur nom exact" do
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "c.lyr"), "{couplet-1}\n/Zzz9:Un accord qui n'existe pas\n")
+      File.write(File.join(dir, "c.infos"), "title: Test Log\n")
+
+      CarnetBuilder.build_song(dir)
+
+      conflict_log = Dir.glob(File.join(dir, "export", "*-conflicts.log")).first
+      lines = File.readlines(conflict_log).map(&:chomp).reject(&:empty?)
+      expect(lines.last).to eq("ACCORDS MANQUANTS : Zzz9 (Test Log)")
+    end
+  end
 end
