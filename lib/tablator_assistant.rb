@@ -171,6 +171,10 @@ module TablatorAssistant
     string = 1
     col = 0
     editing_at = nil
+    # "q" demande confirmation avant d'enregistrer (question bleue, cohérence avec les
+    # autres éditeurs de l'app) ; Entrée enregistre directement, sans redemander (Phil,
+    # 2026-08-26).
+    ask_before_save = false
 
     begin
       begin
@@ -201,6 +205,9 @@ module TablatorAssistant
               File.write(temp_path, serialize(meta, matrix_to_tokens(matrix, unit)))
               render_tab_svg(temp_path, out_base: out_base)
             when "q"
+              ask_before_save = true
+              break
+            when "\r", "\n"
               break
             when /\A\d\z/
               if editing_at == [string, col] && matrix[string - 1][col]
@@ -227,9 +234,11 @@ module TablatorAssistant
         return
       end
 
+      return if ask_before_save && !TTY::Prompt.new.yes?(blue(Loc.get("save_changes_question")))
+
       meta["metrique"] = metrique if metrique
       out_path = save_tablature(tokens, meta, unit, edit_path)
-      puts Loc.get("tablator_write_saved")
+      puts "#{AnsiColors::SUCCESS}👍 #{Loc.get("tablator_write_saved")}#{AnsiColors::RESET}"
 
       return unless TTY::Prompt.new.yes?(blue(Loc.get("tablator_build_now_question")))
 
