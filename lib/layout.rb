@@ -56,9 +56,14 @@ module Layout
   @shrink_diags = true
   @shrink_tabla = true
   @shrink_score = true
+  # `shrink_text` (`build_row_or_split`, couplets côte à côte trop larges pour tenir
+  # dans la colonne) : DÉFAUT FALSE (Phil, 2026-08-26, inverse des autres `shrink_*`
+  # ci-dessus) — par défaut, la taille des caractères ne change JAMAIS ; `true` autorise
+  # la réduire jusqu'à `MIN_TEXT_SIZE` avant d'abandonner le côte à côte (empilement).
+  @shrink_text = false
   class << self
     attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing,
-      :sensitivity, :log_conflict_count, :shrink_diags, :shrink_tabla, :shrink_score
+      :sensitivity, :log_conflict_count, :shrink_diags, :shrink_tabla, :shrink_score, :shrink_text
   end
   CONFLICTS = []
 
@@ -1020,10 +1025,14 @@ module Layout
 
     # Abandon de l'alignement global pour CETTE row : rétrécie sur sa propre largeur
     # naturelle (col1_w global ne s'applique plus dès qu'on rétrécit ou empile).
-    natural_w = block_width(pdf, row[0]) + block_width(pdf, row[1])
-    scale = avail / natural_w.to_f
-    text_size = (TEXT_SIZE * scale).floor
-    return [shrunk_row_element(pdf, row, x0, h_gutter, text_size)] if text_size >= MIN_TEXT_SIZE
+    # `shrink_text: false` (défaut, Phil 2026-08-26) : jamais de réduction de taille,
+    # directement l'empilement ci-dessous.
+    if shrink_text
+      natural_w = block_width(pdf, row[0]) + block_width(pdf, row[1])
+      scale = avail / natural_w.to_f
+      text_size = (TEXT_SIZE * scale).floor
+      return [shrunk_row_element(pdf, row, x0, h_gutter, text_size)] if text_size >= MIN_TEXT_SIZE
+    end
 
     row.map { |block| row_to_element(pdf, [block], x0, width, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent) }
   end

@@ -33,7 +33,7 @@ module PageBuilder
   # `shrink_diags`/`shrink_tabla`/`shrink_score` : clé de PREMIER NIVEAU (pas de forme
   # imbriquée `options:`, volontairement simplifié, Phil 2026-08-26), chanson prioritaire
   # sur le carnet. `true` par défaut si absente des deux `.infos`.
-  def self.resolve_shrink_option(meta, carnet_folder, key)
+  def self.resolve_shrink_option(meta, carnet_folder, key, default: true)
     return meta[key] != "false" if meta.key?(key)
 
     if carnet_folder
@@ -44,7 +44,7 @@ module PageBuilder
       end
     end
 
-    true
+    default
   end
 
   def self.parse_infos(path)
@@ -423,6 +423,10 @@ module PageBuilder
     Layout.shrink_diags = resolve_shrink_option(meta, carnet_folder, "shrink_diags")
     Layout.shrink_tabla = resolve_shrink_option(meta, carnet_folder, "shrink_tabla")
     Layout.shrink_score = resolve_shrink_option(meta, carnet_folder, "shrink_score")
+    # Défaut FALSE (Phil, 2026-08-26 — inverse des autres `shrink_*`) : par défaut, la
+    # taille des caractères ne doit JAMAIS changer (`build_row_or_split`, couplets côte
+    # à côte trop larges) — comportement actuel avant ce correctif.
+    Layout.shrink_text = resolve_shrink_option(meta, carnet_folder, "shrink_text", default: false)
     Layout.current_song = meta["title"] || File.basename(folder)
     Layout.current_page = first_page_no
     lyr_blocks, lyr_order = parse_lyr(lyr_path)

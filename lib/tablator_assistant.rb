@@ -74,16 +74,45 @@ module TablatorAssistant
     warn "#{tab_path} : #{e.message}"
   end
 
+  # `name` : nom APPROXIMATIF, même recherche progressive que chanson/carnet (Phil,
+  # 2026-08-26) — 1) préfixe/mots dans l'ordre (`CarnetBuilder.prefix_match?`/
+  # `words_match?`) ; 1 seul résultat -> repris direct, plusieurs -> à choisir ; 2) rien
+  # à l'étape 1 -> repli flou (distance de Levenshtein, même seuil que
+  # `fuzzy_find_songs`). `name` `nil` : liste TOUTES les tablatures trouvées, à choisir
+  # (`edit tab` sans argument).
   def self.resolve_tab_path(name)
     song_folder = Session.song
     abort "aucune chanson de contexte pour --tab (--song ou use song)" unless song_folder
 
     candidates = Dir.glob(File.join(song_folder, "**", "*.tab"))
-    found = candidates.find { |p| File.basename(p, ".tab") == name }
-    found ||= candidates.find { |p| CarnetBuilder.slugify(File.basename(p, ".tab")) == CarnetBuilder.slugify(name) }
-    abort "tablature introuvable : #{name}" unless found
+    abort "aucune tablature (.tab) trouvée dans cette chanson" if candidates.empty?
 
-    found
+    return select_tab(candidates, Loc.get("tablator_which_one")) if name.nil?
+
+    target = CarnetBuilder.slugify(name)
+    target_words = target.split("-").reject(&:empty?)
+    matches = candidates.select do |p|
+      candidate = CarnetBuilder.slugify(File.basename(p, ".tab"))
+      CarnetBuilder.prefix_match?(target, candidate) || CarnetBuilder.words_match?(target_words, candidate)
+    end
+    return matches.first if matches.size == 1
+    return select_tab(matches, Loc.get("tablator_which_one")) if matches.size > 1
+
+    threshold = [2, (target.length * 0.35).round].max
+    fuzzy = candidates
+      .map { |p| [p, CarnetBuilder.levenshtein(target, CarnetBuilder.slugify(File.basename(p, ".tab")))] }
+      .select { |_, distance| distance <= threshold }
+      .sort_by { |_, distance| distance }
+      .first(5)
+      .map(&:first)
+    abort "tablature introuvable : #{name}" if fuzzy.empty?
+
+    select_tab(fuzzy, Loc.get("song_not_found_did_you_mean"))
+  end
+
+  def self.select_tab(paths, message)
+    songs = paths.map { |p| { name: File.basename(p, ".tab"), title: nil, folder: p } }
+    SongResolver.select_song(message, songs)
   end
 
   # Nom des cordes à vide (accordage standard EADGBE), 1 = aiguë (mi4) .. 6 = grave (mi2)
@@ -99,10 +128,12 @@ module TablatorAssistant
   # rythme par note dans cet éditeur).
   DURATIONS = { "noire" => 4, "croche" => 8, "double-croche" => 16, "triple-croche" => 32 }.freeze
 
-  # Rangée des chiffres d'un clavier AZERTY SANS Shift (Phil) -> chiffre équivalent.
+  # Rangée des chiffres d'un clavier AZERTY SANS Shift (Phil, confirmé 2026-08-26 —
+  # corrige "-"=6/"_"=8, faux, décidés sans concertation) -> chiffre équivalent. Même
+  # table que `ChordPlacer::AZERTY_DIGITS`.
   AZERTY_DIGITS = {
     "&" => "1", "é" => "2", "\"" => "3", "'" => "4", "(" => "5",
-    "-" => "6", "è" => "7", "_" => "8", "ç" => "9", "à" => "0",
+    "§" => "6", "è" => "7", "!" => "8", "ç" => "9", "à" => "0",
   }.freeze
 
   KEY_SEQUENCES = {

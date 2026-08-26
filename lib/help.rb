@@ -38,7 +38,11 @@ USAGE = <<~TXT
 
   - Assistant accords
 
-        {{command: songbook add chords "titre"}}
+        {{command: songbook edit chords "titre"}}
+
+  - Éditer une tablature de la chanson en contexte (nom approximatif, ou liste si omis)
+
+        {{command: songbook edit tab "nom approximatif"}}
 
   - Ouvrir le manuel
 

@@ -44,9 +44,9 @@ module ChordPlacer
   KEYPAD_DIGITS = (1..9).map { |n| :"kp#{n}" }.freeze
 
   # Rangée du haut d'un clavier AZERTY français SANS Maj = ces symboles, pas les
-  # chiffres (Phil, 2026-08-26 : "même convention que pour les diags") — un chiffre
-  # tapé "normalement" (sans forcer Maj) arrive comme ça en frappe brute. 8/0
-  # complétés ici (convention AZERTY standard, non listés explicitement par Phil).
+  # chiffres (Phil, 2026-08-26, confirmé jusqu'au 0 = "à") — un chiffre tapé
+  # "normalement" (sans forcer Maj) arrive comme ça en frappe brute. Même table que
+  # `TablatorAssistant::AZERTY_DIGITS`.
   AZERTY_DIGITS = { "&" => "1", "é" => "2", "\"" => "3", "'" => "4", "(" => "5",
                      "§" => "6", "è" => "7", "!" => "8", "ç" => "9", "à" => "0" }.freeze
 
@@ -373,11 +373,17 @@ module ChordPlacer
   # Vérifie l'existence d'un diagramme pour cet accord (dossier de la chanson, puis
   # `assets/chords_diags/` de l'app — les 2 sources demandées) — signalé, discret,
   # jamais négatif : `nil` si trouvé (rien à signaler), sinon un message neutre.
+  # "-<case>" (ex. "F7M-1") : même convention que `DSLParser::CHORD_RE`/`.lyr` — accord
+  # SIMPLE (pas de "-") => n'importe quelle case (`find_svg` fret nil, la plus basse) ;
+  # accord PRÉCIS (avec "-<case>") => CETTE case exacte et AUCUNE AUTRE (Phil, 2026-08-26
+  # : bug constaté — cherchait "F7M-1-*.svg" en traitant tout le texte comme un nom
+  # opaque, jamais "F7M-1.svg" lui-même, faux "sans diagramme" alors qu'il existait).
   def self.chord_known?(chord, song_dir)
-    fc = ChordDiagrams.file_chord(chord)
-    return true if ChordDiagrams.find_svg(song_dir, fc, nil, recursive: true)
+    name, fret = chord.split("-", 2)
+    fc = ChordDiagrams.file_chord(name)
+    return true if ChordDiagrams.find_svg(song_dir, fc, fret, recursive: true)
 
-    !!ChordDiagrams.find_svg(File.join(ChordDiagrams::ASSETS, chord[0].upcase), fc, nil, recursive: false)
+    !!ChordDiagrams.find_svg(File.join(ChordDiagrams::ASSETS, name[0].upcase), fc, fret, recursive: false)
   end
 
   def self.chord_notice(chord, song_dir)

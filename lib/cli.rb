@@ -173,7 +173,7 @@ module CLI
       else
         abort unknown_command_message("create #{arg1}")
       end
-    when "add"
+    when "edit"
       case arg1
       when "chords"
         begin
@@ -186,8 +186,15 @@ module CLI
           puts
         end
         puts Loc.get("edition_cancelled")
+      when "tab"
+        begin
+          tab_path = TablatorAssistant.resolve_tab_path(arg2)
+          TablatorAssistant.write_tablature(edit_path: tab_path)
+        rescue Interrupt
+          puts
+        end
       else
-        abort unknown_command_message("add #{arg1}")
+        abort unknown_command_message("edit #{arg1}")
       end
     when "song"
       case arg1
