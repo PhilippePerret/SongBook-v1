@@ -11,7 +11,7 @@ Cette partie concerne les règles esthétiques qui doivent être appliquée pour
 | Num. | Règle | Note
 
 | RAG1
-| L'erreur doit être signalée à l'user en fonction du **degré de sensibilité** défini dans le <<config, fichier de configuration>>
+| L'erreur doit être signalée à l'user en fonction du **degré de sensibilité** défini par les <<options>>.
 | cf. `sensitivity`
 
 | RAG2

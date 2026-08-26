@@ -1,42 +1,52 @@
-Doutes relevés en comparant le Manuel (Manuel/*.adoc) au code réel — RIEN testé
-là-dessus tant que ce n'est pas tranché, pour ne pas valider un test sur du vent.
-Manuel non touché, juste lu.
+Doutes relevés en comparant le Manuel au code réel — suivi des décisions prises.
 
-COMMANDES DOCUMENTÉES MAIS INTROUVABLES DANS lib/cli.rb
-- `songbook list songs` (+ gabarit de sortie personnalisé) — aucun case "list"
-- `songbook manual` / `songbook manuel` [sujet] — aucun case "manual"/"manuel"
-- `songbook create songbook` / `create sb` — seul "create song" existe
-- `songbook cover dims` / `cover modele-idml` / `cover modele-pdf` — aucun case
-  "cover" ; lib/idml_cover_builder.rb existe mais n'est appelé nulle part
-- `songbook build diag "<schéma>"` — répété dans 4 pages du Manuel, jamais câblé
-- `songbook build tab` / `build tabs "titre"` — le vrai point d'entrée est
-  `songbook tablator assistant` / `tab assistant`
+TRAITÉS (implémentés + testés)
+- `songbook list songs` [gabarit] [séparateur] — fait.
+- `songbook manual`/`manuel` [sujet] — fait (regénère + ouvre le HTML, cherche le
+  sujet dans tout le Manuel si donné).
+- `songbook create songbook`/`create sb` — fait (wizard inspiré de Carnet-1, seul
+  carnet réel avec un .infos complet — les 2 autres n'en ont pas).
+- `songbook cover dims` — fait (nécessite d'avoir déjà construit le carnet une fois,
+  pour connaître le nombre de pages réel).
+- `songbook cover idml`/`cover modele` — fait (réutilise IdmlCoverBuilder, orphelin
+  jusque-là). Pas de PDF, comme demandé.
+- `songbook build diag "<schéma>"` — fait (DiagSchem gagne une méthode non
+  interactive ; au passage, bloc ARGV en bas de diagschem.rb protégé par
+  `$PROGRAM_NAME == __FILE__`, sinon il s'exécutait à chaque `require`).
+- `songbook build tab "titre chanson"` — fait.
+- `.cover`/`.cov` dans FileFinder — fait. EN PRIME : bug trouvé au passage, le `.cov`
+  propre au carnet n'était JAMAIS lu, `cov_path` était toujours codé en dur sur
+  `_default.cov` — corrigé.
+- Niveaux de sensibilité (RAG1-5, `sensitivity:` du .infos : high/errors/log/low) —
+  fait. Le SENSITIVITY=4 fixe en dur a disparu. Choix fait seul : l'ancien niveau 2
+  ("demande à l'user quoi faire") n'est dans AUCUNE des 4 valeurs documentées par
+  RAG1-5 — supprimé plutôt que gardé en 5e valeur non documentée. À confirmer si
+  c'était voulu ailleurs.
+- EN PRIME (pas demandé, trouvé en marge de la sensibilité) : `CONFLICTS`/le compteur
+  d'erreurs "log" ne se réinitialisaient JAMAIS entre deux builds du même process
+  (REPL) — les erreurs d'un ancien carnet fuitaient dans le rapport du suivant.
+  Corrigé (`Layout.reset_conflicts!`, appelé en tête de chaque build).
 
-AUTRES ÉCARTS DOC/CODE
-- song/chords.adoc : quasi-copie de song/diags.adoc (copier-coller), ne documente
-  pas vraiment l'outil d'accords (déjà couvert par tools/add_chords.adoc)
-- song/lyrics.adoc "Riffs" (`/riff nom: ...`) : la syntaxe (espace dans le nom)
-  ne peut pas matcher CHORD_RE ; aucun code de gestion des riffs trouvé
-- song/layout.adoc : `diags_size`/`music_position` explicitement "pas encore
-  implémenté" (commentaire du code lui-même) ; `lyrics_flux: free` lève une
-  erreur exprès (pas un bug, un manque assumé)
-- annexes/properties.adoc : sur 6 propriétés de position documentées, seule
-  `block-align` est vraiment lue par le rendu (margin-top/bottom/left/right et
-  block-valign : jamais consommées) ; sur 5 propriétés de texte, seule `align`
-  est lue (font-family/font-size/font-style/font : jamais consommées)
-- user_files/config.adoc : tout le bloc OPTIONS (`sensitivity`, `mode`,
-  `labels_in_title_band`, `keep_order`, `shrink_diag`, `shrink_tabla`,
-  `shrink_score`) : zéro référence trouvée dans le code
-- songbook/infos.adoc : `options.redim_diags` introuvable dans le code ;
-  `front_matter.title_page` jamais lu, le code lit `pages_garde` (non documenté)
-- annexes/extension-driven.adoc : `.cover`/`.cov` documenté comme extension au
-  même titre que .infos/.lyr/etc., mais absent de FileFinder::EXTENSIONS
-- .config/configuration.config (mentionné dans song/song-folder.adoc) : aucune
-  extension dédiée trouvée ; toute la config carnet/chanson vit dans .infos
-- user_files/_main.adoc : lien cassé `include:tablas-et-scores.adoc[]` (syntaxe
-  à deux ":" manquante) vers un fichier qui n'existe pas à cet endroit
-- user_files/gabarit.adoc (page marquée "à placer" par son propre texte) :
-  `title: simple` (le code produit "inline", pas "simple") ; `infos: under|
-  beside` et `{score:...}` introuvables ; `shrink` sur {tabla:...} jamais lu
-- _dev/regles_esthetiques.adoc RAG1-5 (niveaux de sensibilité) : le code a bien
-  une seule constante SENSITIVITY (fixée à 4 en dur), pas un réglage par carnet
+PAS TRAITÉS (à faire plus tard, dit explicitement)
+- Riffs (`/riff nom: ...`, song/lyrics.adoc).
+- `diags_size`/`music_position`/`lyrics_flux: free` (song/layout.adoc).
+
+À TRANCHER AVANT D'Y TOUCHER (rendu PDF trop sensible pour deviner)
+- `options.redim_diags` (songbook/infos.adoc) : rien trouvé sous ce nom précis. Il
+  existe un mécanisme de rétrécissement AUTOMATIQUE des diagrammes déjà en place
+  (`DIAG_W` nominal, rétréci si besoin pour tenir dans la page) — `redim_diags` doit-il
+  ACTIVER/DÉSACTIVER ce mécanisme, ou fixer une AUTRE taille nominale que `DIAG_W` ?
+- `front_matter.title_page` (songbook/infos.adoc) : le code lit `pages_garde`
+  (booléen, non documenté) pour une notion proche. `title_page` est-il la MÊME chose
+  que `pages_garde` sous un autre nom (doc à corriger), ou une VRAIE page de titre
+  distincte à ajouter (comme `half_title_page`, mais complète) ?
+- Propriétés de position/texte du `.gab`/`.cover` (annexes/properties.adoc) :
+  margin-top/bottom/left/right, block-valign, font-family/font-size/font-style/font —
+  aucune n'est encore lue par le rendu (seules `align`/`block-align` le sont). Prêt à
+  les câbler dans page_builder.rb/layout.rb, mais c'est le cœur du moteur de mise en
+  page (beaucoup de "bug constaté" dans les commentaires existants) — à faire un
+  réglage à la fois, testé, plutôt que les 7 d'un coup.
+
+NE PAS TOUCHER (dit explicitement)
+- user_files/gabarit.adoc (page marquée "à placer" par son propre texte, pas mon
+  problème).

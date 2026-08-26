@@ -30,6 +30,23 @@ module PageBuilder
   # tolérées (Phil, 2026-08-17 : "tu les prends comme possibles dans le code" — pas de
   # réécriture de fichier imposée) : n'écrasent JAMAIS la clé canonique si elle est déjà
   # présente.
+  # `shrink_diags`/`shrink_tabla`/`shrink_score` : clé de PREMIER NIVEAU (pas de forme
+  # imbriquée `options:`, volontairement simplifié, Phil 2026-08-26), chanson prioritaire
+  # sur le carnet. `true` par défaut si absente des deux `.infos`.
+  def self.resolve_shrink_option(meta, carnet_folder, key)
+    return meta[key] != "false" if meta.key?(key)
+
+    if carnet_folder
+      carnet_infos_path = FileFinder.find(carnet_folder, :inf)
+      if carnet_infos_path
+        carnet_meta = parse_infos(carnet_infos_path)
+        return carnet_meta[key] != "false" if carnet_meta.key?(key)
+      end
+    end
+
+    true
+  end
+
   def self.parse_infos(path)
     meta = {}
     File.foreach(path) do |line|
@@ -403,6 +420,9 @@ module PageBuilder
     raise "fichiers .lyr/.lyrics ou .infos/.inf introuvables dans #{folder}" unless lyr_path && infos_path
 
     meta = parse_infos(infos_path)
+    Layout.shrink_diags = resolve_shrink_option(meta, carnet_folder, "shrink_diags")
+    Layout.shrink_tabla = resolve_shrink_option(meta, carnet_folder, "shrink_tabla")
+    Layout.shrink_score = resolve_shrink_option(meta, carnet_folder, "shrink_score")
     Layout.current_song = meta["title"] || File.basename(folder)
     Layout.current_page = first_page_no
     lyr_blocks, lyr_order = parse_lyr(lyr_path)
@@ -456,9 +476,9 @@ module PageBuilder
       dynamic_mode = %i[int ext].include?(diag_position) ? diag_position : nil
       Layout.log_build("#{diag_paths.size} diagramme(s) d'accord, position=#{dynamic_mode ? "#{dynamic_mode} (résolu page par page)" : diag_position}")
 
-      text_x, text_w, first_avail_h, side_col = Layout.layout_diags(pdf, diag_paths, dynamic_mode ? :left : diag_position, header_bottom)
+      text_x, text_w, first_avail_h, side_col, row_excess, row_excess_w = Layout.layout_diags(pdf, diag_paths, dynamic_mode ? :left : diag_position, header_bottom)
       text_x_r, side_col_r = if dynamic_mode
-        tx_r, _, _, sc_r = Layout.layout_diags(pdf, diag_paths, :right, header_bottom)
+        tx_r, _, _, sc_r, = Layout.layout_diags(pdf, diag_paths, :right, header_bottom)
         [tx_r, sc_r]
       end
 
@@ -498,7 +518,7 @@ module PageBuilder
       end
 
       Layout.paginate_and_draw(pdf, elements, first_avail_h, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col, text_x: text_x, text_w: text_w, debug_marks: debug_marks,
-        dynamic_mode: dynamic_mode, elements_alt: elements_r, side_col_alt: side_col_r, text_x_alt: text_x_r)
+        dynamic_mode: dynamic_mode, elements_alt: elements_r, side_col_alt: side_col_r, text_x_alt: text_x_r, row_excess: row_excess, row_excess_w: row_excess_w)
     end
   end
 

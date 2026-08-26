@@ -23,6 +23,7 @@ Tests des carnets
 - Construire un carnet complet en PDF
   - avec des données correctes
   - refuser un dossier sans table des matières
+  - utiliser la couverture propre au carnet plutôt que celle par défaut (ancien bug)
 - Retrouver un carnet en tapant son titre
   - le nom exact
   - des mots de son titre
@@ -32,17 +33,35 @@ Tests des carnets
   - refuser un livre trop petit pour être imprimé
   - donner plus de marge de reliure à un livre épais
   - mettre la marge du bon côté selon la page
+- Créer un carnet
+  - avec les bonnes données
+  - en retrouvant un carnet déjà créé au lieu d'en refaire un
+- Donner les dimensions d'impression de la couverture
+  - refuser si le carnet n'a jamais été construit
+- Produire le modèle de couverture complète (IDML)
+- Écrire une page de titre (titre, sous-titre, éditeur, concepteur)
+  - mettre le vrai auteur du livre à la place du concepteur, si connu
+  - ne pas la confondre avec la page de garde (deux choses différentes)
 
 Tests du mode interactif
 - Se souvenir de la chanson ou du carnet choisi (use)
   - avec use pour toute la suite
   - avec --song pour une seule commande
-  - construire le bon carnet même sans rien taper après use
+  - construire le bon carnet même sans rien taper après use (ancien bug)
 - Ouvrir la table des matières d'un carnet par son titre
   - refuser un carnet introuvable
 - Ne pas planter sur une commande mal tapée
   - un guillemet oublié
   - une commande inconnue (dire ça simplement)
+- Lister les chansons d'un carnet
+  - juste les titres, un par ligne
+  - avec un gabarit et un séparateur choisis
+  - refuser sans carnet de contexte
+- Ouvrir le manuel et y chercher un mot
+- Construire un diagramme d'accord à partir d'un schéma
+  - refuser un schéma illisible
+- Construire les tablatures d'une chanson trouvée par son titre
+  - dire qu'il n'y a rien si la chanson n'a pas de tablature
 
 Tests des outils
 - Lire les paroles et les accords écrits dans une chanson
@@ -89,6 +108,13 @@ Tests des outils
 - Lire les informations de couverture
   - le titre, l'éditeur, l'ISBN
   - choisir la bonne information s'il y en a plusieurs proposées
+- Trouver le fichier de couverture propre à un carnet
+- Choisir comment réagir à une erreur (sensibilité)
+  - arrêter tout de suite
+  - continuer et raconter toutes les erreurs à la fin
+  - continuer discrètement, juste dire combien d'erreurs
+  - ne rien dire du tout
+  - oublier les erreurs d'une construction précédente en recommençant
 
 Tests des assistants
 - Écrire une tablature au clavier

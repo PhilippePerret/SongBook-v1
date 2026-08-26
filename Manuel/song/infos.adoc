@@ -1,12 +1,12 @@
 [[infos-file]]
 === Fichier des informations de la chanson ===
 
-Les informations de la chanson sont consignés dans son <<song-folder, dossier>> dans une fichier portant l'extension `.lyr` et un nom racine quelconque (p.e. `mc`).
+Les informations de la chanson sont consignés dans son <<song-folder, dossier>> dans une fichier portant l'extension `.infos` (ou `inf` en mode réduit) et un nom racine quelconque (p.e. `mc.inf`).
 
 Ce fichier est un pseudo fichier YAML (pour ceux qui connaissent le format) où chaque élément est défini de cette manière :
 
 ----
-<propriété>: <valeur>
+propriété: valeur
 ----
 
 Par exemple, pour définir l'identifiant de la chanson (reprise dans les <<songbook-tdm, tables des matières des carnets>>) :
@@ -40,3 +40,7 @@ year: 1986
 
 layout: regular
 ----
+
+Notez que si vous utilisez la commande **`songbook create song`** pour créer une nouvelle chanson, ce fichier sera rempli pour vous (ou prérempli en fonction des informations récoltées sur le web).
+
+Cet fichier contient aussi la définition des <<options>> propres à la chanson (options partagées par le carnet si c'est lui qui est contruit).

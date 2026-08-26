@@ -24,4 +24,16 @@ RSpec.describe "construction d'un carnet" do
       expect { CarnetBuilder.build(dir) }.to raise_error(RuntimeError, /\.tdm/)
     end
   end
+
+  it "Utiliser la couverture propre au carnet plutôt que celle par défaut" do
+    custom_cov = File.join(carnet_folder, "c.cov")
+    File.write(custom_cov, "1.\n{title}\n\n4.\n{price}\n")
+
+    begin
+      expect(CoverBuilder).to receive(:build).with(anything, hash_including(cov_path: custom_cov))
+      CarnetBuilder.build(carnet_folder, cover: true)
+    ensure
+      File.delete(custom_cov)
+    end
+  end
 end

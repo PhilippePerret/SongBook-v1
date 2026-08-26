@@ -9,8 +9,13 @@ require_relative "transpose"
 
 # `songbook add chords <chanson>` : pose interactive des accords sur un `.lyr` EXISTANT.
 # Entrée = FINIR l'édition (jamais "ligne suivante" — seules les flèches ↑/↓ déplacent
-# entre les vers). Enregistrement TOUJOURS soumis à validation (Entrée comme Ctrl+C),
-# jamais silencieux.
+# entre les vers, ←/→ syllabe par syllabe, avec saut de vers en butée). Enregistrement
+# TOUJOURS soumis à validation (Entrée comme Ctrl+C), jamais silencieux.
+# Pose d'accord : taper une lettre — correspond à un raccourci déjà connu (minuscule) =>
+# accord existant posé ; sinon => saisie d'un NOUVEAU nom d'accord (`typing`, affiché en
+# direct sous le curseur), validée par Entrée OU simplement en bougeant (n'importe quelle
+# flèche). Collision minuscule déjà prise ("a" = "Am7") : la MAJUSCULE ("A") force la
+# saisie d'un nouvel accord plutôt que de reprendre l'existant.
 # `-icanon -echo` (PAS `stty raw` — `raw` coupe aussi ISIG et OPOST : Ctrl+C ne
 # signalait plus rien, et `\n` n'effectuait plus de retour chariot, d'où le décalage en
 # escalier constaté) : lecture caractère par caractère, ISIG/OPOST intacts, Ctrl+C
@@ -43,8 +48,8 @@ module ChordPlacer
   WINDOW_SIZE = 4
   # ≤45 signes par ligne (Phil).
   HELP_LINES = [
-    "0 add | x sup | N/P next/prev syllabe",
-    "A/Z début/fin vers | T/V début/fin chanson",
+    "x sup | A-G Nouvel accord",
+    "J/L début/fin vers | T/V début/fin chanson",
     "Enter Sauver | ^c Annuler",
   ].freeze
   HELP_COLOR = "\e[90m"
@@ -75,14 +80,42 @@ module ChordPlacer
     # juste après corrige CET accord précis, tant qu'aucune autre touche ne s'est
     # glissée entre les deux (Phil : "a" + "2" = 2e "La" rencontré).
     pending = nil
+    # Nom d'accord en cours de saisie (String) au curseur courant, affiché en direct,
+    # `nil` tant qu'aucune saisie n'est en cours (voir en-tête du fichier).
+    typing = nil
+
+    commit_typing = lambda do
+      chord = capitalize_chord(typing)
+      register_chord(letters, chord)
+      save_cached_chords(song_dir, letters.values.flatten)
+      chord_lines[editable[pos]].set_chord(cursor, chord)
+      notice = chord_notice(chord, song_dir)
+      dirty = true
+      typing = nil
+    end
 
     begin
       with_raw_terminal do
         loop do
           current = chord_lines[editable[pos]]
-          render_window(editable, chord_lines, pos, cursor, letters, notice)
+          render_window(editable, chord_lines, pos, cursor, letters, notice, typing)
           key = read_key
           keep_pending = false
+
+          if typing
+            case key
+            when :enter
+              commit_typing.call
+            when :backspace
+              typing = typing.length > 1 ? typing[0..-2] : nil
+            when ->(k) { k.is_a?(Hash) && k[:arrow] }
+              commit_typing.call
+              pos, cursor = apply_arrow(key, pos, cursor, chord_lines, editable)
+            when String
+              typing << key if key.length == 1
+            end
+            next
+          end
 
           case key
           when :enter
@@ -103,25 +136,9 @@ module ChordPlacer
                 keep_pending = true
               end
             end
-          when "N"
-            new_cursor = current.move(cursor, :syllable, 1)
-            if new_cursor == cursor && pos < editable.length - 1
-              pos += 1
-              cursor = 0
-            else
-              cursor = new_cursor
-            end
-          when "P"
-            new_cursor = current.move(cursor, :syllable, -1)
-            if new_cursor == cursor && pos.positive?
-              pos -= 1
-              cursor = chord_lines[editable[pos]].text.length
-            else
-              cursor = new_cursor
-            end
-          when "A"
+          when "J"
             cursor = 0
-          when "Z"
+          when "L"
             cursor = current.text.length
           when "T"
             pos = 0
@@ -129,41 +146,38 @@ module ChordPlacer
           when "V"
             pos = editable.length - 1
             cursor = 0
-          when :kp0
-            name = read_chord_name
-            unless name.to_s.strip.empty?
-              name = capitalize_chord(name)
-              register_chord(letters, name)
-              save_cached_chords(song_dir, letters.values.flatten)
-              current.set_chord(cursor, name)
-              notice = chord_notice(name, song_dir)
+          when ->(k) { k.is_a?(Hash) && k[:arrow] }
+            pos, cursor = apply_arrow(key, pos, cursor, chord_lines, editable)
+          when ->(k) { pending && k.is_a?(String) && k.match?(/\A\d\z/) }
+            # Chiffre juste après une lettre encore ambiguë (Phil, 2026-08-26, "F7" :
+            # "f" seul plaçait "F" tout de suite, "7" ensuite était juste ignoré,
+            # impossible d'entrer "F7"). "<Lettre>+chiffre" correspond à un AUTRE
+            # accord déjà connu de cette lettre (ex. "a"+"7" = "A7" déjà enregistré) =>
+            # corrige l'accord posé vers celui-là. Sinon => "<Lettre>+chiffre" n'existe
+            # PAS => FORCÉMENT un nouvel accord (Phil) : annule le raccourci posé par
+            # erreur, reprend la saisie comme si la lettre avait lancé `typing`.
+            letter = pending[:letter]
+            candidate = "#{letter.upcase}#{key}"
+            if letters[letter]&.include?(candidate)
+              chord_lines[editable[pending[:pos]]].set_chord(pending[:cursor], candidate)
               dirty = true
-            end
-          when ->(k) { k.is_a?(Hash) && k[:arrow] == :up }
-            if pos.positive?
-              page_before = pos / WINDOW_SIZE
-              pos -= 1
-              same_page = pos / WINDOW_SIZE == page_before
-              cursor = same_page ? [cursor, chord_lines[editable[pos]].text.length].min : 0
-            end
-          when ->(k) { k.is_a?(Hash) && k[:arrow] == :down }
-            if pos < editable.length - 1
-              page_before = pos / WINDOW_SIZE
-              pos += 1
-              same_page = pos / WINDOW_SIZE == page_before
-              cursor = same_page ? [cursor, chord_lines[editable[pos]].text.length].min : 0
+              keep_pending = true
+            else
+              chord_lines[editable[pending[:pos]]].delete_chord(pending[:cursor])
+              typing = candidate
+              dirty = true
             end
           else
-            before_text = current.text
-            new_cursor = handle_movement(current, cursor, key)
-            cursor = new_cursor if new_cursor
-            dirty = true if current.text != before_text
-            if key.is_a?(String) && key.match?(/\A[a-z]\z/) && letters.key?(key)
-              chord = letters[key].first
-              current.set_chord(cursor, chord)
-              dirty = true
-              pending = { letter: key, pos: pos, cursor: cursor }
-              keep_pending = true
+            resolved = resolve_letter(key, letters)
+            if resolved
+              if resolved[:existing]
+                current.set_chord(cursor, resolved[:existing])
+                dirty = true
+                pending = { letter: resolved[:letter], pos: pos, cursor: cursor }
+                keep_pending = true
+              else
+                typing = resolved[:new]
+              end
             end
           end
 
@@ -292,19 +306,65 @@ module ChordPlacer
     File.write(path, lines.join)
   end
 
-  def self.handle_movement(chord_line, cursor, key)
-    return nil unless key.is_a?(Hash) && key[:arrow]
+  # Lettre frappée hors saisie en cours : raccourci MINUSCULE déjà connu ET frappé en
+  # minuscule => accord existant repris ; sinon => nouvel accord (la MAJUSCULE force ce
+  # cas même en collision avec un raccourci connu, voir en-tête du fichier). `nil` si la
+  # touche n'est pas une lettre.
+  def self.resolve_letter(key, letters)
+    return nil unless key.is_a?(String) && key.match?(/\A[a-zA-Z]\z/)
 
-    direction = key[:arrow] == :right ? 1 : (key[:arrow] == :left ? -1 : nil)
-    return nil unless direction
-
-    mods = key[:mods]
-    if mods[:shift]
-      chord_line.shift!(cursor, 1, direction)
+    lower = key.downcase
+    if key == lower && letters.key?(lower)
+      { existing: letters[lower].first, letter: lower }
     else
-      granularity = mods[:alt] ? :syllable : :letter
-      chord_line.move(cursor, granularity, direction)
+      { new: key }
     end
+  end
+
+  def self.apply_arrow(key, pos, cursor, chord_lines, editable)
+    case key[:arrow]
+    when :up then move_vertical(pos, cursor, chord_lines, editable, -1)
+    when :down then move_vertical(pos, cursor, chord_lines, editable, 1)
+    when :right then move_horizontal(key, pos, cursor, chord_lines, editable, 1)
+    when :left then move_horizontal(key, pos, cursor, chord_lines, editable, -1)
+    end
+  end
+
+  # Pages FIXES (`WINDOW_SIZE`) : ↑/↓ dans la page ne touche qu'au curseur (repositionné
+  # dans la limite du texte de la nouvelle ligne), seul le passage à la page suivante
+  # ramène le curseur en tête (Phil).
+  def self.move_vertical(pos, cursor, chord_lines, editable, direction)
+    return [pos, cursor] if (direction.negative? && pos.zero?) || (direction.positive? && pos == editable.length - 1)
+
+    page_before = pos / WINDOW_SIZE
+    pos += direction
+    same_page = pos / WINDOW_SIZE == page_before
+    cursor = same_page ? [cursor, chord_lines[editable[pos]].text.length].min : 0
+    [pos, cursor]
+  end
+
+  # ←/→ nu = syllabe par syllabe, avec saut au vers suivant/précédent en butée (reprend
+  # l'ancien rôle de N/P). Alt = lettre par lettre (ajustement fin, jamais de saut de
+  # vers). Shift = décalage des paroles (`shift!`), inchangé.
+  def self.move_horizontal(key, pos, cursor, chord_lines, editable, direction)
+    current = chord_lines[editable[pos]]
+    mods = key[:mods]
+    return [pos, current.shift!(cursor, 1, direction)] if mods[:shift]
+
+    granularity = mods[:alt] ? :letter : :syllable
+    new_cursor = current.move(cursor, granularity, direction)
+    if new_cursor == cursor && granularity == :syllable
+      if direction.positive? && pos < editable.length - 1
+        pos += 1
+        cursor = 0
+      elsif direction.negative? && pos.positive?
+        pos -= 1
+        cursor = chord_lines[editable[pos]].text.length
+      end
+    else
+      cursor = new_cursor
+    end
+    [pos, cursor]
   end
 
   # Vérifie l'existence d'un diagramme pour cet accord (dossier de la chanson, puis
@@ -324,7 +384,7 @@ module ChordPlacer
   # Pages FIXES de WINDOW_SIZE vers (0-3, 4-7, ...) — jamais de glissement ligne par
   # ligne : ↓ dans la page ne touche qu'au curseur, seul le passage à la page suivante
   # change ce qui est affiché (Phil).
-  def self.render_window(editable, chord_lines, pos, cursor, letters, notice)
+  def self.render_window(editable, chord_lines, pos, cursor, letters, notice, typing = nil)
     total = editable.length
     window_start = (pos / WINDOW_SIZE) * WINDOW_SIZE
 
@@ -339,7 +399,7 @@ module ChordPlacer
 
     window_start.upto([window_start + WINDOW_SIZE, total].min - 1) do |i|
       line = chord_lines[editable[i]]
-      render_line(line, i == pos ? cursor : nil)
+      render_line(line, i == pos ? cursor : nil, live: i == pos ? typing : nil)
       puts
     end
 
@@ -348,33 +408,20 @@ module ChordPlacer
 
   # Curseur AU-DESSUS des paroles (ligne des accords), jamais sur le texte lui-même —
   # c'est là qu'un accord se pose, sur une syllabe repérée depuis la ligne du dessus.
-  def self.render_line(chord_line, cursor)
+  # `live` : nom d'accord en cours de saisie au curseur, affiché SANS toucher aux
+  # accords réels de la ligne tant que la saisie n'est pas validée.
+  def self.render_line(chord_line, cursor, live: nil)
+    chords = live && cursor ? chord_line.chords.merge(cursor => live) : chord_line.chords
     width = [chord_line.text.length, cursor.to_i + 1].max
-    chord_line.chords.each { |offset, name| width = [width, offset + name.length].max }
+    chords.each { |offset, name| width = [width, offset + name.length].max }
     row = Array.new(width, " ")
-    chord_line.chords.each do |offset, name|
+    chords.each do |offset, name|
       name.each_char.with_index { |c, k| row[offset + k] = c }
     end
     row[cursor] = "\e[7m#{row[cursor]}\e[0m" if cursor
 
     puts row.join
     puts chord_line.text
-  end
-
-  # Bascule en mode ligne le temps de la saisie (`-icanon -echo` rendait la frappe
-  # invisible et cassait `gets` — bug constaté, "l'entrée de l'accord ne fait rien").
-  # DECKPAM désactivé aussi (`\e>`) : sinon les chiffres du pavé numérique tapés dans le
-  # NOM de l'accord (ex. "A9") arrivaient en séquences `\eO..` brutes dans `gets` au lieu
-  # de vrais chiffres (bug constaté, "ça écrit je ne sais quel code").
-  def self.read_chord_name
-    print "\e>"
-    system("stty icanon echo")
-    print "\r\nAccord : "
-    STDOUT.flush
-    line = $stdin.gets
-    system("stty -icanon -echo min 1 time 0")
-    print "\e="
-    line&.strip
   end
 
   def self.with_raw_terminal

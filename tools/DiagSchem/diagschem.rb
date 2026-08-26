@@ -5,12 +5,17 @@
 # Voir specs.txt pour la spécification complète.
 
 require 'io/console'
+require 'tty-prompt'
 require_relative '../ChordDiagram/chord_diagram'
+require_relative 'schema_library'
+require_relative '../../lib/locale'
 
 DOIGTS_VALIDES = %w[1 2 3 4 p].freeze
 CORDES_AUTORISEES_POUR_P = [5, 6].freeze
 
 ORANGE = "\e[33m"
+ROUGE = "\e[31m"
+VERT = "\e[32m"
 RESET = "\e[0m"
 GRAS = "\e[1m"
 
@@ -76,6 +81,17 @@ TOKEN_RE = /\A(\()?([1-6])(x|\d{1,2})(?:\/(\w+))?(\))?\z/
 class SchemaInvalide < StandardError; end
 
 class DiagSchem
+  # Utilisation non interactive (`songbook build diag "<schéma>"`) : parse, valide
+  # (mêmes règles que la saisie clavier, `valider`), écrit le SVG dans `out_dir` — sans
+  # clavier ni presse-papier. Renvoie le chemin du SVG produit.
+  def self.build_svg_from_schema(schema, out_dir: Dir.pwd)
+    instance = new(schema: schema)
+    erreurs = instance.send(:valider)
+    raise SchemaInvalide, erreurs.join(" ; ") if erreurs.any?
+
+    Dir.chdir(out_dir) { instance.send(:generer_svg) }
+  end
+
   def initialize(output_svg: false, schema: nil)
     @nom = ''
     @case_ref = nil
@@ -101,6 +117,8 @@ class DiagSchem
     largeur_boite = INTERIOR_WIDTH + 2 # + les deux bordures │
     marge = [(largeur_boite - texte.length) / 2, 0].max
     puts "#{' ' * marge}\e[90m#{texte}\e[0m"
+
+    proposer_enregistrement
     return unless @svg_path
 
     marge_svg = [(largeur_boite - @svg_path.length) / 2, 0].max
@@ -108,6 +126,44 @@ class DiagSchem
   end
 
   private
+
+  # Après production du schéma + copie presse-papier (Phil, 2026-08-26) : propose
+  # d'enregistrer dans la bibliothèque de l'application (`schemas.txt`) ; si refusé ET
+  # que `-o`/`--output` n'a pas déjà produit le SVG, propose (à défaut) de le produire
+  # quand même dans le dossier courant.
+  def proposer_enregistrement
+    prompt = TTY::Prompt.new
+    if prompt.yes?(Loc.get('diag_save_question'))
+      enregistrer_dans_application(prompt)
+    elsif !@output_svg
+      @svg_path = generer_svg if prompt.yes?(Loc.get('diag_output_question'))
+    end
+  end
+
+  # Nom demandé à l'user (texte libre, AUCUN défaut/pré-remplissage — Phil : le nom
+  # "Nom-case" existera presque toujours déjà, le proposer par défaut serait trompeur).
+  # Vérifie 1) le nom (même nom+case) 2) SURTOUT le schéma (mêmes positions, sous
+  # n'importe quel autre nom) — refuse l'enregistrement si l'un des deux existe déjà
+  # (Phil : "trop dangereux"). Sinon insère (`SchemaLibrary`, ordre dicté par Phil) et
+  # produit tout de suite le SVG dans le dossier de la lettre (pas le dossier courant).
+  def enregistrer_dans_application(prompt)
+    nom = prompt.ask(Loc.get('diag_name_prompt')).to_s.strip
+    return if nom.empty?
+
+    tokens = @sortie.split(':', 2).last.strip
+    case SchemaLibrary.save(nom, @case_ref, tokens)
+    when :nom
+      puts "#{ROUGE}#{format(Loc.get('diag_conflict_nom'), "#{nom}-#{@case_ref}")}#{RESET}"
+    when :schema
+      doublon = SchemaLibrary.entries(nom).find { |e| e.tokens == tokens }
+      puts "#{ROUGE}#{format(Loc.get('diag_conflict_schema'), "#{doublon.nom}-#{doublon.case_ref}")}#{RESET}"
+    else
+      puts "#{VERT}👍 #{format(Loc.get('diag_inserted'), nom)}#{RESET}"
+      @nom = nom
+      dossier = File.dirname(SchemaLibrary.schemas_path(nom))
+      @svg_path = Dir.chdir(dossier) { generer_svg }
+    end
+  end
 
   # --- Argument en ligne de commande (pré-remplissage pour modification) ----
 
@@ -707,15 +763,17 @@ class DiagSchem
   end
 end
 
-if ARGV.include?('-h') || ARGV.include?('--help')
-  puts HELP_TEXT
-else
-  output_svg = ARGV.include?('-o') || ARGV.include?('--output')
-  schema = ARGV.find { |a| !a.start_with?('-') }
-  begin
-    DiagSchem.new(output_svg: output_svg, schema: schema).run
-  rescue SchemaInvalide => e
-    warn e.message
-    exit 1
+if $PROGRAM_NAME == __FILE__
+  if ARGV.include?('-h') || ARGV.include?('--help')
+    puts HELP_TEXT
+  else
+    output_svg = ARGV.include?('-o') || ARGV.include?('--output')
+    schema = ARGV.find { |a| !a.start_with?('-') }
+    begin
+      DiagSchem.new(output_svg: output_svg, schema: schema).run
+    rescue SchemaInvalide => e
+      warn e.message
+      exit 1
+    end
   end
 end

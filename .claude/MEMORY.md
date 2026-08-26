@@ -14,6 +14,9 @@ AUCUNE décision, AUCUN choix, même mineur, ne doit être pris seul par Claude.
 ## Notes/mémoire
 Toute note doit être écrite ICI (`./.claude` du projet), JAMAIS ailleurs (`~/.claude` et sous-dossiers interdits, cf. `~/.claude/INTERDICTIONS.txt`). Aucune suppression de contenu sans demande explicite.
 
+## Pas de recommandations, pas de fouille
+Jamais "(recommandé)" ni avis technique non sollicité (même quand un outil comme AskUserQuestion le suggère par défaut — INTERDICTIONS.txt passe avant). Jamais analyser/fouiller les fichiers existants (ex. `assets/chords_diags/*/schemas.txt`) pour deviner une règle non écrite — demander la règle littérale à Phil et l'appliquer mécaniquement, sans toucher à l'organisation déjà en place.
+
 ## Chantier en attente — suite de tests complète
 Basée sur TOUT le Manuel (pas les chemins de code touchés récemment). Le Manuel a encore des trous/zones d'ombre à combler d'abord. Pas de framework choisi (rspec/minitest à trancher ensemble). Ne pas démarrer sans demande explicite.
 

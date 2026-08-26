@@ -10,6 +10,9 @@ include::assistant.adoc[]
 // Fichier des informations
 include::infos.adoc[]
 
+// Options du carnet (commun avec song)
+include::song_book_options.adoc[]
+
 // Bonnes pratiques
 include::best-practices.adoc[]
 

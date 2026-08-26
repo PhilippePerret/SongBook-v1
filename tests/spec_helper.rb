@@ -18,6 +18,7 @@ FIXTURE_SONGBOOKS_DIR = File.join(MATERIEL, "Carnets")
 
 require "app_config"
 require "session"
+require "layout"
 
 RSpec.configure do |config|
   config.before do
@@ -27,6 +28,9 @@ RSpec.configure do |config|
 
     Session.song = nil
     Session.carnet = nil
+
+    Layout.sensitivity = "log"
+    Layout.reset_conflicts!
   end
 
   # `CarnetBuilder.build` écrit un cache (`.songs_cache.marshal`) dans le dossier de

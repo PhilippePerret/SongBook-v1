@@ -10,12 +10,16 @@ require_relative "app_config"
 module Layout
   # Garde-fou GÉNÉRAL (règle absolue, 2026-08-17) : tout conflit qui relève d'un choix de
   # l'utilisateur (contenu trop long, élément qui empiète sur la marge ou sur un autre
-  # élément, etc — PAS limité aux marges) passe par `conflict!`. Niveau de SENSIBILITÉ :
-  #   1 = stoppe la construction (erreur bloquante — l'erreur doit être corrigée).
-  #   2 = demande à l'utilisateur quoi faire (continuer ou stopper).
-  #   3 = mémorise le conflit, continue, rapporte tout à la fin (`report_conflicts!`).
-  #   4 = (DÉFAUT) continue silencieusement, log cachée seulement, rien dit à l'utilisateur.
-  SENSITIVITY = 4
+  # élément, etc — PAS limité aux marges) passe par `conflict!`. Niveau de SENSIBILITÉ
+  # (Manuel/_dev/regles_esthetiques.adoc RAG1-5, `sensitivity:` du `.infos` du carnet) :
+  #   "high"   = stoppe la construction à la première erreur (RAG2).
+  #   "errors" = mémorise le conflit, continue, rapporte tout à la fin (RAG3,
+  #              `report_conflicts!`).
+  #   "log"    = (DÉFAUT, RAG4) continue, log cachée dans `conflict_log_path`, un seul
+  #              message de résumé à la fin (`report_conflicts!`).
+  #   "low"    = (RAG5) continue, rien signalé nulle part.
+  @sensitivity = "log"
+  @log_conflict_count = 0
   # Chemin par défaut (essais isolés) — un script de production (ex.
   # `CarnetBuilder.build`) le redirige vers SON propre fichier `<production>-conflicts.log`,
   # à côté du PDF produit (remarques.txt Carnet-1, 2026-08-18 : un log par production, pas
@@ -36,10 +40,37 @@ module Layout
   # Prawn n'expose pas Tw (word spacing PDF natif) publiquement, donc chaque mot est
   # dessiné séparément avec un espace ajusté (voir `draw_words_with_spacing`).
   @word_spacing = 0.0
+  # `shrink_diags`/`shrink_tabla`/`shrink_score` (`.infos` chanson prioritaire sur celui
+  # du carnet, voir `PageBuilder.resolve_shrink_option`) : `false` interdit tout
+  # rétrécissement sous la taille nominale. Portée DIFFÉRENTE selon la nature de l'image
+  # (Phil, 2026-08-26) :
+  # - diags : taille nominale FIXÉE PAR L'APP (`DIAG_W`) — `shrink_diags` s'applique
+  #   TOUJOURS, SVG compris (un tracé vectoriel n'a pas de "qualité" à perdre en changeant
+  #   de largeur), voir `diag_column_width`.
+  # - tabla/score : PAS de taille nominale propre (dépend de l'image source) —
+  #   `shrink_tabla`/`shrink_score` n'ont de sens QUE pour une image à taille FIXE
+  #   (PNG/JPEG, voir `raster_image?`) ; un SVG tabla/score n'est jamais concerné.
+  # Un élément qui ne tient pas à taille nominale suit le mécanisme de débordement de
+  # page existant — JAMAIS une violation des règles de marges/chevauchements. Défaut
+  # `true` (comportement actuel inchangé).
+  @shrink_diags = true
+  @shrink_tabla = true
+  @shrink_score = true
   class << self
-    attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing
+    attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing,
+      :sensitivity, :log_conflict_count, :shrink_diags, :shrink_tabla, :shrink_score
   end
   CONFLICTS = []
+
+  # À appeler en tête de chaque production (`CarnetBuilder.build`/`build_song`) — sans
+  # ça, `CONFLICTS`/le compteur de `log_conflict_count` d'une production précédente,
+  # dans le MÊME process (REPL), fuiteraient dans le rapport de la suivante (bug du même
+  # genre que celui constaté 2026-08-25 sur `Layout.building_log_path`).
+  def self.reset_conflicts!
+    CONFLICTS.clear
+    @missing_chords = Hash.new { |h, k| h[k] = [] }
+    @log_conflict_count = 0
+  end
   @missing_chords = Hash.new { |h, k| h[k] = [] }
 
   def self.log_build(message)
@@ -93,26 +124,29 @@ module Layout
   # page, page pas encore déterminée).
   def self.conflict!(problem, solution:)
     line = "#{current_song || "?"} p.#{current_page || "?"} : #{problem} — #{solution}"
-    case SENSITIVITY
-    when 1
+    case sensitivity
+    when "high"
       raise line
-    when 2
-      warn "#{line}\nContinuer quand même ? (o/n)"
-      answer = $stdin.gets.to_s.strip.downcase
-      raise line unless answer == "o"
-    when 3
+    when "errors"
       CONFLICTS << line
-    else
+    when "low"
+      nil
+    else # "log" (défaut) et toute valeur inconnue
+      @log_conflict_count += 1
       File.open(conflict_log_path, "a") { |f| f.puts line }
     end
   end
 
-  # Niveau 3 seulement : à appeler une fois le carnet/la chanson construit(e).
+  # `sensitivity: "errors"` (RAG3) ou `"log"` (RAG4) seulement — à appeler une fois le
+  # carnet/la chanson construit(e). Rien pour "high" (déjà stoppé avant) ni "low" (RAG5 :
+  # rien signalé, jamais).
   def self.report_conflicts!
-    return if CONFLICTS.empty?
-
-    warn "Conflits rencontrés :"
-    CONFLICTS.each { |e| warn "- #{e}" }
+    if CONFLICTS.any?
+      warn "Conflits rencontrés :"
+      CONFLICTS.each { |e| warn "- #{e}" }
+    elsif log_conflict_count.to_i.positive?
+      warn "Des erreurs sont produites (#{log_conflict_count}), voir le fichier #{conflict_log_path}"
+    end
   end
 
   CHORD_SIZE = 9
@@ -1135,8 +1169,14 @@ module Layout
   # réelle de cette page (`kdp.recto?`) — jamais figée sur la 1re page de la chanson (bug
   # constaté : "À bicyclette" p.4 (verso) et p.5 (recto), même chanson, reliure des deux
   # côtés, resterait fausse sur l'une des deux si résolue une seule fois pour la chanson).
+  # `row_excess`/`row_excess_w` (Phil, 2026-08-26, "même mécanisme que les colonnes") :
+  # diags qui ne rentrent pas dans une rangée (Top/Bot/Front, voir `Layout.layout_diags`)
+  # — alimente `excess_paths` exactement comme l'excédent de colonne, `row_excess_w`
+  # étant la largeur RÉELLE choisie pour la rangée (référence RAD10 pour la grille de
+  # secours, voir plus bas). Jamais les deux en même temps que `side_col` (une chanson a
+  # soit une colonne, soit une rangée, jamais les deux).
   def self.paginate_and_draw(pdf, elements, first_avail_h, kdp:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, text_x: 0, text_w: nil, debug_marks: false,
-      dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil)
+      dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil, row_excess: [], row_excess_w: DIAG_W)
     heights = elements.map(&:height)
     pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned, top_type: :band_strophe)
     want_left_for = ->(page_no) { dynamic_mode.nil? || (dynamic_mode == :int) == kdp.recto?(page_no) }
@@ -1146,6 +1186,10 @@ module Layout
     side_pages = []
     excess_paths = []
     excess_heights = []
+    if row_excess.any?
+      excess_paths = row_excess
+      excess_heights = row_excess.map { |p| svg_height_for(File.read(p), row_excess_w) }
+    end
     if side_col
       build_side_elements = lambda do |col|
         col[:paths].each_with_index.map do |path, i|
@@ -1211,13 +1255,14 @@ module Layout
     #          largeur de la colonne normale (`side_col[:width]`, déjà rétrécie par
     #          `diag_column_width` si besoin), jamais une taille recalculée à part (bug
     #          constaté : le dernier diagramme sortait visiblement plus grand que les
-    #          autres). Sans colonne (`side_col` nil, position top/bottom), pas de taille
-    #          de référence à reprendre : `DIAG_W` nominal.
+    #          autres). Sans colonne (position Top/Bot/Front, `side_col` nil) : même
+    #          principe avec `row_excess_w`, la largeur réellement choisie pour la
+    #          rangée — jamais `DIAG_W` nominal recalculé à part non plus.
     merged_last_page = nil
     unless excess_paths.empty? || text_w.nil? || pages.empty?
       gap_h = min_h_dist(:diags)
       gap_v = min_v_dist(:diags)
-      grid_diag_w = side_col ? side_col[:width] : DIAG_W
+      grid_diag_w = side_col ? side_col[:width] : row_excess_w
       grid_diag_h = svg_height_for(File.read(excess_paths.first), grid_diag_w)
       cols = [((text_w + gap_h) / (grid_diag_w + gap_h)).floor, 1].max
       rows = excess_paths.each_slice(cols).to_a
@@ -1807,38 +1852,39 @@ module Layout
     end
   end
 
-  # Largeur de CHAQUE diagramme si on les pose tous en rangée horizontale (Top/Bot),
-  # réduite uniformément si la rangée entière ne tient pas dans `avail_w`. Réserve les
-  # gouttières minimales AVANT de calculer le facteur de réduction.
-  def self.fit_diag_row_width(count, natural_w, avail_w)
-    return natural_w if count.zero? || avail_w <= 0
+  # Largeur commune de chaque diagramme d'une rangée horizontale (Top/Bot/Front/End),
+  # et nombre d'entre eux qui y tiennent réellement — JAMAIS sous `MIN_SIZE[:diags]
+  # [:width]` (bug constaté, Phil 2026-08-26 : 30 diags compressés uniformément pour
+  # tenir dans la largeur, jusqu'à devenir illisibles, aucun plancher). `target` = TOUS
+  # les diags (Phil, point 6) — contrairement à la colonne (`DIAG_COLUMN_TARGET_MIN`),
+  # une rangée n'a pas de contrainte de densité par page : on essaie de tous les faire
+  # tenir avant d'abandonner à `MIN_SIZE[:diags][:width]`. Renvoie [largeur, nombre qui
+  # tient] — `nombre qui tient < paths.size` => excédent, voir `paginate_and_draw`
+  # (RAD5/6/7/10, même mécanisme que l'excédent de colonne).
+  def self.diag_row_width(paths, avail_w)
+    return [DIAG_W, 0] if paths.empty?
 
-    reserved = min_h_dist(:diags) * (count + 1)
-    budget_w = [avail_w - reserved, 0].max
-    natural_total = natural_w * count
-    natural_total > budget_w ? natural_w * (budget_w / natural_total) : natural_w
+    gap = min_h_dist(:diags)
+    capacity_at = ->(w) { (((avail_w + gap) / (w + gap)).floor).clamp(0, paths.size) }
+
+    w = shrink_width_to_target(paths.size, MIN_SIZE[:diags][:width], capacity_at)
+    [w, capacity_at.call(w)]
   end
 
-  # [largeur, hauteur] d'un diagramme pour que la rangée entière (tous les diagrammes,
-  # gouttières comprises) tienne dans `avail_w` — mesure seule, ne dessine rien.
-  def self.diags_row_fit(diag_paths, avail_w)
-    return [0, 0] if diag_paths.empty?
-
-    w = fit_diag_row_width(diag_paths.size, DIAG_W, avail_w)
-    h = diag_paths.map { |p| svg_height_for(File.read(p), w) }.max
-    [w, h]
-  end
-
+  # Rangée CENTRÉE dans `avail_w` (Phil, point 7) : gouttière FIXE (`min_h_dist(:diags)`)
+  # entre les diags, jamais étirée pour remplir la largeur — `distribute_gutter`
+  # ("justifié", gouttières plafonnées) ne garantissait pas un bloc centré.
   def self.draw_diags_row(pdf, diag_paths, x0, y_top, avail_w, w)
     return if diag_paths.empty?
 
-    gutter = distribute_gutter(avail_w, Array.new(diag_paths.size, w), type: :diags)
-    x = x0 + gutter
+    gap = min_h_dist(:diags)
+    block_w = diag_paths.size * w + [diag_paths.size - 1, 0].max * gap
+    x = x0 + [(avail_w - block_w) / 2.0, 0].max
     diag_paths.each do |path|
       svg_data = IO.read(path)
       h = svg_height_for(svg_data, w)
       engrave(bottom: y_top - h, context: "diagramme (rangée)") { pdf.svg(svg_data, at: [x, y_top], width: w, position: :left, enable_web_requests: false) }
-      x += w + gutter
+      x += w + gap
     end
   end
 
@@ -1868,6 +1914,23 @@ module Layout
   # `DIAG_COLUMN_TARGET_MIN` (ou moins s'il y a moins de diags que ça au total) tiennent,
   # jamais sous `MIN_SIZE[:diags][:width]` — si même la taille plancher n'y suffit pas,
   # tant pis, on s'arrête là (RAD6 gère le reste en page dédiée).
+  # Tabla/score : pas de taille nominale propre (contrairement aux diags, `DIAG_W`) —
+  # rétrécissement pertinent SEULEMENT pour une image à taille FIXE (PNG/JPEG), jamais
+  # pour un SVG (Phil, 2026-08-26 : "n'a par nature pas de dimension fixe").
+  RASTER_EXTENSIONS = %w[.png .jpg .jpeg].freeze
+
+  def self.raster_image?(path)
+    RASTER_EXTENSIONS.include?(File.extname(path).downcase)
+  end
+
+  def self.tabla_shrinkable?(path)
+    raster_image?(path) && shrink_tabla
+  end
+
+  def self.score_shrinkable?(path)
+    raster_image?(path) && shrink_score
+  end
+
   def self.diag_column_width(paths, first_avail_h, page_height)
     return DIAG_W if paths.empty?
 
@@ -1892,9 +1955,21 @@ module Layout
     end
 
     target = [paths.size, DIAG_COLUMN_TARGET_MIN].min
-    return DIAG_W if capacity_at.call(DIAG_W) >= target
+    shrink_width_to_target(target, MIN_SIZE[:diags][:width], capacity_at)
+  end
 
-    floor_w = MIN_SIZE[:diags][:width]
+  # Boucle de rétrécissement commune colonne/rangée (Phil, 2026-08-26, "même mécanisme
+  # partout") : essaie `DIAG_W` nominal, sinon rétrécit par pas de 0.1pt jusqu'à ce que
+  # `capacity_at.call(w) >= target`, jamais sous `floor_w`. `shrink_diags: false` :
+  # jamais sous DIAG_W, même en SVG (un diag n'a pas de "qualité" à perdre en changeant
+  # sa largeur de tracé — contrairement à `shrink_tabla`/`shrink_score`, voir
+  # `raster_image?`). Ce qui ne tient pas suit le mécanisme de débordement en place
+  # (page suivante pour la colonne, page dédiée pour la rangée/l'excédent) — jamais un
+  # dépassement de marge pour compenser.
+  def self.shrink_width_to_target(target, floor_w, capacity_at)
+    return DIAG_W if capacity_at.call(DIAG_W) >= target
+    return DIAG_W unless shrink_diags
+
     w = DIAG_W
     while w > floor_w
       w = [w - 0.1, floor_w].max
@@ -1911,6 +1986,11 @@ module Layout
   # façon imprévisible, a provoqué un chevauchement colonne/ligne fusionnée, retiré).
   DIAG_COLUMN_BOTTOM_SAFETY_PT = 10.0
 
+  # Renvoie [text_x, text_w, first_avail_h, side_col, excess_paths, excess_ref_w] —
+  # `excess_paths` : diags qui ne rentrent PAS dans la rangée (Top/Bot/Front/End),
+  # toujours `[]` pour une colonne (Left/Right, débordement géré page par page, pas
+  # ici). `excess_ref_w` : largeur de référence RAD10 pour cet excédent (voir
+  # `paginate_and_draw`, `row_excess:`/`row_excess_w:`).
   def self.layout_diags(pdf, diag_paths, position, header_bottom)
     case position
     when :both
@@ -1920,24 +2000,86 @@ module Layout
       diag_heights = diag_paths.map { |p| svg_height_for(File.read(p), diag_w) }
       diag_col_w = diag_w + DIAG_TEXT_GAP
       side_col = { x: pdf.bounds.width - diag_w, width: diag_w, paths: diag_paths, heights: diag_heights }
-      [0, pdf.bounds.width - diag_col_w, header_bottom, side_col]
+      [0, pdf.bounds.width - diag_col_w, header_bottom, side_col, [], DIAG_W]
     when :top
-      w, h = diags_row_fit(diag_paths, pdf.bounds.width)
-      row_h = diag_paths.empty? ? 0 : h + DIAG_TEXT_GAP
-      draw_diags_row(pdf, diag_paths, 0, header_bottom, pdf.bounds.width, w)
-      [0, pdf.bounds.width, header_bottom - row_h, nil]
+      row_h, excess, w = draw_diag_row_position(pdf, diag_paths, header_bottom, at: :top)
+      [0, pdf.bounds.width, header_bottom - row_h, nil, excess, w]
     when :bottom
-      w, h = diags_row_fit(diag_paths, pdf.bounds.width)
-      row_h = diag_paths.empty? ? 0 : h + DIAG_TEXT_GAP
-      draw_diags_row(pdf, diag_paths, 0, row_h, pdf.bounds.width, w)
-      [0, pdf.bounds.width, header_bottom - row_h, nil]
+      row_h, excess, w = draw_diag_row_position(pdf, diag_paths, header_bottom, at: :bottom)
+      [0, pdf.bounds.width, header_bottom - row_h, nil, excess, w]
+    when :front
+      block_h, excess, w = draw_diag_front_block(pdf, diag_paths, header_bottom)
+      [0, pdf.bounds.width, header_bottom - block_h, nil, excess, w]
+    when :end
+      # Rattachés à la VRAIE fin des paroles (dernière page réelle, pas juste la page 1
+      # comme `bottom`) — RIEN réservé ici (Phil, point 5), tous les diags entrent
+      # directement dans le mécanisme d'excédent (RAD5/6/7/10, `paginate_and_draw`),
+      # exactement comme un excédent de colonne. `DIAG_W` : aucune rangée dessinée avant
+      # pour établir une largeur de référence déjà rétrécie.
+      [0, pdf.bounds.width, header_bottom, nil, diag_paths, DIAG_W]
     else # :left, défaut
       diag_w = diag_column_width(diag_paths, header_bottom, pdf.bounds.height)
       diag_heights = diag_paths.map { |p| svg_height_for(File.read(p), diag_w) }
       diag_col_w = diag_w + DIAG_TEXT_GAP
       side_col = { x: 0, width: diag_w, paths: diag_paths, heights: diag_heights }
-      [diag_col_w, pdf.bounds.width - diag_col_w, header_bottom, side_col]
+      [diag_col_w, pdf.bounds.width - diag_col_w, header_bottom, side_col, [], DIAG_W]
     end
+  end
+
+  # Une seule rangée (Top : sous le bandeau, Bottom : au-dessus des paroles) — `at:`
+  # choisit seulement le `y` de dessin, même calcul de largeur/excédent sinon. Renvoie
+  # [row_h, excess_paths, w].
+  def self.draw_diag_row_position(pdf, diag_paths, header_bottom, at:)
+    return [0, [], DIAG_W] if diag_paths.empty?
+
+    w, n_fit = diag_row_width(diag_paths, pdf.bounds.width)
+    fitting = diag_paths.first(n_fit)
+    excess = diag_paths[n_fit..] || []
+    return [0, excess, w] if fitting.empty?
+
+    h = fitting.map { |p| svg_height_for(File.read(p), w) }.max
+    row_h = h + DIAG_TEXT_GAP
+    y_top = at == :top ? header_bottom : row_h
+    draw_diags_row(pdf, fitting, 0, y_top, pdf.bounds.width, w)
+    [row_h, excess, w]
+  end
+
+  # `front` (Phil, point 5) : diags AVANT les paroles, en rangées EMPILÉES, contenues
+  # sur la page 1 — partage la page avec les paroles (jamais de page dédiée d'office,
+  # comme Top/Bot). Même rétrécissement que la rangée simple (`shrink_width_to_target`,
+  # target = TOUS les diags), mais capacité en 2 dimensions (colonnes ET rangées, comme
+  # `draw_diags_grid`) plutôt qu'une seule rangée. Ce qui dépasse la page 1 devient
+  # l'excédent (même mécanisme que `draw_diag_row_position`). Renvoie
+  # [block_h, excess_paths, w].
+  def self.draw_diag_front_block(pdf, diag_paths, avail_h)
+    return [0, [], DIAG_W] if diag_paths.empty?
+
+    avail_w = pdf.bounds.width
+    gap_h = min_h_dist(:diags)
+    gap_v = min_v_dist(:diags)
+    capacity_at = lambda do |w|
+      row_h = svg_height_for(File.read(diag_paths.first), w)
+      cols = [((avail_w + gap_h) / (w + gap_h)).floor, 1].max
+      rows = [((avail_h + gap_v) / (row_h + gap_v)).floor, 0].max
+      (cols * rows).clamp(0, diag_paths.size)
+    end
+
+    w = shrink_width_to_target(diag_paths.size, MIN_SIZE[:diags][:width], capacity_at)
+    n_fit = capacity_at.call(w)
+    fitting = diag_paths.first(n_fit)
+    excess = diag_paths[n_fit..] || []
+    return [0, excess, w] if fitting.empty?
+
+    row_h = svg_height_for(File.read(fitting.first), w)
+    cols = [((avail_w + gap_h) / (w + gap_h)).floor, 1].max
+    rows = fitting.each_slice(cols).to_a
+    y = avail_h
+    rows.each do |row|
+      draw_diags_row(pdf, row, 0, y, avail_w, w)
+      y -= row_h + gap_v
+    end
+    block_h = rows.size * row_h + [rows.size - 1, 0].max * gap_v
+    [block_h, excess, w]
   end
 
   def self.svg_viewbox(svg_data)

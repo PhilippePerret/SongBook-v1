@@ -8,12 +8,17 @@ require_relative "help"
 require_relative "diags_page"
 require_relative "app_config"
 require_relative "song_creator"
+require_relative "songbook_creator"
 require_relative "chord_placer"
 require_relative "file_finder"
 require_relative "locale"
 require_relative "session"
 require_relative "song_resolver"
 require_relative "tablator_assistant"
+require_relative "ansi_colors"
+require_relative "idml_cover_builder"
+require_relative "kdp"
+require_relative "../tools/DiagSchem/diagschem"
 
 # Dispatch de la ligne de commande `songbook` — parsing ARGV + routage vers la
 # logique métier (CarnetBuilder, DiagsPage, ...). `songbook.rb` reste un simple
@@ -32,18 +37,16 @@ module CLI
   }.freeze
 
   HISTORY_FILE = File.expand_path("~/.songbook_history")
-  PROMPT_STATE_FILE = File.expand_path("~/.songbook_prompt_icon")
-  PROMPT_ICONS = ["🎤", "🎸"].freeze
+  PROMPT_ICON = "🎸"
 
   # Mode REPL (`songbook -i`) : une invite qui redonne la main après chaque commande
   # au lieu de quitter — Readline pour l'historique/édition de ligne (même lib que
   # celle utilisée par `mysql`/`irb`). `abort` (SystemExit) et Ctrl+C (Interrupt)
-  # sont rattrapés ici pour ne pas tuer la boucle. Icône alternée à chaque lancement
-  # (état persisté dans un petit fichier) (Phil).
+  # sont rattrapés ici pour ne pas tuer la boucle.
   def self.run_interactive
     system("clear")
     load_history
-    prompt = "#{next_prompt_icon}> "
+    prompt = "#{PROMPT_ICON}> "
     loop do
       line = begin
         Readline.readline(prompt, true)
@@ -73,15 +76,6 @@ module CLI
     end
   ensure
     save_history
-  end
-
-  def self.next_prompt_icon
-    last = File.exist?(PROMPT_STATE_FILE) ? File.read(PROMPT_STATE_FILE).strip : nil
-    icon = PROMPT_ICONS[((PROMPT_ICONS.index(last) || -1) + 1) % PROMPT_ICONS.size]
-    File.write(PROMPT_STATE_FILE, icon)
-    icon
-  rescue StandardError
-    PROMPT_ICONS.first
   end
 
   def self.load_history
@@ -169,6 +163,13 @@ module CLI
           puts
           puts Loc.get("song_creation_cancelled")
         end
+      when "songbook", "sb"
+        begin
+          SongbookCreator.run(arg2)
+        rescue Interrupt
+          puts
+          puts Loc.get("song_creation_cancelled")
+        end
       else
         abort unknown_command_message("create #{arg1}")
       end
@@ -206,6 +207,46 @@ module CLI
       else
         abort unknown_command_message("song #{arg1}")
       end
+    when "manual", "manuel"
+      manuel_dir = File.expand_path("../Manuel", __dir__)
+      adoc_path = File.join(manuel_dir, "Manuel.adoc")
+      html_path = File.join(manuel_dir, "Manuel.html")
+      system("asciidoctor", adoc_path, "-o", html_path)
+      system("open", html_path)
+
+      if arg1
+        needle = arg1.downcase
+        matches = Dir.glob(File.join(manuel_dir, "**", "*.adoc")).flat_map do |f|
+          File.readlines(f).each_with_index.filter_map do |line, i|
+            "#{f}:#{i + 1}: #{line.strip}" if line.downcase.include?(needle)
+          end
+        end
+        puts matches.empty? ? "rien trouvé pour « #{arg1} »" : matches.join("\n")
+      end
+    when "cover"
+      begin
+        case arg1
+        when "dims"
+          carnet_folder = resolve_carnet_folder(arg2 || Session.carnet)
+          kdp = kdp_for_carnet(carnet_folder)
+          print_cover_dims(kdp)
+        when "idml", "modele"
+          carnet_folder = resolve_carnet_folder(arg2 || Session.carnet)
+          kdp = kdp_for_carnet(carnet_folder)
+          infos_path = FileFinder.find(carnet_folder, :inf)
+          conf = CarnetBuilder.parse_nested_infos(infos_path)
+          entries = CarnetBuilder.tdm_entries(carnet_folder)
+          slug = File.basename(carnet_folder).downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-|-\z/, "")
+          out_dir = File.join(carnet_folder, "export", "cover")
+          FileUtils.mkdir_p(out_dir)
+          IdmlCoverBuilder.build(File.join(out_dir, "#{slug}-cover.idml"), conf: conf, entries: entries, carnet_folder: carnet_folder, kdp: kdp)
+          puts "#{AnsiColors::SUCCESS}👍 Modèle IDML de couverture produit.#{AnsiColors::RESET}"
+        else
+          abort unknown_command_message("cover #{arg1}")
+        end
+      rescue Interrupt
+        puts
+      end
     when "tdm"
       begin
         carnet_folder = resolve_carnet_folder(arg1 || Session.carnet)
@@ -215,6 +256,18 @@ module CLI
         system("open", "-a", AppConfig.user_song_editor, tdm_path)
       rescue Interrupt
         puts
+      end
+    when "list"
+      case arg1
+      when "songs"
+        carnet_folder = Session.carnet || (CarnetBuilder.carnet_folder?(Dir.pwd) ? Dir.pwd : nil)
+        abort "aucun carnet de contexte pour list songs (use songbook, ou dossier courant)" unless carnet_folder
+
+        template = arg2 || "{title}"
+        separator = (arg3 || "\\n").gsub('\\n', "\n")
+        puts CarnetBuilder.list_songs(carnet_folder, template, separator)
+      else
+        abort unknown_command_message("list #{arg1}")
       end
     when "use"
       case arg1
@@ -282,6 +335,33 @@ module CLI
         abort unknown_command_message("open #{arg1}")
       end
     when nil, ".", "build"
+      if command == "build" && arg1 == "diag" && arg2
+        begin
+          DiagSchem.build_svg_from_schema(arg2)
+          puts "#{AnsiColors::SUCCESS}👍 Diagramme produit.#{AnsiColors::RESET}"
+        rescue SchemaInvalide => e
+          abort e.message
+        rescue Interrupt
+          puts
+        end
+        return
+      end
+
+      if command == "build" && arg1 == "tab" && arg2
+        begin
+          song_folder = resolve_song_target(arg2)[:folder]
+          tab_paths = Dir.glob(File.join(song_folder, "**", "*.tab"))
+          if tab_paths.empty?
+            puts Loc.get("tablator_no_tab_found")
+          else
+            tab_paths.each { |p| TablatorAssistant.render_tab_svg(p) }
+          end
+        rescue Interrupt
+          puts
+        end
+        return
+      end
+
       if command == "build" && arg1 == "cover"
         cover = true
         arg1 = nil
@@ -328,6 +408,38 @@ module CLI
       abort unknown_command_message(command)
     end
     end
+  end
+
+  # KDP du DERNIER PDF déjà construit pour ce carnet (nombre de pages réel) — `cover
+  # dims`/`cover idml` ont besoin du nombre de pages pour calculer le dos, mais ne
+  # reconstruisent pas tout le carnet pour l'obtenir.
+  def self.kdp_for_carnet(carnet_folder)
+    infos_path = FileFinder.find(carnet_folder, :inf)
+    abort "aucun fichier .infos/.inf trouvé dans #{carnet_folder}" unless infos_path
+
+    conf = CarnetBuilder.parse_nested_infos(infos_path)
+    page_size_in = conf.fetch("format") { AppConfig.get("format") }.split(/\s*x\s*/i).map { |v| v =~ /[a-z]/i ? AppConfig.length_pt(v) / AppConfig::IN_TO_PT : v.to_f }
+    slug = File.basename(carnet_folder).downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-|-\z/, "")
+    latest_pdf = Dir.glob(File.join(carnet_folder, "export", "songbooks", "#{slug}-v*.pdf")).max_by { |f| f[/-v(\d+)\.pdf\z/, 1].to_i }
+    abort "construisez d'abord le carnet (songbook build) pour en connaître le nombre de pages" unless latest_pdf
+
+    page_count = CombinePDF.load(latest_pdf).pages.size
+    KDP.new(page_count: page_count, trim_width: page_size_in[0], trim_height: page_size_in[1], paper: :white, bleed: false)
+  end
+
+  def self.print_cover_dims(kdp)
+    bz = kdp.barcode_zone
+    puts [
+      "format papier (largeur x hauteur) : #{kdp.trim_width.round(3)} x #{kdp.trim_height.round(3)} in",
+      "fond perdu (bleed) : #{KDP::BLEED_IN} in",
+      "marge extérieure (pages intérieures) : #{kdp.outside_margin.round(3)} in",
+      "marge de reliure (gouttière) : #{kdp.gutter_margin.round(3)} in",
+      "largeur du dos : #{kdp.spine_width.round(3)} in",
+      "couverture complète (largeur x hauteur) : #{kdp.cover_width.round(3)} x #{kdp.cover_height.round(3)} in",
+      "marge de sécurité texte (plats) : #{kdp.cover_text_safe_margin.round(3)} in",
+      "marge de sécurité texte (dos) : #{kdp.spine_text_safe_margin.round(3)} in",
+      "zone code-barres : (#{bz[:x0].round(3)}, #{bz[:y0].round(3)}) à (#{bz[:x1].round(3)}, #{bz[:y1].round(3)}) in",
+    ].join("\n")
   end
 
   def self.unknown_command_message(command)

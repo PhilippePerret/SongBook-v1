@@ -34,7 +34,7 @@ Par exemple :
 }
 
 {
-  diags: all| [liste des accords];
+  diags: all| [liste des accords à traiter];
   position: Top|Left|Bot|Rigth|Ext|Int; 
 }
 

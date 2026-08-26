@@ -32,4 +32,11 @@ RSpec.describe "recherche d'un fichier par type" do
       expect(FileFinder.find(dir, :lyr)).to be_nil
     end
   end
+
+  it "Trouver le fichier de couverture propre à un carnet (.cover ou .cov)" do
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "c.cov"), "")
+      expect(File.basename(FileFinder.find(dir, :cov))).to eq("c.cov")
+    end
+  end
 end

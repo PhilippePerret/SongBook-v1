@@ -444,7 +444,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_présentation">Présentation</a>
 <ul class="sectlevel2">
 <li><a href="#app-options">Options</a></li>
-<li><a href="#console-command">Commande <code>console</code></a></li>
+<li><a href="#console-command">Commande <code>songbook</code></a></li>
 </ul>
 </li>
 <li><a href="#song">Chansons</a>
@@ -466,6 +466,10 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#songbook-presentation">Présentation</a></li>
 <li><a href="#songbook-assistant">Assistant au carnet de chant</a></li>
 <li><a href="#songbook-infos">Fichier infos du carnet</a></li>
+<li><a href="#options">Options de fabrication</a></li>
+<li><a href="#universal-properties">Propriétés universelles</a></li>
+<li><a href="#_placement_des_diags">Placement des diags</a></li>
+<li><a href="#_tablatures_et_partitions_2">Tablatures et partitions</a></li>
 <li><a href="#best-practices">Les bonnes pratiques</a></li>
 <li><a href="#songbook-tdm">Table des matières du carnet</a></li>
 <li><a href="#songbook-schemas">Diagrammes propres</a></li>
@@ -525,7 +529,7 @@ a {
 <h2 id="_présentation">Présentation</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><em><strong>Song-Book</strong></em> (littéralement « Carnet de chant » en anglais) est une <strong>application en ligne de commande</strong> qui permet de créer rapidement et facilement de magnifiques carnets de chant ou simplement des feuilles de chansons, destinées principalement à la guitare, avec les paroles compplètes, les accords et les <em>riffs</em> (quelques notes caractéristiques de la chansons, comme les premières notes de la chanson <em>Le Sud</em> de Nino Ferrer).</p>
+<p><em><strong>Song-Book</strong></em> (littéralement « Carnet de chant » en anglais) est une <strong>application en ligne de commande</strong> qui permet de créer rapidement et facilement de magnifiques carnets de chant ou simplement des feuilles de chansons, destinées principalement à la guitare, avec les paroles complètes, les accords et les <em>riffs</em> (quelques notes caractéristiques de la chansons, comme les premières notes de la chanson <em>Le Sud</em> de Nino Ferrer).</p>
 </div>
 <div class="ulist">
 <ul>
@@ -546,10 +550,10 @@ a {
 </div>
 </div>
 <div class="paragraph">
-<p>… puis cliquer combo:Enter[]… Impressionnant, non ?</p>
+<p>… puis cliquer <kbd style="font-size:1.25em;">↩︎</kbd>… Impressionnant, non ?</p>
 </div>
 <div class="paragraph">
-<p>Ce qui fait aussi la force de <em><strong>SongBook</strong></em>, c&#8217;est aussi ses <a href="#tools">outils en ligne de commande</a> qui facilitent et accèlèrent tous les processus de production des chansons et des carnets.</p>
+<p>Ce qui fait la force de <em><strong>SongBook</strong></em>, c&#8217;est aussi ses <a href="#tools">outils en ligne de commande</a> qui facilitent et accèlèrent tous les processus de production des chansons et des carnets. N&#8217;hésitez pas à consulter rapidement la section des <a href="#tools">outils et assistants</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="app-options">Options</h3>
@@ -591,7 +595,7 @@ a {
 </table>
 </div>
 <div class="sect2">
-<h3 id="console-command">Commande <code>console</code></h3>
+<h3 id="console-command">Commande <code>songbook</code></h3>
 <div class="paragraph">
 <p>Les carnets et les chansons se gèrent en ligne de commande grâce à la console.</p>
 </div>
@@ -674,9 +678,9 @@ a {
 </div>
 </div>
 <div class="sect3">
-<h4 id="interactive-mode">Version interactive</h4>
+<h4 id="interactive-mode">Mode interactif</h4>
 <div class="paragraph">
-<p>La version interactive de la commande <code>songbook</code> permet de ne pas avoir à taper <code>songbook</code> chaque fois où même le titre d&#8217;une chanson ou d&#8217;un carnet.</p>
+<p>Le mode interactif de la commande <code>songbook</code> permet de ne pas avoir à taper <code>songbook</code> chaque fois où même le titre d&#8217;une chanson ou d&#8217;un carnet.</p>
 </div>
 <div class="paragraph">
 <p>On entre en mode interactif avec :</p>
@@ -695,7 +699,7 @@ a {
 </div>
 </div>
 <div class="paragraph">
-<p>Où, pour focaliser toutes les commandes suivantes sur une chanson en particulier :</p>
+<p>Où, pour focaliser toutes les commandes suivantes sur une chanson en particulier (par exemple quand on la travaille) :</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -805,7 +809,7 @@ build diags # construit les diagrammes
 <div class="ulist">
 <ul>
 <li>
-<p>le <a href="#infos-file">Fichier des informations de la chanson</a> (<code>.infos</code>) contient le titre et autres informations générales sur la chanson.</p>
+<p>le <a href="#infos-file">Fichier des informations de la chanson</a> (<code>.infos</code>) contient le titre et autres informations générales sur la chanson, ainsi que la définition des <a href="#options">Configuration</a>.</p>
 </li>
 <li>
 <p>le <a href="#lyrics-file">fichier des paroles et accords</a> (<code>.lyr</code>) contient toutes les paroles, accompagnées des accords, ainsi que, éventuellement, les <a href="#riffs">riffs</a> et autres petits bouts de musique.</p>
@@ -813,23 +817,20 @@ build diags # construit les diagrammes
 <li>
 <p>le <a href="#gabarit">le fichier Gabarit</a> optionnel de la chanson (<code>.gab</code>), s&#8217;il est particulier à cette chanson ou qu&#8217;elle ne s&#8217;insère pas dans un <a href="#songbook">carnet</a> définissant son propre gabarit. <em>Notez qu&#8217;utiliser ce fichier dans ce dossier n’est pas considéré comme une <a href="#best-practices">bonne pratique</a></em>.</p>
 </li>
-<li>
-<p>le <a href="#config">[config]</a> de la chanson, s&#8217;il est particulier à cette chanson ou qu&#8217;elle ne s&#8217;incère pas dans un <a href="#songbook">carnet</a> définissant sa propre configuration. <em>Comme le fichier précédent, ce fichier dans ce dossier n’est pas considéré comme une <a href="#best-practices">bonne pratique</a></em>.</p>
-</li>
 </ul>
 </div>
 </div>
 <div class="sect2">
 <h3 id="infos-file">Fichier des informations de la chanson</h3>
 <div class="paragraph">
-<p>Les informations de la chanson sont consignés dans son <a href="#song-folder">dossier</a> dans une fichier portant l&#8217;extension <code>.lyr</code> et un nom racine quelconque (p.e. <code>mc</code>).</p>
+<p>Les informations de la chanson sont consignés dans son <a href="#song-folder">dossier</a> dans une fichier portant l&#8217;extension <code>.infos</code> (ou <code>inf</code> en mode réduit) et un nom racine quelconque (p.e. <code>mc.inf</code>).</p>
 </div>
 <div class="paragraph">
 <p>Ce fichier est un pseudo fichier YAML (pour ceux qui connaissent le format) où chaque élément est défini de cette manière :</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>&lt;propriété&gt;: &lt;valeur&gt;</pre>
+<pre>propriété: valeur</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -869,6 +870,12 @@ year: 1986
 
 layout: regular</pre>
 </div>
+</div>
+<div class="paragraph">
+<p>Notez que si vous utilisez la commande <strong><code>songbook create song</code></strong> pour créer une nouvelle chanson, ce fichier sera rempli pour vous (ou prérempli en fonction des informations récoltées sur le web).</p>
+</div>
+<div class="paragraph">
+<p>Cet fichier contient aussi la définition des <a href="#options">Configuration</a> propres à la chanson (options partagées par le carnet si c&#8217;est lui qui est contruit).</p>
 </div>
 </div>
 <div class="sect2">
@@ -1488,6 +1495,226 @@ options:
 </div>
 </div>
 <div class="sect2">
+<h3 id="options">Options de fabrication</h3>
+<div class="paragraph">
+<p>On peut définir dans le fichier <code>infos</code> (<code>inf</code>) toutes les options gérant la fabrication des carnets ou des chansons.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Noter que s&#8217;il y des options réglées pour le carnet en construction et des options réglées pour la chanson la précédence se fait en fonction de la nature de l&#8217;option, sauf dans le cas où l&#8217;option <code>todo: à déterminer</code> est à <code>true</code>.
+</td>
+</tr>
+</table>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15.3846%;">
+<col style="width: 46.1538%;">
+<col style="width: 23.0769%;">
+<col style="width: 7.6923%;">
+<col style="width: 7.6924%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Prop.</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+<th class="tableblock halign-left valign-top">Opt.</th>
+<th class="tableblock halign-left valign-top">Pr.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sensitivity</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sensibilité aux erreurs, la façon de les gérer.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>high</code>, <strong><code>mid</code></strong>, <code>low</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>-v</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>song_order_mode</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mode de classement des chansons</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>strict</code>, <strong><code>lazy</code></strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keep_order</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peut remplacer le précédent, respect de l&#8217;ordre des chansons.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code>, <strong><code>false</code></strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_diags</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pour autoriser (<code>true</code>) ou non (<code>false</code>) le rétrécissement des diagrammes. Note : peut se faire chanson par chanson.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong><code>true</code></strong>, <code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title_with_labels</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ajouter les labels aux infos de titre ("Paroles", "Musique", etc.)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong><code>false</code></strong>, <code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Propritété</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="3"><p class="tableblock"><code>sensitivity</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>high</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Le programme s&#8217;arrête à la première erreur et la signale.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mid</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Les erreurs rencontrées sont listées à la fin de l&#8217;opération</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>low</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aucune interruption, les erreurs sont logguées silencieusement.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock"><code>song_order_mode</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>strict</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;ordre de la tdm du carnet est respecté scrupuleusement.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lazy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;ordre peut être modifié pour des raisons d&#8217;organisation.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect3">
+<h4 id="song-options">Options propres aux chansons</h4>
+<div class="paragraph">
+<p><em>(donc qu&#8217;on ne trouve que dans un fichier <code>.infos</code> d&#8217;une chanson)</em></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15.3846%;">
+<col style="width: 46.1538%;">
+<col style="width: 23.0769%;">
+<col style="width: 7.6923%;">
+<col style="width: 7.6924%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Prop.</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+<th class="tableblock halign-left valign-top">Opt.</th>
+<th class="tableblock halign-left valign-top">Pr.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Options pour les diagrammes d&#8217;accords.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#option-diags">voir</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect4">
+<h5 id="option-diags">Options pour les diags</h5>
+<div class="listingblock">
+<div class="content">
+<pre>diags:
+  # Pour limiter les diags à une liste d'accords, par exemple seulement
+  # les accords compliqués ou propres à la chanson
+  list: [Am7, C, Dd7M]</pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>title_with_labels: true # =&gt; on met les lables "Paroles", "Musique"
+shrink_tabla: true # on peut réduire pour que ça tienne
+shrink_score: true # idem avec les partitions</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="universal-properties">Propriétés universelles</h3>
+<div class="paragraph">
+<p>On appelle <em>propriétés universelles</em> les propriétés qui peuvent être attribuées à un grand nombre de paramètres de configuration.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 28.5714%;">
+<col style="width: 57.1429%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Propriété</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Valeurs</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>font</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La fonte générale, par défaut. Une  police et une taille.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Par défaut : Helvetica 11pt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Position de l&#8217;élément dans la page</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Top = en haut, Left = à gauche, Bot = en bas, Right = à droite, Int = à l&#8217;intérieur (des double-pages), Ext = à l&#8217;extérieur (des double pages)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tabla</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tout ce qui concerne les tablatures</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_placement_des_diags">Placement des diags</h3>
+<div class="paragraph">
+<p>Dans le <a href="#infos-file">Fichier des informations de la chanson</a>, c&#8217;est le paramètre principal <code>diags</code> qui peut contenir les propriétés suivantes :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>diags:
+  list: [liste des accords à traiter]
+  position: Top
+  scale: 100</pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_tablatures_et_partitions_2">Tablatures et partitions</h3>
+<div class="listingblock">
+<div class="content">
+<pre>tablas:
+  position: Under</pre>
+</div>
+</div>
+</div>
+<div class="sect2">
 <h3 id="best-practices">Les bonnes pratiques</h3>
 <div class="paragraph">
 <p>Dans cette partie vous trouverez des conseils pour gérer au mieux vos cahiers de chant.</p>
@@ -1743,7 +1970,7 @@ interprete: Peter Gabriel et Kate Bush
 }
 
 {
-  diags: all| [liste des accords];
+  diags: all| [liste des accords à traiter];
   position: Top|Left|Bot|Rigth|Ext|Int;
 }
 
@@ -1814,12 +2041,31 @@ interprete: Peter Gabriel et Kate Bush
 <div class="sect2">
 <h3 id="song-chords-assistant">Assistant pour l&#8217;entrée des accords de la chanson</h3>
 <div class="paragraph">
-<p>La pose des accords peut être grandement facilitée avec l&#8217;aide à l&#8217;entrée des accords.</p>
+<p>La pose des accords peut être incroyablement facilitée avec l&#8217;aide à l&#8217;entrée des accords.</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre>songbook add chords "tittre chanson"</pre>
 </div>
+</div>
+<div class="paragraph">
+<p>Elle permet de :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>se déplacer de syllabe en syllabe avec les flèches,</p>
+</li>
+<li>
+<p>poser un accord déjà placé avec une seule lettre (et un chiffre),</p>
+</li>
+<li>
+<p>déplacer du texte pour glisser des accords entre les syllabes,</p>
+</li>
+<li>
+<p>etc.</p>
+</li>
+</ul>
 </div>
 </div>
 <div class="sect2">
@@ -2309,7 +2555,7 @@ Près d'un lac je m'étais endormie</pre>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RAG1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;erreur doit être signalée à l&#8217;user en fonction du <strong>degré de sensibilité</strong> défini dans le <a href="#config">fichier de configuration</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;erreur doit être signalée à l&#8217;user en fonction du <strong>degré de sensibilité</strong> défini par les <a href="#options">Configuration</a>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">cf. <code>sensitivity</code></p></td>
 </tr>
 <tr>

@@ -1,8 +1,22 @@
 [[song-chords-assistant]]
 === Assistant pour l'entrée des accords de la chanson ===
 
-La pose des accords peut être grandement facilitée avec l'aide à l'entrée des accords.
+La pose des accords peut être incroyablement facilitée avec l'aide à l'entrée des accords.
 
 ----
 songbook add chords "tittre chanson"
 ----
+
+Elle permet de : 
+
+- se déplacer de syllabe en syllabe avec les flèches,
+- poser un accord déjà placé avec une seule lettre (et un chiffre),
+- déplacer du texte pour glisser des accords entre les syllabes,
+- etc.
+
+[[add-chords-tips]]
+==== Quelques tips sur des erreurs classiques ====
+
+**Quand la découpe par syllabe est défectueuse**
+
+Parfois, la découpe par syllabe peut être défectueuse. Par exemple, dans « nuage », l'app va considérer seulement les syllabes « nua » et « ge ». Dans ce cas, on utilise Combo::Ctrl+→[] pour se déplacer de lettre en lettre, puis combo::Maj+→[] pour déplacer le texte, ce qui donnera : « nu age » et dans ce cas, « a » sera forcément considéré comme une syllabe seule.

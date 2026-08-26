@@ -1,5 +1,5 @@
 [[console-command]]
-=== Commande `console` ===
+=== Commande `songbook` ===
 
 Les carnets et les chansons se gèrent en ligne de commande grâce à la console.
 
@@ -62,9 +62,9 @@ songbook build tab "titre chanson"
 ----
 
 [[interactive-mode]]
-==== Version interactive ====
+==== Mode interactif ====
 
-La version interactive de la commande `songbook` permet de ne pas avoir à taper `songbook` chaque fois où même le titre d'une chanson ou d'un carnet.
+Le mode interactif de la commande `songbook` permet de ne pas avoir à taper `songbook` chaque fois où même le titre d'une chanson ou d'un carnet.
 
 On entre en mode interactif avec :
 
@@ -78,7 +78,7 @@ songbook -i
 🎸> build "titre chanson"
 ----
 
-Où, pour focaliser toutes les commandes suivantes sur une chanson en particulier : 
+Où, pour focaliser toutes les commandes suivantes sur une chanson en particulier (par exemple quand on la travaille) : 
 
 ----
 🎸> use song "chanson cour"

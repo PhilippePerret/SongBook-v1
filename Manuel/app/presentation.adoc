@@ -1,6 +1,6 @@
 == Présentation ==
 
-__**Song-Book**__ (littéralement « Carnet de chant » en anglais) est une **application en ligne de commande** qui permet de créer rapidement et facilement de magnifiques carnets de chant ou simplement des feuilles de chansons, destinées principalement à la guitare, avec les paroles compplètes, les accords et les __riffs__ (quelques notes caractéristiques de la chansons, comme les premières notes de la chanson __Le Sud__ de Nino Ferrer).
+__**Song-Book**__ (littéralement « Carnet de chant » en anglais) est une **application en ligne de commande** qui permet de créer rapidement et facilement de magnifiques carnets de chant ou simplement des feuilles de chansons, destinées principalement à la guitare, avec les paroles complètes, les accords et les __riffs__ (quelques notes caractéristiques de la chansons, comme les premières notes de la chanson __Le Sud__ de Nino Ferrer).
 
 - Tout savoir sur les <<song, chansons>>,
 - tout savoir sur les <<songbook, carnets de chant>>.
@@ -13,4 +13,4 @@ songbook build
 
 … puis cliquer combo:Enter[]… Impressionnant, non ?
 
-Ce qui fait aussi la force de __**SongBook**__, c'est aussi ses <<tools, outils en ligne de commande>> qui facilitent et accèlèrent tous les processus de production des chansons et des carnets.
+Ce qui fait la force de __**SongBook**__, c'est aussi ses <<tools, outils en ligne de commande>> qui facilitent et accèlèrent tous les processus de production des chansons et des carnets. N'hésitez pas à consulter rapidement la section des <<tools, outils et assistants>>.

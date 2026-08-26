@@ -408,6 +408,8 @@ module CarnetBuilder
     File.write(Layout.conflict_log_path, "Début : #{Time.now}\n")
     Layout.building_log_path = File.join(export_dir, "#{slug}-building.log")
     File.write(Layout.building_log_path, "Début : #{Time.now}\n")
+    Layout.sensitivity = "log" # chanson seule : pas de `.infos` de carnet à consulter
+    Layout.reset_conflicts!
 
     tmp_out = File.join(export_dir, ".tmp-#{slug}.pdf")
     PageBuilder.build(song_folder, tmp_out, page_size_in: page_size_in, page_count: 24, first_page_no: 1, layout: layout)
@@ -416,8 +418,46 @@ module CarnetBuilder
 
     out_path = File.join(export_dir, "#{slug}.pdf")
     PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout: layout)
+    Layout.report_conflicts!
     puts "#{File.basename(out_path)} généré"
     out_path
+  end
+
+  # `songbook list songs ["{gabarit}" ["séparateur"]]` : une ligne par chanson du `.tdm`
+  # de `carnet_folder`, `{balise}` remplacée par la clé CORRESPONDANTE de son `.infos`
+  # (title/composer/lyrics/year/performer, ou N'IMPORTE QUELLE AUTRE clé qui y est
+  # définie) — jamais d'auto-création d'une chanson manquante ici (lecture seule),
+  # simplement ignorée si introuvable.
+  def self.list_songs(carnet_folder, template = "{title}", separator = "\n")
+    tdm_path = FileFinder.find(carnet_folder, :tdm)
+    raise "aucun fichier .tdm/.toc trouvé dans #{carnet_folder}" unless tdm_path
+
+    chansons_dir = File.expand_path("../../Chansons", carnet_folder)
+    names = File.readlines(tdm_path).map { |l| l.sub(/\A-\s*/, "").strip }.reject(&:empty?)
+    names.filter_map { |name| SongCache.resolve(chansons_dir, name) }
+      .map { |entry| fill_template(template, entry[:infos]) }
+      .join(separator)
+  end
+
+  # {name:, performer:} par chanson du `.tdm` — pendant LÉGER de `resolve_song_folders`
+  # (pas de page rendue, juste les métadonnées `.infos`) pour `cover idml`/`cover
+  # modele`, qui n'ont besoin que des noms/interprètes pour la 4e de couverture.
+  def self.tdm_entries(carnet_folder)
+    tdm_path = FileFinder.find(carnet_folder, :tdm)
+    raise "aucun fichier .tdm/.toc trouvé dans #{carnet_folder}" unless tdm_path
+
+    chansons_dir = File.expand_path("../../Chansons", carnet_folder)
+    names = File.readlines(tdm_path).map { |l| l.sub(/\A-\s*/, "").strip }.reject(&:empty?)
+    names.filter_map do |name|
+      entry = SongCache.resolve(chansons_dir, name)
+      next nil unless entry
+
+      { name: entry[:infos]["title"] || name, performer: entry[:infos]["performer"].to_s }
+    end
+  end
+
+  def self.fill_template(template, infos)
+    template.gsub(/\{(\w+)\}/) { infos[$1].to_s }
   end
 
   def self.build(carnet_folder, only_song: nil, cover: false, debug_marks: false)
@@ -430,6 +470,8 @@ module CarnetBuilder
     DiagsSync.sync!(carnet_folder)
 
     conf = parse_nested_infos(infos_path)
+    Layout.sensitivity = conf.fetch("sensitivity", "log")
+    Layout.reset_conflicts!
     title = conf.fetch("title")
     subtitle = conf["subtitle"]
     build_unknown_song = conf.fetch("build_unknown_song", AppConfig.get("build_unknown_song"))
@@ -514,7 +556,8 @@ module CarnetBuilder
         composer: meta["composer"].to_s, lyrics: meta["lyrics"].to_s, first_page: nil, last_page: nil }
     end
     toc_page_list = toc_specs(toc_conf, prelim_entries, content_h_pt)
-    front_specs = front_matter_specs(fm, conf["copyright"], tdm_position == "front" ? toc_page_list : [])
+    front_specs = front_matter_specs(fm, conf["copyright"], tdm_position == "front" ? toc_page_list : [],
+      editor_name: conf.dig("editor", "name"), author: conf["author"], book_designer: conf.dig("credits", "book_designer"))
     front_matter_page_count = front_specs.size
 
     # --- 3) Rendu final des chansons, dans l'ordre du TDM, page par page RÉELLE -------
@@ -653,7 +696,7 @@ module CarnetBuilder
 
     if cover
       cover_out = File.join(cover_dir, "#{slug}-v#{version}-cover.pdf")
-      cov_path = File.expand_path("../assets/cover/_default.cov", __dir__)
+      cov_path = FileFinder.find(carnet_folder, :cov) || File.expand_path("../assets/cover/_default.cov", __dir__)
       CoverBuilder.build(cover_out, cov_path: cov_path, kdp: kdp_final, conf: conf,
         entries: entries, carnet_folder: carnet_folder, debug_marks: debug_marks)
     end
@@ -774,12 +817,21 @@ module CarnetBuilder
   # `toc_specs_list` : non vide seulement si `tdm_position: front` — insérée AVANT tout
   # texte (avant-propos/préface/remerciements), après garde/copyright (Phil, 2026-08-20 :
   # "elle se place avant tout texte, donc avant une préface").
-  def self.front_matter_specs(fm, copyright, toc_specs_list)
+  def self.front_matter_specs(fm, copyright, toc_specs_list, editor_name: nil, author: nil, book_designer: nil)
     specs = []
     specs << { kind: :half_title } if fm["half_title_page"]
     specs << { kind: :garde } if fm["pages_garde"]
+    # Page de TITRE (Phil, 2026-08-25) : titre + sous-titre + "auteur" du livre — un
+    # carnet n'a pas d'auteur au sens classique, "Conçu par <book_designer>" à sa place
+    # (sauf `author` explicitement renseigné). Éditeur en haut de page PAR DÉFAUT (Phil).
+    # SANS RAPPORT avec la page de garde (:garde, ci-dessus) — celle-ci sert seulement à
+    # empêcher de voir le titre par transparence, inutile ici, ne pas confondre.
+    if fm["title_page"]
+      byline = author || (book_designer && "Conçu par #{book_designer}")
+      specs << { kind: :title_page, editor_name: editor_name, byline: byline }
+    end
     if copyright
-      idx = specs.index { |s| %i[half_title garde].include?(s[:kind]) }
+      idx = specs.index { |s| %i[half_title garde title_page].include?(s[:kind]) }
       specs.insert(idx ? idx + 1 : 0, { kind: :copyright, text: normalize_copyright(copyright) })
     end
 
@@ -843,6 +895,19 @@ module CarnetBuilder
         Layout.log_build("page de garde : sous-titre \"#{subtitle}\" ajouté sous le titre (RAT3)")
         draw_centered_text_box(pdf, subtitle, y: pdf.bounds.height / 2 + 10 - 26, size: 13)
       end
+    when :title_page
+      # Éditeur en haut PAR DÉFAUT (Phil, 2026-08-25). Titre/sous-titre centrés comme
+      # `:garde`, puis l'"auteur" du livre — un carnet n'en a pas au sens classique,
+      # "Conçu par <book_designer>" à sa place (`spec[:byline]`, déjà résolu par
+      # `front_matter_specs`).
+      draw_centered_text_box(pdf, spec[:editor_name], y: pdf.bounds.height - 40, size: 11) if spec[:editor_name]
+      draw_centered_text_box(pdf, title, y: pdf.bounds.height / 2 + 10, size: 18, style: :bold)
+      byline_y = pdf.bounds.height / 2 + 10 - 26
+      if subtitle
+        draw_centered_text_box(pdf, subtitle, y: byline_y, size: 13)
+        byline_y -= 26
+      end
+      draw_centered_text_box(pdf, spec[:byline], y: byline_y, size: 10) if spec[:byline]
     when :copyright
       # "en bas de page" (Phil, 2026-08-20) — PAS centré verticalement comme le reste du
       # front matter, une simple mention en pied de fausse-page.
