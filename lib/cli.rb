@@ -293,7 +293,7 @@ module CLI
       end
     when "open"
       case arg1
-      when "song"
+      when "song", nil
         begin
           song_folder = resolve_song_folder(arg2 || Session.song)
           infos_path = FileFinder.find(song_folder, :inf)
@@ -331,6 +331,34 @@ module CLI
           puts
           puts Loc.get("edition_cancelled")
         end
+      when "folder"
+        context = resolve_open_context
+        SongCreator.open_in_file_manager(context[:folder])
+      when "lyrics"
+        abort "aucune chanson sélectionnée (use song) — 'open lyrics' n'existe que pour les chansons" unless Session.song
+
+        lyr_path = FileFinder.find(Session.song, :lyr)
+        abort "aucun fichier .lyr/.lyrics trouvé dans #{Session.song}" unless lyr_path
+
+        system("open", "-a", AppConfig.user_song_editor, lyr_path)
+      when "infos"
+        context = resolve_open_context
+        inf_path = FileFinder.find(context[:folder], :inf)
+        abort "aucun fichier .infos/.inf trouvé dans #{context[:folder]}" unless inf_path
+
+        system("open", "-a", AppConfig.user_song_editor, inf_path)
+      when "gabarit"
+        context = resolve_open_context
+        gab_path = FileFinder.find(context[:folder], :gab)
+        abort "aucun fichier .gabarit/.gab trouvé dans #{context[:folder]}" unless gab_path
+
+        system("open", "-a", AppConfig.user_song_editor, gab_path)
+      when "pdf"
+        context = resolve_open_context
+        pdf_path = latest_pdf_path(context)
+        abort "aucun PDF construit pour l'instant (build d'abord)" unless pdf_path
+
+        system("open", pdf_path)
       else
         abort unknown_command_message("open #{arg1}")
       end
@@ -454,6 +482,31 @@ module CLI
 
   def self.resolve_carnet_folder(name)
     SongResolver.resolve_carnet_folder(name)
+  end
+
+  # Contexte courant pour `open folder`/`infos`/`gabarit`/`pdf` — chanson PRIORITAIRE
+  # sur le carnet (même règle que `build` sans argument, Phil 2026-08-25). `open
+  # lyrics`, lui, n'existe QUE pour une chanson (voir `open` ci-dessus), pas ici.
+  def self.resolve_open_context
+    if Session.song
+      { kind: :song, folder: Session.song }
+    elsif Session.carnet
+      { kind: :carnet, folder: Session.carnet }
+    else
+      abort "aucun contexte (chanson ou carnet) sélectionné (use song/songbook)"
+    end
+  end
+
+  # PDF déjà construit pour ce contexte — chanson : fichier unique (`build_song`,
+  # jamais versionné). Carnet : versionné (`-v<N>.pdf`, `CarnetBuilder.build`), le
+  # PLUS RÉCENT. `nil` si rien construit encore (jamais un chemin qui n'existe pas).
+  def self.latest_pdf_path(context)
+    if context[:kind] == :song
+      Dir.glob(File.join(context[:folder], "export", "*.pdf")).first
+    else
+      Dir.glob(File.join(context[:folder], "export", "songbooks", "*-v*.pdf"))
+        .max_by { |f| f[/-v(\d+)\.pdf\z/, 1].to_i }
+    end
   end
 
   def self.select_song(message, songs)

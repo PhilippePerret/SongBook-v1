@@ -419,6 +419,9 @@ module CarnetBuilder
     out_path = File.join(export_dir, "#{slug}.pdf")
     PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout: layout)
     Layout.report_conflicts!
+    # Sur la DERNIÈRE ligne du log de conflits, noms exacts (Phil, 2026-08-26).
+    missing_chords_summary = Layout.missing_chords_summary
+    File.open(Layout.conflict_log_path, "a") { |f| f.puts missing_chords_summary } if missing_chords_summary
     puts "#{File.basename(out_path)} généré"
     out_path
   end
@@ -701,10 +704,12 @@ module CarnetBuilder
         entries: entries, carnet_folder: carnet_folder, debug_marks: debug_marks)
     end
 
-    missing_chords_summary = Layout.missing_chords_summary
-    File.open(Layout.conflict_log_path, "a") { |f| f.puts missing_chords_summary } if missing_chords_summary
+    # Résumé des accords manquants sur la DERNIÈRE ligne du log de conflits, noms exacts
+    # (Phil, 2026-08-26) — donc APRÈS "Fin :", pas avant.
     File.open(Layout.conflict_log_path, "a") { |f| f.puts "Fin : #{Time.now}" }
     File.open(Layout.building_log_path, "a") { |f| f.puts "Fin : #{Time.now}" }
+    missing_chords_summary = Layout.missing_chords_summary
+    File.open(Layout.conflict_log_path, "a") { |f| f.puts missing_chords_summary } if missing_chords_summary
 
     puts "#{File.basename(out_path)} généré : #{total_page_count} pages"
     puts "#{File.basename(cover_out)} généré" if cover
