@@ -367,33 +367,41 @@ module TablatorAssistant
     "#{haut}/#{bas}"
   end
 
+  # Une barre traverse TOUTE la tablature (Phil, 2026-08-27) : dessinée sur les 6
+  # cordes à sa colonne, pas seulement sur une ligne à part sous la grille.
   def self.draw_grid(matrix, bars, cur_string, cur_col, unit)
     print "\e[2J\e[H"
     (1..6).each do |string|
       row = matrix[string - 1].each_with_index.map do |cell, col|
-        text = cell.nil? ? "-" * COL_WIDTH : "#{cell.kase}#{cell.rh}#{cell.lh}".ljust(COL_WIDTH, "-")
+        text = if bars[col]
+                 bars[col].ljust(COL_WIDTH)
+               elsif cell.nil?
+                 "-" * COL_WIDTH
+               else
+                 "#{cell.kase}#{cell.rh}#{cell.lh}".ljust(COL_WIDTH, "-")
+               end
         string == cur_string && col == cur_col ? "\e[7m#{text}\e[0m" : text
       end.join
       puts "#{STRING_LABELS[string - 1]}|#{row}|"
-    end
-    # Ligne des barres (Phil, 2026-08-26) : une frappe par colonne concernée, alignée
-    # sur la 1re colonne de chaque cellule de la grille ci-dessus.
-    unless bars.empty?
-      bar_line = Array.new(matrix.first.length * COL_WIDTH, " ")
-      bars.each { |col, bar| bar.chars.each_with_index { |c, i| bar_line[(col * COL_WIDTH) + i] = c if (col * COL_WIDTH) + i < bar_line.length } }
-      puts " #{bar_line.join}"
     end
     puts "#{AnsiColors::GRAY}#{format(Loc.get('tablator_write_help'), unit)}#{AnsiColors::RESET}"
   end
 
   # Séquence CSI (`ESC [ ... lettre-finale`) lue en entier (longueur variable, ex.
   # `ESC [ 1 ; 2 C` pour Shift+→) — lire un nombre fixe d'octets après ESC cassait sur
-  # ces séquences plus longues que les flèches simples.
+  # ces séquences plus longues que les flèches simples. Toute séquence ESC qui n'est
+  # PAS une CSI (2e octet ≠ "[", ex. Option/Alt+lettre envoyé en "Meta" par le terminal
+  # — Terminal.app, réglage "Use Option as Meta key") est renvoyée TELLE QUELLE dès 2
+  # octets, SANS attendre un 3e octet qui n'arrivera jamais (Phil, 2026-08-27 : bug
+  # constaté, la frappe suivante était alors avalée comme si elle appartenait à cette
+  # séquence).
   def self.read_key
     c = $stdin.getc
     return c unless c == "\e"
 
     seq = c + $stdin.getc
+    return seq unless seq[1] == "["
+
     loop do
       ch = $stdin.getc
       seq += ch
