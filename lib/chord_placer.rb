@@ -21,9 +21,11 @@ require_relative "transpose"
 # escalier constaté) : lecture caractère par caractère, ISIG/OPOST intacts, Ctrl+C
 # redevient un vrai SIGINT (`Interrupt`, standard Ruby). JAMAIS Échap pour quitter
 # (interdiction du projet) — seul Ctrl+C sort.
-# Maj+Alt et Maj+Ctrl abandonnés (Phil, diagnostic en direct : le terminal les
-# intercepte lui-même pour déplacer son propre curseur, aucun octet n'atteint le
-# programme — pas contournable côté code) : seul Maj+flèche (1 espace) reste.
+# Maj+Alt, Maj+Ctrl, Alt+flèche ET Ctrl+flèche abandonnés (Phil, diagnostic en direct :
+# le terminal les intercepte lui-même pour déplacer son propre curseur, aucun octet
+# n'atteint le programme — pas contournable côté code, testé et confirmé 2026-08-26)
+# : seul Maj+flèche (1 espace) reste côté flèches modifiées. Lettre par lettre : "n"/
+# "p" (touches dédiées, jamais interceptées par le terminal), pas de modificateur.
 module ChordPlacer
   ESC = "\e"
   # Pavé numérique en mode application (DECKPAM, `\e=`) : `\eOp`.."\eOy" = touches
@@ -48,8 +50,9 @@ module ChordPlacer
   WINDOW_SIZE = 4
   # ≤45 signes par ligne (Phil).
   HELP_LINES = [
-    "x sup | A-G Nouvel accord",
+    "x sup acc | X sup tous | A-G Nouvel accord",
     "J/L début/fin vers | T/V début/fin chanson",
+    "←/→ ←Syllabe→ | n/p ←Lettre→ |",
     "Enter Sauver | ^c Annuler",
   ].freeze
   HELP_COLOR = "\e[90m"
@@ -120,9 +123,14 @@ module ChordPlacer
           case key
           when :enter
             break
-          when "x", "X"
+          when "x"
             if current.chord_at(cursor)
               current.delete_chord(cursor)
+              dirty = true
+            end
+          when "X"
+            if editable.any? { |i| chord_lines[i].chords.any? } && confirm_delete_all
+              editable.each { |i| chord_lines[i].chords.clear }
               dirty = true
             end
           when *KEYPAD_DIGITS
@@ -140,6 +148,10 @@ module ChordPlacer
             cursor = 0
           when "L"
             cursor = current.text.length
+          when "n"
+            cursor = current.move(cursor, :letter, 1)
+          when "p"
+            cursor = current.move(cursor, :letter, -1)
           when "T"
             pos = 0
             cursor = 0
@@ -344,16 +356,16 @@ module ChordPlacer
   end
 
   # ←/→ nu = syllabe par syllabe, avec saut au vers suivant/précédent en butée (reprend
-  # l'ancien rôle de N/P). Alt = lettre par lettre (ajustement fin, jamais de saut de
-  # vers). Shift = décalage des paroles (`shift!`), inchangé.
+  # l'ancien rôle de N/P). Shift = décalage des paroles (`shift!`), inchangé. Lettre par
+  # lettre : voir "n"/"p" (`run`) — PAS ici, Alt/Ctrl+flèche abandonnés (en-tête du
+  # fichier, interceptés par le terminal avant d'atteindre le programme).
   def self.move_horizontal(key, pos, cursor, chord_lines, editable, direction)
     current = chord_lines[editable[pos]]
     mods = key[:mods]
     return [pos, current.shift!(cursor, 1, direction)] if mods[:shift]
 
-    granularity = mods[:alt] ? :letter : :syllable
-    new_cursor = current.move(cursor, granularity, direction)
-    if new_cursor == cursor && granularity == :syllable
+    new_cursor = current.move(cursor, :syllable, direction)
+    if new_cursor == cursor
       if direction.positive? && pos < editable.length - 1
         pos += 1
         cursor = 0
@@ -422,6 +434,24 @@ module ChordPlacer
 
     puts row.join
     puts chord_line.text
+  end
+
+  # Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil — même
+  # convention que `TablatorAssistant.blue`).
+  def self.blue(text)
+    "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
+  end
+
+  # "X" (suppression de TOUS les accords de la chanson) : action destructive, jamais
+  # sans confirmation. Bascule en mode ligne le temps de la question (même raison que
+  # `read_chord_name` : `TTY::Prompt` a besoin d'icanon/echo, pas du mode brut).
+  def self.confirm_delete_all
+    print "\e>"
+    system("stty icanon echo")
+    result = TTY::Prompt.new.yes?(blue(Loc.get("confirm_delete_all_chords")))
+    system("stty -icanon -echo min 1 time 0")
+    print "\e="
+    result
   end
 
   def self.with_raw_terminal

@@ -1532,37 +1532,58 @@ Noter que s&#8217;il y des options réglées pour le carnet en construction et d
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sensitivity</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Sensibilité aux erreurs, la façon de les gérer.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>high</code>, <strong><code>mid</code></strong>, <code>low</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>high</code>, [<code>mid</code>], <code>low</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>-v</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>song_order_mode</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Mode de classement des chansons</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>strict</code>, <strong><code>lazy</code></strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>strict</code>, [<code>lazy</code>]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>keep_order</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Peut remplacer le précédent, respect de l&#8217;ordre des chansons.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code>, <strong><code>false</code></strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code>, [<code>false</code>]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title_with_labels</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ajouter les labels aux infos de titre ("Paroles", "Musique", etc.)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>false</code>], <code>true</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_diags</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Pour autoriser (<code>true</code>) ou non (<code>false</code>) le rétrécissement des diagrammes. Note : peut se faire chanson par chanson.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong><code>true</code></strong>, <code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>true</code>], <code>false</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title_with_labels</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Ajouter les labels aux infos de titre ("Paroles", "Musique", etc.)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong><code>false</code></strong>, <code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_tabla</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permission de réduire les tablatures.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>true</code>], <code>false</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_score</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permission de réduire les partitions.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>true</code>], <code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_lyrics</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permission de réduire les paroles (font-size).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code>, [<code>false</code>]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
 </tr>
 </tbody>
 </table>
@@ -1643,14 +1664,36 @@ Noter que s&#8217;il y des options réglées pour le carnet en construction et d
 <pre>diags:
   # Pour limiter les diags à une liste d'accords, par exemple seulement
   # les accords compliqués ou propres à la chanson
-  list: [Am7, C, Dd7M]</pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>title_with_labels: true # =&gt; on met les lables "Paroles", "Musique"
-shrink_tabla: true # on peut réduire pour que ça tienne
-shrink_score: true # idem avec les partitions</pre>
+  list: [Am7, C, Dd7M]
+  # Position dans les pages de chanson
+  # [Int] : à l'intérieur, donc côté reliure du carnet.
+  # Ext   : à l'extérieur, donc à l'opposé de la reliure.
+  # Left  : dans une colonne toujours à gauche des paroles.
+  # Right : dans une colonne toujours à droite des paroles.
+  # Top   : en haut de la page.
+  # Bot   : en bas de la page
+  # Front : tous les diagrammes avant les paroles en 1^re^ page.
+  # End   : tous les diagrammes après les paroles en dernière page.
+  position: Left
+
+  # Alignement des diags dans leur container (colonne ou rangée)
+  # Valeurs possibles en fonction du contenant :
+  # Ext/Int/Left/Right : [Center], Top, Bot, Justify
+  # Top/Bot/Front/End  : [Center], Left, Right, Justify
+  align: Center
+
+  # Échelle (zoom) des diagrammes par rapport à la valeur normale
+  # C'est une proportion par rapport à 1 (valeur normale).
+  # Cette valeur ne s'applique pas si `size` est défini.
+  scale: 1.5
+
+  # On peut aussi fixer explicitement la taille des diagrammes.
+  # Noter que si shrink_diags est true, cette taille pourra être
+  # modifiée pour des raisons esthétiques.
+  # La valeur a la forme largeur x hauteur. Si une valeur n'est pas
+  # définie, elle sera calculée automatiquement par rapport à l'autre
+  # "120 x" signifie : "largeur de 120 points et hauteur automatique"
+  size: 120 x</pre>
 </div>
 </div>
 </div>
@@ -1682,11 +1725,6 @@ shrink_score: true # idem avec les partitions</pre>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>position</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Position de l&#8217;élément dans la page</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Top = en haut, Left = à gauche, Bot = en bas, Right = à droite, Int = à l&#8217;intérieur (des double-pages), Ext = à l&#8217;extérieur (des double pages)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tabla</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Tout ce qui concerne les tablatures</p></td>
-<td class="tableblock halign-left valign-top"></td>
 </tr>
 </tbody>
 </table>
@@ -2066,6 +2104,15 @@ interprete: Peter Gabriel et Kate Bush
 <p>etc.</p>
 </li>
 </ul>
+</div>
+<div class="sect3">
+<h4 id="add-chords-tips">Quelques tips sur des erreurs classiques</h4>
+<div class="paragraph">
+<p><strong>Quand la découpe par syllabe est défectueuse</strong></p>
+</div>
+<div class="paragraph">
+<p>Parfois, la découpe par syllabe peut être défectueuse. Par exemple, dans « nuage », l&#8217;app va considérer seulement les syllabes « nua » et « ge ». Dans ce cas, on utilise Combo::n/p[] pour se déplacer de lettre en lettre, puis <kbd style="font-size:1.25em;">:Maj</kbd>+<kbd style="font-size:1.25em;">→</kbd> pour déplacer le texte, ce qui donnera : « nu age » et dans ce cas, « a » sera forcément considéré comme une syllabe seule.</p>
+</div>
 </div>
 </div>
 <div class="sect2">

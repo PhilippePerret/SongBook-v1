@@ -22,11 +22,11 @@ s| Valeurs | Opt. | Pr.
 | Peut remplacer le précédent, respect de l'ordre des chansons.
 | `true`, [`false`] | --- | Carnet
 
-|`shrink_diags` | Pour autoriser (`true`) ou non (`false`) le rétrécissement des diagrammes. Note : peut se faire chanson par chanson.
-| [`true`], `false` | --- | Song
-
 | `title_with_labels` | Ajouter les labels aux infos de titre ("Paroles", "Musique", etc.)
 | [`false`], `true` | --- | Carnet
+
+|`shrink_diags` | Pour autoriser (`true`) ou non (`false`) le rétrécissement des diagrammes. Note : peut se faire chanson par chanson.
+| [`true`], `false` | --- | Song
 
 | `shrink_tabla` | Permission de réduire les tablatures.
 | [`true`], `false` | --- | Song

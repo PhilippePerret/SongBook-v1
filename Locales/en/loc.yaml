@@ -66,3 +66,6 @@ diag_name_prompt: "Name to give the schema: "
 diag_conflict_nom: "This name already exists for this fret: %s"
 diag_conflict_schema: "This schema (same positions) already exists, under the name %s."
 diag_inserted: "Schema %s inserted."
+
+# chord assistant (songbook add chords)
+confirm_delete_all_chords: "Delete all chords in the song?"

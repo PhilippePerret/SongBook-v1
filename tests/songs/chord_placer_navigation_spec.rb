@@ -34,11 +34,10 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       expect(cursor).to eq(chord_lines[0].text.length)
     end
 
-    it "Alt+flèche avance lettre par lettre, sans saut de vers en butée" do
-      fin = chord_lines[0].text.length
-      pos, cursor = ChordPlacer.move_horizontal(key(alt: true), 0, fin, chord_lines, editable, 1)
+    it "Alt+flèche ne fait plus rien de spécial (abandonné, intercepté par le terminal) : reste une syllabe" do
+      pos, cursor = ChordPlacer.move_horizontal(key(alt: true), 0, 0, chord_lines, editable, 1)
       expect(pos).to eq(0)
-      expect(cursor).to eq(fin)
+      expect(cursor).to be_between(1, chord_lines[0].text.length - 1)
     end
 
     it "Shift+flèche décale le texte, inchangé" do
@@ -104,13 +103,13 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       path
     end
 
-    def simulate(path, input)
+    def simulate(path, input, confirm: true)
       original_stdin = $stdin
       original_stdout = $stdout
       $stdin = StringIO.new(input)
       $stdout = StringIO.new
       allow(ChordPlacer).to receive(:with_raw_terminal).and_yield
-      allow_any_instance_of(TTY::Prompt).to receive(:yes?).and_return(true)
+      allow_any_instance_of(TTY::Prompt).to receive(:yes?).and_return(confirm)
       ChordPlacer.run(path)
     ensure
       $stdin = original_stdin
@@ -143,6 +142,13 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       path = write_lyr(["bonjour tout"])
       simulate(path, "\nBm\e[C\r")
       expect(File.readlines(path).first.chomp).to include("/Bm:bonjour")
+    end
+
+    it "n/p avancent/reculent lettre par lettre (remplace Alt/Ctrl+flèche, abandonnés)" do
+      path = write_lyr(["bonjour tout"])
+      # 3x "n" : "b","o","n" -> curseur en position 3 ("bon|jour tout") ; 1x "p" -> 2.
+      simulate(path, "\nnnnpGm\r\r")
+      expect(File.readlines(path).first.chomp).to eq("bo/Gm:njour tout")
     end
 
     it "lettre minuscule puis chiffre : si la combinaison n'existe pas, FORCÉMENT un nouvel accord (bug 2026-08-26 : 'f'+'7' plaçait F puis ignorait le 7)" do

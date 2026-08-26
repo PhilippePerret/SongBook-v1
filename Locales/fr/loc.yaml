@@ -74,3 +74,6 @@ diag_name_prompt: "Nom à donner au schéma : "
 diag_conflict_nom: "Ce nom existe déjà pour cette case : %s"
 diag_conflict_schema: "Ce schéma (mêmes positions) existe déjà, sous le nom %s."
 diag_inserted: "Schéma %s inséré."
+
+# assistant d'accords (songbook add chords)
+confirm_delete_all_chords: "Supprimer tous les accords de la chanson ?"
