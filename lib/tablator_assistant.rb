@@ -150,13 +150,16 @@ module TablatorAssistant
   # TOUJOURS détruit en sortie (`ensure`, y compris sur Ctrl+C, Phil). `edit_path:` :
   # tablature existante chargée dans la grille (frontmatter -> `title`/`unit`/
   # `metrique`, corps -> matrice), réenregistrée au même endroit (sinon nouveau
-  # fichier, titre demandé).
-  def self.write_tablature(edit_path: nil)
+  # fichier, titre demandé). `title:` (`create tab NOM`, Phil 2026-08-26) : pré-répond
+  # à ce "Titre :" pour une NOUVELLE tablature — jamais redemandé si déjà donné.
+  def self.write_tablature(edit_path: nil, title: nil)
     meta = {}
     tokens_in = []
     if edit_path
       meta, body = Tablator.parse_frontmatter(File.read(edit_path))
       tokens_in = Tablator.tokenize(body)
+    elsif title
+      meta["title"] = title
     end
     unit = meta["unit"] || DEFAULT_UNIT
     metrique = meta["metrique"]

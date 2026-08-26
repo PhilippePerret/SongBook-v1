@@ -44,6 +44,10 @@ USAGE = <<~TXT
 
         {{command: songbook edit tab "nom approximatif"}}
 
+  - Créer une nouvelle tablature dans la chanson en contexte (nom demandé à l'enregistrement si omis)
+
+        {{command: songbook create tab "nom"}}
+
   - Ouvrir le manuel
 
         {{command: songbook manual|manuel}}

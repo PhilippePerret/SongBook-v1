@@ -158,17 +158,33 @@ module CLI
       case arg1
       when "song"
         begin
-          SongCreator.run(arg2, arg3)
+          # Nouvelle chanson créée -> devient le contexte courant (Phil, 2026-08-26 :
+          # bug constaté, l'ancien contexte `use song` restait en place).
+          folder = SongCreator.run(arg2, arg3)
+          Session.song = folder if folder.is_a?(String)
         rescue Interrupt
           puts
           puts Loc.get("song_creation_cancelled")
         end
       when "songbook", "sb"
         begin
-          SongbookCreator.run(arg2)
+          folder = SongbookCreator.run(arg2)
+          Session.carnet = folder if folder.is_a?(String)
         rescue Interrupt
           puts
           puts Loc.get("song_creation_cancelled")
+        end
+      when "tab"
+        # Seulement dans une chanson (Session.song), JAMAIS un carnet (Phil, 2026-08-26)
+        # — `--song`/`use song` la fixent déjà avant d'arriver ici (`Session.with_song`).
+        abort "aucune chanson de contexte pour create tab (use song ou --song)" unless Session.song
+
+        begin
+          # `arg2` : nom de la tablature à créer (".tab" ajouté si absent) — remplace le
+          # "Titre :" normalement demandé à l'enregistrement, jamais redemandé si donné ici.
+          TablatorAssistant.write_tablature(title: arg2&.sub(/\.tab\z/i, ""))
+        rescue Interrupt
+          puts
         end
       else
         abort unknown_command_message("create #{arg1}")
