@@ -474,10 +474,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#universal-properties">Propriétés universelles</a></li>
 <li><a href="#_placement_des_diags">Placement des diags</a></li>
 <li><a href="#_tablatures_et_partitions_2">Tablatures et partitions</a></li>
-<li><a href="#best-practices">Les bonnes pratiques</a></li>
 <li><a href="#songbook-tdm">Table des matières du carnet</a></li>
 <li><a href="#songbook-schemas">Diagrammes propres</a></li>
 <li><a href="#cover">La Couverture</a></li>
+<li><a href="#songbook-building">Construction du carnet</a></li>
+<li><a href="#best-practices">Les bonnes pratiques</a></li>
 </ul>
 </li>
 <li><a href="#tools">Outils</a>
@@ -495,6 +496,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#app-extension-driven">Dirigée par ses extensions</a></li>
 <li><a href="#properties">Les propriétés</a></li>
 <li><a href="#_outils">Outils</a></li>
+<li><a href="#load-from-site.adoc">Chargement depuis le site</a></li>
 </ul>
 </li>
 <li><a href="#_développement_de_lapplication">Développement de l&#8217;application</a>
@@ -588,40 +590,43 @@ a {
 <div class="ulist">
 <ul>
 <li>
-<p>vous créez des chansons ou vous les récupérez depuis notre site,</p>
+<p>vous <a href="#song-assistant">créez des chansons</a> ou vous les <a href="#load-song-from-site">récupérez depuis notre site</a>,</p>
 </li>
 <li>
-<p>vous écrivez les paroles,</p>
+<p>vous <a href="#lyrics-file">écrivez les paroles</a>,</p>
 </li>
 <li>
-<p>vous placez les accords sur les paroles,</p>
+<p>vous placez <a href="#chords">les accords sur les paroles</a> (avec l’<a href="#song-chords-assistant">assistant</a>),</p>
 </li>
 <li>
-<p>s&#8217;ils n&#8217;existent pas vous créez les diagrammes d&#8217;accord propres à ces chansons,</p>
+<p>s&#8217;ils n&#8217;existent pas vous créez <a href="#diags">les diagrammes</a> d&#8217;accord propres à ces chansons (avec ou sans l'<a href="#diag-schema-producer">assistant</a>),</p>
 </li>
 <li>
-<p>vous créez les tablatures, les partitions dont elles ont besoin,</p>
+<p>vous créez <a href="#tablature">les tablatures</a>, <a href="#score">les partitions</a> dont elles ont besoin,</p>
 </li>
 <li>
-<p>vous établissez le gabarit de la chanson pour y injecter ces éléments,</p>
+<p>vous établissez <a href="#gabarit-file">le gabarit de la chanson</a> pour y injecter tous ces éléments et les disposer,</p>
 </li>
 <li>
-<p>vous créez la table des matières du carnet, donc la liste des chansons,</p>
+<p>vous créez <a href="#songbook-tdm">la table des matières du carnet</a>, donc la liste des chansons qu&#8217;il doit contenir,</p>
 </li>
 <li>
-<p>vous définissez les caractéristiques du carnet et notamment sa mise en page,</p>
+<p>vous définissez <a href="#songbook-infos">les caractéristiques du carnet</a> et peut-être même <a href="#songbook-layout">sa mise en page</a> (ou vous adoptez une <a href="#app-layouts">mise en page déjà définie</a>),</p>
 </li>
 <li>
-<p>vous lancez le processus de fabrication du carnet,</p>
+<p>vous <a href="#lancez le processus de fabrication du carnet">[lancez le processus de fabrication du carnet]</a>,</p>
 </li>
 <li>
-<p>vous ajustez les gabarits des chansons qui peuvent poser problème,</p>
+<p>vous ajustez <a href="#gabarit-file">les gabarits des chansons</a> qui peuvent poser problème,</p>
 </li>
 <li>
 <p>vous relancez le processus de fabrication du carnet jusqu&#8217;à satifaction complète,</p>
 </li>
 <li>
-<p>vous construisez la couverture à partir du modèle fourni,</p>
+<p>vous construisez <a href="#cover">la couverture</a> (par exemple <a href="#cover-idml-file">à partir du fichier IDM fourni</a>),</p>
+</li>
+<li>
+<p>pour chaque opération, vous vous assurez bien entendu d'<a href="#best-practices">adopter les bonnes pratiques</a>, pour votre propre confort,</p>
 </li>
 <li>
 <p>vous envoyez tout le matériel à votre imprimeur,</p>
@@ -632,31 +637,6 @@ a {
 </ul>
 </div>
 <hr>
-<div class="sect3">
-<h4 id="diag-builder">Constructeur de diagramme</h4>
-<div class="paragraph">
-<p>Outils permettant de construire des diagrammes d&#8217;accords pour la guitare.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>console build diag "schéma"</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Concernant le schéma à fournir, cf. &lt;&lt;&gt;&gt;.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_constructeur_de_tablatures">Constructeur de tablatures</h4>
-<div class="paragraph">
-<p>Pour construire le ou les tablatures (fichiers <code>.tab</code>) contenus dans le dossier de la chanson.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook build tab "titre chanson"</pre>
-</div>
-</div>
-</div>
 </div>
 <div class="sect2">
 <h3 id="app-layouts">Layouts de l&#8217;application</h3>
@@ -1002,7 +982,7 @@ Les /am:Portes /c:du pé/d:niten/f:cier</pre>
 <p>les accords doivent toujours correspondre à un diagramme (voir la todo: liste des diagrammes),</p>
 </li>
 <li>
-<p>lorsque le diagramme n&#8217;existe pas, on peut le produire à l&#8217;aide du <a href="#diag-builder">constructeur de diagramme</a>.</p>
+<p>lorsque le diagramme n&#8217;existe pas, on peut le produire à l&#8217;aide du <a href="#diag-schema-producer">constructeur de diagramme</a>.</p>
 </li>
 <li>
 <p>plusieurs accords peuvent s&#8217;enchainer sans espaces entre eux : <code>/c:/dm:/em:</code>,</p>
@@ -1501,6 +1481,16 @@ Pour ouvrir directement ce fichier, <code>songbook open layout --sb "titre carne
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code> = titre mis en bandeau</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>score_title_size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Taille de la police pour les titres de partitions et de tablatures (avec unité)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>12pt</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>score_title_style</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Style à appliquer aux titres des partitions et tablatures.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">p.e. <code>bold italic</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lyrics_flux</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Définit le flux, l&#8217;enchainement des strophes, couplets, refrains et autres paroles.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>side</code> (pour "side by side", "côte à côte") ou <code>vertical</code> (pour "stacked vertically" ou "l&#8217;un au-dessous de l&#8217;autre") ou <code>free</code> (pour "free positioning", aucune contrainte).</p></td>
@@ -1918,101 +1908,6 @@ Noter que s&#8217;il y des options réglées pour le carnet en construction et d
 </div>
 </div>
 <div class="sect2">
-<h3 id="best-practices">Les bonnes pratiques</h3>
-<div class="paragraph">
-<p>Dans cette partie vous trouverez des conseils pour gérer au mieux vos cahiers de chant.</p>
-</div>
-<div class="sect3">
-<h4 id="songs-folder">Dossier des chansons</h4>
-<div class="paragraph">
-<p>Les chansons pourront servir à former plusieurs carnets<sup>*</sup>, vous avez tout intérêt à les rassemblez dans un dossier séparé de vos carnets de chant.</p>
-</div>
-<div class="paragraph">
-<p><sup>*</sup> Par exemple, la chanson <em>Don&#8217;t Give Up</em> pourrait faire partie du <em>Carnet des meilleurs duo</em>, du <em>Carnet des tubes de l&#8217;année 1986</em> et du <em>Carnet Peter Gabriel</em>.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>/Documents/Musique/Chant/
-  |— Chansons/</pre>
-</div>
-</div>
-<div class="sect4">
-<h5 id="bestprat-song-infos">Infos sur la chanson</h5>
-<div class="paragraph">
-<p>Dans le fichier des informations de la chanson (<code>.infos</code>), le mieux est d&#8217;indiquer un identifiant (<code>id</code>) qui permettra d&#8217;identifier (sic) la chanson plus facilement, sans faute et en glissant des informations supplémentaires. Par exemple :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>id: dont-give-up-peter-gabriel-1986
-title: Don't Give Up
-interprete: Peter Gabriel et Kate Bush
-...</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Nous verrons dans les <a href="#bestpract-songbook-tdm">bonnes pratiques concernant la table des matières</a> en quoi l&#8217;usage d&#8217;un identifiant est une bonne chose.</p>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="songbooks-folder">Dossier des carnets</h4>
-<div class="paragraph">
-<p>Ensuite, par exemple au même niveau que le <a href="#songs-folder">dossier des chansons</a>, vous pouvez avoir le dossier où vous allez créer tous vos carnets.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>/Documents/Musique/Chant/
-  |— Carnets/
-  |— Chansons/</pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="songbook-folder">Dossier <strong>du</strong> carnet</h4>
-<div class="paragraph">
-<p>Et dans le dossier précédent, on peut créer le dossier du carnet en particulier.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>/Documents/Musique/Chant/
-  |— Carnets/
-  |     |— Carnet-tubes-1986
-  |
-  |— Chansons/</pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="bestpract-songbook-tdm">Table des matières du carnet de chant</h4>
-<div class="paragraph">
-<p>La première chose à créer, c&#8217;est la table des matières du carnet de chant. Cette table des matières, comme cela est indiqué dans <a href="#songbook-tdm">sa description</a> est un fichier <code>.tdm</code> qui liste simplement les chansons soit par leur <code>id</code> soit par leur titre de dossier <strong>exact</strong> (attention aux fautes de typo !).</p>
-</div>
-<div class="paragraph">
-<p>Dans le fichier <code>Carnet-tubes-1986/c.tdm</code> :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>- adelaide-arnold-turboust-1986
-- lazziza-daniel-balavoine-1986
-- capitaine-abandonee-gold-1986
-- the-captain-of-her-heart-double-1986
-- demons-de-minuit-images-1986
-- dont-give-up-peter-gabriel-1986
-...</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>L&#8217;usage d&#8217;un <em>identifiant</em> dans la table des matières permet aussi de modifier un titre sans avoir à la modifier dans tous les carnets où la chanson est insérée.</p>
-</div>
-<div class="paragraph">
-<p>À partir de là, sans aucune autre précision, si vos fichiers chansons sont bien définis, tout peut se faire tout seul (<code>songbook .</code> dans le Terminal ouvert au dossier) pour générer le carnet prêt à être imprimé ou envoyé à votre imprimeur.</p>
-</div>
-<div class="paragraph">
-<p>TODO: Poursuivre</p>
-</div>
-</div>
-</div>
-<div class="sect2">
 <h3 id="songbook-tdm">Table des matières du carnet</h3>
 <div class="paragraph">
 <p>Pour ouvrir la table des matières d&#8217;un carnet :</p>
@@ -2127,6 +2022,158 @@ interprete: Peter Gabriel et Kate Bush
 </div>
 <div class="paragraph">
 <p>Noter que ci-dessus, c&#8217;est le fait qu&#8217;il n&#8217;y ait rien au-dessus du premier "|" et rien en dessous du dernier "|"</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="cover-idml-file">Fichier IDML ajustable</h4>
+<div class="paragraph">
+<p>Le plus prudent et le plus productif, pour obtenir une couverture selon ses envies, est de demander le fichier <code>IDML</code> de cette couverture, un fichier ouvrage aussi bien dans InDesign que Affinity Publisher ou Canva.</p>
+</div>
+<div class="paragraph">
+<p>Pour l&#8217;obtenir :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook cover idml</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Ce fichier contient déjà toutes les informations sur le carnet, il ne reste qu&#8217;à les mettre en forme.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="songbook-building">Construction du carnet</h3>
+<div class="paragraph">
+<p><em>Construire le carnet</em> consiste à produire le fichier <code>.pdf</code> qui sera transmis à l&#8217;imprimeur ou importer sur KDP pour faire imprimer le carnet.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>&gt; songbook build songbook "&lt;&lt;approximatif, titre approx&gt;&gt;"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Ou :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; build</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>… si le carnet est le <a href="#current-songbook">carnet courant</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="best-practices">Les bonnes pratiques</h3>
+<div class="paragraph">
+<p>Dans cette partie vous trouverez des conseils pour gérer au mieux vos cahiers de chant.</p>
+</div>
+<div class="sect3">
+<h4 id="songs-folder">Dossier des chansons</h4>
+<div class="paragraph">
+<p>Les chansons pourront servir à former plusieurs carnets<sup>*</sup>, vous avez tout intérêt à les rassemblez dans un dossier séparé de vos carnets de chant.</p>
+</div>
+<div class="paragraph">
+<p><sup>*</sup> Par exemple, la chanson <em>Don&#8217;t Give Up</em> pourrait faire partie du <em>Carnet des meilleurs duo</em>, du <em>Carnet des tubes de l&#8217;année 1986</em> et du <em>Carnet Peter Gabriel</em>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>/Documents/Musique/Chant/
+  |— Chansons/</pre>
+</div>
+</div>
+<div class="sect4">
+<h5 id="bestprat-song-infos">Infos sur la chanson</h5>
+<div class="paragraph">
+<p>Dans le fichier des informations de la chanson (<code>.infos</code>), le mieux est d&#8217;indiquer un identifiant (<code>id</code>) qui permettra d&#8217;identifier (sic) la chanson plus facilement, sans faute et en glissant des informations supplémentaires. Par exemple :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>id: dont-give-up-peter-gabriel-1986
+title: Don't Give Up
+interprete: Peter Gabriel &amp; Kate Bush
+...</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Nous verrons dans les <a href="#bestpract-songbook-tdm">bonnes pratiques concernant la table des matières</a> en quoi l&#8217;usage d&#8217;un identifiant est une bonne chose.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="song-best-scores-folder">Dossier des images</h5>
+<div class="paragraph">
+<p>Pour placer les fichiers des tablatures et des partitions, le meilleur endroit est un dossier <code>scores</code> ou un dossier <code>images</code> (voire les deux).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Ma-Chanson/
+  |— mc.infos
+  |— scores/
+  |     |— intro.tab
+  |     |— couplet.tab
+  |     |— intro+couplet.svg
+  |— images/
+  |     |— macCartney.jpg</pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="songbooks-folder">Dossier des carnets</h4>
+<div class="paragraph">
+<p>Ensuite, par exemple au même niveau que le <a href="#songs-folder">dossier des chansons</a>, vous pouvez avoir le dossier où vous allez créer tous vos carnets.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>/Documents/Musique/Chant/
+  |— Carnets/
+  |— Chansons/</pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="songbook-folder">Dossier <strong>du</strong> carnet</h4>
+<div class="paragraph">
+<p>Et dans le dossier précédent, on peut créer le dossier du carnet en particulier.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>/Documents/Musique/Chant/
+  |— Carnets/
+  |     |— Carnet-tubes-1986
+  |
+  |— Chansons/</pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="bestpract-songbook-tdm">Table des matières du carnet de chant</h4>
+<div class="paragraph">
+<p>La première chose à créer, c&#8217;est la table des matières du carnet de chant. Cette table des matières, comme cela est indiqué dans <a href="#songbook-tdm">sa description</a> est un fichier <code>.tdm</code> qui liste simplement les chansons soit par leur <code>id</code> soit par leur titre de dossier <strong>exact</strong> (attention aux fautes de typo !).</p>
+</div>
+<div class="paragraph">
+<p>Dans le fichier <code>Carnet-tubes-1986/c.tdm</code> :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>- adelaide-arnold-turboust-1986
+- lazziza-daniel-balavoine-1986
+- capitaine-abandonee-gold-1986
+- the-captain-of-her-heart-double-1986
+- demons-de-minuit-images-1986
+- dont-give-up-peter-gabriel-1986
+...</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>L&#8217;usage d&#8217;un <em>identifiant</em> dans la table des matières permet aussi de modifier un titre sans avoir à la modifier dans tous les carnets où la chanson est insérée.</p>
+</div>
+<div class="paragraph">
+<p>À partir de là, sans aucune autre précision, si vos fichiers chansons sont bien définis, tout peut se faire tout seul (<code>songbook .</code> dans le Terminal ouvert au dossier) pour générer le carnet prêt à être imprimé ou envoyé à votre imprimeur.</p>
+</div>
+<div class="paragraph">
+<p>TODO: Poursuivre</p>
 </div>
 </div>
 </div>
@@ -2460,11 +2507,31 @@ keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
 <div class="sectionbody">
 <div class="sect2">
 <h3 id="interactive-mode">Mode interactif</h3>
+<div class="sidebarblock">
+<div class="content">
+<div class="ulist">
+<ul>
+<li>
+<p><a href="#enter-interactive-mode">Entrer en mode interactif</a></p>
+</li>
+<li>
+<p><a href="#interactive-mode-focus-song">Se focaliser sur une chanson et un carnet</a></p>
+</li>
+<li>
+<p><a href="#quit-interactive-mode">Quitter le mode interactif</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
 <div class="paragraph">
 <p>Le <em>mode interactif</em> de la commande <code>songbook</code> permet de ne pas avoir à taper <code>songbook</code> chaque fois qu&#8217;on veut jouer une commande. Il permet aussi de fixer un contexte (un carnet et une chanson) qui rendront très confortable le travail sur le carnet et les chansons.</p>
 </div>
+<div class="sect3">
+<h4 id="enter-interactive-mode">Entrer en mode interactif</h4>
 <div class="paragraph">
-<p>On entre en mode interactif avec :</p>
+<p>s
+On entre en mode interactif avec :</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2479,6 +2546,9 @@ keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
 <pre>🎸&gt; build "titre chanson"</pre>
 </div>
 </div>
+</div>
+<div class="sect3">
+<h4 id="interactive-mode-focus-song">Se focaliser sur une chanson et un carnet</h4>
 <div class="paragraph">
 <p>Pour focaliser toutes les commandes suivantes sur une chanson en particulier, celle qu&#8217;on travaille par exemple :</p>
 </div>
@@ -2487,7 +2557,7 @@ keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
 <pre>🎸&gt; use song "chanson court"</pre>
 </div>
 </div>
-<div class="paragraph">
+<div id="current-songbook" class="paragraph">
 <p>… ou sur un carnet :</p>
 </div>
 <div class="listingblock">
@@ -2499,6 +2569,13 @@ keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
 </div>
 <div class="paragraph">
 <p>Noter que le titre à rentre ici peut être tout à fait <a href="#approximatif">[approximatif]</a>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="quit-interactive-mode">Quitter le mode interactif</h4>
+<div class="paragraph">
+<p>Pour <strong>quitter le mode interactif</strong>, utiliser <code>q</code>, <code>quit</code> ou <code>exit</code>.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -2772,6 +2849,12 @@ Près d'un lac je m'étais endormie</pre>
 <div class="content">
 <pre>ln -s /Applications/SongBook.app/tools/ChordDiagram/build_diags.rb /usr/local/bin/build-diags</pre>
 </div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="load-from-site.adoc">Chargement depuis le site</h3>
+<div class="paragraph">
+<p>Plus tard, vous aurez accès à de nombreuses chansons pour composer vos propres carnets plus rapidement.</p>
 </div>
 </div>
 </div>

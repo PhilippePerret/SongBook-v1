@@ -27,6 +27,14 @@ Chaque __layout__ doit définir les caractéristiques suivantes :
 | Titre en bandeau ou pas.
 | `true` = titre mis en bandeau
 
+| `score_title_size`
+| Taille de la police pour les titres de partitions et de tablatures (avec unité)
+| `12pt`
+
+| `score_title_style`
+| Style à appliquer aux titres des partitions et tablatures.
+| p.e. `bold italic`
+
 | `lyrics_flux`
 | Définit le flux, l'enchainement des strophes, couplets, refrains et autres paroles.
 | `side` (pour "side by side", "côte à côte") ou `vertical` (pour "stacked vertically" ou "l'un au-dessous de l'autre") ou `free` (pour "free positioning", aucune contrainte).

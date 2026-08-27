@@ -23,11 +23,28 @@ Dans le fichier des informations de la chanson (`.infos`), le mieux est d'indiqu
 ----
 id: dont-give-up-peter-gabriel-1986
 title: Don't Give Up
-interprete: Peter Gabriel et Kate Bush
+interprete: Peter Gabriel & Kate Bush
 ...
 ----
 
 Nous verrons dans les <<bestpract-songbook-tdm, bonnes pratiques concernant la table des matières>> en quoi l'usage d'un identifiant est une bonne chose.
+
+[[song-best-scores-folder]]
+===== Dossier des images =====
+
+Pour placer les fichiers des tablatures et des partitions, le meilleur endroit est un dossier `scores` ou un dossier `images` (voire les deux).
+
+----
+Ma-Chanson/
+  |— mc.infos
+  |— scores/
+  |     |— intro.tab
+  |     |— couplet.tab
+  |     |— intro+couplet.svg
+  |— images/
+  |     |— macCartney.jpg
+----
+
 
 [[songbooks-folder, dossier des carnets]]
 ==== Dossier des carnets ====

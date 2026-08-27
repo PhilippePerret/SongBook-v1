@@ -22,7 +22,7 @@ Todo: image résultante
 - on peut utiliser les <<only-bass, basses seules>>, sans accords
 - on peut __affiner__ l'accord en mettant des indications après un « - », par exemple la case où l'accord doit être joué sur une guitare (`Am-5`)
 - les accords doivent toujours correspondre à un diagramme (voir la todo: liste des diagrammes),
-- lorsque le diagramme n'existe pas, on peut le produire à l'aide du <<diag-builder, constructeur de diagramme>>.
+- lorsque le diagramme n'existe pas, on peut le produire à l'aide du <<diag-schema-producer, constructeur de diagramme>>.
 - plusieurs accords peuvent s'enchainer sans espaces entre eux : `/c:/dm:/em:`,
 - on peut séparer les accords par n'importe quel signe, souvent une balance pour indiquer qu'ils sont enchainés, joués dans la même mesure : `/c://f:` (noter le `//`, dont le deuxième définit le début de l'accord `/f:`),
 - pour marquer que l'accord est joué hors syllabe, au début du vers, on ajoute un trait plat : `/C:_`

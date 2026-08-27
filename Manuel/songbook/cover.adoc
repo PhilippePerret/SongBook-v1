@@ -50,3 +50,16 @@ Si vous voulez une image qui fasse **toute la hauteur**, avec les éléments dis
 ----
 
 Noter que ci-dessus, c'est le fait qu'il n'y ait rien au-dessus du premier "|" et rien en dessous du dernier "|"
+
+[[cover-idml-file]]
+==== Fichier IDML ajustable ====
+
+Le plus prudent et le plus productif, pour obtenir une couverture selon ses envies, est de demander le fichier `IDML` de cette couverture, un fichier ouvrage aussi bien dans InDesign que Affinity Publisher ou Canva.
+
+Pour l'obtenir : 
+
+----
+songbook cover idml 
+----
+
+Ce fichier contient déjà toutes les informations sur le carnet, il ne reste qu'à les mettre en forme.

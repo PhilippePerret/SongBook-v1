@@ -2,8 +2,17 @@
 [[interactive-mode]]
 === Mode interactif ===
 
+****
+* <<enter-interactive-mode>>
+* <<interactive-mode-focus-song>>
+* <<quit-interactive-mode>>
+****
+
 Le __mode interactif__ de la commande `songbook` permet de ne pas avoir à taper `songbook` chaque fois qu'on veut jouer une commande. Il permet aussi de fixer un contexte (un carnet et une chanson) qui rendront très confortable le travail sur le carnet et les chansons.
 
+[[enter-interactive-mode]]
+==== Entrer en mode interactif ====
+s
 On entre en mode interactif avec :
 
 ----
@@ -16,12 +25,16 @@ songbook -i
 🎸> build "titre chanson"
 ----
 
+[[interactive-mode-focus-song]]
+==== Se focaliser sur une chanson et un carnet ====
+
 Pour focaliser toutes les commandes suivantes sur une chanson en particulier, celle qu'on travaille par exemple : 
 
 ----
 🎸> use song "chanson court"
 ----
 
+[[current-songbook]]
 … ou sur un carnet :
 
 ----
@@ -31,3 +44,8 @@ Pour focaliser toutes les commandes suivantes sur une chanson en particulier, ce
 ----
 
 Noter que le titre à rentre ici peut être tout à fait <<approximatif>>.
+
+[[quit-interactive-mode]]
+==== Quitter le mode interactif ====
+
+Pour **quitter le mode interactif**, utiliser `q`, `quit` ou `exit`.

@@ -1,0 +1,4 @@
+[[load-from-site.adoc]]
+=== Chargement depuis le site ===
+
+Plus tard, vous aurez accès à de nombreuses chansons pour composer vos propres carnets plus rapidement.

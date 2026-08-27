@@ -1,0 +1,16 @@
+[[songbook-run-build]]
+=== Construction du carnet ===
+
+__Construire le carnet__ consiste à produire le fichier `.pdf` qui sera transmis à l'imprimeur ou importer sur KDP pour faire imprimer le carnet.
+
+----
+> songbook build songbook "<<approximatif, titre approx>>"
+----
+
+Ou :
+
+----
+🎸> build
+----
+
+… si le carnet est le <<current-songbook, carnet courant>>.

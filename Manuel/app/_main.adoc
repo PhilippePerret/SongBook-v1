@@ -6,5 +6,8 @@ include::presentation.adoc[]
 // Outils `console`
 include::commande_console.adoc[]
 
+// Processus de création
+include::processus_creation.adoc[]
+
 // Layout
 include::layouts.adoc[]

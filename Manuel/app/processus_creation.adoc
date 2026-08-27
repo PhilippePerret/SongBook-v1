@@ -1,0 +1,23 @@
+
+[[process-creation-songbook]]
+=== Processus de création d'un carnet ===
+
+Le **processus classique de création d'un carnet** est le suivant :
+
+- vous <<song-assistant, créez des chansons>> ou vous les <<load-song-from-site, récupérez depuis notre site>>,
+  - vous <<lyrics-file, écrivez les paroles>>,
+  - vous placez <<chords, les accords sur les paroles>> (avec l’<<song-chords-assistant, assistant>>),
+- s'ils n'existent pas vous créez <<diags, les diagrammes>> d'accord propres à ces chansons (avec ou sans l'<<diag-schema-producer, assistant>>),
+- vous créez <<tablature, les tablatures>>, <<score, les partitions>> dont elles ont besoin,
+- vous établissez <<gabarit-file, le gabarit de la chanson>> pour y injecter tous ces éléments et les disposer,
+- vous créez <<songbook-tdm, la table des matières du carnet>>, donc la liste des chansons qu'il doit contenir,
+- vous définissez <<songbook-infos, les caractéristiques du carnet>> et peut-être même <<songbook-layout, sa mise en page>> (ou vous adoptez une <<app-layouts, mise en page déjà définie>>),
+- vous <<songbook-run-build, lancez le processus de fabrication du carnet>>,
+- vous ajustez <<gabarit-file, les gabarits des chansons>> qui peuvent poser problème,
+- vous relancez le processus de fabrication du carnet jusqu'à satifaction complète,
+- vous construisez <<cover, la couverture>> (par exemple <<cover-idml-file, à partir du fichier IDM fourni>>),
+- pour chaque opération, vous vous assurez bien entendu d'<<best-practices, adopter les bonnes pratiques>>, pour votre propre confort,
+- vous envoyez tout le matériel à votre imprimeur,
+- vous chantez et partagez ces chansons avec les autres !
+
+---
