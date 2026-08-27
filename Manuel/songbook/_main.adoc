@@ -9,6 +9,8 @@ include::assistant.adoc[]
 
 // Fichier des informations
 include::infos.adoc[]
+// Options
+include::options.adoc[]
 
 // Layout d'un carnet
 include::layout.adoc[]

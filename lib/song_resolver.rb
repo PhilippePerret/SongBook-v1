@@ -10,6 +10,8 @@ require_relative "ansi_colors"
 # Résolution interactive d'un titre TAPÉ PAR L'USER (chanson OU carnet) vers un dossier —
 # extrait de `CLI` pour être partagé avec `TablatorAssistant` sans require circulaire.
 module SongResolver
+  extend AnsiColors
+
   # Chemin direct accepté tel quel, sinon correspondance EXACTE (`find_song_by_title`, sur
   # le nom de dossier ou le `title` de la fiche). Rien d'exact -> Levenshtein
   # (`fuzzy_find_songs`), proposé à l'user pour choix — MÊME 1 SEUL résultat, jamais
@@ -50,11 +52,6 @@ module SongResolver
     abort "aucune correspondance retenue" unless folder
 
     folder
-  end
-
-  # Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil).
-  def self.blue(text)
-    "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
   end
 
   # Titre/nom affichable d'un dossier chanson OU carnet déjà résolu (ex. confirmation de

@@ -6,6 +6,8 @@ require_relative "ansi_colors"
 # clé/valeur plates, chargé une seule fois. Un carnet surcharge via son `.infos`/`.inf`
 # (ex. `front_matter.table_of_contents.position` surcharge `tdm_position`).
 module AppConfig
+  extend AnsiColors
+
   PATH = File.expand_path("../config.yaml", __dir__)
 
   CM_TO_PT = 72.0 / 2.54
@@ -18,11 +20,6 @@ module AppConfig
 
   def self.get(key)
     all[key.to_s]
-  end
-
-  # Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil).
-  def self.blue(text)
-    "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
   end
 
   # Écrit/remplace `key: value` dans config.yaml (met à jour la ligne existante, sinon

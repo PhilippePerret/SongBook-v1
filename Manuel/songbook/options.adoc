@@ -1,7 +1,7 @@
-[[app-options, options de l'application]]
-=== Options ===
+[[app-options, options du carnet]]
+=== Options du carnet ===
 
-
+Ces options sont à définir dans le fichier `infos` (ou `inf`).
 
 [cols="1,3,3", options="header"]
 |====

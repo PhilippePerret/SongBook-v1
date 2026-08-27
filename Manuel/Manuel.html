@@ -443,8 +443,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_songbook">SongBook</a></li>
 <li><a href="#_présentation">Présentation</a>
 <ul class="sectlevel2">
-<li><a href="#app-options">Options</a></li>
 <li><a href="#console-command">Commande <code>songbook</code></a></li>
+<li><a href="#process-creation-songbook">Processus de création d&#8217;un carnet</a></li>
 <li><a href="#app-layouts">Layouts de l&#8217;application</a></li>
 </ul>
 </li>
@@ -468,6 +468,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#songbook-presentation">Présentation</a></li>
 <li><a href="#songbook-assistant">Assistant au carnet de chant</a></li>
 <li><a href="#songbook-infos">Fichier infos du carnet</a></li>
+<li><a href="#app-options">Options du carnet</a></li>
 <li><a href="#songbook-layout">Layout d&#8217;un carnet</a></li>
 <li><a href="#options">Options de fabrication</a></li>
 <li><a href="#universal-properties">Propriétés universelles</a></li>
@@ -489,6 +490,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#annexes">Annexes</a>
 <ul class="sectlevel2">
+<li><a href="#interactive-mode">Mode interactif</a></li>
 <li><a href="#terminology">Terminologie</a></li>
 <li><a href="#app-extension-driven">Dirigée par ses extensions</a></li>
 <li><a href="#properties">Les propriétés</a></li>
@@ -554,102 +556,82 @@ a {
 <p>Ce qui fait la force de <em><strong>SongBook</strong></em>, c&#8217;est aussi ses <a href="#tools">outils en ligne de commande</a> qui facilitent et accèlèrent tous les processus de production des chansons et des carnets. N&#8217;hésitez pas à consulter rapidement la section des <a href="#tools">outils et assistants</a>.</p>
 </div>
 <div class="sect2">
-<h3 id="app-options">Options</h3>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 14.2857%;">
-<col style="width: 42.8571%;">
-<col style="width: 42.8572%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Option</th>
-<th class="tableblock halign-left valign-top">Description</th>
-<th class="tableblock halign-left valign-top">Valeurs</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tdm_position</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Position de la table des matières, en début (<code>front</code>) ou fin (<code>end</code>) du carnet.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>end</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>build_unknown_song</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Détermine si les dossiers des chansons doivent être créés lorsque le titre est trouvé dans le fichier <code>.tdm</code> mais que la chanson n&#8217;est pas trouvée.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>true</code> (oui, le dossier est créé)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>text_column_guter</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Détermine la largeur de gouttière par défaut, pour les textes à phrases longues.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>1cm</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>text_font</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Fonte pour les textes hors paroles/lyrics</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>Times</code></p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect2">
 <h3 id="console-command">Commande <code>songbook</code></h3>
 <div class="paragraph">
-<p>Les carnets et les chansons se gèrent en ligne de commande grâce à la console.</p>
+<p>Commençons justement par cette commande <code>songbook</code> qui permet de gérer les carnets, les chansons, ainsi que tous les éléments qui leur sont utiles, les diagrammes d&#8217;accords, les tablatures, etc.</p>
 </div>
 <div class="paragraph">
 <p>Un <a href="#interactive-mode">mode interactif</a> existe, avec l&#8217;option <code>-i</code>. Dans ce mode, toutes les commandes frappées sont interpréter dans <em><strong>SongBook</strong></em>.</p>
 </div>
 <div class="paragraph">
+<p>Dans cette aide, vous saurez que l&#8217;on se trouve en mode interactif lorsqu&#8217;il y a aura cette invite :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; &lt;je suis en mode interactif&gt;</pre>
+</div>
+</div>
+<div class="paragraph">
 <p>Utiliser <code>songbook -h</code> ou <code>songbook --help</code> pour obtenir une aide rapide (moins détaillée qu&#8217;ici) — ou simplement <code>-h</code> en mode interactif.</p>
 </div>
-<div class="paragraph">
-<p>La première chose à apprendre est à construire un carnet une fois <a href="#songbook">toutes les données établies</a>.</p>
-</div>
-<div class="paragraph">
-<p>Ouvrir une console/Terminal au dossier du carnet et jouer simplement :</p>
-</div>
 <div class="listingblock">
 <div class="content">
-<pre>songbook build</pre>
+<pre>🎸&gt; --help</pre>
 </div>
 </div>
+</div>
+<div class="sect2">
+<h3 id="process-creation-songbook">Processus de création d&#8217;un carnet</h3>
 <div class="paragraph">
-<p>On peut aussi ne pas être dans le dossier et taper (si le carnet s&#8217;appelle "Mon premier carnet") :</p>
+<p>Le <strong>processus classique de création d&#8217;un carnet</strong> est le suivant :</p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook build "Mon premier carnet"</pre>
+<div class="ulist">
+<ul>
+<li>
+<p>vous créez des chansons ou vous les récupérez depuis notre site,</p>
+</li>
+<li>
+<p>vous écrivez les paroles,</p>
+</li>
+<li>
+<p>vous placez les accords sur les paroles,</p>
+</li>
+<li>
+<p>s&#8217;ils n&#8217;existent pas vous créez les diagrammes d&#8217;accord propres à ces chansons,</p>
+</li>
+<li>
+<p>vous créez les tablatures, les partitions dont elles ont besoin,</p>
+</li>
+<li>
+<p>vous établissez le gabarit de la chanson pour y injecter ces éléments,</p>
+</li>
+<li>
+<p>vous créez la table des matières du carnet, donc la liste des chansons,</p>
+</li>
+<li>
+<p>vous définissez les caractéristiques du carnet et notamment sa mise en page,</p>
+</li>
+<li>
+<p>vous lancez le processus de fabrication du carnet,</p>
+</li>
+<li>
+<p>vous ajustez les gabarits des chansons qui peuvent poser problème,</p>
+</li>
+<li>
+<p>vous relancez le processus de fabrication du carnet jusqu&#8217;à satifaction complète,</p>
+</li>
+<li>
+<p>vous construisez la couverture à partir du modèle fourni,</p>
+</li>
+<li>
+<p>vous envoyez tout le matériel à votre imprimeur,</p>
+</li>
+<li>
+<p>vous chantez et partagez ces chansons avec les autres !</p>
+</li>
+</ul>
 </div>
-</div>
-<div class="paragraph">
-<p>Noter que la recherche est intelligente, cela signifie que vous pouvez taper :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook build "premier"</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>… si aucun autre carnet ne pote le mot "premier".</p>
-</div>
-<div class="paragraph">
-<p>Si toutefois une chanson porte le mot "premier", il y aura ambiguïté. Utilisez alors explicitement :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook build sb "premier"
-# "sb" pour "songbook"</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Pour ne produire qu&#8217;une chanson, ouvrez la console au dossier de la chanson et utilisez la même commande avec <code>build</code> seul ou :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook build song "titre chanson"</pre>
-</div>
-</div>
+<hr>
 <div class="sect3">
 <h4 id="diag-builder">Constructeur de diagramme</h4>
 <div class="paragraph">
@@ -672,46 +654,6 @@ a {
 <div class="listingblock">
 <div class="content">
 <pre>songbook build tab "titre chanson"</pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="interactive-mode">Mode interactif</h4>
-<div class="paragraph">
-<p>Le mode interactif de la commande <code>songbook</code> permet de ne pas avoir à taper <code>songbook</code> chaque fois où même le titre d&#8217;une chanson ou d&#8217;un carnet.</p>
-</div>
-<div class="paragraph">
-<p>On entre en mode interactif avec :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook -i</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>À partir de là, on peut faire simplement :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>🎸&gt; build "titre chanson"</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Où, pour focaliser toutes les commandes suivantes sur une chanson en particulier (par exemple quand on la travaille) :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>🎸&gt; use song "chanson cour"</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>… ou sur un carnet :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>🎸&gt; user songbook "mon carnet"
-# ou
-🎸&gt; user sb "mon carnet"</pre>
 </div>
 </div>
 </div>
@@ -1448,12 +1390,54 @@ credits:
 
 # Options
 options:
-  redim_diags: true # false pour ne pas redimensionner les diags</pre>
+  shrink_diags: true # false pour ne pas redimensionner les diags</pre>
 </div>
 </div>
 <div class="paragraph">
 <p>Pour le <code>layout</code>, voir <a href="#song-layout">règles de mises en forme des chansons</a>.</p>
 </div>
+</div>
+<div class="sect2">
+<h3 id="app-options">Options du carnet</h3>
+<div class="paragraph">
+<p>Ces options sont à définir dans le fichier <code>infos</code> (ou <code>inf</code>).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 42.8571%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Option</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tdm_position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Position de la table des matières, en début (<code>front</code>) ou fin (<code>end</code>) du carnet.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>end</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>build_unknown_song</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Détermine si les dossiers des chansons doivent être créés lorsque le titre est trouvé dans le fichier <code>.tdm</code> mais que la chanson n&#8217;est pas trouvée.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>true</code> (oui, le dossier est créé)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>text_column_guter</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Détermine la largeur de gouttière par défaut, pour les textes à phrases longues.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>1cm</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>text_font</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fonte pour les textes hors paroles/lyrics</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>Times</code></p></td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="sect2">
 <h3 id="songbook-layout">Layout d&#8217;un carnet</h3>
@@ -2263,6 +2247,20 @@ interprete: Peter Gabriel et Kate Bush
 <p>todo: exemple image</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_actualisation_des_diags">Actualisation des diags</h4>
+<div class="paragraph">
+<p>Si vous avez ajouté des diags dans l&#8217;application, il peut être nécessaire d&#8217;actualiser les fichiers SVG et surtout le fichier HTML présentant tous les diags et permettant d&#8217;en choisir. Pour ce faire, utiliser la commande :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook update diags</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Ou simplement <code>update diags</code> en mode interactif.</p>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="tablator">Générateur de tablatures</h3>
@@ -2271,11 +2269,22 @@ interprete: Peter Gabriel et Kate Bush
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>songbook build tabs "titre chanson"</pre>
+<pre>songbook create tab "nom-fichier-sans-tab" --song "titre approx"</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Un assistant existe pour entrer facilement les notes et produire le fichier <code>.tab</code> :</p>
+<p>Pour éditer une tablature :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook edit tab "nom approx" --song "titre chanson"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Ces commandes ouvrent directement l&#8217;assistant pour entrer facilement les notes et produire le fichier <code>.tab</code> :</p>
+</div>
+<div class="paragraph">
+<p>Asssistant qu&#8217;on peut aussi ouvrir avec :</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2297,11 +2306,29 @@ interprete: Peter Gabriel et Kate Bush
 <div class="content">
 <pre>songbook -i
 🎸&gt; use song "titre"
-🎸&gt; tab assistant</pre>
+🎸&gt; tab assistant
+# ou encore mieux :
+🎸&gt; create tab
+🎸&gt; edit tab "nom-approx"
+🎸&gt; build tabs</pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_produire_les_fichiers_svg">Produire les fichiers SVG</h4>
+<div class="paragraph">
+<p>Pour produire toutes les tablatures d&#8217;une chanson :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook build tabs "titre chanson approx"</pre>
+</div>
 </div>
 </div>
 <div class="sect3">
 <h4 id="_conventions_du_langage">Conventions du langage</h4>
+<div class="paragraph">
+<p><em>Voici les conventions de langage employées si vous devez écrire le fichier <code>.tab</code>  à la main (mais franchement, utiliser l&#8217;assistant est une bien meilleure idée ;))</em>.</p>
+</div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 22.2222%;">
@@ -2364,7 +2391,20 @@ interprete: Peter Gabriel et Kate Bush
 </tbody>
 </table>
 <div class="paragraph">
-<p>Le document peut commencer par un entête définissant :</p>
+<p>Indiquer les doigts de la main droite (chevalet) avec "p" (pouce) "i" (index), "m" (majeur) "a" (annulaire), "c" (chiquito = auriculaire).
+Indiquer les doigts de la main gauche (manche) avec des chiffres (1, 2, 3, 4, 0 pour le pouce, pour le distinguer de "p" de la main droite).</p>
+</div>
+<div class="paragraph">
+<p>Ces doigts s&#8217;indiquent après "-", comme dans Lilypond :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>60:p  # 6e corde à vide, avec le pouce
+52:i4 # 2e case de 5e corde, index et doigt 4</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Le document peut commencer par une entête (appelée <em>front matter</em>) définissant :</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2404,9 +2444,11 @@ keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>{intro; tab: intro.svg}
+<pre>{intro; tab: intro.svg, count: 2}
 
-{couplet; tab: intro+coup.svg}</pre>
+{couplet; tab: intro+couplet.svg }
+
+{refrain: tab: refrain.svg }</pre>
 </div>
 </div>
 </div>
@@ -2416,6 +2458,49 @@ keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
 <div class="sect1">
 <h2 id="annexes">Annexes</h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="interactive-mode">Mode interactif</h3>
+<div class="paragraph">
+<p>Le <em>mode interactif</em> de la commande <code>songbook</code> permet de ne pas avoir à taper <code>songbook</code> chaque fois qu&#8217;on veut jouer une commande. Il permet aussi de fixer un contexte (un carnet et une chanson) qui rendront très confortable le travail sur le carnet et les chansons.</p>
+</div>
+<div class="paragraph">
+<p>On entre en mode interactif avec :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook -i</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>À partir de là, on peut faire simplement :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; build "titre chanson"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Pour focaliser toutes les commandes suivantes sur une chanson en particulier, celle qu&#8217;on travaille par exemple :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; use song "chanson court"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>… ou sur un carnet :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; user songbook "mon carnet"
+# ou
+🎸&gt; user sb "mon carnet"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Noter que le titre à rentre ici peut être tout à fait <a href="#approximatif">[approximatif]</a>.</p>
+</div>
+</div>
 <div class="sect2">
 <h3 id="terminology">Terminologie</h3>
 <table class="tableblock frame-all grid-all stretch">
@@ -2461,6 +2546,9 @@ keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
 </table>
 <div class="paragraph">
 <p>TODO: Poursuivre le tableau ci-dessus.</p>
+</div>
+<div class="paragraph">
+<p>include:approximatif.adoc[]</p>
 </div>
 </div>
 <div class="sect2">

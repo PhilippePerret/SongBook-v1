@@ -46,7 +46,7 @@ credits:
   
 # Options
 options:
-  redim_diags: true # false pour ne pas redimensionner les diags
+  shrink_diags: true # false pour ne pas redimensionner les diags
   
 ----
 

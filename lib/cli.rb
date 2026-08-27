@@ -26,6 +26,8 @@ require_relative "../tools/ChordDiagram/generate_chord_diagrams"
 # logique métier (CarnetBuilder, DiagsPage, ...). `songbook.rb` reste un simple
 # point d'entrée qui appelle `CLI.run(ARGV)`.
 module CLI
+  extend AnsiColors
+
   # `songbook song open` : ordre d'affichage + libellés clairs — TOUS les types connus
   # (`FileFinder::EXTENSIONS`), pas seulement `.lyr`/`.infos`. `.lyr`/`.gab` présélectionnés
   # par défaut (Phil).
@@ -160,13 +162,13 @@ module CLI
       case arg1
       when "diags"
         created, skipped = GenerateChordDiagrams.run
-        created.each { |c| puts "#{AnsiColors::SUCCESS}👍 #{raccourci(c[:path])}#{AnsiColors::RESET}" }
+        created.each { |c| puts success("👍 #{raccourci(c[:path])}") }
         skipped.each do |s|
           msg = s[:error] ? "#{s[:line]} — #{s[:error]}" : s[:line]
-          puts "#{AnsiColors::ERROR}👎 #{raccourci(s[:schema_path])} : #{msg}#{AnsiColors::RESET}"
+          puts error("👎 #{raccourci(s[:schema_path])} : #{msg}")
         end
         DiagsPage.build!
-        puts "#{AnsiColors::SUCCESS}👍 #{Loc.get("diags_updated")}#{AnsiColors::RESET}"
+        puts success("👍 #{Loc.get("diags_updated")}")
       else
         abort unknown_command_message("update #{arg1}")
       end
@@ -230,6 +232,8 @@ module CLI
       end
     when "song"
       case arg1
+      when nil
+        puts Session.song ? success(format(Loc.get("use_song_set"), SongResolver.display_name(Session.song))) : gray(Loc.get("song_current_none"))
       when "id"
         begin
           song_folder = resolve_song_folder(arg2 || Session.song)
@@ -246,6 +250,8 @@ module CLI
       else
         abort unknown_command_message("song #{arg1}")
       end
+    when "songbook", "sb"
+      puts Session.carnet ? success(format(Loc.get("use_carnet_set"), SongResolver.display_name(Session.carnet))) : gray(Loc.get("songbook_current_none"))
     when "manual", "manuel"
       manuel_dir = File.expand_path("../Manuel", __dir__)
       adoc_path = File.join(manuel_dir, "Manuel.adoc")
@@ -279,7 +285,7 @@ module CLI
           out_dir = File.join(carnet_folder, "export", "cover")
           FileUtils.mkdir_p(out_dir)
           IdmlCoverBuilder.build(File.join(out_dir, "#{slug}-cover.idml"), conf: conf, entries: entries, carnet_folder: carnet_folder, kdp: kdp)
-          puts "#{AnsiColors::SUCCESS}👍 Modèle IDML de couverture produit.#{AnsiColors::RESET}"
+          puts success("👍 Modèle IDML de couverture produit.")
         else
           abort unknown_command_message("cover #{arg1}")
         end
@@ -312,10 +318,10 @@ module CLI
       case arg1
       when "song", "s"
         Session.song = resolve_song_folder(arg2)
-        puts format(Loc.get("use_song_set"), SongResolver.display_name(Session.song))
+        puts success("#{format(Loc.get("use_song_set"), SongResolver.display_name(Session.song))}")
       when "songbook", "sb"
         Session.carnet = resolve_carnet_folder(arg2)
-        puts format(Loc.get("use_carnet_set"), SongResolver.display_name(Session.carnet))
+        puts success("#{format(Loc.get("use_carnet_set"), SongResolver.display_name(Session.carnet))}")
       else
         abort unknown_command_message("use #{arg1}")
       end
@@ -405,7 +411,7 @@ module CLI
       if command == "build" && arg1 == "diag" && arg2
         begin
           DiagSchem.build_svg_from_schema(arg2)
-          puts "#{AnsiColors::SUCCESS}👍 Diagramme produit.#{AnsiColors::RESET}"
+          puts success("👍 Diagramme produit.")
         rescue SchemaInvalide => e
           abort e.message
         rescue Interrupt
@@ -465,10 +471,10 @@ module CLI
           CarnetBuilder.build(target[:folder], cover: cover, debug_marks: debug_marks)
         else
           pdf_path = CarnetBuilder.build_song(target[:folder])
-          puts "#{AnsiColors::SUCCESS}👍 #{format(Loc.get("song_pdf_generated"), SongResolver.display_name(target[:folder]))}#{AnsiColors::RESET}"
+          puts success("👍 #{format(Loc.get("song_pdf_generated"), SongResolver.display_name(target[:folder]))}")
 
           if Layout.log_conflict_count.to_i.positive?
-            puts "#{AnsiColors::ERROR}#{format(Loc.get("song_build_conflicts_count"), Layout.log_conflict_count)}#{AnsiColors::RESET}"
+            puts error("#{format(Loc.get("song_build_conflicts_count"), Layout.log_conflict_count)}")
             system("open", Layout.conflict_log_path) if TTY::Prompt.new.yes?(blue(Loc.get("song_build_open_conflicts_question")))
           end
 
@@ -554,12 +560,6 @@ module CLI
       Dir.glob(File.join(context[:folder], "export", "songbooks", "*-v*.pdf"))
         .max_by { |f| f[/-v(\d+)\.pdf\z/, 1].to_i }
     end
-  end
-
-  # Bleu pour toute question posée à l'user (même convention que `ChordPlacer.blue`/
-  # `TablatorAssistant.blue`).
-  def self.blue(text)
-    "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
   end
 
   # Chemin affiché à l'user : jamais le home complet en clair (Phil).

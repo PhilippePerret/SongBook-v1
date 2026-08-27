@@ -36,6 +36,8 @@ require_relative "transpose"
 # : seul Maj+flèche (1 espace) reste côté flèches modifiées. Lettre par lettre : "n"/
 # "p" (touches dédiées, jamais interceptées par le terminal), pas de modificateur.
 module ChordPlacer
+  extend AnsiColors
+
   ESC = "\e"
   # Pavé numérique en mode application (DECKPAM, `\e=`) : `\eOp`.."\eOy" = touches
   # 0-9 du pavé, distinctes de la ligne du haut du clavier — sans ce mode indiscernables.
@@ -71,8 +73,6 @@ module ChordPlacer
     "←/→ ←Syllabe→ | n/p ←Lettre→ |",
     "Enter Sauver | ^c Annuler",
   ].freeze
-  HELP_COLOR = "\e[90m"
-  ANSI_RESET = "\e[0m"
 
   def self.run(lyr_path)
     song_dir = File.dirname(lyr_path)
@@ -439,8 +439,8 @@ module ChordPlacer
     # sauts d'écran sont intempestifs). La légende, elle, PEUT changer de nombre de
     # lignes (1 -> plusieurs) en cours d'édition — conséquence assumée du passage en
     # multi-lignes au-delà du seuil (Phil), pas un saut accidentel.
-    legend_lines(letters).each { |line| puts "#{AnsiColors::BLUE}#{line}#{AnsiColors::RESET}" }
-    puts "#{HELP_COLOR}#{notice}#{ANSI_RESET}"
+    legend_lines(letters).each { |line| puts blue(line) }
+    puts gray(notice)
     puts
 
     window_start.upto([window_start + WINDOW_SIZE, total].min - 1) do |i|
@@ -449,7 +449,7 @@ module ChordPlacer
       puts
     end
 
-    HELP_LINES.each { |l| puts "#{HELP_COLOR}#{l}#{ANSI_RESET}" }
+    HELP_LINES.each { |l| puts gray(l) }
   end
 
   # Curseur AU-DESSUS des paroles (ligne des accords), jamais sur le texte lui-même —
@@ -468,12 +468,6 @@ module ChordPlacer
 
     puts row.join
     puts chord_line.text
-  end
-
-  # Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil — même
-  # convention que `TablatorAssistant.blue`).
-  def self.blue(text)
-    "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
   end
 
   # "X" (suppression de TOUS les accords de la chanson) : action destructive, jamais

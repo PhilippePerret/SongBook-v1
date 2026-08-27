@@ -63,6 +63,8 @@ tablator_which_one: "Which tablature?"
 # use (REPL)
 use_song_set: "Current song: %s"
 use_carnet_set: "Current songbook: %s"
+song_current_none: "Current song: none (use 'use song \"approx title\"')"
+songbook_current_none: "Current songbook: none (use 'use sb \"approx title\"')"
 
 # diag (chord diagram schema assistant)
 diag_save_question: "Save this schema in the application?"

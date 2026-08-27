@@ -16,6 +16,8 @@ require_relative "file_finder"
 # raisonnables, à ajuster ensuite dans le fichier ouvert — même économie que
 # `SongCreator` (titre/interprète demandés, le reste réglé après ou par défaut).
 module SongbookCreator
+  extend AnsiColors
+
   def self.run(title = nil)
     prompt = TTY::Prompt.new
 
@@ -101,11 +103,6 @@ module SongbookCreator
     open_in_file_manager(folder)
   end
 
-  # Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil).
-  def self.blue(text)
-    "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
-  end
-
   def self.open_in_file_manager(folder)
     case RbConfig::CONFIG["host_os"]
     when /darwin/ then system("open", folder)
@@ -115,6 +112,6 @@ module SongbookCreator
   end
 
   def self.print_success(message)
-    puts "#{AnsiColors::SUCCESS}👍 #{message}#{AnsiColors::RESET}"
+    puts success("👍 #{message}")
   end
 end

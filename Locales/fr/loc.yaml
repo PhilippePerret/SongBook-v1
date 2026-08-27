@@ -71,6 +71,8 @@ tablator_which_one: "Quelle tablature ?"
 # use (REPL)
 use_song_set: "Chanson courante : %s"
 use_carnet_set: "Carnet courant : %s"
+song_current_none: "Chanson courante : aucune (utiliser 'use song \"titre approx\"')"
+songbook_current_none: "Carnet courant : aucun (utiliser 'use sb \"titre approx\"')"
 
 # diag (assistant de schéma d'accord)
 diag_save_question: "Enregistrer ce schéma dans l'application ?"

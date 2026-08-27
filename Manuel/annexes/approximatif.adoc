@@ -1,0 +1,39 @@
+[[approximatif]]
+=== Titre approximatif ===
+
+Il n'y a rien de plus énervant qu'une application pointilleuse qui exige, par exemple, d'entrer un titre exact pour retrouver une chanson…
+
+Rien de tout ça avec __**SongBook**__ ! Vous pouvez taper le titre de façon tout à fait paresseuse, l'app vous le retrouvera toujours ou, au pire, vous fournira la liste intégrale des chansons que vous pourrez filtrer.
+
+Si le titre de votre chanson contient un mot ou une partie de mot que seule cette chanson contient, l'app le trouvera en mettant ce seul mot en __titre approximatif__.
+
+Si, par exemple, j'ai la chanson « With a Little Help of my Friend » (vous imaginez taper ce titre à chaque fois, vous ? ;)), et que c'est la seule qui contient le mot "Help", je peux utiliser : 
+
+----
+🎸> use song "Help"
+----
+
+L'application confirme par un message ressemblant à :
+
+----
+🎸> use song "Help"
+Utilisation de la chanson "With a Little Help of my Friend"
+----
+
+----
+🎸> use sb "n°1" # ^*^
+Utilisation du carnet "Carnet n°1 : Mes chansons de Michel Berger préférées"
+----
+
+… si ce carnet est le seul qui porte le « n°1 »
+
+^*^ Dans toute l'application, `sb` peut s'employer pour `songbook`.
+
+==== Connaitre la chanson ou le carnet courant ====
+
+----
+🎸> song
+La chanson courante est "With a Little Help of my Friend"
+🎸> songbook
+Le carnet courant est "Carnet n°1 : Mes chansons de Michel Berger préférées"
+----

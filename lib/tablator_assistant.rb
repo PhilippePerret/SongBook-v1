@@ -15,10 +15,7 @@ require_relative "../tools/tablator/tablator"
 # la production de tablatures (outil séparé `tools/tablator/tablator.rb`, pas de
 # dépendance ici vers `CarnetBuilder`/`CLI`).
 module TablatorAssistant
-  # Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil).
-  def self.blue(text)
-    "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
-  end
+  extend AnsiColors
 
   # `create:`/`build:` (`--create`/`--build`) zappent le select initial. `tab_name:`
   # (`--tab NOM`) va direct en édition d'une tablature existante (cherchée dans la
@@ -69,7 +66,7 @@ module TablatorAssistant
     out_base ||= tab_path.sub(/\.tab\z/, "")
     File.write("#{out_base}.ly", ly) if meta["keep_ly"]
     Tablator.render_svg(ly, out_base)
-    puts "#{AnsiColors::SUCCESS}👍 #{Loc.get('tablator_svg_produced')}#{AnsiColors::RESET}"
+    puts success("👍 #{Loc.get('tablator_svg_produced')}")
   rescue Tablator::ParseError => e
     warn "#{tab_path} : #{e.message}"
   end
@@ -295,7 +292,7 @@ module TablatorAssistant
 
       meta["metrique"] = metrique if metrique
       out_path = save_tablature(tokens, meta, unit, edit_path)
-      puts "#{AnsiColors::SUCCESS}👍 #{Loc.get("tablator_write_saved")}#{AnsiColors::RESET}"
+      puts success("👍 #{Loc.get("tablator_write_saved")}")
 
       return unless TTY::Prompt.new.yes?(blue(Loc.get("tablator_build_now_question")))
 
@@ -384,7 +381,7 @@ module TablatorAssistant
       end.join
       puts "#{STRING_LABELS[string - 1]}|#{row}|"
     end
-    puts "#{AnsiColors::GRAY}#{format(Loc.get('tablator_write_help'), unit)}#{AnsiColors::RESET}"
+    puts gray(format(Loc.get('tablator_write_help'), unit))
   end
 
   # Séquence CSI (`ESC [ ... lettre-finale`) lue en entier (longueur variable, ex.

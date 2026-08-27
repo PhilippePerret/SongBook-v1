@@ -1,8 +1,14 @@
 [[annexes]]
 == Annexes ==
 
+// Mode interactif
+include::interactive_mode.adoc[]
+
 // Terminologie
 include::terminology.adoc[]
+
+// Titre approximatif
+include:approximatif.adoc[]
 
 // Extensions drivent
 include::extension-driven.adoc[]

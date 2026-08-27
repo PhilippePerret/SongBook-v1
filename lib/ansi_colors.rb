@@ -8,4 +8,20 @@ module AnsiColors
   ERROR = "\e[31m"
   GRAY = "\e[90m"
   RESET = "\e[0m"
+
+  def blue(text)
+    "#{BLUE}#{text}#{RESET}"
+  end
+
+  def success(text)
+    "#{SUCCESS}#{text}#{RESET}"
+  end
+
+  def error(text)
+    "#{ERROR}#{text}#{RESET}"
+  end
+
+  def gray(text)
+    "#{GRAY}#{text}#{RESET}"
+  end
 end

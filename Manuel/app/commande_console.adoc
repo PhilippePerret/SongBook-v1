@@ -1,47 +1,43 @@
 [[console-command]]
 === Commande `songbook` ===
 
-Les carnets et les chansons se gèrent en ligne de commande grâce à la console.
+Commençons justement par cette commande `songbook` qui permet de gérer les carnets, les chansons, ainsi que tous les éléments qui leur sont utiles, les diagrammes d'accords, les tablatures, etc.
 
 Un <<interactive-mode, mode interactif>> existe, avec l'option `-i`. Dans ce mode, toutes les commandes frappées sont interpréter dans __**SongBook**__.
 
+Dans cette aide, vous saurez que l'on se trouve en mode interactif lorsqu'il y a aura cette invite :
+
+----
+🎸> <je suis en mode interactif>
+----
+
 Utiliser `songbook -h` ou `songbook --help` pour obtenir une aide rapide (moins détaillée qu'ici) — ou simplement `-h` en mode interactif.
 
-La première chose à apprendre est à construire un carnet une fois <<songbook, toutes les données établies>>.
-
-Ouvrir une console/Terminal au dossier du carnet et jouer simplement :
-
 ----
-songbook build
+🎸> --help
 ----
 
-On peut aussi ne pas être dans le dossier et taper (si le carnet s'appelle "Mon premier carnet") : 
+[[process-creation-songbook]]
+=== Processus de création d'un carnet ===
 
-----
-songbook build "Mon premier carnet"
-----
+Le **processus classique de création d'un carnet** est le suivant :
 
-Noter que la recherche est intelligente, cela signifie que vous pouvez taper :
+- vous créez des chansons ou vous les récupérez depuis notre site,
+  - vous écrivez les paroles,
+  - vous placez les accords sur les paroles,
+- s'ils n'existent pas vous créez les diagrammes d'accord propres à ces chansons,
+- vous créez les tablatures, les partitions dont elles ont besoin,
+- vous établissez le gabarit de la chanson pour y injecter ces éléments,
+- vous créez la table des matières du carnet, donc la liste des chansons,
+- vous définissez les caractéristiques du carnet et notamment sa mise en page,
+- vous lancez le processus de fabrication du carnet,
+- vous ajustez les gabarits des chansons qui peuvent poser problème,
+- vous relancez le processus de fabrication du carnet jusqu'à satifaction complète,
+- vous construisez la couverture à partir du modèle fourni,
+- vous envoyez tout le matériel à votre imprimeur,
+- vous chantez et partagez ces chansons avec les autres !
 
-----
-songbook build "premier"
-----
-
-… si aucun autre carnet ne pote le mot "premier".
-
-Si toutefois une chanson porte le mot "premier", il y aura ambiguïté. Utilisez alors explicitement :
-
-----
-songbook build sb "premier"
-# "sb" pour "songbook"
-----
-
-Pour ne produire qu'une chanson, ouvrez la console au dossier de la chanson et utilisez la même commande avec `build` seul ou :
-
-----
-songbook build song "titre chanson"
-----
-
+---
 
 [[diag-builder, constructeur de diagramme]]
 ==== Constructeur de diagramme ====
@@ -59,35 +55,4 @@ Pour construire le ou les tablatures (fichiers `.tab`) contenus dans le dossier 
 
 ----
 songbook build tab "titre chanson"
-----
-
-[[interactive-mode]]
-==== Mode interactif ====
-
-Le mode interactif de la commande `songbook` permet de ne pas avoir à taper `songbook` chaque fois où même le titre d'une chanson ou d'un carnet.
-
-On entre en mode interactif avec :
-
-----
-songbook -i
-----
-
-À partir de là, on peut faire simplement :
-
-----
-🎸> build "titre chanson"
-----
-
-Où, pour focaliser toutes les commandes suivantes sur une chanson en particulier (par exemple quand on la travaille) : 
-
-----
-🎸> use song "chanson cour"
-----
-
-… ou sur un carnet :
-
-----
-🎸> user songbook "mon carnet"
-# ou 
-🎸> user sb "mon carnet"
 ----

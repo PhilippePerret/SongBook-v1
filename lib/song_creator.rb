@@ -16,6 +16,8 @@ require_relative "file_finder"
 # dossier/gabarit n'est créé qu'une fois TOUTES les informations réunies
 # (`CarnetBuilder.create_song_files`, appelé en tout dernier).
 module SongCreator
+  extend AnsiColors
+
   def self.run(title = nil, performer = nil)
     prompt = TTY::Prompt.new
 
@@ -115,11 +117,6 @@ module SongCreator
     open_in_file_manager(folder)
   end
 
-  # Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil).
-  def self.blue(text)
-    "#{AnsiColors::BLUE}#{text}#{AnsiColors::RESET}"
-  end
-
   def self.open_in_file_manager(folder)
     case RbConfig::CONFIG["host_os"]
     when /darwin/ then system("open", folder)
@@ -128,18 +125,14 @@ module SongCreator
     end
   end
 
-  SPINNER_COLOR = AnsiColors::BLUE
-  SUCCESS_COLOR = AnsiColors::SUCCESS
-  ANSI_RESET = AnsiColors::RESET
-
   def self.print_success(message)
-    puts "#{SUCCESS_COLOR}👍 #{message}#{ANSI_RESET}"
+    puts success("👍 #{message}")
   end
 
   # `clear: true` : le message disparaît entièrement (ligne effacée) une fois la recherche
   # terminée, ne reste rien à l'écran — pas un simple "Terminé" affiché après.
   def self.with_spinner(message)
-    spinner = TTY::Spinner.new("#{SPINNER_COLOR}[:spinner] #{message}#{ANSI_RESET}", format: :dots, clear: true)
+    spinner = TTY::Spinner.new(blue("[:spinner] #{message}"), format: :dots, clear: true)
     spinner.auto_spin
     yield
   ensure
