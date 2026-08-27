@@ -209,6 +209,12 @@ module TablatorAssistant
             draw_grid(matrix, bars, string, col, unit)
             key = read_key
             key = AZERTY_DIGITS.fetch(key, key) if key.is_a?(String)
+            # "B" (Phil, 2026-08-27) : remplace "|" comme touche de saisie de barre
+            # simple — "|" en direct nécessite Alt+Maj+L (AZERTY Mac), combinaison
+            # invisible à l'écran tant que la barre n'est pas committée. Traduit AVANT
+            # le `case` pour réutiliser tel quel tout le mécanisme de composition
+            # (`BAR_CHARS`, `BAR_RE`) qui raisonne en "|"/":"/".".
+            key = "|" if key == "B"
 
             case key
             when :up then string = [string - 1, 1].max
