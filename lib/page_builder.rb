@@ -1,3 +1,4 @@
+require "fileutils"
 require_relative "dsl_parser"
 require_relative "layout"
 require_relative "chord_diagrams"
@@ -6,6 +7,7 @@ require_relative "kdp"
 require_relative "locale"
 require_relative "file_finder"
 require_relative "diags_sync"
+require_relative "../tools/tablator/tablator"
 
 # Construit les pages PDF d'UNE chanson — point d'entrée réutilisable (API : "je veux
 # juste cette chanson"), orchestrant `DSLParser`/le format `.lyr`+`.gab`+`.infos`,
@@ -282,39 +284,81 @@ module PageBuilder
     Dir.glob(File.join(folder, "**", filename)).first
   end
 
-  def self.ensure_tabla_svg(folder, name)
-    if name.include?("+")
-      parts = name.split("+")
-      tab_paths = parts.map { |n| locate_resource(folder, "#{n}.tab") }
-      return nil unless tab_paths.all?
-
-      out_dir = File.dirname(tab_paths.first)
-      svg_path = File.join(out_dir, "#{name}.svg")
-      return svg_path if File.exist?(svg_path) && tab_paths.all? { |p| File.mtime(p) <= File.mtime(svg_path) }
-
-      merged_path = File.join(out_dir, ".~#{name}.tab")
-      File.write(merged_path, merge_tab_contents(tab_paths))
-      begin
-        system("ruby", TABLATOR_PATH, merged_path, "-o", File.join(out_dir, name), out: File::NULL, err: File::NULL) or
-          raise "échec de tablator sur la fusion #{name}"
-      ensure
-        File.delete(merged_path)
-      end
-      return svg_path
-    end
-
-    tab_path = locate_resource(folder, "#{name}.tab")
-    out_dir = tab_path ? File.dirname(tab_path) : resource_search_dirs(folder).first
-    svg_path = File.join(out_dir, "#{name}.svg")
-    return svg_path if File.exist?(svg_path) && (!tab_path || File.mtime(tab_path) <= File.mtime(svg_path))
-    return nil unless tab_path
-
-    system("ruby", TABLATOR_PATH, tab_path, "-o", File.join(out_dir, name), out: File::NULL, err: File::NULL) or
-      raise "échec de tablator sur #{tab_path}"
-    svg_path
+  # Cache invalidé si un `.tab` source OU l'outil `tablator.rb` lui-même a changé depuis
+  # (Phil, 2026-08-27 : SVG jamais régénéré après une correction de tablator.rb, comparé
+  # seulement au `.tab` — bug constaté, servait un SVG périmé).
+  def self.svg_fresh?(svg_path, *source_paths)
+    File.exist?(svg_path) && (source_paths + [TABLATOR_PATH]).all? { |p| File.mtime(p) <= File.mtime(svg_path) }
   end
 
-  # `score:`/`image:` : pas de génération (contrairement à `tab:`/`ensure_tabla_svg` —
+  # `name` sans extension — "intro+couplet" (Phil, 2026-08-26) : FUSION, pure mise bout
+  # à bout des CODES de "intro.tab" et "couplet.tab" (frontmatter du 1er fichier repris
+  # tel quel, corps concaténés). Renvoie [contenu, dossier_de_sortie, .tab source(s)],
+  # ou nil si une source manque.
+  def self.tab_source_content(folder, name)
+    if name.include?("+")
+      tab_paths = name.split("+").map { |n| locate_resource(folder, "#{n}.tab") }
+      return nil unless tab_paths.all?
+
+      [merge_tab_contents(tab_paths), File.dirname(tab_paths.first), tab_paths]
+    else
+      tab_path = locate_resource(folder, "#{name}.tab")
+      return nil unless tab_path
+
+      [File.read(tab_path), File.dirname(tab_path), [tab_path]]
+    end
+  end
+
+  # Nombre de mesures tenant dans `available_width_pt` — métrique (`metrique`/`time` du
+  # frontmatter, défaut 4/4) × plus petite division (`unit`, défaut "croche") × largeur
+  # dispo, calibré empiriquement sur `Tablator::STAFF_SIZE` (Phil, 2026-08-27 : "on va
+  # définir le nombre de mesures max par page en fonction de..."). `SLOT_WIDTH_PT`/
+  # `SLOT_OVERHEAD_PT` mesurés sur des tabs de test (notes simples, sans accord ni
+  # doigté — sous-estime donc un peu la largeur réelle d'un contenu chargé ; à ajuster
+  # via `tabla_measures_per_page` si besoin, jamais recalculé "pour de vrai" ici).
+  SLOT_WIDTH_PT = 11.65
+  SLOT_OVERHEAD_PT = 19.25
+
+  def self.measures_per_page(meta, available_width_pt)
+    time = meta["metrique"] || meta["time"] || "4/4"
+    num, den = time =~ %r{\A(\d+)/(\d+)\z} ? [$1.to_i, $2.to_i] : [4, 4]
+    unit_denom = Tablator::UNIT_DENOMINATOR.fetch(meta["unit"], 8)
+    slots_per_measure = num * (unit_denom.to_f / den)
+    usable = available_width_pt - SLOT_OVERHEAD_PT
+    [(usable / (slots_per_measure * SLOT_WIDTH_PT)).floor, 1].max
+  end
+
+  # Chemins des SVG (un par fragment, voir `Tablator.split_into_fragments`) — jamais UN
+  # seul SVG multi-système (bug LilyPond `-dcrop`, voir `tools/tablator/tablator.rb`).
+  # `measures_override` : `tabla_measures_per_page` (layout), prime sur le calcul.
+  # Écrits dans `<chanson>/.export/` (Phil, 2026-08-27 : jamais les fichiers générés
+  # dans le dossier de l'user, `scores/` reste UNIQUEMENT ses `.tab` — `base_dir:`
+  # transmis à LilyPond reste lui `out_dir`, pour résoudre `chordpro.json` normalement).
+  EXPORT_DIRNAME = ".export"
+
+  def self.ensure_tabla_fragments(folder, name, available_width_pt, measures_override: nil)
+    content, out_dir, source_paths = tab_source_content(folder, name)
+    return [] unless content
+
+    export_dir = File.join(folder, EXPORT_DIRNAME)
+    FileUtils.mkdir_p(export_dir)
+
+    meta, = Tablator.parse_frontmatter(content)
+    mpp = measures_override || measures_per_page(meta, available_width_pt)
+    fragments = Tablator.split_into_fragments(content, mpp)
+    sources_and_tool = source_paths + [TABLATOR_PATH]
+
+    fragments.each_with_index.map do |frag_content, i|
+      svg_path = File.join(export_dir, "#{name}.mpp#{mpp}.f#{i + 1}.svg")
+      unless File.exist?(svg_path) && sources_and_tool.all? { |p| File.mtime(p) <= File.mtime(svg_path) }
+        ly = Tablator.to_lilypond(frag_content, notes_mode: false, base_dir: out_dir)
+        Tablator.render_svg(ly, svg_path.sub(/\.svg\z/, ""))
+      end
+      svg_path
+    end
+  end
+
+  # `score:`/`image:` : pas de génération (contrairement à `tab:`/`ensure_tabla_fragments` —
   # aucun outil ne produit encore de partition, `Manuel/song/tablas-et-scores.adoc`), le
   # fichier doit déjà exister sous ce nom (`locate_resource`). Extension devinée (Phil,
   # 2026-08-27 : "faciliter le travail de l'user", jamais à préciser dans la directive) —
@@ -479,53 +523,73 @@ module PageBuilder
   # (`resolve_block`/`with_intro_align`, compteurs `bare_kind_counters`) — ne dépend pas
   # de `text_x`, jamais recalculé ici (fausserait le mapping positionnel des blocs
   # génériques si appelé deux fois, Phil, 2026-08-24).
-  # Espacement des lignes de système UNIFORME pour TOUTE la chanson (Phil, 2026-08-27 :
-  # "on cherche la taille pour que toutes les tablatures puissent être affichées
-  # correctement, on l'applique à TOUTES") — jamais tabla par tabla (sinon écarts
-  # visiblement différents d'un bloc à l'autre). Le plus PETIT espacement atteignable par
-  # TOUTE tab/score vectoriel de la chanson à pleine largeur de colonne, plafonné à
-  # `Layout::TAB_LINE_SPACING` (l'idéal, jamais dépassé même s'il y a de la place).
-  def self.notation_line_spacing(items, folder, text_w)
-    svgs = items.filter_map do |item|
-      next unless item.type == :tabla || item.type == :score
+  # Échelle UNIFORME pour TOUTE la chanson (Phil, 2026-08-27 : "on l'applique à TOUTES")
+  # — jamais tabla par tabla. Chaque tab/score vectoriel a une largeur physique NATURELLE
+  # (déclarée par LilyPond lui-même, `Layout.svg_natural_width_pt` — voir
+  # `Layout.uniform_tab_scale`) : à `#(set-global-staff-size ...)` inchangé entre deux
+  # rendus, cette taille naturelle donne DÉJÀ le même écartement de lignes partout ; un
+  # seul facteur de réduction (si la plus large dépasse la colonne) s'applique à toutes.
+  # `name`/`item.type` -> chemins SVG : UN par fragment pour `:tabla`/`:score` vectoriel
+  # (`ensure_tabla_fragments`, jamais un seul SVG multi-système), un seul pour `:image`/
+  # `:score` matriciel (`find_resource_asset`, pas de découpe en fragments — une image
+  # ne se scinde pas en mesures). `nil` si introuvable.
+  def self.notation_asset_paths(item, folder, text_w)
+    name = item.data[item.type]
+    if item.type == :tabla
+      paths = ensure_tabla_fragments(folder, name, text_w, measures_override: Layout.tabla_measures_per_page)
+      paths.empty? ? nil : paths
+    else
+      path = find_resource_asset(folder, name, item.type)
+      return nil unless path
 
-      name = item.data[item.type]
-      path = item.type == :tabla ? ensure_tabla_svg(folder, name) : find_resource_asset(folder, name, item.type)
-      next if path.nil? || (item.type == :score && Layout.raster_image?(path))
-
-      File.read(path)
+      if Layout.raster_image?(path)
+        path
+      else
+        paths = ensure_tabla_fragments(folder, name, text_w, measures_override: Layout.tabla_measures_per_page)
+        paths.empty? ? nil : paths
+      end
     end
-    Layout.uniform_tab_spacing(svgs, text_w)
+  end
+
+  def self.notation_scale(items, folder, text_w)
+    svgs = items.flat_map do |item|
+      next [] unless item.type == :tabla || item.type == :score
+
+      paths = notation_asset_paths(item, folder, text_w)
+      next [] if paths.nil? || !paths.is_a?(Array)
+
+      paths.map { |p| File.read(p) }
+    end
+    Layout.uniform_tab_scale(svgs, text_w)
   end
 
   def self.build_song_elements(pdf, items, rows, folder, text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
     row_idx = 0
     elements = []
-    shrink_jobs = [] # {index:, svg_path:, align:, title:} — tablas à réduire si besoin
-    line_spacing = notation_line_spacing(items, folder, text_w)
+    shrink_jobs = [] # {index:, svg_paths:, align:, title:} — tablas à réduire si besoin
+    tab_scale = notation_scale(items, folder, text_w)
     items.each do |item|
       case item.type
       when :row
         elements.concat(Layout.build_row_or_split(pdf, rows[row_idx], text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent))
         row_idx += 1
       when :tabla, :score, :image
-        name = item.data[item.type]
-        asset_path = item.type == :tabla ? ensure_tabla_svg(folder, name) : find_resource_asset(folder, name, item.type)
-        next unless asset_path
+        asset_paths = notation_asset_paths(item, folder, text_w)
+        next unless asset_paths
 
         align = item.data[:align]
         title = item.data[:title]
         count = item.data[:count]
         # `image:` = toujours "image" (pleine page par défaut, Phil 2026-08-27) ; `tab:` =
-        # toujours notation générée (largeur fixée à l'espacement des lignes) ; `score:` =
-        # notation SI vectoriel, image SI matriciel (photo/scan d'une partition).
-        as_image = item.type == :image || (item.type == :score && Layout.raster_image?(asset_path))
+        # toujours notation générée (fragments empilés) ; `score:` = notation SI
+        # vectoriel, image SI matriciel (photo/scan d'une partition).
+        as_image = !asset_paths.is_a?(Array)
         elements << if as_image
-          Layout.build_image_element(pdf, asset_path, text_x, text_w, align: align, title: title, count: count)
+          Layout.build_image_element(pdf, asset_paths, text_x, text_w, align: align, title: title, count: count)
         else
-          Layout.build_tabla_element_v2(pdf, asset_path, text_x, text_w, align: align, title: title, count: count, line_spacing: line_spacing)
+          Layout.build_tabla_element_v2(pdf, asset_paths, text_x, text_w, align: align, title: title, count: count, scale: tab_scale)
         end
-        shrink_jobs << { index: elements.size - 1, svg_path: asset_path, align: align, title: title } if item.data[:shrink] == "true"
+        shrink_jobs << { index: elements.size - 1, svg_paths: asset_paths, align: align, title: title } if item.data[:shrink] == "true"
       end
     end
     [elements, shrink_jobs]
@@ -561,6 +625,12 @@ module PageBuilder
       Layout.score_title_size = layout[:score_title_size].to_s[/[\d.]+/].to_f
     end
     Layout.score_title_style = layout[:score_title_style] if layout && layout[:score_title_style]
+    if layout && layout[:tabla_measures_per_page]
+      Layout.tabla_measures_per_page = layout[:tabla_measures_per_page].to_s[/\d+/].to_i
+    end
+    if layout && layout[:tabla_system_spacing]
+      Layout.tabla_system_spacing = layout[:tabla_system_spacing].to_s[/[\d.]+/].to_f
+    end
     Layout.current_song = meta["title"] || File.basename(folder)
     Layout.current_page = first_page_no
     lyr_blocks, lyr_order = parse_lyr(lyr_path)
@@ -646,12 +716,12 @@ module PageBuilder
         max_h = page[:avail_h] - others_h
         next if elements[job[:index]].height <= max_h
 
-        Layout.log_build("tabla \"#{job[:title] || job[:svg_path]}\" (shrink: true) réduite à #{max_h.round(1)}pt de haut pour tenir sur sa page")
+        Layout.log_build("tabla \"#{job[:title] || job[:svg_paths]}\" (shrink: true) réduite à #{max_h.round(1)}pt de haut pour tenir sur sa page")
         elements[job[:index]] = Layout.build_tabla_element_v2(
-          pdf, job[:svg_path], text_x, text_w, align: job[:align], title: job[:title], max_height: max_h
+          pdf, job[:svg_paths], text_x, text_w, align: job[:align], title: job[:title], max_height: max_h
         )
         elements_r[job[:index]] = Layout.build_tabla_element_v2(
-          pdf, job[:svg_path], text_x_r, text_w, align: job[:align], title: job[:title], max_height: max_h
+          pdf, job[:svg_paths], text_x_r, text_w, align: job[:align], title: job[:title], max_height: max_h
         ) if dynamic_mode
       end
 

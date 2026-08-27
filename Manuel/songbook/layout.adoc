@@ -35,6 +35,14 @@ Chaque __layout__ doit définir les caractéristiques suivantes :
 | Style à appliquer aux titres des partitions et tablatures.
 | p.e. `bold italic`
 
+| `tabla_measures_per_page`
+| Définit explicitement le nombre de mesures de tablature dans la page
+| `6` (priorité aux carnets)
+
+| `tabla_system_spacing`
+| Définit l'espace entre deux systèmes de tablature.
+| `12pt`
+
 | `lyrics_flux`
 | Définit le flux, l'enchainement des strophes, couplets, refrains et autres paroles.
 | `side` (pour "side by side", "côte à côte") ou `vertical` (pour "stacked vertically" ou "l'un au-dessous de l'autre") ou `free` (pour "free positioning", aucune contrainte).
