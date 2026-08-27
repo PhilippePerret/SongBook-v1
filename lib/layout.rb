@@ -61,9 +61,18 @@ module Layout
   # ci-dessus) — par défaut, la taille des caractères ne change JAMAIS ; `true` autorise
   # la réduire jusqu'à `MIN_TEXT_SIZE` avant d'abandonner le côte à côte (empilement).
   @shrink_text = false
+  # Taille du titre tab/score/image (`title:`/nom de déclaration) — configurable
+  # (layout, clé `score_title_size`, `assets/layouts/_default.yaml`). Défaut = `TEXT_SIZE`
+  # (Phil, 2026-08-27 : "ça ne devrait pas être plus gros qu'un INTRO dans le texte —
+  # ça devrait être pareil, en fait"), jamais en gras.
+  @score_title_size = 11
+  # Style du titre tab/score/image — configurable (layout, clé `score_title_style`).
+  # `nil` = normal (défaut, Phil 2026-08-27), sinon `:bold`/`:italic`/`:bold_italic`.
+  @score_title_style = nil
   class << self
     attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing,
-      :sensitivity, :log_conflict_count, :shrink_diags, :shrink_tabla, :shrink_score, :shrink_text
+      :sensitivity, :log_conflict_count, :shrink_diags, :shrink_tabla, :shrink_score, :shrink_text, :score_title_size,
+      :score_title_style
   end
   CONFLICTS = []
 
@@ -324,6 +333,9 @@ module Layout
   TAB_TITLE_SIZE = 9
   TAB_TITLE_GAP = 10
   TAB_TITLE_COLOR = "666666"
+  # Titre tab/score/image (nom de déclaration ou `title:`) : plus près de l'image que
+  # `TAB_TITLE_GAP` (Phil, 2026-08-27 : "devrait être moins loin de l'image").
+  TAB_TITLE_IMAGE_GAP = 3
 
   TITLE_SIZE = 20
   INTERPRETE_SIZE = 12
@@ -2128,6 +2140,20 @@ module Layout
     target_spacing_pt * viewbox_w / spacing
   end
 
+  # Écart de lignes COMMUN à toute la chanson (Phil, 2026-08-27) : le plus petit écart
+  # atteignable par CHAQUE tab/score vectoriel à pleine largeur de colonne (`width`),
+  # plafonné à `TAB_LINE_SPACING` (l'idéal, jamais dépassé même s'il reste de la place).
+  def self.uniform_tab_spacing(svg_data_list, width)
+    achievable = svg_data_list.filter_map do |svg_data|
+      viewbox_w = svg_data[/viewBox="[-\d.]+\s+[-\d.]+\s+([\d.]+)\s+[\d.]+"/, 1].to_f
+      spacing = tab_line_spacing(svg_data)
+      next nil if spacing.nil? || spacing.zero? || viewbox_w.zero?
+
+      width * spacing / viewbox_w
+    end.min
+    [TAB_LINE_SPACING, achievable || TAB_LINE_SPACING].min
+  end
+
   # Tabla (tablature/accompagnement, SVG rendu à part via Tablator). RÈGLE ABSOLUE (Phil,
   # 2026-08-16) : jamais de saut de page sans raison de place — donc pas de page dédiée,
   # c'est un élément de plus dans la MÊME pagination que les rows de couplets (voir
@@ -2156,18 +2182,92 @@ module Layout
     PageElement.new(title_h + svg_h, draw)
   end
 
+  # Repère "x N" (`count:`, propriété universelle) : règle esthétique (Phil, 2026-08-27)
+  # — jamais en modifiant la taille/position de l'élément lui-même. Priorité : 1) en
+  # regard à droite (même hauteur, dans l'espace restant de la colonne) si la place ne
+  # manque pas ; 2) sinon en dessous, centré. `elem_h` = hauteur de l'élément SEUL (sans
+  # titre) sur laquelle le repère se cale. Renvoie [hauteur_ajoutée, lambda(pdf_,
+  # graphic_top_y) ou nil].
+  COUNT_MARK_GAP = 6
+
+  def self.build_count_mark(pdf, count, x0, width, elem_x, elem_w, elem_h)
+    return [0, nil] unless count
+
+    text = "x #{count}"
+    text_w = pdf.width_of(text, size: TAB_TITLE_SIZE)
+    ascent = font_metric(pdf, TAB_TITLE_SIZE) { pdf.font.ascender }
+    text_h = font_metric(pdf, TAB_TITLE_SIZE) { pdf.font.height }
+    right_space = (x0 + width) - (elem_x + elem_w)
+
+    if right_space >= text_w + COUNT_MARK_GAP
+      at_x = elem_x + elem_w + COUNT_MARK_GAP
+      draw = lambda do |pdf_, graphic_top_y|
+        mid_y = graphic_top_y - elem_h / 2.0
+        draw_text_colored(pdf_, text, at: [at_x, mid_y - ascent / 2.0], size: TAB_TITLE_SIZE, style: :bold, color: TAB_TITLE_COLOR)
+      end
+      [0, draw]
+    else
+      at_x = x0 + [(width - text_w) / 2.0, 0].max
+      draw = lambda do |pdf_, graphic_top_y|
+        draw_text_colored(pdf_, text, at: [at_x, graphic_top_y - elem_h - TAB_TITLE_GAP - ascent], size: TAB_TITLE_SIZE, style: :bold, color: TAB_TITLE_COLOR)
+      end
+      [text_h + TAB_TITLE_GAP, draw]
+    end
+  end
+
+  # `score_title_style` (layout) : liste combinable espacée, ex. "bold italic underline"
+  # (Phil, 2026-08-27) — "bold"/"italic" -> style de fonte Prawn (combinés en
+  # `:bold_italic`), "underline" -> soulignement dessiné à part (Prawn ne le gère pas via
+  # `style:`, seulement `pdf.text`/`inline_format`, pas utilisé ici).
+  def self.score_title_font_style
+    tokens = score_title_style.to_s.split
+    bold = tokens.include?("bold")
+    italic = tokens.include?("italic")
+    return :bold_italic if bold && italic
+    return :bold if bold
+    return :italic if italic
+
+    nil
+  end
+
+  def self.score_title_underline?
+    score_title_style.to_s.split.include?("underline")
+  end
+
+  # Titre tab/score/image : majuscules + style/taille configurables (`score_title_size`/
+  # `score_title_style`) — factorisé, utilisé par `build_tabla_element_v2` ET
+  # `build_image_element` (Phil : "ça devrait être pareil" pour les deux).
+  def self.draw_score_title(pdf, text, x, y)
+    label = text.upcase
+    style = score_title_font_style
+    draw_text_colored(pdf, label, at: [x, y], size: score_title_size, style: style, color: TAB_TITLE_COLOR)
+    return unless score_title_underline?
+
+    w = pdf.width_of(label, size: score_title_size, style: style)
+    descent = font_metric(pdf, score_title_size) { pdf.font.descender }
+    underline_y = y + descent * 0.3
+    pdf.stroke_color TAB_TITLE_COLOR
+    pdf.line_width 0.5
+    pdf.stroke_line [x, underline_y], [x + w, underline_y]
+    pdf.stroke_color "000000"
+  end
+
   # Tabla positionnée EXACTEMENT là où `{tabla: ...}` apparaît dans le `.gab` (au lieu de
   # toujours après les couplets) — sa place dans l'ordre du `.gab` EST sa position ("top"
   # = premier élément, "fin" = dernier). align:center la centre dans la largeur dispo.
   # max_height : si donné et que la tabla (titre + image) ne tiendrait pas dedans, l'image
   # est réduite (largeur, donc hauteur — ratio conservé) pour tenir EXACTEMENT dedans, sans
   # plancher minimal ("sans limite", Phil 2026-08-16) — le titre, lui, ne rétrécit jamais.
-  def self.build_tabla_element_v2(pdf, svg_path, x0, width, align: nil, title: nil, max_height: nil)
+  # Notation générée (tab/score vectoriel) : largeur fixée par l'espacement des lignes de
+  # système (`tab_embed_width`), jamais étirée à la largeur dispo. `line_spacing` : écart
+  # commun à toute la chanson (`uniform_tab_spacing`), pas `TAB_LINE_SPACING` en dur —
+  # sinon écarts visiblement différents d'une tabla à l'autre (Phil, 2026-08-27).
+  def self.build_tabla_element_v2(pdf, svg_path, x0, width, align: nil, title: nil, max_height: nil, count: nil, line_spacing: TAB_LINE_SPACING)
     svg_data = File.read(svg_path)
-    embed_w = [tab_embed_width(svg_data, TAB_LINE_SPACING), width].min
+    embed_w = [tab_embed_width(svg_data, line_spacing), width].min
 
-    title_ascent = title ? font_metric(pdf, TAB_TITLE_SIZE) { pdf.font.ascender } : 0
-    title_h = title ? font_metric(pdf, TAB_TITLE_SIZE) { pdf.font.height } + TAB_TITLE_GAP : 0
+    title_ascent = title ? font_metric(pdf, score_title_size) { pdf.font.ascender } : 0
+    title_h = title ? font_metric(pdf, score_title_size) { pdf.font.height } + TAB_TITLE_IMAGE_GAP : 0
     svg_h = svg_height_for(svg_data, embed_w)
 
     if max_height && title_h + svg_h > max_height
@@ -2178,10 +2278,40 @@ module Layout
     end
 
     svg_x = align == "center" ? x0 + [(width - embed_w) / 2.0, 0].max : x0
+    count_extra_h, count_draw = build_count_mark(pdf, count, x0, width, svg_x, embed_w, svg_h)
+
     draw = lambda do |pdf_, y|
-      draw_text_colored(pdf_, title, at: [svg_x, y - title_ascent], size: TAB_TITLE_SIZE, style: :bold, color: TAB_TITLE_COLOR) if title
+      draw_score_title(pdf_, title, svg_x, y - title_ascent) if title
       engrave(bottom: y - title_h - svg_h, context: "tabla") { pdf_.svg(svg_data, at: [svg_x, y - title_h], width: embed_w, position: :left, enable_web_requests: false) }
+      count_draw&.call(pdf_, y - title_h)
     end
-    PageElement.new(title_h + svg_h, draw)
+    PageElement.new(title_h + svg_h + count_extra_h, draw)
+  end
+
+  # `image:` (et `score:` matriciel) : PAS de largeur nominale propre — pleine largeur de
+  # colonne par défaut ("pleine page", Phil 2026-08-27), hauteur au ratio de l'image.
+  # Propriétés explicites (width/height/position...) : pas encore implémentées, à faire
+  # plus tard (Phil : "pour le moment, on met l'image telle qu'elle remplit la page").
+  def self.build_image_element(pdf, image_path, x0, width, align: nil, title: nil, count: nil)
+    ext = File.extname(image_path).delete_prefix(".").upcase
+    ext = "JPG" if ext == "JPEG"
+    img = Prawn::Images.const_get(ext).new(File.binread(image_path))
+    iw, ih = img.width, img.height
+
+    embed_w = width
+    embed_h = ih * embed_w / iw.to_f
+
+    title_ascent = title ? font_metric(pdf, score_title_size) { pdf.font.ascender } : 0
+    title_h = title ? font_metric(pdf, score_title_size) { pdf.font.height } + TAB_TITLE_IMAGE_GAP : 0
+
+    img_x = align == "center" ? x0 + [(width - embed_w) / 2.0, 0].max : x0
+    count_extra_h, count_draw = build_count_mark(pdf, count, x0, width, img_x, embed_w, embed_h)
+
+    draw = lambda do |pdf_, y|
+      draw_score_title(pdf_, title, img_x, y - title_ascent) if title
+      engrave(bottom: y - title_h - embed_h, context: "image") { pdf_.image(image_path, at: [img_x, y - title_h], width: embed_w) }
+      count_draw&.call(pdf_, y - title_h)
+    end
+    PageElement.new(title_h + embed_h + count_extra_h, draw)
   end
 end

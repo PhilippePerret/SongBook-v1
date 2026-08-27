@@ -47,6 +47,7 @@ module PageBuilder
     default
   end
 
+
   def self.parse_infos(path)
     meta = {}
     File.foreach(path) do |line|
@@ -199,6 +200,28 @@ module PageBuilder
       if para.include?("{song:")
         names = para.split("//").filter_map { |chunk| chunk[/\{song:\s*([^;}]+)/, 1]&.strip }
         GabItem.new(:row, { names: names, directives: {} })
+      # `{nom; tab: ...}` / `{nom; score: ...}` / `{nom; image: ...}` : forme déclarative
+      # (nom en tête suivi d'attributs) — malgré le nom en tête qui la fait matcher
+      # ROW_TOKEN_RE, PAS une row de paroles : une ressource (tabla/score/image),
+      # `{nom}`/`{nom-N}` SEULS restent la forme paroles (Phil, 2026-08-27).
+      elsif !para.include?("//") && para =~ /;\s*(?:tab|score|image)\s*:/
+        inner = para[/\A\{(.*)\}\z/m, 1] || ""
+        segments = inner.split(";")
+        # Nom en tête sans ":" (ex. "intro" dans "{intro; tab: intro;...}") : titre par
+        # défaut de la marque, SAUF `title:` explicite (Phil, 2026-08-27).
+        declared_name = segments.first && !segments.first.include?(":") ? segments.first.strip : nil
+        dirs = {}
+        segments.each do |pair|
+          k, v = pair.split(":", 2)
+          next unless k && v && !k.strip.empty?
+
+          key = k.strip.to_sym
+          key = :tabla if key == :tab
+          dirs[key] = v.strip.gsub(/\A["']|["']\z/, "")
+        end
+        dirs[:title] ||= declared_name if declared_name && !declared_name.empty?
+        type = %i[tabla score image].find { |k| dirs.key?(k) } || :unknown
+        GabItem.new(type, dirs)
       elsif (cols = para.split("//").map(&:strip)).all? { |c| c =~ ROW_TOKEN_RE }
         row_directives = {}
         names = cols.map do |c|
@@ -227,9 +250,9 @@ module PageBuilder
           key = :tabla if key == :tab
           dirs[key] = v.strip.gsub(/\A["']|["']\z/, "")
         end
-        # `tabla`/`diags` avant `title` : la directive tabla porte elle-même une clé
-        # `title` (sa légende) — sinon elle se ferait passer pour la config d'en-tête.
-        type = %i[tabla diags title].find { |k| dirs.key?(k) } || :unknown
+        # `tabla`/`score`/`image`/`diags` avant `title` : leur directive porte elle-même
+        # une clé `title` (sa légende) — sinon elle se ferait passer pour la config d'en-tête.
+        type = %i[tabla score image diags title].find { |k| dirs.key?(k) } || :unknown
         GabItem.new(type, dirs)
       end
     end
@@ -241,18 +264,38 @@ module PageBuilder
   # bout à bout des CODES de "intro.tab" et "couplet.tab" (frontmatter du 1er fichier
   # repris tel quel, corps concaténés), un SEUL SVG produit ("intro+couplet.svg").
   # Renvoie le chemin du SVG, ou nil si les sources nécessaires n'existent pas toutes.
-  def self.ensure_tabla_svg(folder, name)
-    svg_path = File.join(folder, "#{name}.svg")
+  # Dossiers RÉELS des ressources (tab/score/image) d'une chanson, dans l'ordre de
+  # recherche : `/scores`, `/images`, racine du dossier chanson, PUIS tous les
+  # sous-dossiers (récursif — jamais des milliers de fichiers dans une chanson, Phil
+  # 2026-08-27) si toujours introuvable.
+  RESOURCE_SUBDIRS = %w[scores images].freeze
 
+  def self.resource_search_dirs(folder)
+    RESOURCE_SUBDIRS.map { |d| File.join(folder, d) }.select { |d| File.directory?(d) } << folder
+  end
+
+  def self.locate_resource(folder, filename)
+    resource_search_dirs(folder).each do |dir|
+      path = File.join(dir, filename)
+      return path if File.exist?(path)
+    end
+    Dir.glob(File.join(folder, "**", filename)).first
+  end
+
+  def self.ensure_tabla_svg(folder, name)
     if name.include?("+")
-      tab_paths = name.split("+").map { |n| File.join(folder, "#{n}.tab") }
-      return nil unless tab_paths.all? { |p| File.exist?(p) }
+      parts = name.split("+")
+      tab_paths = parts.map { |n| locate_resource(folder, "#{n}.tab") }
+      return nil unless tab_paths.all?
+
+      out_dir = File.dirname(tab_paths.first)
+      svg_path = File.join(out_dir, "#{name}.svg")
       return svg_path if File.exist?(svg_path) && tab_paths.all? { |p| File.mtime(p) <= File.mtime(svg_path) }
 
-      merged_path = File.join(folder, ".~#{name}.tab")
+      merged_path = File.join(out_dir, ".~#{name}.tab")
       File.write(merged_path, merge_tab_contents(tab_paths))
       begin
-        system("ruby", TABLATOR_PATH, merged_path, "-o", File.join(folder, name), out: File::NULL, err: File::NULL) or
+        system("ruby", TABLATOR_PATH, merged_path, "-o", File.join(out_dir, name), out: File::NULL, err: File::NULL) or
           raise "échec de tablator sur la fusion #{name}"
       ensure
         File.delete(merged_path)
@@ -260,13 +303,33 @@ module PageBuilder
       return svg_path
     end
 
-    tab_path = File.join(folder, "#{name}.tab")
-    return svg_path if File.exist?(svg_path) && (!File.exist?(tab_path) || File.mtime(tab_path) <= File.mtime(svg_path))
-    return nil unless File.exist?(tab_path)
+    tab_path = locate_resource(folder, "#{name}.tab")
+    out_dir = tab_path ? File.dirname(tab_path) : resource_search_dirs(folder).first
+    svg_path = File.join(out_dir, "#{name}.svg")
+    return svg_path if File.exist?(svg_path) && (!tab_path || File.mtime(tab_path) <= File.mtime(svg_path))
+    return nil unless tab_path
 
-    system("ruby", TABLATOR_PATH, tab_path, "-o", File.join(folder, name), out: File::NULL, err: File::NULL) or
+    system("ruby", TABLATOR_PATH, tab_path, "-o", File.join(out_dir, name), out: File::NULL, err: File::NULL) or
       raise "échec de tablator sur #{tab_path}"
     svg_path
+  end
+
+  # `score:`/`image:` : pas de génération (contrairement à `tab:`/`ensure_tabla_svg` —
+  # aucun outil ne produit encore de partition, `Manuel/song/tablas-et-scores.adoc`), le
+  # fichier doit déjà exister sous ce nom (`locate_resource`). Extension devinée (Phil,
+  # 2026-08-27 : "faciliter le travail de l'user", jamais à préciser dans la directive) —
+  # SVG cherché en premier (notation vectorielle), sinon image matricielle
+  # (`Layout::RASTER_EXTENSIONS`).
+  RESOURCE_EXTENSIONS = ["svg", *Layout::RASTER_EXTENSIONS.map { |e| e.delete_prefix(".") }].freeze
+
+  def self.find_resource_asset(folder, name, kind)
+    RESOURCE_EXTENSIONS.each do |ext|
+      path = locate_resource(folder, "#{name}.#{ext}")
+      return path if path
+    end
+
+    Layout.conflict!("#{kind} \"#{name}\" introuvable (#{name}.{#{RESOURCE_EXTENSIONS.join(",")}})", solution: "élément ignoré")
+    nil
   end
 
   # `---\n<frontmatter yaml>\n---\n<corps>` (même format que `Tablator.parse_frontmatter`,
@@ -416,24 +479,53 @@ module PageBuilder
   # (`resolve_block`/`with_intro_align`, compteurs `bare_kind_counters`) — ne dépend pas
   # de `text_x`, jamais recalculé ici (fausserait le mapping positionnel des blocs
   # génériques si appelé deux fois, Phil, 2026-08-24).
+  # Espacement des lignes de système UNIFORME pour TOUTE la chanson (Phil, 2026-08-27 :
+  # "on cherche la taille pour que toutes les tablatures puissent être affichées
+  # correctement, on l'applique à TOUTES") — jamais tabla par tabla (sinon écarts
+  # visiblement différents d'un bloc à l'autre). Le plus PETIT espacement atteignable par
+  # TOUTE tab/score vectoriel de la chanson à pleine largeur de colonne, plafonné à
+  # `Layout::TAB_LINE_SPACING` (l'idéal, jamais dépassé même s'il y a de la place).
+  def self.notation_line_spacing(items, folder, text_w)
+    svgs = items.filter_map do |item|
+      next unless item.type == :tabla || item.type == :score
+
+      name = item.data[item.type]
+      path = item.type == :tabla ? ensure_tabla_svg(folder, name) : find_resource_asset(folder, name, item.type)
+      next if path.nil? || (item.type == :score && Layout.raster_image?(path))
+
+      File.read(path)
+    end
+    Layout.uniform_tab_spacing(svgs, text_w)
+  end
+
   def self.build_song_elements(pdf, items, rows, folder, text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
     row_idx = 0
     elements = []
     shrink_jobs = [] # {index:, svg_path:, align:, title:} — tablas à réduire si besoin
+    line_spacing = notation_line_spacing(items, folder, text_w)
     items.each do |item|
       case item.type
       when :row
         elements.concat(Layout.build_row_or_split(pdf, rows[row_idx], text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent))
         row_idx += 1
-      when :tabla
-        name = item.data[:tabla]
-        svg_path = ensure_tabla_svg(folder, name)
-        next unless svg_path
+      when :tabla, :score, :image
+        name = item.data[item.type]
+        asset_path = item.type == :tabla ? ensure_tabla_svg(folder, name) : find_resource_asset(folder, name, item.type)
+        next unless asset_path
 
         align = item.data[:align]
         title = item.data[:title]
-        elements << Layout.build_tabla_element_v2(pdf, svg_path, text_x, text_w, align: align, title: title)
-        shrink_jobs << { index: elements.size - 1, svg_path: svg_path, align: align, title: title } if item.data[:shrink] == "true"
+        count = item.data[:count]
+        # `image:` = toujours "image" (pleine page par défaut, Phil 2026-08-27) ; `tab:` =
+        # toujours notation générée (largeur fixée à l'espacement des lignes) ; `score:` =
+        # notation SI vectoriel, image SI matriciel (photo/scan d'une partition).
+        as_image = item.type == :image || (item.type == :score && Layout.raster_image?(asset_path))
+        elements << if as_image
+          Layout.build_image_element(pdf, asset_path, text_x, text_w, align: align, title: title, count: count)
+        else
+          Layout.build_tabla_element_v2(pdf, asset_path, text_x, text_w, align: align, title: title, count: count, line_spacing: line_spacing)
+        end
+        shrink_jobs << { index: elements.size - 1, svg_path: asset_path, align: align, title: title } if item.data[:shrink] == "true"
       end
     end
     [elements, shrink_jobs]
@@ -463,6 +555,12 @@ module PageBuilder
     # taille des caractères ne doit JAMAIS changer (`build_row_or_split`, couplets côte
     # à côte trop larges) — comportement actuel avant ce correctif.
     Layout.shrink_text = resolve_shrink_option(meta, carnet_folder, "shrink_text", default: false)
+    # `score_title_size`/`score_title_style` : clés de LAYOUT (`layout:`/`.lay`), pas
+    # `.infos` (Phil, 2026-08-27) — comme `intro_align`, "pas encore stabilisé".
+    if layout && layout[:score_title_size]
+      Layout.score_title_size = layout[:score_title_size].to_s[/[\d.]+/].to_f
+    end
+    Layout.score_title_style = layout[:score_title_style] if layout && layout[:score_title_style]
     Layout.current_song = meta["title"] || File.basename(folder)
     Layout.current_page = first_page_no
     lyr_blocks, lyr_order = parse_lyr(lyr_path)

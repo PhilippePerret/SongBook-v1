@@ -1,5 +1,7 @@
 format: 21cm x 14.85cm
 title_band: true
+score_title_size: 11pt
+score_title_style: bold
 diags_position: left
 lyrics_flux: side
 intro_align: left
