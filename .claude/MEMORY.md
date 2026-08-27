@@ -29,6 +29,12 @@ Jamais citer les chemins/noms de fichiers modifiés dans le résumé donné à l
 ## Pas de recommandations, pas de fouille
 Jamais "(recommandé)" ni avis technique non sollicité (même quand un outil comme AskUserQuestion le suggère par défaut — INTERDICTIONS.txt passe avant). Jamais analyser/fouiller les fichiers existants (ex. `assets/chords_diags/*/schemas.txt`) pour deviner une règle non écrite — demander la règle littérale à Phil et l'appliquer mécaniquement, sans toucher à l'organisation déjà en place.
 
+## Chantier en cours — insertion tablatures dans pages de chanson
+Syntaxe `.gab` des sections entre accolades, DEUX formes distinctes (pas une "override" l'une de l'autre, deux natures de contenu) :
+- `{nom}` / `{nom-N}` : forme la plus naturelle, référence vers une partie des paroles (`.lyrics`). Le chiffre `-N` seulement si PLUSIEURS occurrences (`couplet-1`, `couplet-2`...) — une partie unique par nature (`final`) n'a jamais de chiffre.
+- `{id; tab: nom}` / `{id; score: nom}` / `{id; image: nom}` : déclare que cette occurrence n'est pas des paroles mais une tablature/partition/image (référencée par nom), avec éventuellement `count:`/`position:`.
+Exemple réel : `CHANSONS/Blackbird/c.gab`.
+
 ## Chantier en attente — suite de tests complète
 Basée sur TOUT le Manuel (pas les chemins de code touchés récemment). Le Manuel a encore des trous/zones d'ombre à combler d'abord. Pas de framework choisi (rspec/minitest à trancher ensemble). Ne pas démarrer sans demande explicite.
 
