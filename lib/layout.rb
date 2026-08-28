@@ -69,12 +69,13 @@ module Layout
   # Style du titre tab/score/image — configurable (layout, clé `score_title_style`).
   # `nil` = normal (défaut, Phil 2026-08-27), sinon `:bold`/`:italic`/`:bold_italic`.
   @score_title_style = nil
-  # Nombre de mesures par fragment de tablature — `nil` = calculé automatiquement
-  # (`PageBuilder.measures_per_page`), surclassable (layout, clé `tabla_measures_per_page`,
+  # Nombre de mesures par système de tablature — `nil` = calculé automatiquement
+  # (`Tablator.render_tab_svg`), surclassable (layout, clé `tabla_measures_per_page`,
   # Phil 2026-08-27).
   @tabla_measures_per_page = nil
-  # Écart (pt) entre deux fragments d'une même tablature empilés — configurable (layout,
-  # clé `tabla_system_spacing`, Phil 2026-08-27).
+  # Écart (pt) entre deux systèmes d'une même tablature (dessiné DANS le SVG, voir
+  # `Tablator.render_tab_svg` — configurable (layout, clé `tabla_system_spacing`,
+  # Phil 2026-08-27).
   @tabla_system_spacing = 16.0
   class << self
     attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing,
@@ -2147,18 +2148,13 @@ module Layout
     target_spacing_pt * viewbox_w / spacing
   end
 
-  # Largeur PHYSIQUE (pt) déclarée par LilyPond lui-même (`width="Xmm"` sur la racine du
-  # SVG) — PAS une mesure indirecte (Phil, 2026-08-27, après échec répété de l'approche
-  # par mesure d'écart de lignes, `tab_line_spacing` : peu fiable, capte parfois autre
-  # chose que les 6 lignes de corde selon le contenu). `#(set-global-staff-size ...)`
-  # n'étant JAMAIS changé entre deux appels à `tablator`, l'échelle mm/unité-SVG est
-  # DÉJÀ rigoureusement identique d'un rendu à l'autre (vérifié : 1.7573 mm/unité sur
-  # 3 fichiers de longueurs très différentes) — donc rendre chaque tab à SA largeur
-  # physique naturelle donne, de fait, le MÊME écartement de lignes pour toutes, sans
-  # aucune mesure ni ajustement nécessaire.
+  # Largeur PHYSIQUE (pt) déclarée par `Tablator.render_tab_svg` lui-même (`width="Xpt"`
+  # sur la racine du SVG, Phil 2026-08-28 : rendu géométrique direct, plus de mm — le
+  # renderer calcule déjà en pt, donc l'écartement de lignes est le même pour toutes les
+  # tabs par construction, sans mesure ni ajustement nécessaire ici).
   def self.svg_natural_width_pt(svg_data)
-    mm = svg_data[/\Awidth="([\d.]+)mm"/, 1] || svg_data[/<svg[^>]*\swidth="([\d.]+)mm"/, 1]
-    mm.to_f * AppConfig::MM_TO_PT
+    pt = svg_data[/\Awidth="([\d.]+)pt"/, 1] || svg_data[/<svg[^>]*\swidth="([\d.]+)pt"/, 1]
+    pt.to_f
   end
 
   # Échelle COMMUNE à toute la chanson (Phil, 2026-08-27 : "on l'applique à TOUTES") —
@@ -2277,50 +2273,38 @@ module Layout
   # max_height : si donné et que la tabla (titre + image) ne tiendrait pas dedans, l'image
   # est réduite (largeur, donc hauteur — ratio conservé) pour tenir EXACTEMENT dedans, sans
   # plancher minimal ("sans limite", Phil 2026-08-16) — le titre, lui, ne rétrécit jamais.
-  # Notation générée (tab/score vectoriel) : largeur = taille physique NATURELLE de
-  # chaque SVG (`svg_natural_width_pt`), multipliée par `scale` — échelle COMMUNE à
-  # toute la chanson (`uniform_tab_scale`), jamais recalculée tabla par tabla (sinon
-  # écarts visiblement différents d'une tabla à l'autre, Phil, 2026-08-27).
-  # `svg_paths` : UN SVG par fragment (`PageBuilder.ensure_tabla_fragments` — jamais un
-  # seul SVG multi-système, bug LilyPond `-dcrop` qui supprime l'espacement entre
-  # systèmes), empilés ici avec `tabla_system_spacing` entre chacun. Le dernier fragment
-  # (souvent incomplet) n'est jamais étiré : même échelle que les autres, juste moins
-  # large.
+  # Notation générée (tab/score vectoriel) : largeur = taille physique NATURELLE du SVG
+  # (`svg_natural_width_pt`), multipliée par `scale` — échelle COMMUNE à toute la
+  # chanson (`uniform_tab_scale`), jamais recalculée tabla par tabla (sinon écarts
+  # visiblement différents d'une tabla à l'autre, Phil, 2026-08-27).
+  # `svg_paths` : liste à 1 élément (`PageBuilder.ensure_tabla_svg` — UN SEUL SVG
+  # multi-système depuis le rendu géométrique direct, Phil 2026-08-28, plus de
+  # fragmentation multi-fichiers).
   def self.build_tabla_element_v2(pdf, svg_paths, x0, width, align: nil, title: nil, max_height: nil, count: nil, scale: 1.0)
-    frags = svg_paths.map do |svg_path|
-      svg_data = File.read(svg_path)
-      embed_w = [svg_natural_width_pt(svg_data) * scale, width].min
-      svg_h = svg_height_for(svg_data, embed_w)
-      [svg_data, embed_w, svg_h]
-    end
+    svg_data = File.read(svg_paths.first)
+    embed_w = [svg_natural_width_pt(svg_data) * scale, width].min
+    svg_h = svg_height_for(svg_data, embed_w)
 
     title_ascent = title ? font_metric(pdf, score_title_size) { pdf.font.ascender } : 0
     title_h = title ? font_metric(pdf, score_title_size) { pdf.font.height } + TAB_TITLE_IMAGE_GAP : 0
-    gap = tabla_system_spacing
-    frags_h = frags.sum { |_, _, h| h } + gap * [frags.size - 1, 0].max
 
-    if max_height && title_h + frags_h > max_height && frags.size == 1
+    if max_height && title_h + svg_h > max_height
       target_svg_h = [max_height - title_h, 0.0].max
-      svg_data, embed_w, = frags.first
       vb_w, vb_h = svg_viewbox(svg_data)
-      frags = [[svg_data, target_svg_h * vb_w / vb_h, target_svg_h]]
-      frags_h = target_svg_h
+      embed_w = target_svg_h * vb_w / vb_h
+      svg_h = target_svg_h
     end
 
-    positioned = frags.map { |svg_data, embed_w, svg_h| [svg_data, align == "center" ? x0 + [(width - embed_w) / 2.0, 0].max : x0, embed_w, svg_h] }
-    last_svg_x, last_embed_w, last_svg_h = positioned.last[1], positioned.last[2], positioned.last[3]
-    count_extra_h, count_draw = build_count_mark(pdf, count, x0, width, last_svg_x, last_embed_w, last_svg_h)
+    svg_x = align == "center" ? x0 + [(width - embed_w) / 2.0, 0].max : x0
+    count_extra_h, count_draw = build_count_mark(pdf, count, x0, width, svg_x, embed_w, svg_h)
 
     draw = lambda do |pdf_, y|
-      draw_score_title(pdf_, title, positioned.first[1], y - title_ascent) if title
+      draw_score_title(pdf_, title, svg_x, y - title_ascent) if title
       top = y - title_h
-      positioned.each do |svg_data, svg_x, embed_w, svg_h|
-        engrave(bottom: top - svg_h, context: "tabla") { pdf_.svg(svg_data, at: [svg_x, top], width: embed_w, position: :left, enable_web_requests: false) }
-        top -= svg_h + gap
-      end
-      count_draw&.call(pdf_, top + gap)
+      engrave(bottom: top - svg_h, context: "tabla") { pdf_.svg(svg_data, at: [svg_x, top], width: embed_w, position: :left, enable_web_requests: false) }
+      count_draw&.call(pdf_, top)
     end
-    PageElement.new(title_h + frags_h + count_extra_h, draw)
+    PageElement.new(title_h + svg_h + count_extra_h, draw)
   end
 
   # `image:` (et `score:` matriciel) : PAS de largeur nominale propre — pleine largeur de

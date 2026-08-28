@@ -43,13 +43,27 @@ RSpec.describe "TablatorAssistant.write_tablature : navigation J/L" do
     expect(apres_j).to eq(saved_body)
   end
 
-  it "\"L\" va à la FIN (dernière colonne de la grille)" do
-    script_keys("L", "5", "\r")
+  it "\"L\" va à la fin de la portion ÉCRITE, pas au bout de la grille" do
+    # Note posée en colonne 2 (2x :right), puis retour au début (J), puis "L" :
+    # doit revenir en colonne 2 (dernière colonne écrite), pas en colonne 4
+    # (dernière colonne de la grille, largeur 5).
+    script_keys(:right, :right, "5", "J", "L", :down, "3", "\r")
     TablatorAssistant.write_tablature(title: "Test L")
     apres_l = saved_body
 
-    script_keys(:right, :right, :right, :right, "5", "\r") # 4 déplacements = dernière colonne (largeur 5)
+    script_keys(:right, :right, "5", :down, "3", "\r") # note posée directement en colonne 2
     TablatorAssistant.write_tablature(title: "Test L baseline")
+
+    expect(apres_l).to eq(saved_body)
+  end
+
+  it "\"L\" sur une grille vide reste en colonne 0 (rien d'écrit à rejoindre)" do
+    script_keys("L", "5", "\r")
+    TablatorAssistant.write_tablature(title: "Test L vide")
+    apres_l = saved_body
+
+    script_keys("5", "\r") # note posée directement en colonne 0, sans déplacement
+    TablatorAssistant.write_tablature(title: "Test L vide baseline")
 
     expect(apres_l).to eq(saved_body)
   end

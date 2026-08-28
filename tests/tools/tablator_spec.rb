@@ -4,68 +4,80 @@ require_relative "../spec_helper"
 require_relative "../../tools/tablator/tablator"
 
 # Tests des outils
-RSpec.describe "outil tablator (traduction en musique)" do
-  it "Transformer une note en vraie note de musique" do
-    expect(Tablator.convert_token("50/4", notes_mode: false)).to eq("a,4\\5")
-  end
-
-  it "Transformer plusieurs cordes en même temps en accord" do
-    result = Tablator.convert_token("<10 21>/4", notes_mode: false)
-    expect(result).to start_with("<")
-    expect(result).to end_with("4")
-  end
-
-  it "Convertir une barre de mesure simple en \\bar Lilypond" do
-    expect(Tablator.convert_token("|", notes_mode: false)).to eq('\bar "|"')
-  end
-
-  it "Reconnaître les 6 formes de barre (Phil, 2026-08-26)" do
-    %w[| |. || :| |: :|:].each do |bar|
-      expect(Tablator.convert_token(bar, notes_mode: false)).to eq(%(\\bar "#{bar}"))
-    end
-  end
-
-  it "Garder un silence invisible tel quel" do
-    expect(Tablator.convert_token("s4.", notes_mode: false)).to eq("s4.")
-  end
-
+RSpec.describe "outil tablator (rendu SVG direct)" do
   it "Refuser un texte de tablature illisible" do
-    expect { Tablator.convert_token("n'importe quoi", notes_mode: false) }
+    expect { Tablator.parse_event("n'importe quoi", "4") }
       .to raise_error(Tablator::ParseError)
   end
 
-  it "Fabriquer un morceau de musique complet" do
-    content = "---\ntitle: Test\n---\ns4 50/4 <10 21>/4 |\n"
-    ly = Tablator.to_lilypond(content, notes_mode: false, base_dir: Dir.pwd)
-    expect(ly).to include("\\new TabStaff")
-    expect(ly).to include("s4")
+  it "Regrouper les tokens en mesures réelles (accumulation de durée contre la métrique)" do
+    measures, target = Tablator.parse_measures(%w[50/4 51/4 52/4 53/4 54/4], "4/4", chord_names: false)
+    expect(target).to eq(4.0)
+    expect(measures.size).to eq(2)
+    expect(measures[0][:events].size).to eq(4)
+    expect(measures[1][:events].size).to eq(1)
+  end
+
+  it "Une barre explicite force une coupure même mesure incomplète" do
+    measures, = Tablator.parse_measures(%w[50/4 |], "4/4", chord_names: false)
+    expect(measures.size).to eq(1)
+    expect(measures[0][:events].size).to eq(1)
+  end
+
+  it "Nom d'accord explicite [Nom] prime sur le calcul auto" do
+    measures, = Tablator.parse_measures(["[Am7]", "<10 21>/4"], "4/4", chord_names: true)
+    expect(measures[0][:label]).to eq("Am7")
+  end
+
+  it "Deviner le nom d'un accord depuis les notes (2 cordes ou plus)" do
+    measures, = Tablator.parse_measures(["<10 21 32>/4"], "4/4", chord_names: true)
+    expect(measures[0][:label]).not_to be_nil
+  end
+
+  it "Produire un SVG complet avec les dimensions attendues" do
+    content = "---\ntitle: Test\nmetrique: 4/4\n---\n50/4 51/4 52/4 53/4\n"
+    result = Tablator.render_tab_svg(content, measures_per_line: 4)
+    expect(result[:svg]).to include("<svg")
+    expect(result[:svg]).to include('width="')
+    expect(result[:width_pt]).to be > 0
+    expect(result[:height_pt]).to be > 0
+  end
+
+  it "measures_per_line plus petit que le nombre de mesures ajoute un système (et de la hauteur)" do
+    content = "50/4 51/4 52/4 53/4 54/4 55/4 56/4 57/4\n" # 2 mesures réelles en 4/4
+    two_systems = Tablator.render_tab_svg(content, measures_per_line: 1)
+    single_system = Tablator.render_tab_svg(content, measures_per_line: 999)
+    expect(two_systems[:height_pt]).to be > single_system[:height_pt]
+  end
+
+  it "Affiche les chiffres corde:case dans le SVG produit" do
+    content = "60/4\n"
+    result = Tablator.render_tab_svg(content, measures_per_line: 4)
+    expect(result[:svg]).to include(">0<")
   end
 
   describe "doigtés (main droite p/i/m/a/c + main gauche chiffre, Phil 2026-08-26)" do
     it "main droite seule" do
-      expect(Tablator.convert_token("60/4-p", notes_mode: false)).to eq('e,4\6-\markup \column { "p" }')
+      ev = Tablator.parse_event("60/4-p", "4")
+      expect(ev.rh).to eq("p")
+      expect(ev.lh).to be_nil
     end
 
-    it "main gauche seule (\\finger, rendu natif Lilypond)" do
-      expect(Tablator.convert_token("60/4-2", notes_mode: false)).to eq('e,4\6-\markup \column { \finger "2" }')
+    it "main gauche seule" do
+      ev = Tablator.parse_event("60/4-2", "4")
+      expect(ev.lh).to eq("2")
     end
 
-    it "les deux combinés, main droite empilée AU-DESSUS (ordre de saisie)" do
-      expect(Tablator.convert_token("60/4-p2", notes_mode: false)).to eq('e,4\6-\markup \column { "p" \finger "2" }')
+    it "les deux combinés" do
+      ev = Tablator.parse_event("60/4-p2", "4")
+      expect(ev.rh).to eq("p")
+      expect(ev.lh).to eq("2")
     end
 
-    it "sans doigté : aucun markup ajouté (inchangé)" do
-      expect(Tablator.convert_token("60/4", notes_mode: false)).to eq('e,4\6')
-    end
-
-    it "doigté sans durée explicite" do
-      expect(Tablator.convert_token("60-p2", notes_mode: false)).to eq('e,\6-\markup \column { "p" \finger "2" }')
-    end
-
-    it "chaque lettre p/i/m/a/c est acceptée comme doigté main droite" do
-      %w[p i m a c].each do |lettre|
-        expect(Tablator.convert_token("60/4-#{lettre}", notes_mode: false)).to include(%("#{lettre}"))
-      end
+    it "doigté sans durée explicite (reprend la dernière durée)" do
+      ev = Tablator.parse_event("60-p2", "8")
+      expect(ev.denom).to eq(8)
+      expect(ev.rh).to eq("p")
     end
   end
 end

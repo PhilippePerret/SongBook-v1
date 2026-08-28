@@ -309,56 +309,34 @@ module PageBuilder
     end
   end
 
-  # Nombre de mesures tenant dans `available_width_pt` — métrique (`metrique`/`time` du
-  # frontmatter, défaut 4/4) × plus petite division (`unit`, défaut "croche") × largeur
-  # dispo, calibré empiriquement sur `Tablator::STAFF_SIZE` (Phil, 2026-08-27 : "on va
-  # définir le nombre de mesures max par page en fonction de..."). `SLOT_WIDTH_PT`/
-  # `SLOT_OVERHEAD_PT` mesurés sur des tabs de test (notes simples, sans accord ni
-  # doigté — sous-estime donc un peu la largeur réelle d'un contenu chargé ; à ajuster
-  # via `tabla_measures_per_page` si besoin, jamais recalculé "pour de vrai" ici).
-  SLOT_WIDTH_PT = 11.65
-  SLOT_OVERHEAD_PT = 19.25
-
-  def self.measures_per_page(meta, available_width_pt)
-    time = meta["metrique"] || meta["time"] || "4/4"
-    num, den = time =~ %r{\A(\d+)/(\d+)\z} ? [$1.to_i, $2.to_i] : [4, 4]
-    unit_denom = Tablator::UNIT_DENOMINATOR.fetch(meta["unit"], 8)
-    slots_per_measure = num * (unit_denom.to_f / den)
-    usable = available_width_pt - SLOT_OVERHEAD_PT
-    [(usable / (slots_per_measure * SLOT_WIDTH_PT)).floor, 1].max
-  end
-
-  # Chemins des SVG (un par fragment, voir `Tablator.split_into_fragments`) — jamais UN
-  # seul SVG multi-système (bug LilyPond `-dcrop`, voir `tools/tablator/tablator.rb`).
-  # `measures_override` : `tabla_measures_per_page` (layout), prime sur le calcul.
-  # Écrits dans `<chanson>/.export/` (Phil, 2026-08-27 : jamais les fichiers générés
-  # dans le dossier de l'user, `scores/` reste UNIQUEMENT ses `.tab` — `base_dir:`
-  # transmis à LilyPond reste lui `out_dir`, pour résoudre `chordpro.json` normalement).
+  # SVG généré à la demande (`Tablator.render_tab_svg` — rendu géométrique direct,
+  # plus de dépendance LilyPond, Phil 2026-08-28), UN SEUL fichier multi-système
+  # (l'ancien découpage en fragments répondait à un bug LilyPond, `-dcrop`, qui ne
+  # s'applique plus). Renvoyé sous forme de liste à 1 élément (`[svg_path]`) pour
+  # garder la même forme que les appelants (`build_song_elements`, `shrink_jobs`...)
+  # attendaient déjà de l'ancien découpage en fragments. `measures_override` :
+  # `tabla_measures_per_page` (layout), prime sur le calcul automatique. Écrits
+  # dans `<chanson>/.export/` (Phil, 2026-08-27 : jamais les fichiers générés dans
+  # le dossier de l'user, `scores/` reste UNIQUEMENT ses `.tab`).
   EXPORT_DIRNAME = ".export"
 
-  def self.ensure_tabla_fragments(folder, name, available_width_pt, measures_override: nil)
-    content, out_dir, source_paths = tab_source_content(folder, name)
+  def self.ensure_tabla_svg(folder, name, available_width_pt, measures_override: nil)
+    content, _out_dir, source_paths = tab_source_content(folder, name)
     return [] unless content
 
     export_dir = File.join(folder, EXPORT_DIRNAME)
     FileUtils.mkdir_p(export_dir)
 
-    meta, = Tablator.parse_frontmatter(content)
-    mpp = measures_override || measures_per_page(meta, available_width_pt)
-    fragments = Tablator.split_into_fragments(content, mpp)
-    sources_and_tool = source_paths + [TABLATOR_PATH]
+    key = "#{measures_override ? "mo#{measures_override}" : "w#{available_width_pt.round}"}.sp#{Layout.tabla_system_spacing.round}"
+    svg_path = File.join(export_dir, "#{name}.#{key}.svg")
+    return [svg_path] if svg_fresh?(svg_path, *source_paths)
 
-    fragments.each_with_index.map do |frag_content, i|
-      svg_path = File.join(export_dir, "#{name}.mpp#{mpp}.f#{i + 1}.svg")
-      unless File.exist?(svg_path) && sources_and_tool.all? { |p| File.mtime(p) <= File.mtime(svg_path) }
-        ly = Tablator.to_lilypond(frag_content, notes_mode: false, base_dir: out_dir)
-        Tablator.render_svg(ly, svg_path.sub(/\.svg\z/, ""))
-      end
-      svg_path
-    end
+    result = Tablator.render_tab_svg(content, available_width_pt: available_width_pt, measures_per_line: measures_override, system_spacing: Layout.tabla_system_spacing)
+    File.write(svg_path, result[:svg])
+    [svg_path]
   end
 
-  # `score:`/`image:` : pas de génération (contrairement à `tab:`/`ensure_tabla_fragments` —
+  # `score:`/`image:` : pas de génération (contrairement à `tab:`/`ensure_tabla_svg` —
   # aucun outil ne produit encore de partition, `Manuel/song/tablas-et-scores.adoc`), le
   # fichier doit déjà exister sous ce nom (`locate_resource`). Extension devinée (Phil,
   # 2026-08-27 : "faciliter le travail de l'user", jamais à préciser dans la directive) —
@@ -525,18 +503,16 @@ module PageBuilder
   # génériques si appelé deux fois, Phil, 2026-08-24).
   # Échelle UNIFORME pour TOUTE la chanson (Phil, 2026-08-27 : "on l'applique à TOUTES")
   # — jamais tabla par tabla. Chaque tab/score vectoriel a une largeur physique NATURELLE
-  # (déclarée par LilyPond lui-même, `Layout.svg_natural_width_pt` — voir
-  # `Layout.uniform_tab_scale`) : à `#(set-global-staff-size ...)` inchangé entre deux
-  # rendus, cette taille naturelle donne DÉJÀ le même écartement de lignes partout ; un
-  # seul facteur de réduction (si la plus large dépasse la colonne) s'applique à toutes.
-  # `name`/`item.type` -> chemins SVG : UN par fragment pour `:tabla`/`:score` vectoriel
-  # (`ensure_tabla_fragments`, jamais un seul SVG multi-système), un seul pour `:image`/
-  # `:score` matriciel (`find_resource_asset`, pas de découpe en fragments — une image
-  # ne se scinde pas en mesures). `nil` si introuvable.
+  # (calculée directement par `Tablator.render_tab_svg`, Phil 2026-08-28 — plus de
+  # dépendance LilyPond) : un seul facteur de réduction (si la plus large dépasse la
+  # colonne) s'applique à toutes (`Layout.uniform_tab_scale`).
+  # `name`/`item.type` -> chemins SVG : `ensure_tabla_svg` pour `:tabla`/`:score`
+  # vectoriel (liste à 1 élément), `find_resource_asset` pour `:image`/`:score`
+  # matriciel (un seul chemin, pas de génération). `nil` si introuvable.
   def self.notation_asset_paths(item, folder, text_w)
     name = item.data[item.type]
     if item.type == :tabla
-      paths = ensure_tabla_fragments(folder, name, text_w, measures_override: Layout.tabla_measures_per_page)
+      paths = ensure_tabla_svg(folder, name, text_w, measures_override: Layout.tabla_measures_per_page)
       paths.empty? ? nil : paths
     else
       path = find_resource_asset(folder, name, item.type)
@@ -545,7 +521,7 @@ module PageBuilder
       if Layout.raster_image?(path)
         path
       else
-        paths = ensure_tabla_fragments(folder, name, text_w, measures_override: Layout.tabla_measures_per_page)
+        paths = ensure_tabla_svg(folder, name, text_w, measures_override: Layout.tabla_measures_per_page)
         paths.empty? ? nil : paths
       end
     end

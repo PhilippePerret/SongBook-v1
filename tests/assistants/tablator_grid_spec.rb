@@ -57,14 +57,16 @@ RSpec.describe "TablatorAssistant : grille (doigtés + barres)" do
       expect(avec_barre).to eq(["50/4", "|."])
     end
 
-    it "une barre entre deux notes borne la première, pas la seconde" do
+    it "une barre entre deux notes borne la première ; l'écart avant la seconde (après la barre) est du silence écrit" do
       m = matrix(6, [5, 0] => cell(0), [4, 4] => cell(2))
       tokens = TablatorAssistant.matrix_to_tokens(m, "croche", bars: { 2 => "|" })
-      expect(tokens).to eq(["50/4", "|", "42/4"])
+      # col3 (entre la barre et la note suivante) n'a plus le droit de disparaître
+      # silencieusement (bug 2026-08-28 : "une mesure vide ne doit pas être écrasée").
+      expect(tokens).to eq(["50/4", "|", "s8", "42/4"])
     end
 
-    it "seulement des barres, aucune note : renvoyées telles quelles" do
-      expect(TablatorAssistant.matrix_to_tokens(matrix(4), "croche", bars: { 1 => "|." })).to eq(["|."])
+    it "seulement une barre, aucune note : le silence AVANT la barre est écrit (bug 2026-08-28)" do
+      expect(TablatorAssistant.matrix_to_tokens(matrix(4), "croche", bars: { 1 => "|." })).to eq(["s8", "|."])
     end
 
     it "grille vide : liste vide" do

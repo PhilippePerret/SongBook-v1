@@ -1,8 +1,7 @@
-
 [[process-creation-songbook]]
 === Processus de création d'un carnet ===
 
-Le **processus classique de création d'un carnet** est le suivant :
+Le **processus classique de création d'un carnet** est le suivant (cette liste complète vous permet de rejoindre rapidement toutes les parties) :
 
 - vous <<song-assistant, créez des chansons>> ou vous les <<load-song-from-site, récupérez depuis notre site>>,
   - vous <<lyrics-file, écrivez les paroles>>,

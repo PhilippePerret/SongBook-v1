@@ -61,11 +61,9 @@ module TablatorAssistant
   # produire le SVG sous le nom NORMAL, pas caché.
   def self.render_tab_svg(tab_path, out_base: nil)
     content = File.read(tab_path)
-    meta, = Tablator.parse_frontmatter(content)
-    ly = Tablator.to_lilypond(content, notes_mode: false, base_dir: File.dirname(tab_path))
+    result = Tablator.render_tab_svg(content, measures_per_line: 999)
     out_base ||= tab_path.sub(/\.tab\z/, "")
-    File.write("#{out_base}.ly", ly) if meta["keep_ly"]
-    Tablator.render_svg(ly, out_base)
+    File.write("#{out_base}.svg", result[:svg])
     puts success("👍 #{Loc.get('tablator_svg_produced')}")
   rescue Tablator::ParseError => e
     warn "#{tab_path} : #{e.message}"
@@ -228,7 +226,8 @@ module TablatorAssistant
             # Mêmes lettres que "début/fin de vers" dans l'édition des accords
             # (`ChordPlacer` : "J"/"L", Phil, 2026-08-27).
             when "J" then col = 0
-            when "L" then col = width - 1
+            when "L"
+              col = (0...width).reverse_each.find { |c| bars[c] || (1..6).any? { |s| matrix[s - 1][c] } } || 0
             when :shift_right
               shift_right!(matrix, col)
             when :shift_left
@@ -437,28 +436,45 @@ module TablatorAssistant
       notes = (1..6).filter_map { |string| matrix[string - 1][col] && [string, matrix[string - 1][col]] }
       [col, notes] unless notes.empty?
     end
+    return [] if events.empty? && bars.empty?
+
+    notes_by_col = events.to_h
     bar_cols = bars.keys.sort
-    return bar_cols.map { |c| bars[c] } if events.empty?
+    stops = (notes_by_col.keys + bar_cols).uniq.sort
 
-    boundaries = (events.map(&:first) + bar_cols).uniq.sort
-
-    notes_by_col = events.each_with_object({}) do |(col, notes), h|
-      next_boundary = boundaries.find { |b| b > col } || width
-      duree = duration_for(next_boundary - col, unit_denominator)
-      h[col] =
-        if notes.size == 1
-          string, cell = notes.first
-          suffix = cell.rh || cell.lh ? "-#{cell.rh}#{cell.lh}" : ""
-          "#{string}#{cell.kase}/#{duree}#{suffix}"
-        else
-          "<#{notes.map { |s, c| "#{s}#{c.kase}" }.join(' ')}>/#{duree}"
-        end
+    # Une barre interrompt la tenue implicite d'une note (qui, sinon, "sonne" jusqu'au
+    # prochain repère) : dès `col` 0 et après chaque barre, tout écart avant le prochain
+    # repère (note ou barre suivante) doit être écrit comme silence invisible ("s<durée>"),
+    # sinon une mesure sans note posée disparaît purement et simplement à l'enregistrement
+    # (bug constaté, Phil, 2026-08-28 : "une barre définit une longueur de mesure, elle
+    # doit être remplie de silence"). Pas de comblement en fin de grille SANS barre : la
+    # largeur de la grille est arbitraire (taille du terminal), pas une fin de mesure.
+    tokens = []
+    cursor = 0
+    pending_reset = true
+    stops.each do |col|
+      if (notes = notes_by_col[col])
+        tokens << "s#{duration_for(col - cursor, unit_denominator)}" if pending_reset && col > cursor
+        next_boundary = stops.find { |b| b > col } || width
+        duree = duration_for(next_boundary - col, unit_denominator)
+        tokens <<
+          if notes.size == 1
+            string, cell = notes.first
+            suffix = cell.rh || cell.lh ? "-#{cell.rh}#{cell.lh}" : ""
+            "#{string}#{cell.kase}/#{duree}#{suffix}"
+          else
+            "<#{notes.map { |s, c| "#{s}#{c.kase}" }.join(' ')}>/#{duree}"
+          end
+        cursor = next_boundary
+        pending_reset = false
+      else
+        tokens << "s#{duration_for(col - cursor, unit_denominator)}" if pending_reset && col > cursor
+        tokens << bars[col]
+        cursor = col + 1
+        pending_reset = true
+      end
     end
-
-    ordered = (notes_by_col.keys + bar_cols).sort.map { |c| notes_by_col[c] || bars[c] }
-
-    leading = events.first[0]
-    leading.positive? ? ["s#{duration_for(leading, unit_denominator)}"] + ordered : ordered
+    tokens
   end
 
   # Durée LilyPond (dénominateur + points) pour un span de `span` colonnes de valeur de
