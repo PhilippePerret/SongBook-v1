@@ -1,6 +1,7 @@
 require "prawn"
 require "prawn-svg"
 require_relative "app_config"
+require_relative "../tools/tablator/tablator"
 
 # Moteur de mise en page : primitives de dessin (police, en-tête, couplets/accords,
 # diagrammes, tabla) et pagination générique — indépendant du format source d'une
@@ -73,14 +74,10 @@ module Layout
   # (`Tablator.render_tab_svg`), surclassable (layout, clé `tabla_measures_per_page`,
   # Phil 2026-08-27).
   @tabla_measures_per_page = nil
-  # Écart (pt) entre deux systèmes d'une même tablature (dessiné DANS le SVG, voir
-  # `Tablator.render_tab_svg` — configurable (layout, clé `tabla_system_spacing`,
-  # Phil 2026-08-27).
-  @tabla_system_spacing = 16.0
   class << self
     attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing,
       :sensitivity, :log_conflict_count, :shrink_diags, :shrink_tabla, :shrink_score, :shrink_text, :score_title_size,
-      :score_title_style, :tabla_measures_per_page, :tabla_system_spacing
+      :score_title_style, :tabla_measures_per_page
   end
   CONFLICTS = []
 
@@ -109,9 +106,14 @@ module Layout
   end
 
   # "ACCORDS MANQUANTS : Am9 (À bicyclette), G7M (À bicyclette, Belle île en mer)" — ou
-  # `nil` si aucun accord manquant sur toute la production.
-  def self.missing_chords_summary
+  # `nil` si aucun accord manquant sur toute la production. `with_song_names:` (Phil,
+  # 2026-08-28) : à `false` pour un build de chanson SEULE — le titre entre parenthèses
+  # y est TOUJOURS le même (la chanson en cours), donc purement redondant ; reste à
+  # `true` par défaut pour un carnet (plusieurs chansons, le titre distingue).
+  def self.missing_chords_summary(with_song_names: true)
     return nil if @missing_chords.empty?
+
+    return "ACCORDS MANQUANTS : #{@missing_chords.keys.join(', ')}" unless with_song_names
 
     "ACCORDS MANQUANTS : #{@missing_chords.map { |chord, songs| "#{chord} (#{songs.join(', ')})" }.join(', ')}"
   end
@@ -290,6 +292,14 @@ module Layout
   # une plage resserrée pour "entre diags" resserre aussi, à tort, "sous le bandeau".
   # `tdm_num` (RATDM3) : distance entre le titre le plus long de la TDM et le chiffre de
   # page — valeur fixée à 20pt pour l'essai (Manuel, regles_esthetiques.adoc).
+  # `tabla_system` : PAS ici (Phil, 2026-08-28 : "garder cette config enregistrée en
+  # dur quelque part" — plancher/plafond lus depuis le preset Tablator ACTIF,
+  # `system_gap_min`/`system_gap_max`, voir `tools/tablator/presets.rb` et
+  # `min_v_dist`/`max_v_dist` ci-dessous), pour que TOUT le réglage tablature se
+  # trouve à un seul endroit, ajustable en changeant `Tablator.active_preset`.
+  # Plancher/plafond volontairement quasi égaux dans les presets : des systèmes
+  # d'une même tablature sont un contenu continu, jamais espacés comme des
+  # couplets (`distribute_v_gutters` ne doit quasiment jamais les étirer).
   MIN_V_DIST = { default: 20.0, diags: 2.0, band_diag: 10.0, band_strophe: 10.0 }.freeze
   MIN_H_DIST = { default: 8.0, diags: 4.0, tdm_num: 20.0 }.freeze
   MAX_V_DIST = { default: 40.0, diags: 2.0, band_diag: 20.0, band_strophe: 40.0 }.freeze
@@ -309,6 +319,8 @@ module Layout
   TDM = { leader_character: ".", leader_space: 3.0 }.freeze
 
   def self.min_v_dist(type = :default)
+    return Tablator.param(:system_gap_min) if type == :tabla_system
+
     MIN_V_DIST.fetch(type, MIN_V_DIST[:default])
   end
 
@@ -317,6 +329,8 @@ module Layout
   end
 
   def self.max_v_dist(type = :default)
+    return Tablator.param(:system_gap_max) if type == :tabla_system
+
     MAX_V_DIST.fetch(type, MAX_V_DIST[:default])
   end
 
@@ -359,7 +373,10 @@ module Layout
   # compositeur à droite) et les bords du bandeau — même valeur des deux côtés.
   HEADER_PAD_X = 12
 
-  PageElement = Struct.new(:height, :draw)
+  # `gutter_type` (optionnel, nil = `:default`) : type de gouttière à utiliser
+  # AVANT cet élément (Phil, 2026-08-28 : systèmes de tablature quasi collés entre
+  # eux, `:tabla_system` — voir `MIN_V_DIST`/`MAX_V_DIST`/`distribute_v_gutters`).
+  PageElement = Struct.new(:height, :draw, :gutter_type)
 
   # Boîte d'encre RÉELLE (llx, lly, urx, ury — unités/1000em) de chaque caractère latin
   # courant (français inclus), pour HelveticaNeue Bold/Regular — SEULE police utilisée par
@@ -904,13 +921,18 @@ module Layout
   # haut (indice 0) qui utilise `top_type` (ex. `:band_diag`/`:band_strophe` : distance
   # bandeau-titre → 1er élément, plage INDÉPENDANTE de celle entre deux éléments — Phil,
   # 2026-08-19). `top_type` vaut `type` par défaut (pages sans bandeau au-dessus).
-  def self.distribute_v_gutters(avail, sizes, type: :default, top_type: type)
+  # `types:` (Phil, 2026-08-28) : type PAR ÉLÉMENT (indice i = gouttière avant
+  # l'élément i), prime sur `type` élément par élément — permet de mélanger sur
+  # une même page des gouttières "normales" (rows) et resserrées (systèmes de
+  # tablature consécutifs, `PageElement#gutter_type`). `nil` dans le tableau =
+  # retombe sur `type`. `types[0]` reste écrasé par `top_type` comme avant.
+  def self.distribute_v_gutters(avail, sizes, type: :default, top_type: type, types: nil)
     return [] if sizes.empty?
 
     slack = [avail - sizes.sum, 0].max
     weights = Array.new(sizes.size, 1.0)
     weights[0] = TOP_GUTTER_WEIGHT
-    types = Array.new(sizes.size, type)
+    types = types ? types.map { |t| t || type } : Array.new(sizes.size, type)
     types[0] = top_type
     unit = slack / weights.sum
     gutters = weights.each_index.map { |i| (weights[i] * unit).clamp(min_v_dist(types[i]), max_v_dist(types[i])) }
@@ -1353,7 +1375,7 @@ module Layout
         merging_here = merged_last_page && i == pages.size - 1
         avail_for_text = merging_here ? merged_last_page[:remaining_h] : page[:avail_h]
         page_heights = page_els.map(&:height)
-        gutters = distribute_v_gutters(avail_for_text, page_heights, top_type: i.zero? ? :band_strophe : :default)
+        gutters = distribute_v_gutters(avail_for_text, page_heights, top_type: i.zero? ? :band_strophe : :default, types: page_els.map(&:gutter_type))
 
         # Rééquilibrage vertical (voir `VERTICAL_BALANCE_THRESHOLD_PT`) : jamais si une
         # grille de diags en trop occupe déjà le bas (`merging_here`, RAD7) — elle EST la
@@ -1556,14 +1578,15 @@ module Layout
   # "d"/"b" en 2e position d'un nom d'accord = dièse/bémol (convention interne, cf. noms
   # de fichiers de diags) → symbole réel ♯/♭ à l'affichage, jamais la lettre brute. Basse
   # SAISIE entre crochets (`A[c]m7`, `Am7[cd]`, `[cd]` seule, Manuel/song/chords.adoc) mais
-  # AFFICHÉE en notation slash standard (`Gm/B♭`, pas `Gm[B♭]` — Phil, 2026-08-24, "Gm[B♭]"
-  # pas une notation musicale reconnaissable) — même conversion ♯/♭ appliquée à la basse
-  # indépendamment de la fondamentale.
+  # AFFICHÉE en notation slash standard (`Gm/fa♯`, pas `Gm[Fd]` — Phil, 2026-08-24, "Gm[B♭]"
+  # pas une notation musicale reconnaissable). La basse suit une règle DIFFÉRENTE de la
+  # fondamentale (Phil, 2026-08-28) : toujours en solfège ITALIEN (do/ré/mi/fa/sol/la/si),
+  # toujours en minuscule — jamais les lettres A-G utilisées pour le reste de l'accord.
   def self.display_chord(chord)
     chord.split("/").map do |part|
       root, bass = part.include?("[") ? part.split("[", 2) : [part, nil]
       out = convert_note_symbol(root)
-      out += "/" + convert_note_symbol(bass.chomp("]")) if bass
+      out += "/" + italian_bass_symbol(bass.chomp("]")) if bass
       out
     end.join("/")
   end
@@ -1573,6 +1596,22 @@ module Layout
     when "d" then note[0] + "♯" + note[2..]
     when "b" then note[0] + "♭" + note[2..]
     else note
+    end
+  end
+
+  # Lettre -> syllabe de solfège italien (Phil, 2026-08-28 : "les basses doivent
+  # toujours être gravées en minuscule + en italien" — do/ré/mi/fa/sol/la/si, jamais
+  # les lettres A-G). Alteration "d"/"b" (2e position, même convention que
+  # `convert_note_symbol`) -> ♯/♭ ajouté APRÈS la syllabe.
+  BASS_NOTE_ITALIAN = { "a" => "la", "b" => "si", "c" => "do", "d" => "ré",
+                        "e" => "mi", "f" => "fa", "g" => "sol" }.freeze
+
+  def self.italian_bass_symbol(note)
+    syllabe = BASS_NOTE_ITALIAN.fetch(note[0].downcase, note[0].downcase)
+    case note[1]
+    when "d" then "#{syllabe}♯#{note[2..]}"
+    when "b" then "#{syllabe}♭#{note[2..]}"
+    else "#{syllabe}#{note[1..]}"
     end
   end
 

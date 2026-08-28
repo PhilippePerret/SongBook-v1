@@ -34,32 +34,32 @@ module AppConfig
     value
   end
 
-  # Chemin absolu du dossier des chansons — demandé à l'user et enregistré dans
-  # config.yaml au premier besoin si pas encore configuré.
-  def self.songs_dir
-    dir = get("songs_dir")
+  # Chemin d'un dossier configuré (clé `key` de config.yaml), REVÉRIFIÉ À CHAQUE APPEL
+  # (Phil, 2026-08-28 : "s'assurer à chaque fois que ce dossier existe bien et le
+  # redemander s'il a été déplacé, supprimé ou autre") — pas juste demandé une fois au
+  # premier besoin puis considéré acquis : un chemin enregistré mais devenu invalide
+  # (dossier déplacé/supprimé/renommé depuis) redéclenche la question, jusqu'à un chemin
+  # valide, qui écrase alors l'ancien dans config.yaml.
+  def self.ensure_folder(key, question)
+    dir = get(key)
     return dir if dir && !dir.to_s.strip.empty? && Dir.exist?(dir.to_s)
 
     loop do
-      print blue("Dossier des chansons : ")
+      print blue("#{question} : ")
       input = $stdin.gets.to_s.strip
-      return set("songs_dir", input) if Dir.exist?(input)
+      return set(key, input) if Dir.exist?(input)
       warn "dossier introuvable : #{input}"
     end
   end
 
-  # Chemin absolu du dossier des carnets — même principe que `songs_dir` (demandé à
-  # l'user et enregistré dans config.yaml au premier besoin si pas encore configuré).
-  def self.songbooks_dir
-    dir = get("songbooks_dir")
-    return dir if dir && !dir.to_s.strip.empty? && Dir.exist?(dir.to_s)
+  # Chemin absolu du dossier des chansons.
+  def self.songs_dir
+    ensure_folder("songs_dir", "Dossier des chansons")
+  end
 
-    loop do
-      print blue("Dossier des carnets : ")
-      input = $stdin.gets.to_s.strip
-      return set("songbooks_dir", input) if Dir.exist?(input)
-      warn "dossier introuvable : #{input}"
-    end
+  # Chemin absolu du dossier des carnets.
+  def self.songbooks_dir
+    ensure_folder("songbooks_dir", "Dossier des carnets")
   end
 
   # Application (nom ou chemin, `open -a`) utilisée pour éditer les fichiers d'une

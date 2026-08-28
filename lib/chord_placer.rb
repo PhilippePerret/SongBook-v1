@@ -6,6 +6,7 @@ require_relative "chord_diagrams"
 require_relative "locale"
 require_relative "ansi_colors"
 require_relative "transpose"
+require_relative "dsl_parser"
 
 # `songbook add chords <chanson>` : pose interactive des accords sur un `.lyr` EXISTANT.
 # Entrée = FINIR l'édition (jamais "ligne suivante" — seules les flèches ↑/↓ déplacent
@@ -176,7 +177,12 @@ module ChordPlacer
           when ->(k) { k.is_a?(Hash) && k[:arrow] }
             pos, cursor = apply_arrow(key, pos, cursor, chord_lines, editable)
           else
-            typing = key if key.is_a?(String) && key.match?(/\A[a-zA-Z]\z/)
+            # "[" (Phil, 2026-08-28) démarre aussi une saisie : basse SEULE, ex. "[fd]"
+            # ("basse fa dièse", toujours enregistrée en minuscule, `capitalize_chord`)
+            # — même syntaxe crochets que la basse embarquée dans un accord (`A[c]m7`,
+            # Manuel/song/chords.adoc), affichée en rendu "/fa♯" (solfège italien,
+            # `Layout.display_chord`/`Layout.italian_bass_symbol`).
+            typing = key if key.is_a?(String) && key.match?(/\A[a-zA-Z\[]\z/)
           end
         end
       end
@@ -194,9 +200,14 @@ module ChordPlacer
     !line.strip.empty? && !line.strip.match?(/\A\{[^}]*\}\z/)
   end
 
-  # 1re lettre en capitale, TOUJOURS (Phil) — écrite comme ça, pas juste affichée comme ça.
+  # 1re lettre en capitale, TOUJOURS (Phil) — écrite comme ça, pas juste affichée comme
+  # ça. Basse entre crochets (`[fd]` seule, ou embarquée dans un accord "A[c]m7", Phil
+  # 2026-08-28 : "entre crochets, c'est toujours des basses et les basses doivent
+  # toujours s'écrire en minuscule") : règle INVERSE, tout le contenu d'un "[...]" est
+  # forcé en minuscule — même règle que `DSLParser.normalize_chord`, pas de
+  # ré-implémentation, une seule règle partout.
   def self.capitalize_chord(name)
-    name[0].upcase + name[1..].to_s
+    DSLParser.normalize_chord(name)
   end
 
   # Étiquette d'un accord dans la légende : raccourci clavier (lettre + éventuel chiffre,
@@ -416,6 +427,11 @@ module ChordPlacer
   # : bug constaté — cherchait "F7M-1-*.svg" en traitant tout le texte comme un nom
   # opaque, jamais "F7M-1.svg" lui-même, faux "sans diagramme" alors qu'il existait).
   def self.chord_known?(chord, song_dir)
+    # Basse seule (`[fd]`, Phil 2026-08-28) : aucun diagramme dédié n'existe pour ce
+    # cas (convention absente de `GenerateChordDiagrams`), le signaler serait donc
+    # TOUJOURS un faux négatif — rien à signaler.
+    return true if chord.start_with?("[")
+
     name, fret = chord.split("-", 2)
     fc = ChordDiagrams.file_chord(name)
     return true if ChordDiagrams.find_svg(song_dir, fc, fret, recursive: true)

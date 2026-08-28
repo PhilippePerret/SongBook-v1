@@ -38,7 +38,10 @@ RSpec.describe "construction d'une chanson seule" do
 
       conflict_log = Dir.glob(File.join(dir, "export", "*-conflicts.log")).first
       lines = File.readlines(conflict_log).map(&:chomp).reject(&:empty?)
-      expect(lines.last).to eq("ACCORDS MANQUANTS : Zzz9 (Test Log)")
+      # Chanson SEULE : PAS de titre entre parenthèses (Phil, 2026-08-28) — toujours
+      # celui de cette même chanson ici, purement redondant (contrairement à un carnet,
+      # où plusieurs chansons peuvent partager le même accord manquant).
+      expect(lines.last).to eq("ACCORDS MANQUANTS : Zzz9")
     end
   end
 end

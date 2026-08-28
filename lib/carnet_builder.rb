@@ -337,6 +337,10 @@ module CarnetBuilder
     folder = File.join(chansons_dir, folder_name)
     raise "dossier de chanson déjà existant : #{folder}" if Dir.exist?(folder)
     Dir.mkdir(folder)
+    # Sous-dossiers conventionnels de la chanson, prêts dès la création (Phil,
+    # 2026-08-28) — `mkdir_p` (pas `mkdir`) : ne raise pas s'ils existent déjà.
+    FileUtils.mkdir_p(File.join(folder, "images"))
+    FileUtils.mkdir_p(File.join(folder, "scores"))
 
     infos_path = File.join(folder, "c.infos")
     lyr_path = File.join(folder, "c.lyr")
@@ -421,8 +425,9 @@ module CarnetBuilder
 
     out_path = File.join(export_dir, "#{slug}.pdf")
     PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout: layout)
-    # Sur la DERNIÈRE ligne du log de conflits, noms exacts (Phil, 2026-08-26).
-    missing_chords_summary = Layout.missing_chords_summary
+    # Sur la DERNIÈRE ligne du log de conflits — chanson SEULE : sans le titre entre
+    # parenthèses (Phil, 2026-08-28), toujours le même ici, purement redondant.
+    missing_chords_summary = Layout.missing_chords_summary(with_song_names: false)
     File.open(Layout.conflict_log_path, "a") { |f| f.puts missing_chords_summary } if missing_chords_summary
     # Rapport (succès/conflits/propositions d'ouverture) laissé à l'appelant interactif
     # (`CLI`, Phil, 2026-08-27) — `build_song` reste une pure fonction de construction.

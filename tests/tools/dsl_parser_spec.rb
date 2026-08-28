@@ -33,8 +33,12 @@ RSpec.describe "lecture des paroles et accords (.lyr)" do
       expect(DSLParser.normalize_chord("am7")).to eq("Am7")
     end
 
-    it "Mettre en majuscule la basse d'un accord entre crochets" do
-      expect(DSLParser.normalize_chord("a[c]m7")).to eq("A[C]m7")
+    it "Forcer la basse d'un accord entre crochets en MINUSCULE (règle inverse de la fondamentale, Phil 2026-08-28)" do
+      expect(DSLParser.normalize_chord("a[C]m7")).to eq("A[c]m7")
+    end
+
+    it "basse seule entre crochets : minuscule forcée, même tapée en majuscule" do
+      expect(DSLParser.normalize_chord("[FD]")).to eq("[fd]")
     end
 
     it "Remplacer un accord seul sans mot par un espace (alignement)" do

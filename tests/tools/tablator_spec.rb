@@ -70,7 +70,7 @@ RSpec.describe "outil tablator (rendu SVG direct)" do
   it "Pas de barre de mesure en tout début de système (à x = TIME_SIG_W)" do
     content = "60/4\n"
     result = Tablator.render_tab_svg(content, measures_per_line: 4).first
-    leading_bar = result[:svg].scan(/<line x1="(#{Regexp.escape(Tablator::TIME_SIG_W.to_s)})" y1="[\d.]+" x2="\1"/)
+    leading_bar = result[:svg].scan(/<line x1="(#{Regexp.escape(Tablator.param(:time_sig_w).to_s)})" y1="[\d.]+" x2="\1"/)
     expect(leading_bar).to be_empty
   end
 

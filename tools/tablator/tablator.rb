@@ -19,16 +19,18 @@
 #   |  |.  ||  :|  |:  :|:          barre de mesure (6 formes)
 # Numérotation des cordes : 1 = aiguë (mi aigu, ligne du HAUT) ... 6 = grave (mi grave, ligne du BAS).
 #
-# Découpé en deux modules (Phil, 2026-08-28, "un module editor.rb serait plus
+# Découpé en modules (Phil, 2026-08-28, "un module editor.rb serait plus
 # intelligent que de tout mettre dans tablator.rb" — même principe appliqué
 # ici) pour limiter les collisions d'édition entre préoccupations distinctes :
 #   parser.rb    lecture syntaxe -> mesures (Tablator.tokenize, .parse_measures...)
+#   presets.rb   jeux de valeurs nommés pour le rendu (Tablator::PRESETS, .active_preset)
 #   renderer.rb  mesures -> SVG (Tablator.render_tab_svg...)
-# Les deux réouvrent le même module `Tablator` : l'API publique ne change pas,
+# Tous réouvrent le même module `Tablator` : l'API publique ne change pas,
 # seul le point d'entrée (ce fichier) et le CLI restent ici.
 
 require 'optparse'
 require_relative 'parser'
+require_relative 'presets'
 require_relative 'renderer'
 
 # --- CLI ---------------------------------------------------------------

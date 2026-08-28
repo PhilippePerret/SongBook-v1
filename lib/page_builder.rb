@@ -310,14 +310,15 @@ module PageBuilder
   end
 
   # SVG généré à la demande (`Tablator.render_tab_svg` — rendu géométrique direct,
-  # plus de dépendance LilyPond, Phil 2026-08-28), UN SEUL fichier multi-système
-  # (l'ancien découpage en fragments répondait à un bug LilyPond, `-dcrop`, qui ne
-  # s'applique plus). Renvoyé sous forme de liste à 1 élément (`[svg_path]`) pour
-  # garder la même forme que les appelants (`build_song_elements`, `shrink_jobs`...)
-  # attendaient déjà de l'ancien découpage en fragments. `measures_override` :
-  # `tabla_measures_per_page` (layout), prime sur le calcul automatique. Écrits
-  # dans `<chanson>/.export/` (Phil, 2026-08-27 : jamais les fichiers générés dans
-  # le dossier de l'user, `scores/` reste UNIQUEMENT ses `.tab`).
+  # plus de dépendance LilyPond, Phil 2026-08-28), UN FICHIER PAR SYSTÈME (Phil,
+  # 2026-08-28 : "chaque système doit être un élément de pagination indépendant" —
+  # 2 systèmes peuvent tenir sur une page, le suivant passer sur la page d'après ;
+  # `build_song_elements` pousse donc un `PageElement` par système). Cache : la
+  # fraîcheur du 1er fichier (`.s1.svg`) sert de sentinelle pour tout le lot (écrits
+  # ensemble, dans le même appel). `measures_override` : `tabla_measures_per_page`
+  # (layout), prime sur le calcul automatique. Écrits dans `<chanson>/.export/`
+  # (Phil, 2026-08-27 : jamais les fichiers générés dans le dossier de l'user,
+  # `scores/` reste UNIQUEMENT ses `.tab`).
   EXPORT_DIRNAME = ".export"
 
   def self.ensure_tabla_svg(folder, name, available_width_pt, measures_override: nil)
@@ -327,13 +328,21 @@ module PageBuilder
     export_dir = File.join(folder, EXPORT_DIRNAME)
     FileUtils.mkdir_p(export_dir)
 
-    key = "#{measures_override ? "mo#{measures_override}" : "w#{available_width_pt.round}"}.sp#{Layout.tabla_system_spacing.round}"
-    svg_path = File.join(export_dir, "#{name}.#{key}.svg")
-    return [svg_path] if svg_fresh?(svg_path, *source_paths)
+    # Le preset actif (`Tablator.active_preset`) fait partie de la clé de cache —
+    # sinon un changement de preset (Phil, 2026-08-28, "mini-tablatures") sert un
+    # SVG périmé tant que les sources .tab n'ont pas changé.
+    key = "#{Tablator.active_preset}.#{measures_override ? "mo#{measures_override}" : "w#{available_width_pt.round}"}"
+    first_path = File.join(export_dir, "#{name}.#{key}.s1.svg")
+    if svg_fresh?(first_path, *source_paths)
+      return Dir.glob(File.join(export_dir, "#{name}.#{key}.s*.svg")).sort_by { |p| p[/\.s(\d+)\.svg\z/, 1].to_i }
+    end
 
-    result = Tablator.render_tab_svg(content, available_width_pt: available_width_pt, measures_per_line: measures_override, system_spacing: Layout.tabla_system_spacing)
-    File.write(svg_path, result[:svg])
-    [svg_path]
+    results = Tablator.render_tab_svg(content, available_width_pt: available_width_pt, measures_per_line: measures_override)
+    results.each_with_index.map do |result, i|
+      svg_path = File.join(export_dir, "#{name}.#{key}.s#{i + 1}.svg")
+      File.write(svg_path, result[:svg])
+      svg_path
+    end
   end
 
   # `score:`/`image:` : pas de génération (contrairement à `tab:`/`ensure_tabla_svg` —
@@ -355,14 +364,24 @@ module PageBuilder
   end
 
   # `---\n<frontmatter yaml>\n---\n<corps>` (même format que `Tablator.parse_frontmatter`,
-  # pas rechargé ici — juste une découpe texte, `page_builder.rb` n'appelle jamais
-  # `tools/tablator/tablator.rb` autrement qu'en sous-processus).
+  # pas rechargé ici — juste une découpe texte).
   TAB_FRONTMATTER_RE = /\A(---\n.*?\n---\n)?(.*)\z/m
 
+  # Fusion "bout à bout SANS traitement" (Phil, 2026-08-28) : les barres de CHAQUE
+  # source sont retirées avant la concaténation des corps — sinon la barre de fin
+  # d'un fichier pensé pour être autonome (ex. "amorce", 1 seul temps) force une
+  # coupure de mesure au point de jonction, et produit une mesure quasi vide/
+  # absurde en tête du morceau fusionné (bug constaté sur "amorce+intro"). Seule
+  # la segmentation par durée/métrique (`Tablator.parse_measures`) décide des
+  # mesures du morceau fusionné, jamais les barres d'origine des fichiers sources.
+  # `Tablator.strip_comments` d'abord (pas `Tablator.tokenize`, qui tokenise aussi
+  # les barres — ici on reconstruit un CORPS texte, pas des tokens) : sans ça, un
+  # commentaire non terminé par une fin de ligne (aplati par le `split(/\s+/)`
+  # qui suit) avalerait le reste du corps.
   def self.merge_tab_contents(tab_paths)
     parts = tab_paths.map { |p| TAB_FRONTMATTER_RE.match(File.read(p)).captures }
     frontmatter = parts.first.first.to_s
-    body = parts.map { |_, b| b.to_s.strip }.join(" ")
+    body = parts.map { |_, b| Tablator.strip_comments(b.to_s).split(/\s+/).reject { |t| Tablator::BAR_RE.match?(t) }.join(" ") }.join(" ")
     "#{frontmatter}#{body}\n"
   end
 
@@ -557,15 +576,29 @@ module PageBuilder
         title = item.data[:title]
         count = item.data[:count]
         # `image:` = toujours "image" (pleine page par défaut, Phil 2026-08-27) ; `tab:` =
-        # toujours notation générée (fragments empilés) ; `score:` = notation SI
-        # vectoriel, image SI matriciel (photo/scan d'une partition).
+        # toujours notation générée ; `score:` = notation SI vectoriel, image SI
+        # matriciel (photo/scan d'une partition).
         as_image = !asset_paths.is_a?(Array)
-        elements << if as_image
-          Layout.build_image_element(pdf, asset_paths, text_x, text_w, align: align, title: title, count: count)
+        if as_image
+          elements << Layout.build_image_element(pdf, asset_paths, text_x, text_w, align: align, title: title, count: count)
+          shrink_jobs << { index: elements.size - 1, svg_paths: asset_paths, align: align, title: title } if item.data[:shrink] == "true"
         else
-          Layout.build_tabla_element_v2(pdf, asset_paths, text_x, text_w, align: align, title: title, count: count, scale: tab_scale)
+          # UN élément de pagination PAR SYSTÈME (Phil, 2026-08-28 : "chaque système
+          # doit être un élément indépendant" — 2 systèmes peuvent tenir sur une page,
+          # le suivant passer sur la page d'après). Titre seulement sur le 1er système,
+          # repère "x N" (`count:`) seulement sur le dernier.
+          asset_paths.each_with_index do |svg_path, i|
+            sys_title = i.zero? ? title : nil
+            sys_count = i == asset_paths.size - 1 ? count : nil
+            el = Layout.build_tabla_element_v2(pdf, [svg_path], text_x, text_w, align: align, title: sys_title, count: sys_count, scale: tab_scale)
+            # Gouttière resserrée SEULEMENT entre 2 systèmes de LA MÊME tablature (jamais
+            # celle qui précède le 1er, qui reste la gouttière normale — voir MIN/MAX_V_DIST
+            # `:tabla_system`, Phil 2026-08-28 : "systèmes trop séparés").
+            el.gutter_type = :tabla_system if i.positive?
+            elements << el
+            shrink_jobs << { index: elements.size - 1, svg_paths: [svg_path], align: align, title: sys_title } if item.data[:shrink] == "true"
+          end
         end
-        shrink_jobs << { index: elements.size - 1, svg_paths: asset_paths, align: align, title: title } if item.data[:shrink] == "true"
       end
     end
     [elements, shrink_jobs]
@@ -603,9 +636,6 @@ module PageBuilder
     Layout.score_title_style = layout[:score_title_style] if layout && layout[:score_title_style]
     if layout && layout[:tabla_measures_per_page]
       Layout.tabla_measures_per_page = layout[:tabla_measures_per_page].to_s[/\d+/].to_i
-    end
-    if layout && layout[:tabla_system_spacing]
-      Layout.tabla_system_spacing = layout[:tabla_system_spacing].to_s[/[\d.]+/].to_f
     end
     Layout.current_song = meta["title"] || File.basename(folder)
     Layout.current_page = first_page_no

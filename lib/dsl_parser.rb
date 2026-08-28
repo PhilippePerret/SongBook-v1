@@ -50,15 +50,16 @@ class DSLParser
   end
 
   # Écriture en minuscule tolérée pour la commodité de frappe ("/am:") — la
-  # première lettre de chaque note (fondamentale, basse) doit toujours être
-  # rendue en capitale ("Am"), le reste de la qualité inchangé (ex. "m7b5"). Basse
-  # entre crochets (`A[c]m7`, `Am7[c]`, `[cd]` seule) : même règle appliquée à la
-  # lettre suivant le "[" (Phil, 2026-08-24 — bug basses jamais reconnues, "Plus grand
-  # chapiteau du monde (Le)", crochets absents de `CHORD_RE`).
+  # première lettre de la fondamentale doit toujours être rendue en capitale ("Am"),
+  # le reste de la qualité inchangé (ex. "m7b5"). Basse entre crochets (`A[c]m7`,
+  # `Am7[c]`, `[cd]` seule) : REGLE INVERSE (Phil, 2026-08-28 — "entre crochets, c'est
+  # toujours des basses et les basses doivent toujours s'écrire en minuscule") : tout
+  # le contenu d'un "[...]" est forcé en minuscule, jamais capitalisé, même si tapé en
+  # majuscule.
   def self.normalize_chord(chord)
     chord.split("/").map do |part|
-      part = part.sub(/\A./) { |c| c.upcase }
-      part.gsub(/\[./) { |m| m[0] + m[1].upcase }
+      part = part.gsub(/\[[^\]]*\]/) { |m| m.downcase }
+      part.start_with?("[") ? part : part.sub(/\A./) { |c| c.upcase }
     end.join("/")
   end
 

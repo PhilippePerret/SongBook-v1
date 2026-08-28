@@ -87,6 +87,24 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
     it "accord totalement inconnu : ni simple ni précis" do
       expect(ChordPlacer.chord_known?("Zzz9", Dir.mktmpdir)).to be false
     end
+
+    it "basse seule (\"[fd]\", Phil 2026-08-28) : jamais de diagramme dédié, jamais signalé" do
+      expect(ChordPlacer.chord_known?("[fd]", Dir.mktmpdir)).to be true
+    end
+  end
+
+  describe "ChordPlacer.capitalize_chord (basse entre crochets TOUJOURS minuscule, Phil 2026-08-28)" do
+    it "basse seule : minuscule forcée, même tapée en majuscule" do
+      expect(ChordPlacer.capitalize_chord("[FD]")).to eq("[fd]")
+    end
+
+    it "basse bémol, même règle" do
+      expect(ChordPlacer.capitalize_chord("[BB]")).to eq("[bb]") # "bb" = si BÉMOL (2e "b" = suffixe bémol)
+    end
+
+    it "accord normal (sans crochets) : comportement inchangé" do
+      expect(ChordPlacer.capitalize_chord("am7")).to eq("Am7")
+    end
   end
 
   describe "ChordPlacer.typed_match (accord existant vs nouvel accord, refait à chaque frappe)" do
@@ -214,6 +232,12 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       path = write_lyr(["bonjour tout", "le monde"])
       simulate(path, "\nLG\r\r")
       expect(File.readlines(path).first.chomp).to eq("bonjour tout/G:")
+    end
+
+    it "\"[\" démarre la saisie d'une basse SEULE (\"[fd]\", TOUJOURS minuscule, Phil 2026-08-28)" do
+      path = write_lyr(["bonjour tout"])
+      simulate(path, "\nL[FD]\r\r") # tapé en MAJUSCULE : doit quand même s'enregistrer en minuscule
+      expect(File.readlines(path).first.chomp).to eq("bonjour tout/[fd]:")
     end
 
     it "une MAJUSCULE force un nouvel accord malgré la collision avec un raccourci connu" do

@@ -34,6 +34,8 @@ RSpec.describe "assistant de création de chanson" do
     expect(infos).to include("performer: Artiste Test")
     expect(infos).to include("composer: Compositeur Test")
     expect(infos).to include("year: 2020")
+    expect(Dir.exist?(File.join(created_folder, "images"))).to be true
+    expect(Dir.exist?(File.join(created_folder, "scores"))).to be true
   end
 
   it "Retrouver une chanson déjà créée au lieu d'en refaire une" do

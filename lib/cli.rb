@@ -227,6 +227,15 @@ module CLI
         rescue Interrupt
           puts
         end
+      # Alias de `open lyrics/lyr`, `open infos/inf`, `open gabarit/gab` (Phil,
+      # 2026-08-28) : mêmes abréviations, même comportement — ces fichiers s'ouvrent
+      # dans l'éditeur externe, "edit" n'a pas de sens différent d'"open" pour eux.
+      when "lyrics", "lyr"
+        open_lyrics_file
+      when "infos", "inf"
+        open_infos_file
+      when "gabarit", "gab"
+        open_gabarit_file
       else
         abort unknown_command_message("edit #{arg1}")
       end
@@ -380,24 +389,11 @@ module CLI
         context = resolve_open_context
         SongCreator.open_in_file_manager(context[:folder])
       when "lyrics", "lyr"
-        abort "aucune chanson sélectionnée (use song) — 'open lyrics' n'existe que pour les chansons" unless Session.song
-
-        lyr_path = FileFinder.find(Session.song, :lyr) || propose_create_file(Session.song, "lyr")
-        abort "aucun fichier .lyr/.lyrics trouvé dans #{Session.song}" unless lyr_path
-
-        system("open", "-a", AppConfig.user_song_editor, lyr_path)
+        open_lyrics_file
       when "infos", "inf"
-        context = resolve_open_context
-        inf_path = FileFinder.find(context[:folder], :inf) || propose_create_file(context[:folder], "infos")
-        abort "aucun fichier .infos/.inf trouvé dans #{context[:folder]}" unless inf_path
-
-        system("open", "-a", AppConfig.user_song_editor, inf_path)
+        open_infos_file
       when "gabarit", "gab"
-        context = resolve_open_context
-        gab_path = FileFinder.find(context[:folder], :gab) || propose_create_file(context[:folder], "gab")
-        abort "aucun fichier .gabarit/.gab trouvé dans #{context[:folder]}" unless gab_path
-
-        system("open", "-a", AppConfig.user_song_editor, gab_path)
+        open_gabarit_file
       when "pdf"
         context = resolve_open_context
         pdf_path = latest_pdf_path(context)
@@ -548,6 +544,33 @@ module CLI
     else
       abort "aucun contexte (chanson ou carnet) sélectionné (use song/songbook)"
     end
+  end
+
+  # `open lyrics/lyr` ET `edit lyrics/lyr` (alias, Phil 2026-08-28) partagent ce code —
+  # une seule liste d'abréviations à tenir à jour, garantit un comportement identique.
+  def self.open_lyrics_file
+    abort "aucune chanson sélectionnée (use song) — 'lyrics' n'existe que pour les chansons" unless Session.song
+
+    lyr_path = FileFinder.find(Session.song, :lyr) || propose_create_file(Session.song, "lyr")
+    abort "aucun fichier .lyr/.lyrics trouvé dans #{Session.song}" unless lyr_path
+
+    system("open", "-a", AppConfig.user_song_editor, lyr_path)
+  end
+
+  def self.open_infos_file
+    context = resolve_open_context
+    inf_path = FileFinder.find(context[:folder], :inf) || propose_create_file(context[:folder], "infos")
+    abort "aucun fichier .infos/.inf trouvé dans #{context[:folder]}" unless inf_path
+
+    system("open", "-a", AppConfig.user_song_editor, inf_path)
+  end
+
+  def self.open_gabarit_file
+    context = resolve_open_context
+    gab_path = FileFinder.find(context[:folder], :gab) || propose_create_file(context[:folder], "gab")
+    abort "aucun fichier .gabarit/.gab trouvé dans #{context[:folder]}" unless gab_path
+
+    system("open", "-a", AppConfig.user_song_editor, gab_path)
   end
 
   # PDF déjà construit pour ce contexte — chanson : fichier unique (`build_song`,
