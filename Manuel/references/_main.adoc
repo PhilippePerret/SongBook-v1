@@ -1,2 +1,8 @@
+[[references]]
+== Livre de références ==
+
+// Par terme
+include::par_terme.adoc[]
+
 // Layouts de l'app
 include::layouts.adoc[]

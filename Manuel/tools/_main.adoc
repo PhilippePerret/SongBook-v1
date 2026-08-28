@@ -16,7 +16,7 @@ Sont présentés ici la liste des outils utiles pour faire les carnets, à savoi
 include::create_song_tool.adoc[]
 
 // Entrée des accords
-include::add_chords.adoc[]
+include::chords_assistant.adoc[]
 
 // Outils pour Diags
 include::diags_tool.adoc[]

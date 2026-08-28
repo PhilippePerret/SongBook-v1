@@ -1,0 +1,14 @@
+=== Références par terme ===
+
+[cols="1,5", options="header"]
+|====
+| Terme | Références
+
+.2+| ** Accords**   | <<song-chords-assistant, Assistant pour la pose des accords>>.
+                    | <<chords-syntax, Syntaxe des accords>>.
+
+.4+| **Chanson**    | <<song, Tout sur les chansons>>.
+                    | <<song-creation, Création d'une chanson>>.
+                    | <<song-assistant, **Assistant pour la création** de la chanson>>.
+                    | <<song-chords-assistant, Assistant pour la **pose des accords**>>.
+|====

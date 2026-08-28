@@ -1,0 +1,34 @@
+[[song-interactive-mode]]
+=== Travailler les chansons en mode interactif ===
+
+En mode interactif, c'est encore plus facile de travailler sur une chanson :
+
+----
+> songbook -i
+🎸> use song "titre approximatif"
+# À partir de là, la chanson choisie devient la 
+# chanson visée par les commandes
+----
+
+Par exemple :
+
+----
+songbook -i
+🎸> use song black
+Chanson courante : Blackbird (The Beatles)
+----
+
+L'assistant vous assiste ensuite pour obtenir le maximum d'informations sur la chanson et créer les fichiers nécessaires.
+
+Il existe aussi un <<song-chords-assistant, assistant très pratique>> pour placer les accords. Cet outil permet de placer les accords très facilement et rapidement, avec beaucoup de confort.
+
+----
+songbook -i
+🎸> use song "titre chanson"
+# Tout le reste concernera la chanson
+open # ouvre ce qu'on veut
+build # construit la chanson
+tab assistant # ouvrir l'assistant tablatures
+build diags # construit les diagrammes 
+# etc.
+----

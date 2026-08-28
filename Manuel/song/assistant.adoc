@@ -15,19 +15,6 @@ songbook create song "Le titre de la chanson"
 songbook create song "le titre de la chanson" "le chanteur"
 ----
 
-En mode interactif, c'est encore plus facile de travailler sur une chanson :
+Sinon, ils vous seront demandés au fur et à mesure, comme toutes les informations suivantes.
 
-L'assistant vous assiste ensuite pour obtenir le maximum d'informations sur la chanson et créer les fichiers nécessaires.
-
-Il existe aussi un <<song-chords-assistant, assistant très pratique>> pour placer les accords. Cet outil permet de placer les accords très facilement et rapidement, avec beaucoup de confort.
-
-----
-songbook -i
-🎸> use song "titre chanson"
-# Tout le reste concernera la chanson
-open # ouvre ce qu'on veut
-build # construit la chanson
-tab assistant # ouvrir l'assistant tablatures
-build diags # construit les diagrammes 
-# etc.
-----
+NOTE: Si c'est votre première chanson, **__SongBook__** vous demandera aussi de définir le dossier où devront être créées toutes les chansons.

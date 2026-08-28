@@ -1,0 +1,13 @@
+[[song-creation]]
+=== Création de la chanson ===
+
+Le plus simple pour créer une chanson est d'<<song-assistant, l'assistant de création>>.
+
+Mais vous pouvez tout aussi bien créer cette chanson « à la main ».
+
+* Créez d'abord un <<song-folder, dossier conforme>>, dans votre dossier principal contenant toutes vos chansons.
+* éditez le fichier `.lyrics` pour y mettre les paroles et les accords (`> songbook edit lyrics --song "titre"`).
+* éditez le fichier `.infos` pour y mettre les informations (méta-données) (`> songbook edit infos --song "titre"`).
+* si besoin, éditez le fichier `.gabarit` pour <<gabarit-file, définir le gabarit de la chanson>>(`> songbook edit gabarit --song "titre"`).
+* lancer la construction du fichier PDF (`> songbook build "titre"`).
+* ajuster les paramètres au besoin pour obtenir un affichage optimal.

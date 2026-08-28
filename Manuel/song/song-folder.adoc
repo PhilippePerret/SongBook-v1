@@ -1,7 +1,11 @@
 [[song-folder]]
 === Dossier de la chanson ===
 
-Une chanson doit être contenue dans un dossier qui contient les éléments qui sont indispensables à la définir. La structure classique est : 
+Une chanson doit être contenue dans un dossier qui contient les éléments qui sont indispensables à la définir. 
+
+TIP: Une chanson pouvant appartenir à plusieurs carnets, il est bon de la créer __en dehors__ de tout dossier de carnet, même si c'est tout à fait possible.
+
+La structure classique d'un dossier de chanson est : 
 
 ----
 Ma-chanson/
@@ -9,7 +13,7 @@ Ma-chanson/
   |— titres-et-gens.infos
   | [Optionel]
   |— scores/      # Dossier des partitions et tablatures
-  |— images/      # Dosssier des images
+  |— images/      # Dossier des images
   |— format.gab
   |— configuration.config
 ----

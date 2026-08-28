@@ -9,19 +9,30 @@ Les /am:portes /c:du pé/d:niten/f:cier
 
 … l'accord `Am` (La mineur) est joué sur le « por » de « portes », le `C` (Do majeur) est joué sur « du », le `D` (Ré majeur) est joué sur « ni » et le `F` sur « cier ».
 
-Une fois mise en forme, cela donne :
+NOTE: Cette notation peut paraitre plus complexe à lire que la notation dans ChordPro, mais à la différence de ChordPro, __**SongBook**__ est __pensé pour l'utilisateur__. Et pour l'utilisateur, taper des crochets est compliqué alors que taper « /: » est un jeu d'enfant.
+
+TIP: Noter également que l'<<song-chords-assistant, assistant d'édition des accords>> rend la pose de ces accords particulièrement confortable et rapide ! Une fois qu'on y a gouté, on ne peut plus s'en passer.
+
+Une fois mise en forme, cet extrait devient :
 
 Todo: image résultante
 
-- le nom des notes se mettent en notation batave (La = `a`, Si = `B), Do = `c`, Ré = `D`, Mi = `E`, Fa = `f`, Sol = `G`)
-- les notes se marquent en majuscule (`F`) ou en minuscule (`f`)
-- la première lettre d'un groupe de lettres est toujours considérée comme une note,
-- le signe dièse se marque `d` et le signe bémol par `b` (`Dd` ou `dd` pour Ré dièse majeur, `bb` pour Si bémol majeur),
-- les basses se marquent entre crochets (`[fd]`)
-- les basses peuvent se marquer juste après la note de l'accord (`A[c]m7`) ou à la fin de l'accord (`Am7[c]`)
-- on peut utiliser les <<only-bass, basses seules>>, sans accords
+[[chords-syntax]]
+==== Syntaxe des accords ====
+
+* **Noms des accords** :
+** le nom des accords se mettent en notation batave (La = `a`, Si = `B), Do = `c`, Ré = `D`, Mi = `E`, Fa = `f`, Sol = `G`)
+** les notes se marquent en majuscule (`F`) ou en minuscule (`f`), peu importe
+** la première lettre d'un « groupe » de lettres est toujours considérée comme la note du nom de l'accord (par exemple le « A » de « abm9 »),
+** le signe dièse se marque `d` et le signe bémol par `b` (`Dd` ou `dd` pour Ré dièse majeur, `bb` pour Si bémol majeur),
+* **les basses** :
+** elles s'indiquent toujours entre crochets (`[fd]`)
+** elles seront en italien dans le carnet, mais elles se définissent aussi en notation batave
+** elles peuvent se marquer juste après la note de l'accord (`A[c]m7`) ou à la fin de l'accord (`Am7[c]`)
+** on peut utiliser les <<only-bass, basses seules>>, sans accords
 - on peut __affiner__ l'accord en mettant des indications après un « - », par exemple la case où l'accord doit être joué sur une guitare (`Am-5`)
-- les accords doivent toujours correspondre à un diagramme (voir la todo: liste des diagrammes),
+* **Accords et diagrammes** :
+** les accords doivent toujours correspondre à un diagramme (voir la todo: liste des diagrammes),
 - lorsque le diagramme n'existe pas, on peut le produire à l'aide du <<diag-schema-producer, constructeur de diagramme>>.
 - plusieurs accords peuvent s'enchainer sans espaces entre eux : `/c:/dm:/em:`,
 - on peut séparer les accords par n'importe quel signe, souvent une balance pour indiquer qu'ils sont enchainés, joués dans la même mesure : `/c://f:` (noter le `//`, dont le deuxième définit le début de l'accord `/f:`),

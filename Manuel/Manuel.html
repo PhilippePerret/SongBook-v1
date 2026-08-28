@@ -450,6 +450,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#song">Chansons</a>
 <ul class="sectlevel2">
 <li><a href="#song-assistant">Assistant de création de la chanson</a></li>
+<li><a href="#song-creation">Création de la chanson</a></li>
 <li><a href="#song-folder">Dossier de la chanson</a></li>
 <li><a href="#infos-file">Fichier des informations de la chanson</a></li>
 <li><a href="#lyrics-file">Les paroles</a></li>
@@ -460,6 +461,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#song-layout">Layout de la chanson</a></li>
 <li><a href="#gabarit-file">Gabarit de la chanson</a></li>
 <li><a href="#gabarit">Fichier gabarit</a></li>
+<li><a href="#song-interactive-mode">Travailler les chansons en mode interactif</a></li>
 </ul>
 </li>
 <li><a href="#songbook">Carnet de chant</a>
@@ -486,6 +488,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#song-chords-assistant">Assistant pour l&#8217;entrée des accords de la chanson</a></li>
 <li><a href="#diag-schema-producer">Production du schéma du diags</a></li>
 <li><a href="#tablator">Générateur de tablatures</a></li>
+</ul>
+</li>
+<li><a href="#references">Livre de références</a>
+<ul class="sectlevel2">
+<li><a href="#_références_par_terme">Références par terme</a></li>
 <li><a href="#app-layouts">Layouts de l&#8217;application</a></li>
 </ul>
 </li>
@@ -636,7 +643,6 @@ a {
 </li>
 </ul>
 </div>
-<hr>
 </div>
 </div>
 </div>
@@ -667,25 +673,28 @@ songbook create song "le titre de la chanson" "le chanteur"</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>En mode interactif, c&#8217;est encore plus facile de travailler sur une chanson :</p>
+<p>Sinon, ils vous seront demandés au fur et à mesure, comme toutes les informations suivantes.</p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook -i
-🎸&gt; use song "titre chanson
-# Tout le reste concernera la chanson
-open # ouvre ce qu'on veut
-build # construit la chanson
-tab assistant # ouvrir l'assistant tablatures
-build diags # construit les diagrammes
-# etc.</pre>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Si c&#8217;est votre première chanson, <strong><em>SongBook</em></strong> vous demandera aussi de définir le dossier où devront être créées toutes les chansons.
+</td>
+</tr>
+</table>
 </div>
+</div>
+<div class="sect2">
+<h3 id="song-creation">Création de la chanson</h3>
+<div class="paragraph">
+<p>Le plus simple pour créer une chanson est d'<a href="#song-assistant">l&#8217;assistant de création</a>.</p>
 </div>
 <div class="paragraph">
-<p>L&#8217;assistant vous assiste ensuite pour obtenir le maximum d&#8217;informations sur la chanson et créer les fichiers nécessaires.</p>
-</div>
-<div class="paragraph">
-<p>Il existe aussi un <a href="#song-chords-assistant">assistant très pratique</a> pour placer les accords. Cet outil permet de placer les accords très facilement et rapidement, avec beaucoup de confort.</p>
+<p>Mais vous pouvez tout aussi bien créer cette chanson « à la main ».</p>
 </div>
 </div>
 <div class="sect2">
@@ -913,41 +922,93 @@ Les /am:Portes /c:du pé/d:niten/f:cier</pre>
 <div class="paragraph">
 <p>… l&#8217;accord <code>Am</code> (La mineur) est joué sur le « por » de « portes », le <code>C</code> (Do majeur) est joué sur « du », le <code>D</code> (Ré majeur) est joué sur « ni » et le <code>F</code> sur « cier ».</p>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Cette notation peut paraitre plus complexe à lire que la notation dans ChordPro, mais à la différence de ChordPro, <em><strong>SongBook</strong></em> est <em>pensé pour l&#8217;utilisateur</em>. Et pour l&#8217;utilisateur, taper des crochets est compliqué alors que taper « /: » est un jeu d&#8217;enfant.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+Noter également que l'<a href="#song-chords-assistant">assistant d&#8217;édition des accords</a> rend la pose de ces accords particulièrement confortable et rapide ! Une fois qu&#8217;on y a gouté, on ne peut plus s&#8217;en passer.
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
-<p>Une fois mise en forme, cela donne :</p>
+<p>Une fois mise en forme, cet extrait devient :</p>
 </div>
 <div class="paragraph">
 <p>Todo: image résultante</p>
 </div>
+<div class="sect3">
+<h4 id="chords-syntax">Syntaxe des accords</h4>
 <div class="ulist">
 <ul>
 <li>
-<p>le nom des notes se mettent en notation batave (La = <code>a</code>, Si = <code>B), Do = `c</code>, Ré = <code>D</code>, Mi = <code>E</code>, Fa = <code>f</code>, Sol = <code>G</code>)</p>
+<p><strong>Noms des accords</strong> :</p>
+<div class="ulist">
+<ul>
+<li>
+<p>le nom des accords se mettent en notation batave (La = <code>a</code>, Si = <code>B), Do = `c</code>, Ré = <code>D</code>, Mi = <code>E</code>, Fa = <code>f</code>, Sol = <code>G</code>)</p>
 </li>
 <li>
-<p>les notes se marquent en majuscule (<code>F</code>) ou en minuscule (<code>f</code>)</p>
+<p>les notes se marquent en majuscule (<code>F</code>) ou en minuscule (<code>f</code>), peu importe</p>
 </li>
 <li>
-<p>la première lettre d&#8217;un groupe de lettres est toujours considérée comme une note,</p>
+<p>la première lettre d&#8217;un « groupe » de lettres est toujours considérée comme la note du nom de l&#8217;accord (par exemple le « A » de « abm9 »),</p>
 </li>
 <li>
 <p>le signe dièse se marque <code>d</code> et le signe bémol par <code>b</code> (<code>Dd</code> ou <code>dd</code> pour Ré dièse majeur, <code>bb</code> pour Si bémol majeur),</p>
 </li>
-<li>
-<p>les basses se marquent entre crochets (<code>[fd]</code>)</p>
+</ul>
+</div>
 </li>
 <li>
-<p>les basses peuvent se marquer juste après la note de l&#8217;accord (<code>A[c]m7</code>) ou à la fin de l&#8217;accord (<code>Am7[c]</code>)</p>
+<p><strong>les basses</strong> :</p>
+<div class="ulist">
+<ul>
+<li>
+<p>elles s&#8217;indiquent toujours entre crochets (<code>[fd]</code>)</p>
+</li>
+<li>
+<p>elles seront en italien dans le carnet, mais elles se définissent aussi en notation batave</p>
+</li>
+<li>
+<p>elles peuvent se marquer juste après la note de l&#8217;accord (<code>A[c]m7</code>) ou à la fin de l&#8217;accord (<code>Am7[c]</code>)</p>
 </li>
 <li>
 <p>on peut utiliser les <a href="#only-bass">basses seules</a>, sans accords</p>
-</li>
+<div class="ulist">
+<ul>
 <li>
 <p>on peut <em>affiner</em> l&#8217;accord en mettant des indications après un « - », par exemple la case où l&#8217;accord doit être joué sur une guitare (<code>Am-5</code>)</p>
 </li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Accords et diagrammes</strong> :</p>
+<div class="ulist">
+<ul>
 <li>
 <p>les accords doivent toujours correspondre à un diagramme (voir la todo: liste des diagrammes),</p>
-</li>
+<div class="ulist">
+<ul>
 <li>
 <p>lorsque le diagramme n&#8217;existe pas, on peut le produire à l&#8217;aide du <a href="#diag-schema-producer">constructeur de diagramme</a>.</p>
 </li>
@@ -962,6 +1023,12 @@ Les /am:Portes /c:du pé/d:niten/f:cier</pre>
 </li>
 <li>
 <p>à la fin d&#8217;un vers, le trait plat <a href="#trait-plat-usages">n&#8217;est pas obligatoire</a></p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
@@ -986,6 +1053,7 @@ In /em:this proud land</pre>
 <div class="listingblock">
 <div class="content">
 <pre>/c:_ Au début mais /dm:pas à la fin /g: /g7:</pre>
+</div>
 </div>
 </div>
 </div>
@@ -1252,6 +1320,48 @@ Le troisième couplet
 <h4 id="_gabarit_dans_un_carnet_de_chant">Gabarit dans un carnet de chant</h4>
 <div class="paragraph">
 <p>Comme nous l&#8217;avons vu, lorsque le fichier est dans un carnet de chant, et qu&#8217;il porte l&#8217;identifiant d&#8217;une chanson, il définit le gabarit à utiliser pour la chanson spécifiquement pour ce carnet-là et aucun autre (sauf duplication du fichier dans un autre carnet, évidemment). Cela permet d&#8217;adapter la chanson à une disposition de carnet particulière.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="song-interactive-mode">Travailler les chansons en mode interactif</h3>
+<div class="paragraph">
+<p>En mode interactif, c&#8217;est encore plus facile de travailler sur une chanson :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>&gt; songbook -i
+🎸&gt; use song "titre approximatif"
+# À partir de là, la chanson choisie devient la
+# chanson visée par les commandes</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Par exemple :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook -i
+🎸&gt; use song black
+Chanson courante : Blackbird (The Beatles)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>L&#8217;assistant vous assiste ensuite pour obtenir le maximum d&#8217;informations sur la chanson et créer les fichiers nécessaires.</p>
+</div>
+<div class="paragraph">
+<p>Il existe aussi un <a href="#song-chords-assistant">assistant très pratique</a> pour placer les accords. Cet outil permet de placer les accords très facilement et rapidement, avec beaucoup de confort.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook -i
+🎸&gt; use song "titre chanson"
+# Tout le reste concernera la chanson
+open # ouvre ce qu'on veut
+build # construit la chanson
+tab assistant # ouvrir l'assistant tablatures
+build diags # construit les diagrammes
+# etc.</pre>
 </div>
 </div>
 </div>
@@ -2477,6 +2587,48 @@ keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
 </div>
 </div>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="references">Livre de références</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_références_par_terme">Références par terme</h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 16.6666%;">
+<col style="width: 83.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Terme</th>
+<th class="tableblock halign-left valign-top">Références</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock"><strong> Accords</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#song-chords-assistant">Assistant pour la pose des accords</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#chords-syntax">Syntaxe des accords</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="4"><p class="tableblock"><strong>Chanson</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#song">Tout sur les chansons</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#song-creation">Création d&#8217;une chanson</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#song-assistant">Assistant pour la <strong>création</strong> de la chanson</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#song-chords-assistant">Assistant pour la pose des accords</a>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 <div class="sect2">
 <h3 id="app-layouts">Layouts de l&#8217;application</h3>
 <div class="paragraph">
@@ -3499,7 +3651,7 @@ Ne doit pas regrouper avec une strophe de type "refrain"</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-08-28 06:49:30 +0200
+Last updated 2026-08-28 09:17:22 +0200
 </div>
 </div>
 </body>

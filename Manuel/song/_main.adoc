@@ -6,6 +6,9 @@ La __chanson__ est la base de tout carnet de chant. C'est pour présenter des __
 // Assistant
 include::assistant.adoc[]
 
+// Création de la chanson
+include::creation.adoc[]
+
 // Dossier de la chanson
 include::song-folder.adoc[]
 
@@ -29,3 +32,6 @@ include::layout.adoc[]
 
 // Gabarit
 include::gabarit.adoc[]
+
+// Mode interactif
+include::interactive_mode.adoc[]
