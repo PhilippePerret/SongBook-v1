@@ -67,7 +67,6 @@ song_current_none: "Current song: none (use 'use song \"approx title\"')"
 songbook_current_none: "Current songbook: none (use 'use sb \"approx title\"')"
 
 # diag (chord diagram schema assistant)
-diag_save_question: "Save this schema in the application?"
 diag_output_question: "Produce the SVG in the current directory?"
 diag_name_prompt: "Name to give the schema: "
 diag_conflict_nom: "This name already exists for this fret: %s"

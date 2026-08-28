@@ -75,7 +75,6 @@ song_current_none: "Chanson courante : aucune (utiliser 'use song \"titre approx
 songbook_current_none: "Carnet courant : aucun (utiliser 'use sb \"titre approx\"')"
 
 # diag (assistant de schéma d'accord)
-diag_save_question: "Enregistrer ce schéma dans l'application ?"
 diag_output_question: "Produire le SVG dans le dossier courant ?"
 diag_name_prompt: "Nom à donner au schéma : "
 diag_conflict_nom: "Ce nom existe déjà pour cette case : %s"
