@@ -2,6 +2,7 @@
 
 require_relative "../spec_helper"
 require "chord_diagrams"
+require "dsl_parser"
 require "fileutils"
 require "tmpdir"
 
@@ -53,6 +54,56 @@ RSpec.describe "recherche des diagrammes d'accords" do
   it "Ne pas planter quand aucun diagramme n'est trouvé nulle part" do
     Dir.mktmpdir do |dir|
       expect(ChordDiagrams.diag_path("Zzz9", carnet_dir: dir)).to be_nil
+    end
+  end
+
+  # Générique (sans "-case") vs précis (avec) : un générique rencontré APRÈS un précis
+  # du même nom hérite de SA case, plutôt que de chercher la case la plus basse (Phil,
+  # 2026-08-28).
+  describe ".collect_chord_frets (générique hérite du précis rencontré avant lui)" do
+    def blocks_from(pairs)
+      segments = pairs.map { |chord, fret| Segment.new(chord: chord, fret: fret, text: "x") }
+      line = Line.new(segments: segments, label: nil, align: nil)
+      [Block.new(lines: [line], directives: {}, paired_with_previous: false)]
+    end
+
+    it "générique AVANT tout précis : reste générique (case la plus basse cherchée normalement)" do
+      blocks = blocks_from([["D6", nil]])
+      expect(ChordDiagrams.collect_chord_frets(blocks)).to eq([["D6", nil]])
+    end
+
+    it "générique APRÈS un précis du même nom : traité comme CE précis (exemple de l'énoncé)" do
+      # "D6" (générique) puis "D6-10R" (précis) puis de nouveau "D6" (générique,
+      # désormais résolu comme "D6-10R" — pas une 3e entrée séparée).
+      blocks = blocks_from([["D6", nil], ["D6", "10R"], ["D6", nil]])
+      expect(ChordDiagrams.collect_chord_frets(blocks)).to eq([["D6", nil], ["D6", "10R"]])
+    end
+
+    it "plusieurs précis successifs du même nom : chaque générique hérite du DERNIER précis rencontré" do
+      blocks = blocks_from([["D6", "3"], ["D6", nil], ["D6", "10R"], ["D6", nil]])
+      expect(ChordDiagrams.collect_chord_frets(blocks)).to eq([["D6", "3"], ["D6", "10R"]])
+    end
+
+    it "des accords différents ne s'influencent pas entre eux" do
+      blocks = blocks_from([["D6", "10R"], ["Am", nil]])
+      expect(ChordDiagrams.collect_chord_frets(blocks)).to eq([["D6", "10R"], ["Am", nil]])
+    end
+
+    it "un accord \"/\"-composé (\"Bb6/C\") est scindé en 2 accords distincts, pas un manquant" do
+      blocks = blocks_from([["Bb6/C", nil], ["Bb6/A7", nil], ["Am7/G", nil]])
+      expect(ChordDiagrams.collect_chord_frets(blocks)).to eq(
+        [["Bb6", nil], ["C", nil], ["Bb6", nil], ["A7", nil], ["Am7", nil], ["G", nil]].uniq
+      )
+    end
+  end
+
+  describe ".split_chord" do
+    it "scinde sur \"/\" (jamais un accord+basse, ça c'est les crochets — Manuel/song/chords.adoc)" do
+      expect(ChordDiagrams.split_chord("Bb6/C")).to eq(%w[Bb6 C])
+    end
+
+    it "laisse intact un accord sans \"/\"" do
+      expect(ChordDiagrams.split_chord("Am7")).to eq(["Am7"])
     end
   end
 end
