@@ -5,7 +5,9 @@
 module AnsiColors
   BLUE = "\e[38;2;0;185;255m"
   SUCCESS = "\e[32m"
-  ERROR = "\e[31m"
+  # Rouge ANSI standard (`\e[31m`) trop sombre à l'usage (Phil) — vrai rouge clair
+  # (RGB), même forme truecolor que `BLUE`.
+  ERROR = "\e[38;2;255;90;90m"
   GRAY = "\e[90m"
   RESET = "\e[0m"
 

@@ -59,5 +59,29 @@ Les 10 points sont traités et vérifiés (code + régénération réelle de Bla
 ## État (lot 5)
 29/29 traités et vérifiés (tests + régénération réelle de Blackbird, 2 presets).
 
+## Lot 6 (2026-08-28, "mini-tablatures" trop petit, itération sur les paramètres du compromis)
+
+- [x] 30. "mini-tablatures" v1 trop petit — chiffres/interligne remontés (5.5/4.2 au lieu de 4.5/3.5), reste des tailles cosmétiques ×0.8 au lieu de ×0.65.
+- [x] 31. Compter la largeur d'un système en "mesures" remplacé par un compte en PLUS PETITE DURÉE (`duration_units_per_system`, ex. 64 = ~8 mesures de 4/4 en croches) — répond à la question ouverte du lot 5. `beat_width` (pt/temps) renommé `slot_width` (pt/plus-petite-durée) ; la largeur d'une mesure devient `note_inset + (slots de LA mesure) × slot_width`, calculée par mesure (pas un seul chiffre pour tout le morceau) — vaut aussi pour "regular-tablatures" (48 unités = 6 mesures × 8 croches en 4/4, valeur équivalente à l'ancien réglage, vérifié rendu identique).
+
+## État (lot 6)
+31/31 traités et vérifiés (tests + régénération réelle de Blackbird via le pipeline standard, `tabla_preset: mini-tablatures` dans son `.infos`).
+
+## Paramètres user — MINIMUM, tout le reste calculé (Phil, 2026-08-28, tranché)
+Décision de Phil, sans appel : SEULS 3 réglages exposés, tout le reste est calculé par l'algorithme.
+1. **Taille des chiffres** (`number_size`).
+2. **Interligne** (`line_spacing`).
+3. **Nombre de mesures par système** (`measures_per_system` — ce que la plupart des users préfèreront, "plus clair pour eux"), ou en variante avancée **nombre d'unités-durée par système** (`duration_units_per_system`, pour un morceau aux mesures de densités très différentes).
+`slot_width` (largeur réelle d'une unité-durée, en pt) N'EST PAS un réglage — CALCULÉ par `render_tab_svg` pour que le nombre de mesures demandé tienne EXACTEMENT dans la largeur de colonne réelle de la page ; si ça ne tiendrait pas lisiblement (`min_slot_width`, calculé lui aussi depuis `number_size`), l'algo RÉDUIT tout seul le nombre de mesures plutôt que produire un rendu illisible (sauf override explicite `layout: tabla_measures_per_page`, jamais réduit dans le dos de l'user). Tout le reste (hampes, marges, doigtés, écart entre systèmes...) calculé par ratios fixes depuis `number_size`/`line_spacing` — voir `tools/tablator/presets.rb`.
+
+## Lot 7 (2026-08-28, implémentation du modèle "3 réglages, le reste calculé")
+
+- [x] 32. `presets.rb` réduit à 3 clés user par preset (`number_size`/`line_spacing`/`measures_per_system`) + ratios fixes (`RATIO_OF_LINE_SPACING`/`RATIO_OF_NUMBER_SIZE`) pour tout calculer. `Tablator.param(key)` calcule à la volée si `key` n'est pas un des 3 réglages user.
+- [x] 33. `render_tab_svg` calcule `slot_width` pour que `measures_per_system` tienne dans `available_width_pt` réel, réduit le nombre de mesures si ça passerait sous `min_slot_width` (jamais pour un override explicite `measures_per_line`).
+- [x] 34 (bug trouvé EN calibrant le point 33, pas demandé) : le 1er calibrage de `min_slot_width` (ratio 1.38, calqué sur l'ancien `slot_width` fixe) réduisait à TORT "regular-tablatures" de 6 à 5 mesures/système sur Blackbird — alors que 6 était déjà le rendu validé visuellement. Recalibré (ratio 1.0) : 6 mesures/système confirmées de nouveau à l'identique de l'original.
+
+## État (lot 7)
+34/34 traités et vérifiés (tests + régénération réelle de Blackbird, "regular-tablatures" ET "mini-tablatures").
+
 ## Question ouverte de Phil (pas encore tranchée, pas implémentée)
 "Comment compter le nombre de mesures par système : en nombre de mesures (variable, une mesure 6/8 ou en double-croches n'a pas la même largeur qu'une 4/4 en croches), ou en nombre de PLUS PETITE DURÉE (le nombre de 'slots' du point 26, `unit:`) ?" Fait, sans trancher : `measures_per_system` (presets) compte des MESURES ; `measure_width` (largeur d'une mesure) ne dépend QUE de la métrique (`target_beats × beat_width`), jamais de `unit:` — deux tabs avec la même métrique mais un `unit:` différent (croche vs double-croche) ont donc AUJOURD'HUI la même largeur de mesure alors que l'une est visuellement 2× plus dense que l'autre. Compter en "plus petite durée" rendrait la largeur d'une mesure proportionnelle à sa densité réelle (une mesure en double-croches deviendrait plus large qu'une en croches, à métrique égale) — cohérent avec l'algo du point 26 qui, lui, utilise déjà `unit:` PAR mesure. Pas implémenté, en attente de décision.
