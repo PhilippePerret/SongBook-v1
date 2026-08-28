@@ -15,14 +15,21 @@
 
 module Tablator
   TAB_LINES = 6
-  # Écart entre deux lignes de corde (pt) — Phil, 2026-08-28 : "on peut gagner
-  # beaucoup de place sans perdre en visibilité" (était 8.0).
-  LINE_SPACING = 6.0
+  # Écart entre deux lignes de corde (pt) — Phil, 2026-08-28 (redemandé, "les
+  # lignes peuvent encore être rapprochées") : 8.0 → 6.0 → 5.0.
+  LINE_SPACING = 5.0
   STAFF_HEIGHT = LINE_SPACING * (TAB_LINES - 1)
   NUMBER_SIZE = 6.5
   # Hampe (Phil, 2026-08-28 : "les hampes de croches sont ridiculement
-  # petites") — assez haute pour porter 1-2 ligatures lisibles au-dessus.
-  STEM_HEIGHT = 22.0
+  # petites") — assez haute pour porter 1-2 ligatures lisibles au-dessus, mais
+  # sans gonfler la marge au-dessus de CHAQUE système (redescendue de 22 après
+  # le passage à `stems_extra_height` — la marge réservée n'est plus gaspillée
+  # même quand aucune note n'en a besoin, donc plus besoin de compenser large).
+  STEM_HEIGHT = 19.0
+  # Écart entre la ligne de corde et le PIED de la hampe (Phil, 2026-08-28 :
+  # "les hampes sont trop près des notes" — remontées) — indépendant de
+  # `LINE_SPACING` pour ne pas se réduire avec lui si la portée se resserre encore.
+  STEM_GAP = 3.5
   FLAG_LEN = 4.5
   BEAM_GAP = 2.6            # écart vertical entre deux ligatures empilées (16e, 32e...)
   BEAM_WIDTH = 1.6
@@ -58,19 +65,38 @@ module Tablator
     %(<line x1="#{x1.round(2)}" y1="#{y1.round(2)}" x2="#{x2.round(2)}" y2="#{y2.round(2)}" stroke="black" stroke-width="#{width}"/>)
   end
 
-  # Chiffre corde:case posé SUR une ligne de corde : un rectangle blanc opaque
-  # sous le texte masque localement la ligne (sinon la ligne barre le chiffre) —
-  # largeur approximative selon le nombre de chiffres (jusqu'à 2, cases > 99
-  # improbables sur une tablature).
+  # Chiffre corde:case — fond TRANSPARENT (Phil, 2026-08-28 : un rectangle blanc
+  # débordait sur la ligne de corde du DESSUS). La ligne de corde elle-même est
+  # coupée localement à son emplacement (voir `line_with_gaps`) : plus besoin de
+  # la masquer après coup.
   def number_glyph(x, y, text)
-    w = (text.length * NUMBER_SIZE * 0.75) + 1.0
-    h = NUMBER_SIZE + 1.0
-    rect = %(<rect x="#{(x - w / 2).round(2)}" y="#{(y - h * 0.75).round(2)}" width="#{w.round(2)}" height="#{h.round(2)}" fill="white"/>)
-    rect + svg_text(x, y + NUMBER_SIZE * 0.35, text, size: NUMBER_SIZE)
+    svg_text(x, y + NUMBER_SIZE * 0.35, text, size: NUMBER_SIZE)
+  end
+
+  # Demi-largeur (+ un peu d'air) occupée par un chiffre à l'emplacement `x` —
+  # sert à couper la ligne de corde localement (`line_with_gaps`), plus à
+  # masquer un rectangle par-dessus.
+  def number_half_width(text)
+    (text.to_s.length * NUMBER_SIZE * 0.375) + 0.8
   end
 
   def string_y(corde, top_y)
     top_y + (corde - 1) * LINE_SPACING
+  end
+
+  # Ligne de corde COUPÉE aux emplacements occupés par un chiffre (Phil,
+  # 2026-08-28 : fond transparent, jamais un rectangle par-dessus). `ranges` :
+  # liste de [x_debut, x_fin] à exclure, pas forcément triée/fusionnée.
+  def line_with_gaps(x0, x1, y, ranges)
+    sorted = ranges.map { |a, b| [[a, x0].max, [b, x1].min] }.select { |a, b| b > a }.sort_by(&:first)
+    parts = []
+    cursor = x0
+    sorted.each do |a, b|
+      parts << svg_line(cursor, y, a, y) if a > cursor
+      cursor = [cursor, b].max
+    end
+    parts << svg_line(cursor, y, x1, y) if x1 > cursor
+    parts
   end
 
   # Nombre de ligatures/crochets pour un dénominateur donné (4->0, 8->1, 16->2...).
@@ -111,12 +137,11 @@ module Tablator
     stems = group.map do |g|
       ev = g[:ev]
       topmost_note = ev.notes.min_by { |n| n[:corde] }
-      # Hampe collée au chiffre (Phil, 2026-08-28 : "pas alignées sur les notes") —
-      # décalage proportionnel à la largeur du chiffre lui-même (1 ou 2 caractères),
-      # jamais un décalage fixe qui détache visiblement la hampe d'un chiffre à 1 seul
-      # caractère.
-      half_w = topmost_note[:case].to_s.length * NUMBER_SIZE * 0.375
-      { x: g[:x] + half_w + 1.2, bottom: string_y(topmost_note[:corde], top_y) - LINE_SPACING * 0.5, denom: ev.denom }
+      # Hampe EXACTEMENT sur l'abscisse du chiffre (Phil, 2026-08-28, redemandé :
+      # "toujours désalignées" — un décalage, même proportionnel au chiffre, reste
+      # visuellement détaché). Pas de risque de collision avec le chiffre lui-même :
+      # la hampe reste toujours AU-DESSUS de la portée, le chiffre est SUR la ligne.
+      { x: g[:x], bottom: string_y(topmost_note[:corde], top_y) - STEM_GAP, denom: ev.denom }
     end
     beam_top = stems.map { |s| s[:bottom] - STEM_HEIGHT }.min
     stems.each { |s| parts << svg_line(s[:x], s[:bottom], s[:x], beam_top) }
@@ -185,10 +210,45 @@ module Tablator
   # 2026-08-28 : "les lignes doivent s'arrêter sur la dernière barre").
   # `show_time_sig`/`capo` : seul le 1er système d'une tablature les affiche
   # (voir `render_tab_svg`).
+  # Hauteur de hampe RÉELLEMENT nécessaire pour ce système (Phil, 2026-08-28 :
+  # "systèmes toujours trop écartés"/"titre trop loin" — plancher/plafond fixes
+  # gaspillaient de la place même quand rien n'en avait besoin). 0 si aucune note
+  # tenue (silence/ronde uniquement — cas rarissime, mais jamais négatif).
+  def stems_extra_height(measures)
+    any_stem = measures.any? { |m| m[:events].any? { |ev| ev.kind == :notes && ev.denom > 1 } }
+    # Les ligatures de niveau 2+ s'empilent VERS la note (voir `draw_stem_group`,
+    # `beam_top + (level-1)*BEAM_GAP`), jamais au-dessus du niveau 1 — la hauteur
+    # maxi au-dessus de la portée reste `STEM_HEIGHT`, quel que soit le nombre de
+    # ligatures.
+    any_stem ? STEM_HEIGHT : 0
+  end
+
+  # Place pour le doigté (Phil, 2026-08-28, même remarque) : 0 si aucun événement
+  # du système n'en porte, 1 rangée si un seul type (droite OU gauche) suffit,
+  # 2 rangées seulement si un même événement cumule les deux.
+  def fingering_extra_height(measures)
+    any_rh_or_lh = false
+    any_both = false
+    measures.each do |m|
+      m[:events].each do |ev|
+        next unless ev.kind == :notes
+
+        any_rh_or_lh ||= !!(ev.rh || ev.lh)
+        any_both ||= !!(ev.rh && ev.lh)
+      end
+    end
+    return 0 unless any_rh_or_lh
+
+    any_both ? FINGER_SIZE * 2 + ROW_GAP : FINGER_SIZE + ROW_GAP
+  end
+
   def render_system(measures, time, target_beats, meta, show_time_sig:)
     measure_width = target_beats * BEAT_WIDTH
-    top_margin = STEM_HEIGHT + CHORD_NAME_SIZE + ROW_GAP * 2 + (show_time_sig && meta['capo'] ? CHORD_NAME_SIZE + ROW_GAP : 0)
-    bottom_margin = FINGER_SIZE * 2 + ROW_GAP * 2
+    any_label = meta['chord'] || measures.any? { |m| m[:label] }
+    top_margin = stems_extra_height(measures) + ROW_GAP +
+      (any_label ? CHORD_NAME_SIZE + ROW_GAP : 0) +
+      (show_time_sig && meta['capo'] ? CHORD_NAME_SIZE + ROW_GAP : 0)
+    bottom_margin = fingering_extra_height(measures) + ROW_GAP
     top_y = top_margin
     staff_bottom = top_y + STAFF_HEIGHT
     content_width = TIME_SIG_W + measures.size * measure_width
@@ -196,7 +256,7 @@ module Tablator
     height_pt = top_margin + STAFF_HEIGHT + bottom_margin
 
     parts = []
-    chord_name_baseline = top_y - STEM_HEIGHT - ROW_GAP
+    chord_name_baseline = top_y - stems_extra_height(measures) - ROW_GAP
     capo_baseline = chord_name_baseline - CHORD_NAME_SIZE - ROW_GAP
     parts << capo_markup(meta['capo'], TIME_SIG_W, capo_baseline) if show_time_sig && meta['capo']
     (1..TAB_LINES).each { |c| parts << svg_line(0, string_y(c, top_y), content_width, string_y(c, top_y)) }
