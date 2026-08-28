@@ -57,7 +57,7 @@ if $PROGRAM_NAME == __FILE__
   out_base = options[:out] || (input_path ? input_path.sub(/\.\w+\z/, '') : 'out')
 
   begin
-    result = Tablator.render_tab_svg(content, measures_per_line: 999)
+    result = Tablator.render_tab_svg(content, measures_per_line: 999).first
     File.write("#{out_base}.svg", result[:svg])
     warn(input_path ? "Tabulation de #{File.basename(input_path)} produite en SVG" : 'Tabulation produite en SVG')
   rescue Tablator::ParseError => e

@@ -61,7 +61,7 @@ module TablatorAssistant
   # produire le SVG sous le nom NORMAL, pas caché.
   def self.render_tab_svg(tab_path, out_base: nil)
     content = File.read(tab_path)
-    result = Tablator.render_tab_svg(content, measures_per_line: 999)
+    result = Tablator.render_tab_svg(content, measures_per_line: 999).first
     out_base ||= tab_path.sub(/\.tab\z/, "")
     File.write("#{out_base}.svg", result[:svg])
     puts success("👍 #{Loc.get('tablator_svg_produced')}")
@@ -176,7 +176,7 @@ module TablatorAssistant
 
     console_width = ($stdin.winsize[1] - ROW_MARGIN) / COL_WIDTH
     width = [console_width, columns_needed(tokens_in, unit)].max
-    matrix, bars = matrix_from_tokens(tokens_in, width, unit)
+    matrix, bars, rests = matrix_from_tokens(tokens_in, width, unit)
     string = 1
     col = 0
     # Composition en cours (une note "0p2"/"0+2", OU une barre "|" puis "." -> "|.") —
@@ -208,7 +208,7 @@ module TablatorAssistant
       begin
         $stdin.raw(intr: true) do
           loop do
-            draw_grid(matrix, bars, string, col, unit)
+            draw_grid(matrix, bars, rests, string, col, unit)
             key = read_key
             key = AZERTY_DIGITS.fetch(key, key) if key.is_a?(String)
             # "B" (Phil, 2026-08-27) : remplace "|" comme touche de saisie de barre
@@ -235,6 +235,7 @@ module TablatorAssistant
             when "x"
               matrix[string - 1][col] = nil
               bars.delete(col)
+              rests.delete(col)
             # Doigté main droite (ou "+" = aucun) : SEULEMENT juste après la/les case(s)
             # d'une note en cours (sinon "c" reprend son sens de commande "config").
             when ->(k) { composing && composing[:kind] == :note && composing[:stage] == :case && k.is_a?(String) && (RH_FINGERS.include?(k) || k == RH_SKIP) }
@@ -253,12 +254,25 @@ module TablatorAssistant
               next
             when "c"
               unit, metrique = open_config(unit, metrique)
-            when "s"
+            # "S" (Phil, 2026-08-28) : majuscule pour libérer "s" minuscule (silence
+            # invisible, voir plus bas) — même logique que "B"/barre : une lettre à plat
+            # ne peut porter qu'un seul sens.
+            when "S"
               temp_path, out_base = tab_paths_for(meta, edit_path)
               meta["unit"] = unit
               meta["metrique"] = metrique if metrique
-              File.write(temp_path, serialize(meta, matrix_to_tokens(matrix, unit, bars: bars)))
+              File.write(temp_path, serialize(meta, matrix_to_tokens(matrix, unit, bars: bars, rests: rests)))
               render_tab_svg(temp_path, out_base: out_base)
+            # Silence explicite : "r" visible, "s" invisible ("skip") — posé tout de
+            # suite comme une note, la position de l'événement suivant détermine sa
+            # durée (Phil, 2026-08-28 : "on a la chance d'être avec un instrument
+            # unique, profitons-en"). Efface tout ce qu'il y avait sur les 6 cordes à
+            # cette colonne (un silence est global, pas par corde) et toute barre
+            # posée là (une colonne ne porte qu'UN seul type de repère).
+            when "r", "s"
+              (1..6).each { |s| matrix[s - 1][col] = nil }
+              bars.delete(col)
+              rests[col] = key
             when "q"
               ask_before_save = true
               commit_bar.call
@@ -273,12 +287,14 @@ module TablatorAssistant
                 cell.kase = candidate <= MAX_CASE ? candidate : key.to_i
               else
                 matrix[string - 1][col] = Cell.new(key.to_i, nil, nil)
+                rests.delete(col)
                 composing = { kind: :note, stage: :case, string: string, col: col }
               end
               next
             when *BAR_CHARS
               composing = { kind: :bar, col: col, buffer: key }
               bars[col] = key
+              rests.delete(col)
               next
             end
 
@@ -293,7 +309,7 @@ module TablatorAssistant
         return
       end
 
-      tokens = matrix_to_tokens(matrix, unit, bars: bars)
+      tokens = matrix_to_tokens(matrix, unit, bars: bars, rests: rests)
       if tokens.empty?
         puts Loc.get("tablator_write_empty")
         return
@@ -377,12 +393,17 @@ module TablatorAssistant
 
   # Une barre traverse TOUTE la tablature (Phil, 2026-08-27) : dessinée sur les 6
   # cordes à sa colonne, pas seulement sur une ligne à part sous la grille.
-  def self.draw_grid(matrix, bars, cur_string, cur_col, unit)
+  def self.draw_grid(matrix, bars, rests, cur_string, cur_col, unit)
     print "\e[2J\e[H"
     (1..6).each do |string|
       row = matrix[string - 1].each_with_index.map do |cell, col|
         text = if bars[col]
                  bars[col].ljust(COL_WIDTH)
+               elsif rests[col]
+                 # Silence global (6 cordes) : lettre R/S en MAJUSCULE seulement sur la
+                 # 3e ligne (Phil, 2026-08-28), les 5 autres portent un guillemet '"'
+                 # (renvoi, comme un "idem" typographique) plutôt que répéter la lettre.
+                 (string == 3 ? rests[col].upcase : '"').ljust(COL_WIDTH)
                elsif cell.nil?
                  "-" * COL_WIDTH
                else
@@ -429,35 +450,46 @@ module TablatorAssistant
   # pour un accord, hors scope). Un trou AVANT la première note (Phil) compte aussi
   # (placement des barres) mais n'est PAS marqué par défaut (levée) -> silence
   # INVISIBLE (`sN`, "skip" LilyPond), jamais supprimé silencieusement.
-  def self.matrix_to_tokens(matrix, unit, bars: {})
+  def self.matrix_to_tokens(matrix, unit, bars: {}, rests: {})
     width = matrix.first.length
     unit_denominator = DURATIONS.fetch(unit)
     events = (0...width).filter_map do |col|
       notes = (1..6).filter_map { |string| matrix[string - 1][col] && [string, matrix[string - 1][col]] }
       [col, notes] unless notes.empty?
     end
-    return [] if events.empty? && bars.empty?
+    return [] if events.empty? && bars.empty? && rests.empty?
 
     notes_by_col = events.to_h
     bar_cols = bars.keys.sort
-    stops = (notes_by_col.keys + bar_cols).uniq.sort
+    stops = (notes_by_col.keys + bar_cols + rests.keys).uniq.sort
 
     # Une barre interrompt la tenue implicite d'une note (qui, sinon, "sonne" jusqu'au
     # prochain repère) : dès `col` 0 et après chaque barre, tout écart avant le prochain
-    # repère (note ou barre suivante) doit être écrit comme silence invisible ("s<durée>"),
-    # sinon une mesure sans note posée disparaît purement et simplement à l'enregistrement
-    # (bug constaté, Phil, 2026-08-28 : "une barre définit une longueur de mesure, elle
-    # doit être remplie de silence"). Pas de comblement en fin de grille SANS barre : la
-    # largeur de la grille est arbitraire (taille du terminal), pas une fin de mesure.
+    # repère (note, silence ou barre suivante) doit être écrit comme silence invisible
+    # ("s<durée>"), sinon une mesure sans note posée disparaît purement et simplement à
+    # l'enregistrement (bug constaté, Phil, 2026-08-28 : "une barre définit une longueur
+    # de mesure, elle doit être remplie de silence"). Pas de comblement en fin de grille
+    # SANS barre : la largeur de la grille est arbitraire (taille du terminal), pas une
+    # fin de mesure. Un silence EXPLICITE ("r"/"s" posé par l'utilisateur, Phil,
+    # 2026-08-28) se comporte comme une note : sa durée = span jusqu'au prochain repère
+    # (même logique, "c'est la position de l'événement suivant qui détermine la durée").
     tokens = []
     cursor = 0
     pending_reset = true
     stops.each do |col|
-      if (notes = notes_by_col[col])
+      if bars[col] && !notes_by_col[col] && !rests[col]
         tokens << "s#{duration_for(col - cursor, unit_denominator)}" if pending_reset && col > cursor
-        next_boundary = stops.find { |b| b > col } || width
-        duree = duration_for(next_boundary - col, unit_denominator)
-        tokens <<
+        tokens << bars[col]
+        cursor = col + 1
+        pending_reset = true
+        next
+      end
+
+      tokens << "s#{duration_for(col - cursor, unit_denominator)}" if pending_reset && col > cursor
+      next_boundary = stops.find { |b| b > col } || width
+      duree = duration_for(next_boundary - col, unit_denominator)
+      tokens <<
+        if (notes = notes_by_col[col])
           if notes.size == 1
             string, cell = notes.first
             suffix = cell.rh || cell.lh ? "-#{cell.rh}#{cell.lh}" : ""
@@ -465,14 +497,11 @@ module TablatorAssistant
           else
             "<#{notes.map { |s, c| "#{s}#{c.kase}" }.join(' ')}>/#{duree}"
           end
-        cursor = next_boundary
-        pending_reset = false
-      else
-        tokens << "s#{duration_for(col - cursor, unit_denominator)}" if pending_reset && col > cursor
-        tokens << bars[col]
-        cursor = col + 1
-        pending_reset = true
-      end
+        else
+          "#{rests[col]}#{duree}"
+        end
+      cursor = next_boundary
+      pending_reset = false
     end
     tokens
   end
@@ -529,13 +558,15 @@ module TablatorAssistant
     col
   end
 
-  # Renvoie `[matrix, bars]` — `bars` : `{colonne => "|."/"||"/...}` (voir
-  # `matrix_to_tokens`). Le doigté ("-<main droite><main gauche>", groupes 4/5 de
-  # `Tablator::CORDE_CASE_RE`) est reconstruit dans la `Cell` pour une note simple
-  # (jamais dans un accord `<...>`, hors scope).
+  # Renvoie `[matrix, bars, rests]` — `bars` : `{colonne => "|."/"||"/...}`, `rests` :
+  # `{colonne => "r"/"s"}` (silence explicite, Phil, 2026-08-28 — voir `matrix_to_tokens`).
+  # Le doigté ("-<main droite><main gauche>", groupes 4/5 de `Tablator::CORDE_CASE_RE`)
+  # est reconstruit dans la `Cell` pour une note simple (jamais dans un accord `<...>`,
+  # hors scope).
   def self.matrix_from_tokens(tokens, width, unit)
     matrix = Array.new(6) { Array.new(width) }
     bars = {}
+    rests = {}
     unit_denominator = DURATIONS.fetch(unit)
     col = 0
     tokens.each do |token|
@@ -547,6 +578,7 @@ module TablatorAssistant
       end
 
       if (rm = Tablator::REST_RE.match(token))
+        rests[col] = rm[1]
         col += span_from_duration(rm[2], unit_denominator)
         next
       end
@@ -567,7 +599,7 @@ module TablatorAssistant
 
       col += span_from_duration(duree, unit_denominator)
     end
-    [matrix, bars]
+    [matrix, bars, rests]
   end
 
   # Inverse de `duration_for` : "4" (0 point) -> 2 colonnes (croche unit_denominator=8) ;
