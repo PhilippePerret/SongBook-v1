@@ -1,6 +1,7 @@
 require "prawn"
 require "prawn-svg"
 require_relative "app_config"
+require_relative "ansi_colors"
 require_relative "../tools/tablator/tablator"
 
 # Moteur de mise en page : primitives de dessin (police, en-tête, couplets/accords,
@@ -9,6 +10,7 @@ require_relative "../tools/tablator/tablator"
 # diagrammes d'accords (voir `ChordDiagrams`). Porte aussi le système de conflits
 # (`conflict!`), utilisé par les deux.
 module Layout
+  extend AnsiColors
   # Garde-fou GÉNÉRAL (règle absolue, 2026-08-17) : tout conflit qui relève d'un choix de
   # l'utilisateur (contenu trop long, élément qui empiète sur la marge ou sur un autre
   # élément, etc — PAS limité aux marges) passe par `conflict!`. Niveau de SENSIBILITÉ
@@ -166,11 +168,20 @@ module Layout
   # rien signalé, jamais).
   def self.report_conflicts!
     if CONFLICTS.any?
-      warn "Conflits rencontrés :"
-      CONFLICTS.each { |e| warn "- #{e}" }
+      warn error("Conflits rencontrés :")
+      CONFLICTS.each { |e| warn error("- #{e}") }
     elsif log_conflict_count.to_i.positive?
-      warn "Des erreurs sont produites (#{log_conflict_count}), voir le fichier #{conflict_log_path}"
+      warn error("Des erreurs sont produites (#{log_conflict_count}), voir le fichier #{conflict_log_path}")
     end
+  end
+
+  # Console (Phil) : TOUJOURS `with_song_names: false`, même pour un carnet — le nom des
+  # chansons concernées reste réservé au log de conflits (`missing_chords_summary` par
+  # défaut, écrit dans le fichier), la console n'affiche QUE le nom de l'accord manquant,
+  # comme pour une chanson seule. Appelée AVANT `report_conflicts!` (annonce des conflits).
+  def self.report_missing_chords!
+    summary = missing_chords_summary(with_song_names: false)
+    warn error(summary) if summary
   end
 
   CHORD_SIZE = 9
@@ -191,6 +202,11 @@ module Layout
   # 2026-08-23, "À bicyclette"). Valeurs choisies par Phil, à ajuster si besoin.
   CHORD_SEP_GAP = 1.0
   CHORD_CHORD_GAP = 6.0
+  # Accord "slash" (basse embarquée, ex. "Bb6/C") : les 2 noms collaient directement au
+  # "/" (bug constaté, Phil — "s'assurer qu'ils ne soient pas trop proches, les deux, du
+  # '/' qui les sépare"). Petit espace de chaque côté, PAS un vrai espace de mot (juste de
+  # quoi respirer — "éloigner à peine, 3pt max" au total, 2 côtés).
+  CHORD_SLASH_GAP = 1.5
   DIAG_W = 60
   DIAG_TEXT_GAP = 26
   # RAD3 : largeur plancher sous laquelle un diag ne doit jamais être réduit (valeur
@@ -696,10 +712,23 @@ module Layout
     { normal: regular, bold: bold || regular, italic: italic || regular, bold_italic: bold_italic || bold || italic || regular }
   end
 
-  # "(interprète, année)" — entre parenthèses, jamais de label (Phil, 2026-08-16).
+  # "(interprète)" — entre parenthèses, jamais de label (Phil, 2026-08-16). L'année N'Y
+  # est PLUS (Phil, bug constaté, 2026-08-28) : elle date la CRÉATION de la chanson —
+  # œuvre du parolier/compositeur, pas de l'interprète — voir `format_parolier_compositeur`.
   def self.format_interprete(meta)
-    parts = [meta["performer"], meta["year"]].compact
-    parts.empty? ? "" : "(#{parts.join(', ')})"
+    performer = meta["performer"]
+    performer.to_s.strip.empty? ? "" : "(#{performer})"
+  end
+
+  # "parolier/compositeur (année)" — année de la CHANSON (sa création), jamais de label
+  # devant, mise avec le parolier/compositeur et non l'interprète (Phil, bug constaté,
+  # 2026-08-28 : "il ne faut pas mettre l'année de la chanson avec le performer").
+  def self.format_parolier_compositeur(meta)
+    pc = [meta["lyrics"], meta["composer"]].compact.uniq.join(" / ")
+    year = meta["year"].to_s.strip
+    return pc if pc.empty? || year.empty?
+
+    "#{pc} (#{year})"
   end
 
   # Titre à gauche ; interprète/date juste à droite du titre (plus petit que le titre,
@@ -724,7 +753,7 @@ module Layout
     if meta["lyrics"] && meta["lyrics"] == meta["composer"]
       log_build("parolier=compositeur (\"#{meta["lyrics"]}\") : nom affiché une seule fois (RAT1)")
     end
-    pc = [meta["lyrics"], meta["composer"]].compact.uniq.join(" / ")
+    pc = format_parolier_compositeur(meta)
     unless pc.empty?
       w = pdf.width_of(pc, size: PC_SIZE)
       right_edge = pdf.bounds.width - HEADER_PAD_X - w
@@ -799,7 +828,7 @@ module Layout
     baseline = (band_top + band_bottom - cap_height) / 2.0
     y = baseline
 
-    pc = [meta["lyrics"], meta["composer"]].compact.uniq.join(" / ")
+    pc = format_parolier_compositeur(meta)
     pc_size, y_pc = fit_pc_size(pdf, pc, band_bottom)
 
     engrave(bottom: band_bottom, context: "bandeau de titre") do
@@ -843,7 +872,7 @@ module Layout
     if meta["lyrics"] && meta["lyrics"] == meta["composer"]
       log_build("parolier=compositeur (\"#{meta["lyrics"]}\") : nom affiché une seule fois (RAT1)")
     end
-    pc = [meta["lyrics"], meta["composer"]].compact.uniq.join(" / ")
+    pc = format_parolier_compositeur(meta)
     return if pc.empty?
 
     w = pdf.width_of(pc, size: pc_size)
@@ -1628,13 +1657,25 @@ module Layout
   end
 
   def self.chord_label_width(pdf, chord, size)
+    text = display_chord(chord)
+    return slash_label_width(pdf, text, size) if text.include?("/")
+
     main, suffix = chord_label_parts(chord)
     w = pdf.width_of(main, size: size, style: :bold)
     w += pdf.width_of(suffix, size: size - 2, style: :bold) unless suffix.empty?
     w
   end
 
+  def self.slash_label_width(pdf, text, size)
+    parts = text.split("/")
+    parts.sum { |p| pdf.width_of(p, size: size, style: :bold) } +
+      (parts.length - 1) * (pdf.width_of("/", size: size, style: :bold) + 2 * CHORD_SLASH_GAP)
+  end
+
   def self.draw_chord_label(pdf, chord, x, y, size: CHORD_SIZE)
+    text = display_chord(chord)
+    return draw_slash_chord_label(pdf, text, x, y, size) if text.include?("/")
+
     main, suffix = chord_label_parts(chord)
     descent = font_metric(pdf, size) { pdf.font.descender }
     engrave(bottom: y - descent, context: "accord #{chord}") { pdf.draw_text main, at: [x, y], size: size, style: :bold }
@@ -1643,6 +1684,24 @@ module Layout
     suffix_descent = font_metric(pdf, size - 2) { pdf.font.descender }
     engrave(bottom: y - suffix_descent, context: "accord #{chord} (suffixe)") do
       pdf.draw_text suffix, at: [x + pdf.width_of(main, size: size, style: :bold), y], size: size - 2, style: :bold
+    end
+  end
+
+  # Accord "slash" (ex. "Bb6/C") : chaque partie + le "/" dessinés SÉPARÉMENT, avec
+  # `CHORD_SLASH_GAP` de chaque côté du "/" — mêmes offsets ici et dans `slash_label_width`
+  # (une seule formule pour mesurer et dessiner, voir commentaire `text_line_steps`).
+  def self.draw_slash_chord_label(pdf, text, x, y, size)
+    descent = font_metric(pdf, size) { pdf.font.descender }
+    cx = x
+    parts = text.split("/")
+    parts.each_with_index do |part, i|
+      engrave(bottom: y - descent, context: "accord (slash) \"#{part}\"") { pdf.draw_text part, at: [cx, y], size: size, style: :bold }
+      cx += pdf.width_of(part, size: size, style: :bold)
+      next if i == parts.length - 1
+
+      cx += CHORD_SLASH_GAP
+      engrave(bottom: y - descent, context: "accord (slash) séparateur") { pdf.draw_text "/", at: [cx, y], size: size, style: :bold }
+      cx += pdf.width_of("/", size: size, style: :bold) + CHORD_SLASH_GAP
     end
   end
 
@@ -1824,12 +1883,22 @@ module Layout
 
   # RAA1 : deux labels d'accord ne doivent JAMAIS se toucher — plus question de distordre
   # l'avancée du TEXTE pour ça (RAL2.1 : le texte reste sa propre mesure, continue, intacte)
-  # ; c'est le LABEL d'accord qui est repoussé à droite si besoin, jamais le texte déplacé.
+  # ; c'est le LABEL d'accord qui est repoussé si besoin, jamais le texte déplacé. MAIS un
+  # accord `anchored:` (collé à un vrai mot, càd sa propre `seg.text` démarre par autre
+  # chose qu'une espace) ne bouge JAMAIS non plus (bug Blackbird refrain constaté, Phil :
+  # "les blancs entre les paroles, pour glisser des accords, doivent toujours être
+  # respectés" — un 2e "Black/F:" repoussé À DROITE par un large "Bb6/C:" voisin
+  # atterrissait décollé de son mot). Seuls les accords "filler" (posés dans du blanc, sans
+  # mot collé — ex. accord de passage entre 2 paroles) sont repoussés, et vers la GAUCHE (en
+  # partant de la fin) pour laisser sa vraie place à l'accord ancré qui suit.
   def self.spread_chord_positions(pdf, chord_steps, chord_size)
-    min_x = nil
-    chord_steps.each do |step|
-      step[:x] = min_x if min_x && step[:x] < min_x
-      min_x = step[:x] + chord_label_width(pdf, step[:chord], chord_size) + CHORD_GAP
+    max_x = nil
+    chord_steps.reverse_each do |step|
+      unless step[:anchored]
+        limit = max_x && max_x - chord_label_width(pdf, step[:chord], chord_size) - CHORD_GAP
+        step[:x] = limit if limit && step[:x] > limit
+      end
+      max_x = step[:x]
     end
   end
 
@@ -1865,7 +1934,10 @@ module Layout
 
     seg_offset = 0
     chord_steps = segs.filter_map do |seg|
-      step = { x: chord_x_at_offset(pdf, tokens, seg_offset, text_size, char_spacing: cs), chord: seg.chord } if seg.chord
+      if seg.chord
+        step = { x: chord_x_at_offset(pdf, tokens, seg_offset, text_size, char_spacing: cs), chord: seg.chord,
+                 anchored: !seg.text.empty? && seg.text[0] != " " }
+      end
       seg_offset += seg.text.length
       step
     end

@@ -268,7 +268,11 @@ module ChordPlacer
     letters = {}
     seen = []
     lines.each do |raw|
-      raw.scan(%r{/([^:/\s]+):}) do |m|
+      # `DSLParser::CHORD_RE` (pas une regex maison) : un accord "slash" (ex. "Bb6/C")
+      # a bien un "/" INTERNE à son nom — une regex qui l'exclut le coupe en 2 et ne
+      # récupère que la partie après le dernier "/" (bug constaté, Phil : "il s'agit de
+      # deux accords" alors que "Bb6/C" est UN accord unique avec basse).
+      raw.scan(DSLParser::CHORD_RE) do |m|
         chord = capitalize_chord(m[0])
         next if seen.include?(chord)
 

@@ -702,6 +702,7 @@ module CarnetBuilder
     File.delete(colophon_out)
 
     SongCache.save(chansons_dir)
+    Layout.report_missing_chords!
     Layout.report_conflicts!
     combined.save(out_path)
 

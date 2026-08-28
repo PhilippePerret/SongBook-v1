@@ -49,6 +49,24 @@ module PageBuilder
     default
   end
 
+  # `tabla_preset` (Phil, 2026-08-28) : nom d'un preset `Tablator::PRESETS`
+  # ("regular-tablatures"/"mini-tablatures"...) — chanson (`.infos`) prioritaire
+  # sur le carnet, même principe que `resolve_shrink_option`. `nil` si absent des
+  # deux (l'appelant retombe alors sur le défaut, "regular-tablatures").
+  def self.resolve_tabla_preset(meta, carnet_folder)
+    return meta["tabla_preset"] if meta.key?("tabla_preset")
+
+    if carnet_folder
+      carnet_infos_path = FileFinder.find(carnet_folder, :inf)
+      if carnet_infos_path
+        carnet_meta = parse_infos(carnet_infos_path)
+        return carnet_meta["tabla_preset"] if carnet_meta.key?("tabla_preset")
+      end
+    end
+
+    nil
+  end
+
 
   def self.parse_infos(path)
     meta = {}
@@ -621,6 +639,13 @@ module PageBuilder
     raise "fichiers .lyr/.lyrics ou .infos/.inf introuvables dans #{folder}" unless lyr_path && infos_path
 
     meta = parse_infos(infos_path)
+    # `Tablator.active_preset` est un état GLOBAL du module (Phil, 2026-08-28,
+    # config "regular-tablatures"/"mini-tablatures", `tools/tablator/presets.rb`) —
+    # TOUJOURS fixé ici, explicitement, jamais laissé hériter d'une chanson précédente
+    # construite dans le MÊME process (même bug de principe que `Layout.building_log_path`,
+    # 2026-08-25 : sans ce reset, une chanson sans `tabla_preset:` reprendrait par erreur
+    # le preset de la précédente).
+    Tablator.active_preset = resolve_tabla_preset(meta, carnet_folder) || "regular-tablatures"
     Layout.shrink_diags = resolve_shrink_option(meta, carnet_folder, "shrink_diags")
     Layout.shrink_tabla = resolve_shrink_option(meta, carnet_folder, "shrink_tabla")
     Layout.shrink_score = resolve_shrink_option(meta, carnet_folder, "shrink_score")

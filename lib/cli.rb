@@ -236,6 +236,8 @@ module CLI
         open_infos_file
       when "gabarit", "gab"
         open_gabarit_file
+      when "tdm", "toc"
+        open_tdm_file(arg2)
       else
         abort unknown_command_message("edit #{arg1}")
       end
@@ -301,13 +303,9 @@ module CLI
       rescue Interrupt
         puts
       end
-    when "tdm"
+    when "tdm", "toc"
       begin
-        carnet_folder = resolve_carnet_folder(arg1 || Session.carnet)
-        tdm_path = FileFinder.find(carnet_folder, :tdm)
-        abort "aucun fichier .tdm/.toc trouvé dans #{carnet_folder}" unless tdm_path
-
-        system("open", "-a", AppConfig.user_song_editor, tdm_path)
+        open_tdm_file(arg1)
       rescue Interrupt
         puts
       end
@@ -400,6 +398,8 @@ module CLI
         abort "aucun PDF construit pour l'instant (build d'abord)" unless pdf_path
 
         system("open", pdf_path)
+      when "tdm", "toc"
+        open_tdm_file(arg2)
       else
         abort unknown_command_message("open #{arg1}")
       end
@@ -468,6 +468,8 @@ module CLI
         else
           pdf_path = CarnetBuilder.build_song(target[:folder])
           puts success("👍 #{format(Loc.get("song_pdf_generated"), SongResolver.display_name(target[:folder]))}")
+
+          Layout.report_missing_chords!
 
           if Layout.log_conflict_count.to_i.positive?
             puts error("#{format(Loc.get("song_build_conflicts_count"), Layout.log_conflict_count)}")
@@ -571,6 +573,16 @@ module CLI
     abort "aucun fichier .gabarit/.gab trouvé dans #{context[:folder]}" unless gab_path
 
     system("open", "-a", AppConfig.user_song_editor, gab_path)
+  end
+
+  # `tdm`, `open tdm/toc` ET `edit tdm/toc` (alias, Phil) partagent ce code — table des
+  # matières du CARNET (pas de la chanson), "toc" toléré comme synonyme anglais de "tdm".
+  def self.open_tdm_file(carnet_arg)
+    carnet_folder = resolve_carnet_folder(carnet_arg || Session.carnet)
+    tdm_path = FileFinder.find(carnet_folder, :tdm)
+    abort "aucun fichier .tdm/.toc trouvé dans #{carnet_folder}" unless tdm_path
+
+    system("open", "-a", AppConfig.user_song_editor, tdm_path)
   end
 
   # PDF déjà construit pour ce contexte — chanson : fichier unique (`build_song`,

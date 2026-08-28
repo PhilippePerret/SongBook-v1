@@ -229,9 +229,9 @@ module TablatorAssistant
             when "L"
               col = (0...width).reverse_each.find { |c| bars[c] || (1..6).any? { |s| matrix[s - 1][c] } } || 0
             when :shift_right
-              shift_right!(matrix, col)
+              shift_right!(matrix, bars, rests, col, width)
             when :shift_left
-              shift_left!(matrix, col)
+              shift_left!(matrix, bars, rests, col)
             when "x"
               matrix[string - 1][col] = nil
               bars.delete(col)
@@ -353,17 +353,48 @@ module TablatorAssistant
   # Décale tout ce qui suit (et inclut) `col` d'une colonne — `→` insère une colonne
   # vide en `col` (la dernière colonne tombe hors grille), `←` supprime la colonne
   # `col` (écrase donc son contenu par ce qui suit) et ajoute une colonne vide en fin.
-  def self.shift_right!(matrix, col)
+  # `bars`/`rests` (barres de mesure, silences explicites — dicts `colonne => ...`)
+  # décalés PAREIL que la matrice de notes (bug constaté, Phil : Maj+←/→ ne bougeait
+  # QUE les notes, laissant barres et silences sur place — décalage incohérent).
+  def self.shift_right!(matrix, bars, rests, col, width)
     matrix.each do |row|
       row.insert(col, nil)
       row.pop
     end
+    shift_hash_right!(bars, col, width)
+    shift_hash_right!(rests, col, width)
   end
 
-  def self.shift_left!(matrix, col)
+  def self.shift_left!(matrix, bars, rests, col)
     matrix.each do |row|
       row.delete_at(col)
       row.push(nil)
+    end
+    shift_hash_left!(bars, col)
+    shift_hash_left!(rests, col)
+  end
+
+  # Repère (barre/silence) déjà en `col` ou après -> `col + 1`, la dernière tombe hors
+  # grille (`width`, même limite que la matrice) — ordre DÉCROISSANT indispensable
+  # (sinon une valeur tout juste déplacée se ferait réécrire par la suivante).
+  def self.shift_hash_right!(hash, col, width)
+    hash.keys.sort.reverse_each do |k|
+      next if k < col
+
+      val = hash.delete(k)
+      hash[k + 1] = val if k + 1 < width
+    end
+  end
+
+  # `col` écrasée (son repère éventuel disparaît, comme la matrice), tout repère
+  # APRÈS `col` recule d'une colonne — ordre CROISSANT indispensable (symétrique de
+  # `shift_hash_right!`).
+  def self.shift_hash_left!(hash, col)
+    hash.delete(col)
+    hash.keys.sort.each do |k|
+      next unless k > col
+
+      hash[k - 1] = hash.delete(k)
     end
   end
 
