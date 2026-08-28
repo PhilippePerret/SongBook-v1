@@ -34,26 +34,49 @@ RSpec.describe "outil tablator (rendu SVG direct)" do
     expect(measures[0][:label]).not_to be_nil
   end
 
-  it "Produire un SVG complet avec les dimensions attendues" do
+  it "Produire un SVG par système, avec les dimensions attendues" do
     content = "---\ntitle: Test\nmetrique: 4/4\n---\n50/4 51/4 52/4 53/4\n"
-    result = Tablator.render_tab_svg(content, measures_per_line: 4)
+    systems = Tablator.render_tab_svg(content, measures_per_line: 4)
+    expect(systems.size).to eq(1)
+    result = systems.first
     expect(result[:svg]).to include("<svg")
     expect(result[:svg]).to include('width="')
     expect(result[:width_pt]).to be > 0
     expect(result[:height_pt]).to be > 0
   end
 
-  it "measures_per_line plus petit que le nombre de mesures ajoute un système (et de la hauteur)" do
+  it "measures_per_line plus petit que le nombre de mesures produit plusieurs systèmes indépendants (Phil, 2026-08-28)" do
     content = "50/4 51/4 52/4 53/4 54/4 55/4 56/4 57/4\n" # 2 mesures réelles en 4/4
     two_systems = Tablator.render_tab_svg(content, measures_per_line: 1)
     single_system = Tablator.render_tab_svg(content, measures_per_line: 999)
-    expect(two_systems[:height_pt]).to be > single_system[:height_pt]
+    expect(two_systems.size).to eq(2)
+    expect(single_system.size).to eq(1)
+  end
+
+  it "Un système s'arrête à SES mesures (largeur), jamais à la largeur d'un système complet" do
+    content = "50/4 51/4 52/4 53/4 54/4 55/4 56/4 57/4\n" # 2 mesures réelles en 4/4
+    systems = Tablator.render_tab_svg(content, measures_per_line: 2)
+    full = systems.first[:width_pt]
+    partial = Tablator.render_tab_svg("50/4 51/4 52/4 53/4\n", measures_per_line: 2).first[:width_pt]
+    expect(partial).to be < full
   end
 
   it "Affiche les chiffres corde:case dans le SVG produit" do
     content = "60/4\n"
-    result = Tablator.render_tab_svg(content, measures_per_line: 4)
+    result = Tablator.render_tab_svg(content, measures_per_line: 4).first
     expect(result[:svg]).to include(">0<")
+  end
+
+  it "Pas de barre de mesure en tout début de système (à x = TIME_SIG_W)" do
+    content = "60/4\n"
+    result = Tablator.render_tab_svg(content, measures_per_line: 4).first
+    leading_bar = result[:svg].scan(/<line x1="(#{Regexp.escape(Tablator::TIME_SIG_W.to_s)})" y1="[\d.]+" x2="\1"/)
+    expect(leading_bar).to be_empty
+  end
+
+  it "Une noire a une hampe (sans crochet)" do
+    result = Tablator.render_tab_svg("60/4\n", measures_per_line: 4).first
+    expect(result[:svg]).to include("<line")
   end
 
   describe "doigtés (main droite p/i/m/a/c + main gauche chiffre, Phil 2026-08-26)" do

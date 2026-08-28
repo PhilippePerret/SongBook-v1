@@ -29,7 +29,7 @@ RSpec.describe "fusion de tablatures (\"+\")" do
 
       merged = PageBuilder.merge_tab_contents([File.join(@dir, "intro.tab"), File.join(@dir, "couplet.tab")])
 
-      expect(merged).to eq("---\ntitle: Intro\n---\n50/4 60/4 | 70/4 |\n")
+      expect(merged).to eq("---\ntitle: Intro\n---\n50/4 60/4 70/4\n")
     end
 
     it "fusion à plus de 2 fichiers" do
@@ -39,6 +39,15 @@ RSpec.describe "fusion de tablatures (\"+\")" do
 
       merged = PageBuilder.merge_tab_contents(%w[a b c].map { |n| File.join(@dir, "#{n}.tab") })
       expect(merged).to eq("---\ntitle: A\n---\n10 20 30\n")
+    end
+
+    it "retire les barres de CHAQUE source (Phil, 2026-08-28 : \"bout à bout sans traitement\")" do
+      write_tab("amorce", "title: Amorce", "s4 |")
+      write_tab("intro", "title: Intro", "50/4 60/4 70/4 80/4")
+
+      merged = PageBuilder.merge_tab_contents([File.join(@dir, "amorce.tab"), File.join(@dir, "intro.tab")])
+
+      expect(merged).to eq("---\ntitle: Amorce\n---\ns4 50/4 60/4 70/4 80/4\n")
     end
   end
 
