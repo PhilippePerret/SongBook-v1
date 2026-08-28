@@ -5,6 +5,9 @@ Pour ouvrir la table des matières d'un carnet :
 
 ----
 songbook tdm "titre approximatif"
+songbook open tdm "titre"
+songbook open toc
+songbook edit tdm
 ----
 
 Après avoir défini les données des chansons (<<lyrics-file>>, <<infos-file>>), vous êtes en mesure de définir la table des matières pour définir la liste des chansons utilisée et leur ordre.

@@ -11,4 +11,7 @@
                     | <<song-creation, Création d'une chanson>>.
                     | <<song-assistant, **Assistant pour la création** de la chanson>>.
                     | <<song-chords-assistant, Assistant pour la **pose des accords**>>.
+.2* | Paroles       | <<lyrics-file, le fichier des paroles de la chanson>>.
+                    | <<song-chords-assistant, Assistant pour la **pose des accords**>>.
+                    | <<gabarit-file, disposition des paroles sur la page>>.
 |====
