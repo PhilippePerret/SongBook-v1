@@ -72,6 +72,29 @@ RSpec.describe "TablatorAssistant : grille (doigtés + barres)" do
     it "grille vide : liste vide" do
       expect(TablatorAssistant.matrix_to_tokens(matrix(4), "croche")).to eq([])
     end
+
+    it "silence explicite ('r'/'s', Phil 2026-08-28) : durée = span jusqu'à l'événement suivant, comme une note" do
+      m = matrix(6, [5, 0] => cell(0), [4, 4] => cell(2))
+      tokens = TablatorAssistant.matrix_to_tokens(m, "croche", rests: { 2 => "r" })
+      expect(tokens).to eq(["50/4", "r4", "42/4"])
+    end
+
+    it "silence invisible ('s') : même logique, préfixe différent" do
+      m = matrix(6, [5, 0] => cell(0), [4, 4] => cell(2))
+      tokens = TablatorAssistant.matrix_to_tokens(m, "croche", rests: { 2 => "s" })
+      expect(tokens).to eq(["50/4", "s4", "42/4"])
+    end
+
+    it "silence explicite seul, en tête (rien avant) : pas de silence invisible en plus" do
+      tokens = TablatorAssistant.matrix_to_tokens(matrix(4), "croche", rests: { 0 => "r" })
+      expect(tokens).to eq(["r2"]) # span jusqu'à width=4 (croche*4 = blanche)
+    end
+
+    it "silence explicite après une barre : borné par la barre suivante, pas par `width`" do
+      m = matrix(8)
+      tokens = TablatorAssistant.matrix_to_tokens(m, "croche", bars: { 1 => "|", 4 => "|" }, rests: { 2 => "s" })
+      expect(tokens).to eq(["s8", "|", "s4", "|"])
+    end
   end
 
   describe ".matrix_from_tokens (aller-retour)" do
@@ -92,6 +115,19 @@ RSpec.describe "TablatorAssistant : grille (doigtés + barres)" do
 
       expect(rebuilt[4][0]).to eq(cell(0, rh: "i", lh: "3"))
       expect(bars).to eq({ 2 => "||" })
+    end
+
+    it "reconnaît un silence explicite ('r'/'s') et sa colonne (Phil, 2026-08-28)" do
+      _, _bars, rests = TablatorAssistant.matrix_from_tokens(["50/4", "r4", "62/4"], 6, "croche")
+      expect(rests).to eq({ 2 => "r" })
+    end
+
+    it "aller-retour d'un silence explicite : matrix_to_tokens puis matrix_from_tokens redonne la même colonne/lettre" do
+      original = matrix(6, [5, 0] => cell(0), [4, 4] => cell(2))
+      tokens = TablatorAssistant.matrix_to_tokens(original, "croche", rests: { 2 => "s" })
+      _, _bars, rests = TablatorAssistant.matrix_from_tokens(tokens, 6, "croche")
+
+      expect(rests).to eq({ 2 => "s" })
     end
   end
 end
