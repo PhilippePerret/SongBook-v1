@@ -412,6 +412,12 @@ module Tablator
       end
 
       converted = notes_tokens.map { |t| convert_token(t, notes_mode: false) }
+      # Mesure sans aucune note (juste une barre, ou rien du tout) : sans ça,
+      # `\bar "..."` seul (ou une chaîne vide) a une durée nulle pour LilyPond,
+      # qui refuse alors de rendre ("zero-duration score", silencieusement, sans
+      # fichier produit) — un spacer rest (silence invisible) donne une durée à
+      # la mesure sans rien afficher.
+      converted = ['s1'] if converted.empty?
       converted[0] = "#{converted[0]}^\\markup{ #{chord_font}\"#{label}\" }" if label && converted[0]
       [converted.join(' '), bar].compact.join(' ')
     end.join(' ')
@@ -472,6 +478,11 @@ module Tablator
       else
         render_measures(tokens, chord_names: !!meta['chord'], chord_font: markup_prefix(chord_font, 'sans'))
       end
+    # Mesure vide (aucune note, aucune barre) -> `music` vide -> bloc `{ }` que
+    # LilyPond refuse silencieusement de rendre ("zero-duration score", exit 0,
+    # aucun fichier produit). Un spacer rest (suggestion de LilyPond lui-même)
+    # occupe la durée sans rien afficher, ce qui permet quand même le rendu.
+    music = 's1' if music.strip.empty?
     time = meta['metrique'] || meta['time']
     stem_direction = meta['chord'] ? '\\stemDown' : '\\stemUp'
 
