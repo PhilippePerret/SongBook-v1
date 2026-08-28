@@ -196,8 +196,12 @@ module TablatorAssistant
     # compris "q"/Entrée (`break` saute le reste de la boucle, bug constaté 2026-08-26 :
     # une barre commencée juste avant de quitter disparaissait silencieusement).
     commit_bar = lambda do
-      if composing && composing[:kind] == :bar && Tablator::BAR_RE.match?(composing[:buffer])
-        bars[composing[:col]] = composing[:buffer]
+      if composing && composing[:kind] == :bar
+        if Tablator::BAR_RE.match?(composing[:buffer])
+          bars[composing[:col]] = composing[:buffer]
+        else
+          bars.delete(composing[:col])
+        end
       end
       composing = nil
     end
@@ -246,6 +250,7 @@ module TablatorAssistant
             # Barre en cours de composition ("|" puis "." -> "|.", etc.).
             when ->(k) { composing && composing[:kind] == :bar && k.is_a?(String) && BAR_CHARS.include?(k) }
               composing[:buffer] += key
+              bars[composing[:col]] = composing[:buffer]
               next
             when "c"
               unit, metrique = open_config(unit, metrique)
@@ -274,6 +279,7 @@ module TablatorAssistant
               next
             when *BAR_CHARS
               composing = { kind: :bar, col: col, buffer: key }
+              bars[col] = key
               next
             end
 
