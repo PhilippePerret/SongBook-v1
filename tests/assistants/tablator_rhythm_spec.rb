@@ -43,16 +43,34 @@ RSpec.describe "rythme de l'assistant tablature" do
     expect(bars).to eq({})
   end
 
-  it "Pousser tout ce qui suit vers la droite" do
+  it "Pousser tout ce qui suit vers la droite (notes)" do
     matrix = [[1, 2, 3, 4], [nil] * 4, [nil] * 4, [nil] * 4, [nil] * 4, [nil] * 4]
-    TablatorAssistant.shift_right!(matrix, 1)
+    TablatorAssistant.shift_right!(matrix, {}, {}, 1, 4)
     expect(matrix[0]).to eq([1, nil, 2, 3])
   end
 
-  it "Pousser tout ce qui suit vers la gauche" do
+  it "Pousser tout ce qui suit vers la gauche (notes)" do
     matrix = [[1, 2, 3, 4], [nil] * 4, [nil] * 4, [nil] * 4, [nil] * 4, [nil] * 4]
-    TablatorAssistant.shift_left!(matrix, 1)
+    TablatorAssistant.shift_left!(matrix, {}, {}, 1)
     expect(matrix[0]).to eq([1, 3, 4, nil])
+  end
+
+  it "Maj+→ décale AUSSI les barres et silences, pas seulement les notes (bug constaté, Phil)" do
+    matrix = Array.new(6) { [nil] * 4 }
+    bars = { 1 => "|", 2 => "||" }
+    rests = { 3 => "r" }
+    TablatorAssistant.shift_right!(matrix, bars, rests, 1, 4)
+    expect(bars).to eq({ 2 => "|", 3 => "||" })
+    expect(rests).to eq({})
+  end
+
+  it "Maj+← décale AUSSI les barres et silences, la colonne du curseur est écrasée" do
+    matrix = Array.new(6) { [nil] * 4 }
+    bars = { 1 => "|", 2 => "||" }
+    rests = { 0 => "s" }
+    TablatorAssistant.shift_left!(matrix, bars, rests, 1)
+    expect(bars).to eq({ 1 => "||" })
+    expect(rests).to eq({ 0 => "s" })
   end
 
   it "Accepter les chiffres tapés sans la touche Majuscule" do

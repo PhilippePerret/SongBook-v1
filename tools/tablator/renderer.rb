@@ -223,30 +223,34 @@ module Tablator
     any_both ? finger_size * 2 + param(:row_gap) : finger_size + param(:row_gap)
   end
 
-  # Position d'un événement DANS une mesure — grille de temps (Phil, 2026-08-28,
-  # "il faut un algo qui fasse ça mathématiquement") : position de départ FIXE
-  # (`note_inset`, contre la barre gauche, "la position actuelle est bonne"),
-  # puis l'espace restant divisé par le nombre de PLUS PETITE VALEUR de durée
-  # (`unit:` du frontmatter, défaut croche — `Tablator::UNIT_DENOMINATOR`) que
-  # contient la mesure — chaque événement placé au slot correspondant à sa
-  # position cumulée dans cette unité. Remplace l'ancien double-retrait
-  # (marge des DEUX côtés, "trop d'espace à la fin de la mesure").
-  def slot_x(measure_start_x, acc_beats, target_beats, measure_width, unit_denom)
-    note_inset = param(:note_inset)
-    slots_per_measure = target_beats * unit_denom / 4.0
-    slot_width = (measure_width - note_inset) / slots_per_measure
-    measure_start_x + note_inset + acc_beats * (unit_denom / 4.0) * slot_width
+  # Nombre de PLUS PETITE DURÉE (`unit:` du frontmatter, défaut croche —
+  # `Tablator::UNIT_DENOMINATOR`) que contient une mesure de métrique
+  # `target_beats` — Phil, 2026-08-28 : "il faut chercher et définir les
+  # paramètres sur lesquels on joue" — c'est l'unité de compte pour la largeur
+  # (`duration_units_per_system`, `slot_width`), pas la mesure elle-même (deux
+  # mesures de densité différente n'ont pas le même poids visuel).
+  def measure_slots(target_beats, unit_denom)
+    target_beats * unit_denom / 4.0
   end
 
-  def render_system(measures, time, target_beats, meta, show_time_sig:)
-    beat_width = param(:beat_width)
+  # `slot_width` : PAS un réglage user (voir `presets.rb`) — calculé par
+  # `render_tab_svg` pour que `measures_per_system` tienne dans la largeur de
+  # colonne réelle, jamais en dessous de `min_slot_width` (lisibilité).
+  def render_system(measures, time, target_beats, meta, slot_width:, show_time_sig:)
+    note_inset = param(:note_inset)
     time_sig_w = param(:time_sig_w)
     chord_name_size = param(:chord_name_size)
     row_gap = param(:row_gap)
     sh = staff_height
 
-    measure_width = target_beats * beat_width
     unit_denom = UNIT_DENOMINATOR.fetch(meta['unit'], 8)
+    slots = measure_slots(target_beats, unit_denom)
+    # Position de départ FIXE (`note_inset`, contre la barre gauche, "la
+    # position actuelle est bonne"), puis chaque événement placé au slot
+    # correspondant à sa position cumulée dans la PLUS PETITE DURÉE — remplace
+    # l'ancien double-retrait (marge des DEUX côtés, "trop d'espace à la fin
+    # de la mesure").
+    measure_width = note_inset + slots * slot_width
     any_label = meta['chord'] || measures.any? { |m| m[:label] }
     top_margin = stems_extra_height(measures) + row_gap +
       (any_label ? chord_name_size + row_gap : 0) +
@@ -265,7 +269,7 @@ module Tablator
     measure_positions = measures.map do |measure|
       acc = 0.0
       positioned = measure[:events].map do |ev|
-        entry = { ev: ev, x: slot_x(x, acc, target_beats, measure_width, unit_denom), beat_idx: acc.floor }
+        entry = { ev: ev, x: x + note_inset + acc * (unit_denom / 4.0) * slot_width, beat_idx: acc.floor }
         acc += ev.beats
         entry
       end
@@ -318,12 +322,18 @@ module Tablator
 
   # Rend le contenu `.tab` (frontmatter + corps) en autant de SVG que de
   # systèmes (Phil, 2026-08-28 : pagination indépendante système par système —
-  # voir l'en-tête du fichier). `available_width_pt` : largeur de colonne
-  # dispo, utilisée SEULEMENT si le preset actif n'impose pas de nombre de
-  # mesures/système (voir `presets.rb`, `measures_per_system` — filet de
-  # sécurité, pas le chemin normal). `measures_per_line` : impose le nombre de
-  # mesures par système (layout `tabla_measures_per_page`), prime sur TOUT
-  # (preset compris).
+  # voir l'en-tête du fichier).
+  #
+  # `slot_width` (largeur, en pt, d'une plus petite durée) N'EST PAS un
+  # réglage — CALCULÉ ici pour que `measures_per_system` (ou
+  # `duration_units_per_system`, preset actif, voir `presets.rb`) tienne
+  # EXACTEMENT dans `available_width_pt` (largeur de colonne réelle). Si ça
+  # ne tiendrait pas lisiblement (`min_slot_width`), le nombre de mesures
+  # visé est réduit tout seul (jamais un rendu illisible) — SAUF si
+  # `measures_per_line` est donné explicitement (override `layout`
+  # `tabla_measures_per_page` : décision assumée de l'user, jamais réduite
+  # dans son dos). Sans `available_width_pt` connue (aperçu CLI/assistant) :
+  # `slot_width` retombe sur son plancher de lisibilité.
   # Renvoie [{svg:, width_pt:, height_pt:}, ...] (1 par système).
   def render_tab_svg(content, available_width_pt: nil, measures_per_line: nil)
     meta, body = parse_frontmatter(content)
@@ -332,14 +342,31 @@ module Tablator
     measures, target_beats = parse_measures(tokens, time, chord_names: !!meta['chord'])
     raise ParseError, 'tablature vide' if measures.empty?
 
-    measure_width = target_beats * param(:beat_width)
-    mpl = measures_per_line || PRESETS.fetch(active_preset)[:measures_per_system] ||
-      [((available_width_pt - param(:time_sig_w)) / measure_width).floor, 1].max
-    mpl = [mpl, 1].max
+    unit_denom = UNIT_DENOMINATOR.fetch(meta['unit'], 8)
+    slots = measure_slots(target_beats, unit_denom)
+    note_inset = param(:note_inset)
+    time_sig_w = param(:time_sig_w)
+    min_slot_width = param(:min_slot_width)
+
+    preset = PRESETS.fetch(active_preset)
+    target_mpl = measures_per_line ||
+      preset[:measures_per_system] ||
+      (preset[:duration_units_per_system] && [(preset[:duration_units_per_system] / slots).floor, 1].max) || 1
+    mpl = [target_mpl, 1].max
+
+    if available_width_pt
+      unless measures_per_line # jamais réduire un override explicite (layout) dans son dos
+        mpl -= 1 while mpl > 1 && (available_width_pt - time_sig_w - mpl * note_inset) / (mpl * slots) < min_slot_width
+      end
+      slot_width = [(available_width_pt - time_sig_w - mpl * note_inset) / (mpl * slots), min_slot_width].max
+    else
+      slot_width = min_slot_width
+    end
+
     systems = measures.each_slice(mpl).to_a
 
     systems.each_with_index.map do |system_measures, si|
-      render_system(system_measures, time, target_beats, meta, show_time_sig: si.zero?)
+      render_system(system_measures, time, target_beats, meta, slot_width: slot_width, show_time_sig: si.zero?)
     end
   end
 

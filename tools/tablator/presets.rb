@@ -1,60 +1,61 @@
 # frozen_string_literal: true
 
-# tools/tablator/presets.rb : jeux de valeurs nommés pour le rendu géométrique
-# (`renderer.rb`) — Phil, 2026-08-28 : "garder cette config enregistrée en dur
-# quelque part", pour pouvoir en essayer d'autres (ex. "mini-tablatures", 9
-# mesures/système au lieu de 6, tout proportionnellement plus petit) sans
-# toucher au code, juste en changeant `Tablator.active_preset`.
+# tools/tablator/presets.rb : réglages du rendu géométrique (`renderer.rb`).
 #
-# `measures_per_system` : cible EXPLICITE (prime sur le calcul automatique par
-# largeur dispo, voir `render_tab_svg`). `system_gap_min`/`system_gap_max` :
-# écart (pt) entre deux systèmes d'une même tablature (lus par
-# `Layout.min_v_dist`/`max_v_dist` pour le type `:tabla_system` — pas utilisés
-# dans ce fichier, mais gardés ICI pour que tout se règle depuis UN seul
-# endroit, comme demandé).
+# Phil, 2026-08-28 (redemandé, clarifié) : "les paramètres laissés à l'user
+# doivent être MINIMUM, c'est l'algo qui calcule le reste et s'assure que tout
+# est bien affiché" — SEULS 3 réglages, dans `PRESETS` :
+#   number_size          taille des chiffres
+#   line_spacing          interligne
+#   measures_per_system   nombre de mesures visées par système (l'user pense
+#                          en mesures — Phil : "plus clair pour eux")
+#     ou, en variante avancée, `duration_units_per_system` (nombre de PLUS
+#     PETITE DURÉE, `unit:` du frontmatter — utile si le morceau mélange des
+#     mesures de densités très différentes, où compter en mesures brutes
+#     serait trompeur).
+#
+# TOUT LE RESTE (hampes, marges, doigtés, écart entre systèmes...) est
+# CALCULÉ par l'algorithme à partir de ces 3 valeurs (`RATIO_OF_LINE_SPACING`/
+# `RATIO_OF_NUMBER_SIZE` ci-dessous, calibrés sur "regular-tablatures") —
+# jamais une 4e valeur à régler à la main. `slot_width` (largeur réelle, en pt,
+# d'une plus petite durée) N'EST PAS un réglage user : `render_tab_svg` le
+# CALCULE pour que `measures_per_system` tienne exactement dans la largeur de
+# colonne réelle de la page — jamais moins que `min_slot_width` (lisibilité) :
+# si la demande de l'user ne tiendrait pas lisiblement, l'algo RÉDUIT le
+# nombre de mesures tout seul plutôt que de produire un rendu illisible.
 module Tablator
   PRESETS = {
-    'regular-tablatures' => {
-      line_spacing: 5.0,
-      number_size: 6.5,
-      stem_height: 19.0,
-      stem_gap: 3.5,
-      flag_len: 4.5,
-      beam_gap: 2.6,
-      beam_width: 1.6,
-      chord_name_size: 7.0,
-      row_gap: 2.5,
-      finger_size: 6.0,
-      time_sig_w: 15.0,
-      right_margin: 2.0,
-      beat_width: 18.0,
-      note_inset: 10.0,
-      measures_per_system: 6,
-      system_gap_min: 3.0,
-      system_gap_max: 5.0,
-    }.freeze,
+    'regular-tablatures' => { number_size: 6.5, line_spacing: 5.0, measures_per_system: 6 }.freeze,
+    'mini-tablatures' => { number_size: 5.5, line_spacing: 4.2, measures_per_system: 8 }.freeze,
+  }.freeze
 
-    # Facteur ~0.65 sur toutes les tailles/écarts par rapport à "regular-tablatures"
-    # (Phil, 2026-08-28 : "tout proportionnellement plus petit"), 9 mesures/système.
-    'mini-tablatures' => {
-      line_spacing: 3.5,
-      number_size: 4.5,
-      stem_height: 13.0,
-      stem_gap: 2.5,
-      flag_len: 3.0,
-      beam_gap: 1.8,
-      beam_width: 1.1,
-      chord_name_size: 5.0,
-      row_gap: 1.7,
-      finger_size: 4.0,
-      time_sig_w: 10.0,
-      right_margin: 1.5,
-      beat_width: 12.0,
-      note_inset: 7.0,
-      measures_per_system: 9,
-      system_gap_min: 2.0,
-      system_gap_max: 3.5,
-    }.freeze,
+  # Calibrés sur "regular-tablatures" (valeurs qui donnaient un bon rendu,
+  # avant ce passage en ratios) — voir historique `.claude/TODO_TABLATURE_SVG.md`.
+  RATIO_OF_LINE_SPACING = {
+    stem_height: 3.8,
+    stem_gap: 0.7,
+    beam_gap: 0.52,
+    row_gap: 0.5,
+    right_margin: 0.4,
+    system_gap_min: 0.6,
+    system_gap_max: 1.0,
+  }.freeze
+
+  RATIO_OF_NUMBER_SIZE = {
+    flag_len: 0.69,
+    beam_width: 0.246,
+    chord_name_size: 1.077,
+    finger_size: 0.923,
+    time_sig_w: 2.31,
+    note_inset: 1.54,
+    # Plancher de lisibilité pour `slot_width` (Phil : "l'algo s'assure que
+    # tout est bien affiché") — en dessous, les chiffres consécutifs sur une
+    # même corde se touchent. Calibré pour ne PAS réduire "regular-tablatures"
+    # (6 mesures/système, déjà validé visuellement par Phil) à la largeur de
+    # colonne réelle de Blackbird — un ratio trop haut (essayé : 1.38, calqué
+    # sur l'ancien `slot_width` FIXE) réduisait à tort 6 → 5 mesures alors que
+    # le rendu à 6 était déjà jugé bon.
+    min_slot_width: 1.0,
   }.freeze
 
   @active_preset = 'regular-tablatures'
@@ -63,8 +64,16 @@ module Tablator
     attr_accessor :active_preset
   end
 
-  # Valeur du paramètre `key` dans le preset ACTIF (`Tablator.active_preset`).
+  # Valeur du paramètre `key` : lue directement dans le preset ACTIF si c'est
+  # un des 3 réglages user, sinon CALCULÉE depuis `number_size`/`line_spacing`
+  # via les ratios ci-dessus (jamais stockée nulle part).
   def self.param(key)
-    PRESETS.fetch(active_preset) { raise "preset tablature inconnu : #{active_preset.inspect}" }.fetch(key)
+    preset = PRESETS.fetch(active_preset) { raise "preset tablature inconnu : #{active_preset.inspect}" }
+    return preset[key] if preset.key?(key)
+
+    return preset.fetch(:line_spacing) * RATIO_OF_LINE_SPACING[key] if RATIO_OF_LINE_SPACING.key?(key)
+    return preset.fetch(:number_size) * RATIO_OF_NUMBER_SIZE[key] if RATIO_OF_NUMBER_SIZE.key?(key)
+
+    raise "paramètre tablature inconnu : #{key.inspect}"
   end
 end

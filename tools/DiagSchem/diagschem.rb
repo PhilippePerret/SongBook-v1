@@ -132,16 +132,20 @@ class DiagSchem
   private
 
   # Après production du schéma + copie presse-papier (Phil, 2026-08-26) : propose
-  # d'enregistrer dans la bibliothèque de l'application (`schemas.txt`) ; si refusé ET
-  # que `-o`/`--output` n'a pas déjà produit le SVG, propose (à défaut) de le produire
-  # quand même dans le dossier courant.
+  # d'enregistrer dans la bibliothèque de l'application (`schemas.txt`). PAS de
+  # question oui/non préalable (bug constaté, Phil : un "Enregistrer ?" (Y/n) placé
+  # AVANT la saisie du nom — un nom tapé directement à cette question, ex. "B-7",
+  # loin d'être un booléen, faisait échouer `TTY::Prompt#yes?` avec son message
+  # anglais générique "Invalid input.") — `enregistrer_dans_application` gère déjà
+  # "rien tapé -> pas d'enregistrement" (Entrée seule), la question était pure
+  # redondance. Si rien enregistré ET que `-o`/`--output` n'a pas déjà produit le
+  # SVG, propose (à défaut) de le produire quand même dans le dossier courant.
   def proposer_enregistrement
     prompt = TTY::Prompt.new
-    if prompt.yes?(blue(Loc.get('diag_save_question')))
-      enregistrer_dans_application(prompt)
-    elsif !@output_svg
-      @svg_path = generer_svg if prompt.yes?(blue(Loc.get('diag_output_question')))
-    end
+    enregistrer_dans_application(prompt)
+    return if @svg_path || @output_svg
+
+    @svg_path = generer_svg if prompt.yes?(blue(Loc.get('diag_output_question')))
   end
 
   # Nom demandé à l'user (texte libre, AUCUN défaut/pré-remplissage) : c'est LE NOM
@@ -354,7 +358,16 @@ class DiagSchem
   end
 
   def saisir_nom(char)
-    # en-tête, nom de l'accord : texte libre, court — pas d'avance auto
+    # en-tête, nom de l'accord : texte libre, court — pas d'avance auto, SAUF "-"
+    # (Phil, bug constaté : "B-7", forme quasi canonique "Nom-case" utilisée PARTOUT
+    # ailleurs — presse-papier, `schemas.txt`, argument CLI — tapée telle quelle dans
+    # le nom, ne scindait jamais vers la case, "case de référence non définie" à la
+    # validation). "-" avance maintenant vers la case, comme Tab/→ — jamais un
+    # caractère de nom d'accord réel de toute façon.
+    if char == "-" && !@buffer.empty?
+      avancer_droite
+      return
+    end
     return unless char =~ /\A[[:graph:]]\z/
     return if @buffer.length >= NOM_W
 
