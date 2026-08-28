@@ -1,0 +1,2 @@
+// Layouts de l'app
+include::layouts.adoc[]

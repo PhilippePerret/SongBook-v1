@@ -18,5 +18,3 @@ Le **processus classique de création d'un carnet** est le suivant (cette liste 
 - pour chaque opération, vous vous assurez bien entendu d'<<best-practices, adopter les bonnes pratiques>>, pour votre propre confort,
 - vous envoyez tout le matériel à votre imprimeur,
 - vous chantez et partagez ces chansons avec les autres !
-
----

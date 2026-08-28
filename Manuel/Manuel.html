@@ -445,7 +445,6 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#console-command">Commande <code>songbook</code></a></li>
 <li><a href="#process-creation-songbook">Processus de création d&#8217;un carnet</a></li>
-<li><a href="#app-layouts">Layouts de l&#8217;application</a></li>
 </ul>
 </li>
 <li><a href="#song">Chansons</a>
@@ -477,7 +476,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#songbook-tdm">Table des matières du carnet</a></li>
 <li><a href="#songbook-schemas">Diagrammes propres</a></li>
 <li><a href="#cover">La Couverture</a></li>
-<li><a href="#songbook-building">Construction du carnet</a></li>
+<li><a href="#songbook-run-build">Construction du carnet</a></li>
 <li><a href="#best-practices">Les bonnes pratiques</a></li>
 </ul>
 </li>
@@ -487,6 +486,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#song-chords-assistant">Assistant pour l&#8217;entrée des accords de la chanson</a></li>
 <li><a href="#diag-schema-producer">Production du schéma du diags</a></li>
 <li><a href="#tablator">Générateur de tablatures</a></li>
+<li><a href="#app-layouts">Layouts de l&#8217;application</a></li>
 </ul>
 </li>
 <li><a href="#annexes">Annexes</a>
@@ -585,7 +585,7 @@ a {
 <div class="sect2">
 <h3 id="process-creation-songbook">Processus de création d&#8217;un carnet</h3>
 <div class="paragraph">
-<p>Le <strong>processus classique de création d&#8217;un carnet</strong> est le suivant :</p>
+<p>Le <strong>processus classique de création d&#8217;un carnet</strong> est le suivant (cette liste complète vous permet de rejoindre rapidement toutes les parties) :</p>
 </div>
 <div class="ulist">
 <ul>
@@ -614,7 +614,7 @@ a {
 <p>vous définissez <a href="#songbook-infos">les caractéristiques du carnet</a> et peut-être même <a href="#songbook-layout">sa mise en page</a> (ou vous adoptez une <a href="#app-layouts">mise en page déjà définie</a>),</p>
 </li>
 <li>
-<p>vous <a href="#lancez le processus de fabrication du carnet">[lancez le processus de fabrication du carnet]</a>,</p>
+<p>vous <a href="#songbook-run-build">lancez le processus de fabrication du carnet</a>,</p>
 </li>
 <li>
 <p>vous ajustez <a href="#gabarit-file">les gabarits des chansons</a> qui peuvent poser problème,</p>
@@ -637,39 +637,6 @@ a {
 </ul>
 </div>
 <hr>
-</div>
-<div class="sect2">
-<h3 id="app-layouts">Layouts de l&#8217;application</h3>
-<div class="paragraph">
-<p>Les <em>layouts de l&#8217;application</em> permettent de ne pas avoir à se soucier de mise en page lorsque l&#8217;on conçoit ses carnets.</p>
-</div>
-<div class="paragraph">
-<p>Si toutefois vous vouliez adapter les paramètres de la mise en page de votre carnet, vous pouvez le faire par le biais des <a href="#songbook-layout">layouts de carnet</a>.</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
-</colgroup>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>regular-B</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Mise en page par défaut</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>régular</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Même que le précédent mais le titre n&#8217;est pas mis dans un bandeau noir.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>column-B</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">bandeau noir</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>column</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Comme le précédent mais le titre est sans bandeau noir.</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 </div>
 </div>
@@ -1491,6 +1458,16 @@ Pour ouvrir directement ce fichier, <code>songbook open layout --sb "titre carne
 <td class="tableblock halign-left valign-top"><p class="tableblock">p.e. <code>bold italic</code></p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tabla_measures_per_page</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Définit explicitement le nombre de mesures de tablature dans la page</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>6</code> (priorité aux carnets)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tabla_system_spacing</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Définit l&#8217;espace entre deux systèmes de tablature.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>12pt</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lyrics_flux</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Définit le flux, l&#8217;enchainement des strophes, couplets, refrains et autres paroles.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>side</code> (pour "side by side", "côte à côte") ou <code>vertical</code> (pour "stacked vertically" ou "l&#8217;un au-dessous de l&#8217;autre") ou <code>free</code> (pour "free positioning", aucune contrainte).</p></td>
@@ -2043,7 +2020,7 @@ Noter que s&#8217;il y des options réglées pour le carnet en construction et d
 </div>
 </div>
 <div class="sect2">
-<h3 id="songbook-building">Construction du carnet</h3>
+<h3 id="songbook-run-build">Construction du carnet</h3>
 <div class="paragraph">
 <p><em>Construire le carnet</em> consiste à produire le fichier <code>.pdf</code> qui sera transmis à l&#8217;imprimeur ou importer sur KDP pour faire imprimer le carnet.</p>
 </div>
@@ -2499,6 +2476,39 @@ keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
 </div>
 </div>
 </div>
+</div>
+<div class="sect2">
+<h3 id="app-layouts">Layouts de l&#8217;application</h3>
+<div class="paragraph">
+<p>Les <em>layouts de l&#8217;application</em> permettent de ne pas avoir à se soucier de mise en page lorsque l&#8217;on conçoit ses carnets.</p>
+</div>
+<div class="paragraph">
+<p>Si toutefois vous vouliez adapter les paramètres de la mise en page de votre carnet, vous pouvez le faire par le biais des <a href="#songbook-layout">layouts de carnet</a>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>regular-B</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mise en page par défaut</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>régular</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Même que le précédent mais le titre n&#8217;est pas mis dans un bandeau noir.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>column-B</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">bandeau noir</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>column</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Comme le précédent mais le titre est sans bandeau noir.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -3489,7 +3499,7 @@ Ne doit pas regrouper avec une strophe de type "refrain"</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-08-26 09:57:52 +0200
+Last updated 2026-08-28 06:49:30 +0200
 </div>
 </div>
 </body>

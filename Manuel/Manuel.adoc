@@ -27,6 +27,9 @@ include::songbook/_main.adoc[]
 // Outils
 include::tools/_main.adoc[]
 
+// Références
+include::references/_main.adoc[]
+
 // Annexe
 include::annexes/_main.adoc[]
 
