@@ -118,6 +118,23 @@ module Tablator
     (4.0 / base) * (2 - (0.5**dots))
   end
 
+  # "N/D" affichable pour un total de temps (noire = 1) donné — GARDE le
+  # dénominateur `base_den` de la métrique en cours (une mesure analysée à la
+  # lueur de la précédente, sauf indication contraire : Phil, 2026-08-29,
+  # "si on est en /4, le temps est une noire" — jamais sauter à une autre
+  # valeur de note, ex. "1/2", juste parce que ça tombe aussi juste). Affine
+  # seulement (double le dénominateur) si `base_den` ne rend pas N entier.
+  def beats_to_time_str(beats, base_den = 4)
+    den = base_den
+    32.times do
+      num = beats * den / 4.0
+      return "#{num.round}/#{den}" if (num - num.round).abs < 0.001
+
+      den *= 2
+    end
+    "#{beats.round}/#{base_den}"
+  end
+
   # Un "événement" de tablature : une note, un accord, ou un silence — jamais
   # une barre (consommée à part). `notes` : liste de {corde:, case:} (1 seul
   # élément pour une note simple, plusieurs pour un accord).
@@ -162,7 +179,7 @@ module Tablator
     close = lambda do
       next if events.empty?
 
-      measures << { events: events, label: label }
+      measures << { events: events, label: label, beats: acc }
       events = []
       label = nil
       acc = 0.0
@@ -190,5 +207,37 @@ module Tablator
     end
     close.call
     [measures, target]
+  end
+
+  # Analyse UNE source `.tab` (frontmatter + corps) en mesures — chacune taguée
+  # de SA PROPRE métrique/unité (`:time`/`:target_beats`/`:unit_denom`/`:slots`,
+  # Phil, 2026-08-28 : "changement de métrique d'un segment à l'autre" —
+  # "amorce" en 3/4, la suite en 4/4). Sert à fusionner plusieurs sources SANS
+  # leur imposer la métrique du premier fichier (voir `PageBuilder.tab_source_content`,
+  # qui ne fusionne plus le TEXTE mais transmet les sources séparément).
+  # Renvoie [mesures, meta] — `meta` de CETTE source (capo/chord/titre...).
+  def parse_source_measures(content)
+    meta, body = parse_frontmatter(content)
+    tokens = tokenize(body)
+    time = meta['metrique'] || meta['time'] || '4/4'
+    unit_denom = UNIT_DENOMINATOR.fetch(meta['unit'], 8)
+    measures, target_beats = parse_measures(tokens, time, chord_names: !!meta['chord'])
+    measures.each do |m|
+      m[:time] = time
+      m[:target_beats] = target_beats
+      m[:unit_denom] = unit_denom
+      # Largeur au prorata des temps RÉELLEMENT présents dans la mesure (pas la
+      # métrique cible) — une mesure coupée court (barre explicite avant la fin,
+      # levée...) doit occuper moins de place qu'une mesure complète.
+      m[:slots] = m[:beats] * unit_denom / 4.0
+      # Métrique EFFECTIVEMENT affichée pour cette mesure (Phil, 2026-08-29) :
+      # celle du frontmatter, SAUF si son nombre de temps réel diffère (mesure
+      # incomplète/irrégulière) — affiche alors la métrique réelle ("2/4"), ce
+      # qui déclenche aussi son propre changement d'indicatif (voir `render_tab_svg`).
+      time_den = time.to_s[%r{/(\d+)\z}, 1].to_i
+      time_den = 4 if time_den.zero?
+      m[:display_time] = (m[:beats] - target_beats).abs > 0.001 ? beats_to_time_str(m[:beats], time_den) : time
+    end
+    [measures, meta]
   end
 end

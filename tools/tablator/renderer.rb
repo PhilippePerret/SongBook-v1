@@ -31,11 +31,12 @@ module Tablator
     s.to_s.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;').gsub('"', '&quot;')
   end
 
-  def svg_text(x, y, text, size:, anchor: 'middle', weight: nil)
+  def svg_text(x, y, text, size:, anchor: 'middle', weight: nil, color: nil)
     return '' if text.nil? || text.to_s.empty?
 
     w = weight ? %( font-weight="#{weight}") : ''
-    %(<text x="#{x.round(2)}" y="#{y.round(2)}" font-family="Helvetica, Arial, sans-serif" font-size="#{size}" text-anchor="#{anchor}"#{w}>#{xml_escape(text)}</text>)
+    c = color ? %( fill="#{color}") : ''
+    %(<text x="#{x.round(2)}" y="#{y.round(2)}" font-family="Helvetica, Arial, sans-serif" font-size="#{size}" text-anchor="#{anchor}"#{w}#{c}>#{xml_escape(text)}</text>)
   end
 
   def svg_line(x1, y1, x2, y2, width: 0.6)
@@ -54,7 +55,7 @@ module Tablator
   # sert à couper la ligne de corde localement (`line_with_gaps`), plus à
   # masquer un rectangle par-dessus.
   def number_half_width(text)
-    (text.to_s.length * param(:number_size) * 0.375) + 0.8
+    (text.to_s.length * param(:number_size) * 0.375) + 0.3
   end
 
   def string_y(corde, top_y)
@@ -223,63 +224,79 @@ module Tablator
     any_both ? finger_size * 2 + param(:row_gap) : finger_size + param(:row_gap)
   end
 
-  # Nombre de PLUS PETITE DURÉE (`unit:` du frontmatter, défaut croche —
-  # `Tablator::UNIT_DENOMINATOR`) que contient une mesure de métrique
-  # `target_beats` — Phil, 2026-08-28 : "il faut chercher et définir les
-  # paramètres sur lesquels on joue" — c'est l'unité de compte pour la largeur
-  # (`duration_units_per_system`, `slot_width`), pas la mesure elle-même (deux
-  # mesures de densité différente n'ont pas le même poids visuel).
-  def measure_slots(target_beats, unit_denom)
-    target_beats * unit_denom / 4.0
-  end
-
   # `slot_width` : PAS un réglage user (voir `presets.rb`) — calculé par
   # `render_tab_svg` pour que `measures_per_system` tienne dans la largeur de
   # colonne réelle, jamais en dessous de `min_slot_width` (lisibilité).
-  def render_system(measures, time, target_beats, meta, slot_width:, show_time_sig:)
+  # `meta` : celle de la 1re source (capo/chord/titre — Phil, 2026-08-27,
+  # "frontmatter du 1er fichier"), PAS la métrique/unité (celles-ci sont
+  # PAR MESURE, voir `Tablator.parse_source_measures`, Phil 2026-08-28 :
+  # "changement de métrique d'un segment à l'autre").
+  # `ppd_slot_width` : largeur d'un intervalle qui correspond à EXACTEMENT une
+  # Plus Petite Durée (`unit_denom` de la mesure) — seule valeur élargie par
+  # `render_tab_svg` sur un système non justifié (Phil, 2026-08-29 : "n'augmente
+  # QUE les PPD" — un intervalle de plusieurs PPD, note plus longue, reste au
+  # taux normal `slot_width`, jamais gonflé proportionnellement).
+  def event_step_px(ev, unit_denom, slot_width, ppd_slot_width)
+    ticks = ev.beats * unit_denom / 4.0
+    (ticks - 1).abs < 0.001 ? ppd_slot_width : ticks * slot_width
+  end
+
+  def render_system(measures, meta, slot_width:, ppd_slot_width: slot_width, ends_with_double_bar: false)
     note_inset = param(:note_inset)
     time_sig_w = param(:time_sig_w)
     chord_name_size = param(:chord_name_size)
     row_gap = param(:row_gap)
     sh = staff_height
 
-    unit_denom = UNIT_DENOMINATOR.fetch(meta['unit'], 8)
-    slots = measure_slots(target_beats, unit_denom)
-    # Position de départ FIXE (`note_inset`, contre la barre gauche, "la
-    # position actuelle est bonne"), puis chaque événement placé au slot
-    # correspondant à sa position cumulée dans la PLUS PETITE DURÉE — remplace
-    # l'ancien double-retrait (marge des DEUX côtés, "trop d'espace à la fin
-    # de la mesure").
-    measure_width = note_inset + slots * slot_width
+    measures.each do |m|
+      m[:width] = note_inset + m[:events].sum { |ev| event_step_px(ev, m[:unit_denom], slot_width, ppd_slot_width) }
+    end
+
     any_label = meta['chord'] || measures.any? { |m| m[:label] }
+    show_capo = measures.first[:first_of_tab] && meta['capo']
     top_margin = stems_extra_height(measures) + row_gap +
       (any_label ? chord_name_size + row_gap : 0) +
-      (show_time_sig && meta['capo'] ? chord_name_size + row_gap : 0)
+      (show_capo ? chord_name_size + row_gap : 0)
     bottom_margin = fingering_extra_height(measures) + row_gap
     top_y = top_margin
     staff_bottom = top_y + sh
-    total_content_w = time_sig_w + measures.size * measure_width
+
+    # 1re passe : abscisse de CHAQUE mesure — une marge (`time_sig_w`) est
+    # réservée avant la 1re mesure du système (alignement vertical des barres
+    # d'un système à l'autre, que l'indicatif y soit affiché ou non) ET avant
+    # toute mesure dont la métrique CHANGE en cours de système (Phil,
+    # 2026-08-28, point 2 : "l'indiquer dans la mesure qui change").
+    x = time_sig_w
+    measure_positions = measures.each_with_index.map do |measure, mi|
+      x += time_sig_w if mi.positive? && measure[:show_time]
+      mp = { measure: measure, x0: x, width: measure[:width] }
+      x += measure[:width]
+      mp
+    end
+    total_content_w = x
     width_pt = total_content_w + param(:right_margin)
     height_pt = top_margin + sh + bottom_margin
 
-    # 1re passe : position de chaque événement + occupation de chaque ligne de
+    # 2e passe : position de chaque événement + occupation de chaque ligne de
     # corde (pour la couper localement, `line_with_gaps` — Phil, 2026-08-28,
     # "le fond des chiffres doit être transparent", pas un rectangle par-dessus).
-    x = time_sig_w
-    measure_positions = measures.map do |measure|
+    computed = measure_positions.map do |mp|
+      measure = mp[:measure]
+      unit_denom = measure[:unit_denom]
       acc = 0.0
+      px = 0.0
       positioned = measure[:events].map do |ev|
-        entry = { ev: ev, x: x + note_inset + acc * (unit_denom / 4.0) * slot_width, beat_idx: acc.floor }
+        entry = { ev: ev, x: mp[:x0] + note_inset + px, beat_idx: acc.floor }
+        px += event_step_px(ev, unit_denom, slot_width, ppd_slot_width)
         acc += ev.beats
         entry
       end
-      mp = { label: measure[:label], mid_x: x + measure_width * 0.5, events: positioned }
-      x += measure_width
-      mp
+      { label: measure[:label], mid_x: mp[:x0] + mp[:width] * 0.5, events: positioned,
+        show_time: measure[:show_time], time: measure[:display_time], x0: mp[:x0], width: mp[:width] }
     end
 
     occupancy = Hash.new { |h, k| h[k] = [] }
-    measure_positions.each do |mp|
+    computed.each do |mp|
       mp[:events].each do |e|
         next unless e[:ev].kind == :notes
 
@@ -293,26 +310,42 @@ module Tablator
     parts = []
     chord_name_baseline = top_y - stems_extra_height(measures) - row_gap
     capo_baseline = chord_name_baseline - chord_name_size - row_gap
-    parts << capo_markup(meta['capo'], time_sig_w, capo_baseline) if show_time_sig && meta['capo']
+    parts << capo_markup(meta['capo'], time_sig_w, capo_baseline) if show_capo
     (1..TAB_LINES).each do |c|
       y = string_y(c, top_y)
       parts.concat(line_with_gaps(0, total_content_w, y, occupancy[c]))
     end
-    parts << time_signature_markup(time, time_sig_w * 0.5, top_y + sh * 0.5) if show_time_sig
 
-    measure_positions.each_with_index do |mp, i|
+    double_bar_gap = param(:double_bar_gap)
+    computed.each_with_index do |mp, i|
+      # Indicatif de métrique centré dans la marge qui précède CETTE mesure
+      # (celle du système, `time_sig_w`, ou celle insérée pour un changement
+      # en cours de route — même largeur, même formule de centrage).
+      parts << time_signature_markup(mp[:time], mp[:x0] - time_sig_w * 0.5, top_y + sh * 0.5) if mp[:show_time]
       mp[:events].each { |e| draw_numbers(parts, e[:ev], e[:x], top_y) }
       draw_stems(parts, mp[:events], top_y)
       mp[:events].each { |e| draw_fingering(parts, e[:ev], e[:x], staff_bottom) }
       parts << svg_text(mp[:mid_x], chord_name_baseline, mp[:label], size: chord_name_size, weight: 'bold') if mp[:label]
       # Pas de barre en tout DÉBUT de système (Phil, 2026-08-28) — seulement
-      # entre les mesures et à la toute fin.
-      bar_x = time_sig_w + (i + 1) * measure_width
+      # entre les mesures et à la toute fin. Double barre (Phil, 2026-08-29) si
+      # la mesure SUIVANTE change de métrique — y compris en fin de système
+      # (Phil, 2026-08-29, redemandé) si c'est la 1re mesure du système SUIVANT
+      # qui change (`ends_with_double_bar`, calculé par `render_tab_svg`).
+      bar_x = mp[:x0] + mp[:width]
+      next_changes = computed[i + 1] ? computed[i + 1][:show_time] : (i == computed.size - 1 && ends_with_double_bar)
+      if next_changes
+        parts << svg_line(bar_x - double_bar_gap, top_y, bar_x - double_bar_gap, staff_bottom)
+      end
       parts << svg_line(bar_x, top_y, bar_x, staff_bottom)
     end
 
+    # `data-staff-top`/`data-staff-height` (Phil, 2026-08-29) : position/hauteur
+    # RÉELLE de la portée (6 cordes) dans ce SVG — le reste (`Layout.build_count_mark`,
+    # `lib/layout.rb`) en a besoin pour centrer verticalement un repère ("x N")
+    # sur la portée elle-même, jamais sur la boîte totale (marges hampes/doigtés
+    # au-dessus/en dessous, souvent asymétriques).
     svg = <<~SVG
-      <svg xmlns="http://www.w3.org/2000/svg" width="#{width_pt.round(2)}pt" height="#{height_pt.round(2)}pt" viewBox="0 0 #{width_pt.round(2)} #{height_pt.round(2)}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="#{width_pt.round(2)}pt" height="#{height_pt.round(2)}pt" viewBox="0 0 #{width_pt.round(2)} #{height_pt.round(2)}" data-staff-top="#{top_y.round(2)}" data-staff-height="#{sh.round(2)}">
       #{parts.join("\n")}
       </svg>
     SVG
@@ -320,9 +353,13 @@ module Tablator
     { svg: svg, width_pt: width_pt, height_pt: height_pt }
   end
 
-  # Rend le contenu `.tab` (frontmatter + corps) en autant de SVG que de
-  # systèmes (Phil, 2026-08-28 : pagination indépendante système par système —
-  # voir l'en-tête du fichier).
+  # Rend une tablature — 1 ou PLUSIEURS sources `.tab` déjà lues (Phil,
+  # 2026-08-28 : chaque source garde SA PROPRE métrique/unité, jamais celle
+  # de la 1re imposée aux autres — "amorce" en 3/4, la suite en 4/4).
+  # `contents` : un contenu `.tab` (String) ou une liste (fusion, dans
+  # l'ordre) — voir `Tablator.parse_source_measures`.
+  # En autant de SVG que de systèmes (Phil, 2026-08-28 : pagination
+  # indépendante système par système — voir l'en-tête du fichier).
   #
   # `slot_width` (largeur, en pt, d'une plus petite durée) N'EST PAS un
   # réglage — CALCULÉ ici pour que `measures_per_system` (ou
@@ -335,15 +372,27 @@ module Tablator
   # dans son dos). Sans `available_width_pt` connue (aperçu CLI/assistant) :
   # `slot_width` retombe sur son plancher de lisibilité.
   # Renvoie [{svg:, width_pt:, height_pt:}, ...] (1 par système).
-  def render_tab_svg(content, available_width_pt: nil, measures_per_line: nil)
-    meta, body = parse_frontmatter(content)
-    tokens = tokenize(body)
-    time = meta['metrique'] || meta['time'] || '4/4'
-    measures, target_beats = parse_measures(tokens, time, chord_names: !!meta['chord'])
-    raise ParseError, 'tablature vide' if measures.empty?
+  def render_tab_svg(contents, available_width_pt: nil, measures_per_line: nil)
+    contents = [contents] unless contents.is_a?(Array)
+    meta = nil
+    all_measures = []
+    contents.each do |content|
+      measures, m = parse_source_measures(content)
+      meta ||= m
+      all_measures.concat(measures)
+    end
+    raise ParseError, 'tablature vide' if all_measures.empty?
 
-    unit_denom = UNIT_DENOMINATOR.fetch(meta['unit'], 8)
-    slots = measure_slots(target_beats, unit_denom)
+    # Indicatif affiché sur la 1re mesure du morceau ET à chaque CHANGEMENT
+    # de métrique (Phil, 2026-08-28, point 2) — jamais répété sinon (une
+    # mesure dont la métrique est la même que la précédente ne le réaffiche pas).
+    prev_time = nil
+    all_measures.each do |m|
+      m[:show_time] = m[:display_time] != prev_time
+      prev_time = m[:display_time]
+    end
+    all_measures.first[:first_of_tab] = true
+
     note_inset = param(:note_inset)
     time_sig_w = param(:time_sig_w)
     min_slot_width = param(:min_slot_width)
@@ -351,22 +400,96 @@ module Tablator
     preset = PRESETS.fetch(active_preset)
     target_mpl = measures_per_line ||
       preset[:measures_per_system] ||
-      (preset[:duration_units_per_system] && [(preset[:duration_units_per_system] / slots).floor, 1].max) || 1
+      (preset[:duration_units_per_system] && [(preset[:duration_units_per_system] / all_measures.first[:slots]).floor, 1].max) || 1
     mpl = [target_mpl, 1].max
 
-    if available_width_pt
-      unless measures_per_line # jamais réduire un override explicite (layout) dans son dos
-        mpl -= 1 while mpl > 1 && (available_width_pt - time_sig_w - mpl * note_inset) / (mpl * slots) < min_slot_width
-      end
-      slot_width = [(available_width_pt - time_sig_w - mpl * note_inset) / (mpl * slots), min_slot_width].max
-    else
-      slot_width = min_slot_width
+    # Marge NON dispo pour les notes d'un système donné : `note_inset` par
+    # mesure + `time_sig_w` pour chaque changement de métrique EN COURS de
+    # système (1re mesure du système exclue, déjà comptée via `time_sig_w`
+    # ci-dessous).
+    reserved = lambda do |system|
+      system.each_with_index.sum { |m, i| note_inset + ((i.positive? && m[:show_time]) ? time_sig_w : 0) }
+    end
+    fit = lambda do |system|
+      (available_width_pt - time_sig_w - reserved.call(system)) / system.sum { |m| m[:slots] }
     end
 
-    systems = measures.each_slice(mpl).to_a
+    # Plus petite durée DÉFINIE PAR LA TABLATURE (frontmatter `unit:`,
+    # `m[:unit_denom]`) — pas les durées réellement utilisées dans le système.
+    finest_denom = lambda do |system|
+      system.map { |m| m[:unit_denom] }.max || 4
+    end
+    # Nombre d'intervalles d'exactement 1 PPD dans le système, et somme des
+    # ticks des autres intervalles (notes plus longues, plusieurs PPD) — sert à
+    # calculer combien de place reste pour élargir SEULEMENT les PPD isolées.
+    tick_breakdown = lambda do |system|
+      lone = 0
+      other_ticks = 0.0
+      system.each do |m|
+        m[:events].each do |ev|
+          ticks = ev.beats * m[:unit_denom] / 4.0
+          (ticks - 1).abs < 0.001 ? (lone += 1) : (other_ticks += ticks)
+        end
+      end
+      [lone, other_ticks]
+    end
+    # Système non justifié (seul, ou dernier) : `baseline` (plancher de
+    # lisibilité) est trop juste, pour la lecture des PPD, si l'unité déclarée
+    # est fine — SEULES les PPD isolées sont élargies (Phil, 2026-08-29 : "les
+    # autres n'ont pas à être touchées"), jusqu'à (mais jamais au-delà de) la
+    # largeur disponible. `slot_width` (notes plus longues) reste `baseline`.
+    loosen_ppd = lambda do |system, baseline|
+      next baseline if finest_denom.call(system) < FINE_NOTE_DENOM
 
-    systems.each_with_index.map do |system_measures, si|
-      render_system(system_measures, time, target_beats, meta, slot_width: slot_width, show_time_sig: si.zero?)
+      lone, other_ticks = tick_breakdown.call(system)
+      next baseline if lone.zero?
+
+      budget = available_width_pt - time_sig_w - reserved.call(system) - other_ticks * baseline
+      max_ppd = budget / lone
+      [[baseline * FINE_NOTE_SLOT_BONUS, max_ppd].min, baseline].max
+    end
+
+    if available_width_pt
+      systems = all_measures.each_slice(mpl).to_a
+      unless measures_per_line # jamais réduire un override explicite (layout) dans son dos
+        while mpl > 1 && systems.map { |s| fit.call(s) }.min < min_slot_width
+          mpl -= 1
+          systems = all_measures.each_slice(mpl).to_a
+        end
+      end
+      # Système UNIQUE (Phil, 2026-08-29) : rien à justifier PAR RAPPORT À —
+      # `fit.call` sur ce seul système donnerait la largeur qui l'étire pile à
+      # la colonne, ce n'est pas une taille "naturelle". Jamais justifié.
+      if systems.size == 1
+        slot_widths = [min_slot_width]
+        ppd_slot_widths = [loosen_ppd.call(systems.first, min_slot_width)]
+      else
+        base_slot_width = [systems.map { |s| fit.call(s) }.min, min_slot_width].max
+
+        # Justifie chaque système sur la largeur de colonne (comme un paragraphe
+        # de texte), SAUF le dernier (jamais étiré, comme la dernière ligne d'un
+        # paragraphe) et sauf si l'étirement nécessaire dépasse `JUSTIFY_MAX_STRETCH`
+        # (système trop court, l'étirer serait disproportionné — laissé en l'état,
+        # non justifié).
+        slot_widths = systems.each_with_index.map do |system, i|
+          next base_slot_width if i == systems.size - 1
+
+          needed = fit.call(system)
+          needed / base_slot_width <= JUSTIFY_MAX_STRETCH ? needed : base_slot_width
+        end
+        ppd_slot_widths = systems.each_with_index.map do |system, i|
+          i == systems.size - 1 ? loosen_ppd.call(system, base_slot_width) : slot_widths[i]
+        end
+      end
+    else
+      systems = all_measures.each_slice(mpl).to_a
+      slot_widths = systems.map { min_slot_width }
+      ppd_slot_widths = slot_widths
+    end
+
+    systems.each_with_index.map do |system_measures, i|
+      ends_with_double_bar = !!(systems[i + 1] && systems[i + 1].first[:show_time])
+      render_system(system_measures, meta, slot_width: slot_widths[i], ppd_slot_width: ppd_slot_widths[i], ends_with_double_bar: ends_with_double_bar)
     end
   end
 
@@ -379,11 +502,17 @@ module Tablator
   end
 
   # Chiffres empilés proches (Phil, 2026-08-28 : "trop écartés") — écart réduit
-  # au minimum lisible entre les deux lignes de base.
+  # au minimum lisible entre les deux lignes de base. Un peu plus gros que les
+  # chiffres corde:case, mais en gris (`#333333`, Phil, 2026-08-29) pour ne pas
+  # paraître plus FORT qu'eux malgré la taille — jamais une taille fixe
+  # indépendante du preset.
   def time_signature_markup(time, x, y)
     num, den = time.split('/')
     return '' unless den
 
-    svg_text(x, y - 1, num, size: 9, weight: 'bold') + svg_text(x, y + 7, den, size: 9, weight: 'bold')
+    size = param(:time_sig_size)
+    nudge = param(:time_sig_nudge)
+    svg_text(x, y - size * 0.15 + nudge, num, size: size, color: '#333333') +
+      svg_text(x, y + size * 0.75 + nudge, den, size: size, color: '#333333')
   end
 end

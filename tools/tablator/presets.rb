@@ -39,6 +39,8 @@ module Tablator
     right_margin: 0.4,
     system_gap_min: 0.6,
     system_gap_max: 1.0,
+    double_bar_gap: 0.4,
+    time_sig_nudge: 0.3,
   }.freeze
 
   RATIO_OF_NUMBER_SIZE = {
@@ -47,6 +49,7 @@ module Tablator
     chord_name_size: 1.077,
     finger_size: 0.923,
     time_sig_w: 2.31,
+    time_sig_size: 1.15,
     note_inset: 1.54,
     # Plancher de lisibilité pour `slot_width` (Phil : "l'algo s'assure que
     # tout est bien affiché") — en dessous, les chiffres consécutifs sur une
@@ -57,6 +60,23 @@ module Tablator
     # le rendu à 6 était déjà jugé bon.
     min_slot_width: 1.0,
   }.freeze
+
+  # Justification (Phil, 2026-08-29) : chaque système est étiré pour remplir
+  # exactement la largeur de colonne, SAUF le dernier système d'un rendu (comme
+  # la dernière ligne d'un paragraphe, jamais justifiée) ET sauf si l'étirement
+  # nécessaire dépasse ce ratio par rapport au `slot_width` le plus serré du lot
+  # (sinon un système avec peu de contenu s'étire de façon disproportionnée).
+  JUSTIFY_MAX_STRETCH = 1.4
+
+  # Aération du `slot_width` (Phil, 2026-08-29) : quand un système ne va PAS
+  # jusqu'au bout de la colonne (seul, ou dernier — jamais justifié) ET que sa
+  # plus petite durée réelle est fine (double-croche, dénominateur >=
+  # `FINE_NOTE_DENOM`), le plancher `min_slot_width`/`base_slot_width` est trop
+  # juste pour rester lisible ("c'est la limite à ne pas dépasser") — élargi
+  # d'un facteur `FINE_NOTE_SLOT_BONUS`, sans jamais dépasser 90% de la largeur
+  # qui justifierait pile (pour ne jamais recréer l'effet "collé à la marge").
+  FINE_NOTE_DENOM = 16
+  FINE_NOTE_SLOT_BONUS = 1.5
 
   @active_preset = 'regular-tablatures'
 

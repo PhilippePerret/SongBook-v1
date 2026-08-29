@@ -155,13 +155,15 @@ module CarnetBuilder
   # correspondent tous les deux (une même chanson peut être reprise par un autre
   # interprète : entrée légitimement différente, pas un doublon). `nil` si rien ne matche.
   def self.find_song(chansons_dir, title, performer)
+    found = find_song_by_folder_name(chansons_dir, title)
+    return found if found
+
     target_title = slugify(title)
     target_performer = slugify(performer)
 
     Dir.children(chansons_dir).sort.each do |entry|
       folder = File.join(chansons_dir, entry)
       next unless File.directory?(folder)
-      return folder if slugify(entry) == target_title
 
       infos_path = FileFinder.find(folder, :inf)
       next unless infos_path
@@ -169,6 +171,18 @@ module CarnetBuilder
       infos = parse_nested_infos(infos_path)
       next unless slugify(infos["title"].to_s) == target_title
       return folder if slugify(infos["performer"].to_s) == target_performer
+    end
+    nil
+  end
+
+  # Sous-partie de `find_song` qui ne dépend QUE du titre (nom de dossier) — utilisée
+  # pour vérifier l'existence AVANT même de demander le performer (`song_creator.rb`).
+  def self.find_song_by_folder_name(chansons_dir, title)
+    target_title = slugify(title)
+    Dir.children(chansons_dir).sort.each do |entry|
+      folder = File.join(chansons_dir, entry)
+      next unless File.directory?(folder)
+      return folder if slugify(entry) == target_title
     end
     nil
   end

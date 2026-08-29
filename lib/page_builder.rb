@@ -13,7 +13,7 @@ require_relative "../tools/tablator/tablator"
 # juste cette chanson"), orchestrant `DSLParser`/le format `.lyr`+`.gab`+`.infos`,
 # `ChordDiagrams` (résolution des diagrammes) et `Layout` (mise en page/dessin).
 module PageBuilder
-  TABLATOR_PATH = File.expand_path("../tools/tablator/tablator.rb", __dir__)
+  TABLATOR_PATHS = Dir.glob(File.expand_path("../tools/tablator/*.rb", __dir__))
 
   # Clés canoniques (anglais) attendues par le gabarit : title/year/lyrics/composer/performer.
   # Table des alias construite en INVERSANT `Loc.get` sur ces clés (Phil, 2026-08-20) :
@@ -306,7 +306,7 @@ module PageBuilder
   # (Phil, 2026-08-27 : SVG jamais régénéré après une correction de tablator.rb, comparé
   # seulement au `.tab` — bug constaté, servait un SVG périmé).
   def self.svg_fresh?(svg_path, *source_paths)
-    File.exist?(svg_path) && (source_paths + [TABLATOR_PATH]).all? { |p| File.mtime(p) <= File.mtime(svg_path) }
+    File.exist?(svg_path) && (source_paths + TABLATOR_PATHS).all? { |p| File.mtime(p) <= File.mtime(svg_path) }
   end
 
   # `name` sans extension — "intro+couplet" (Phil, 2026-08-26) : FUSION, mise bout à

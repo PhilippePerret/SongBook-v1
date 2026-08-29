@@ -2268,6 +2268,21 @@ module Layout
     pt.to_f
   end
 
+  # Centre vertical RÉEL de la portée tab (`data-staff-top`/`data-staff-height`,
+  # `tools/tablator/renderer.rb`), mis à l'échelle `embed_w` — `nil` si absent
+  # (SVG d'une autre origine, ex. `image:`) : le repère "x N" retombe alors sur
+  # le centre de la boîte entière (`build_count_mark`).
+  def self.svg_staff_center_pt(svg_data, embed_w)
+    top = svg_data[/data-staff-top="([\d.]+)"/, 1]
+    height = svg_data[/data-staff-height="([\d.]+)"/, 1]
+    return nil unless top && height
+
+    vb_w, = svg_viewbox(svg_data)
+    return nil if vb_w.zero?
+
+    (top.to_f + height.to_f / 2.0) * (embed_w / vb_w)
+  end
+
   # Échelle COMMUNE à toute la chanson (Phil, 2026-08-27 : "on l'applique à TOUTES") —
   # 1.0 (taille naturelle, donc écartement identique de facto) tant que la plus large
   # des tabs/scores vectoriels tient dans `available_width_pt` ; sinon, un seul facteur
@@ -2316,7 +2331,7 @@ module Layout
   # graphic_top_y) ou nil].
   COUNT_MARK_GAP = 6
 
-  def self.build_count_mark(pdf, count, x0, width, elem_x, elem_w, elem_h)
+  def self.build_count_mark(pdf, count, x0, width, elem_x, elem_w, elem_h, center_h: nil)
     return [0, nil] unless count
 
     text = "x #{count}"
@@ -2327,9 +2342,17 @@ module Layout
 
     if right_space >= text_w + COUNT_MARK_GAP
       at_x = elem_x + elem_w + COUNT_MARK_GAP
+      center = center_h || elem_h / 2.0
+      # Centré sur l'ENCRE RÉELLE du "x" seul (Phil, 2026-08-29 : "c'est le 'x'
+      # qu'il faut aligner, visuellement") — pas l'ascendant de la police
+      # (trop haut, pense aux hampes/accents) ni la boîte du texte entier
+      # ("x N" : le chiffre, plus grand qu'un "x" minuscule, fausserait le
+      # centrage si on prenait SA hauteur).
+      x_top, x_bottom = ink_extent(pdf, "x", TAB_TITLE_SIZE, style: :bold)
       draw = lambda do |pdf_, graphic_top_y|
-        mid_y = graphic_top_y - elem_h / 2.0
-        draw_text_colored(pdf_, text, at: [at_x, mid_y - ascent / 2.0], size: TAB_TITLE_SIZE, style: :bold, color: TAB_TITLE_COLOR)
+        mid_y = graphic_top_y - center
+        baseline_y = mid_y - (x_top + x_bottom) / 2.0
+        draw_text_colored(pdf_, text, at: [at_x, baseline_y], size: TAB_TITLE_SIZE, style: :bold, color: TAB_TITLE_COLOR)
       end
       [0, draw]
     else
@@ -2407,7 +2430,8 @@ module Layout
     end
 
     svg_x = align == "center" ? x0 + [(width - embed_w) / 2.0, 0].max : x0
-    count_extra_h, count_draw = build_count_mark(pdf, count, x0, width, svg_x, embed_w, svg_h)
+    staff_center_h = svg_staff_center_pt(svg_data, embed_w)
+    count_extra_h, count_draw = build_count_mark(pdf, count, x0, width, svg_x, embed_w, svg_h, center_h: staff_center_h)
 
     draw = lambda do |pdf_, y|
       draw_score_title(pdf_, title, svg_x, y - title_ascent) if title

@@ -22,32 +22,34 @@ RSpec.describe "fusion de tablatures (\"+\")" do
     File.write(File.join(@dir, "#{name}.tab"), "---\n#{front}\n---\n#{body}\n")
   end
 
-  describe ".merge_tab_contents" do
-    it "concatène les CORPS, reprend le frontmatter du 1er fichier" do
+  describe ".tab_source_content (nom avec \"+\")" do
+    it "renvoie les contenus SÉPARÉS, dans l'ordre (Phil, 2026-08-28 : chaque source garde sa propre métrique)" do
       write_tab("intro", "title: Intro", "50/4 60/4 |")
       write_tab("couplet", "title: Couplet", "70/4 |")
 
-      merged = PageBuilder.merge_tab_contents([File.join(@dir, "intro.tab"), File.join(@dir, "couplet.tab")])
+      contents, dir, paths = PageBuilder.tab_source_content(@dir, "intro+couplet")
 
-      expect(merged).to eq("---\ntitle: Intro\n---\n50/4 60/4 70/4\n")
+      expect(contents).to eq(["---\ntitle: Intro\n---\n50/4 60/4 |\n", "---\ntitle: Couplet\n---\n70/4 |\n"])
+      expect(dir).to eq(@dir)
+      expect(paths).to eq([File.join(@dir, "intro.tab"), File.join(@dir, "couplet.tab")])
     end
 
-    it "fusion à plus de 2 fichiers" do
-      write_tab("a", "title: A", "10")
-      write_tab("b", "title: B", "20")
-      write_tab("c", "title: C", "30")
-
-      merged = PageBuilder.merge_tab_contents(%w[a b c].map { |n| File.join(@dir, "#{n}.tab") })
-      expect(merged).to eq("---\ntitle: A\n---\n10 20 30\n")
+    it "nil si une source manque" do
+      write_tab("intro", "title: Intro", "50/4")
+      expect(PageBuilder.tab_source_content(@dir, "intro+couplet")).to be_nil
     end
+  end
 
-    it "retire les barres de CHAQUE source (Phil, 2026-08-28 : \"bout à bout sans traitement\")" do
-      write_tab("amorce", "title: Amorce", "s4 |")
-      write_tab("intro", "title: Intro", "50/4 60/4 70/4 80/4")
+  describe "changement de métrique d'une source à l'autre (Phil, 2026-08-28)" do
+    it "chaque mesure garde SA PROPRE métrique, jamais celle du 1er fichier imposée aux autres" do
+      write_tab("amorce", "title: Amorce\nmetrique: 3/4", "s4 50/4 60/4 |")
+      write_tab("intro", "title: Intro", "10/4 20/4 30/4 40/4 |")
 
-      merged = PageBuilder.merge_tab_contents([File.join(@dir, "amorce.tab"), File.join(@dir, "intro.tab")])
+      contents, = PageBuilder.tab_source_content(@dir, "amorce+intro")
+      measures = contents.flat_map { |c| Tablator.parse_source_measures(c).first }
 
-      expect(merged).to eq("---\ntitle: Amorce\n---\ns4 50/4 60/4 70/4 80/4\n")
+      expect(measures[0][:time]).to eq("3/4")
+      expect(measures[1][:time]).to eq("4/4")
     end
   end
 

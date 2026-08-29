@@ -22,9 +22,13 @@ module SongCreator
     prompt = TTY::Prompt.new
 
     title ||= prompt.ask(blue("Titre de la chanson :")) { |q| q.required true }
-    performer ||= prompt.ask(blue("Interprète :")) { |q| q.required true }
 
     songs_dir = AppConfig.songs_dir
+    existing = CarnetBuilder.find_song_by_folder_name(songs_dir, title)
+    return handle_existing_song(prompt, existing) if existing
+
+    performer ||= prompt.ask(blue("Interprète :")) { |q| q.required true }
+
     existing = CarnetBuilder.find_song(songs_dir, title, performer)
     return handle_existing_song(prompt, existing) if existing
 
@@ -67,10 +71,12 @@ module SongCreator
     choice = prompt.select(blue(format(Loc.get("song_exists"), File.basename(folder))), [
       { name: Loc.get("continue_creation"), value: :continue },
       { name: Loc.get("open_folder_question"), value: :open },
+      { name: Loc.get("stop_here"), value: :stop },
     ], show_help: false)
     case choice
     when :continue then resume_existing_song(prompt, folder)
     when :open then open_in_file_manager(folder)
+    when :stop then nil
     end
   end
 

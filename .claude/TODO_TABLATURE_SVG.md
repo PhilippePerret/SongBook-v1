@@ -83,5 +83,13 @@ Décision de Phil, sans appel : SEULS 3 réglages exposés, tout le reste est ca
 ## État (lot 7)
 34/34 traités et vérifiés (tests + régénération réelle de Blackbird, "regular-tablatures" ET "mini-tablatures").
 
+## Lot 8 (2026-08-28, changement de métrique d'une source à l'autre)
+
+- [x] 35. Changement de métrique NON pris en compte à la fusion ("amorce" en 3/4, la suite en 4/4) — cause : `merge_tab_contents` ne gardait QUE le frontmatter du 1er fichier (donc SA métrique imposée à tout le morceau fusionné). Fix architectural : plus de fusion en un seul texte — `tab_source_content` renvoie désormais les contenus des sources SÉPARÉMENT, chacun parsé avec SA PROPRE métrique/unité (`Tablator.parse_source_measures`, chaque mesure porte `:time`/`:target_beats`/`:unit_denom`/`:slots`). `merge_tab_contents` supprimé (obsolète — plus de texte à fusionner).
+- [x] 36. Métrique affichée à la mesure qui change — un indicatif est désormais affiché sur la 1re mesure du morceau ET à CHAQUE mesure dont la métrique diffère de la précédente (`show_time` par mesure), avec une marge dédiée insérée juste avant (même largeur que la marge de système, alignée pareil).
+
+## État (lot 8)
+36/36 traités et vérifiés (tests + régénération réelle de Blackbird — "amorce" 3/4 → "intro" 4/4 affiché correctement, changement visible en cours de système sur INTRO et COUPLET).
+
 ## Question ouverte de Phil (pas encore tranchée, pas implémentée)
 "Comment compter le nombre de mesures par système : en nombre de mesures (variable, une mesure 6/8 ou en double-croches n'a pas la même largeur qu'une 4/4 en croches), ou en nombre de PLUS PETITE DURÉE (le nombre de 'slots' du point 26, `unit:`) ?" Fait, sans trancher : `measures_per_system` (presets) compte des MESURES ; `measure_width` (largeur d'une mesure) ne dépend QUE de la métrique (`target_beats × beat_width`), jamais de `unit:` — deux tabs avec la même métrique mais un `unit:` différent (croche vs double-croche) ont donc AUJOURD'HUI la même largeur de mesure alors que l'une est visuellement 2× plus dense que l'autre. Compter en "plus petite durée" rendrait la largeur d'une mesure proportionnelle à sa densité réelle (une mesure en double-croches deviendrait plus large qu'une en croches, à métrique égale) — cohérent avec l'algo du point 26 qui, lui, utilise déjà `unit:` PAR mesure. Pas implémenté, en attente de décision.
