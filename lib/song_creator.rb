@@ -64,13 +64,13 @@ module SongCreator
   # vides de la fiche existante) ou juste demander à ouvrir son dossier (même question/
   # mécanisme que `offer_open_folder`, appelée en fin de création normale).
   def self.handle_existing_song(prompt, folder)
-    choice = prompt.select(blue(format(Loc.get("song_exists"), folder)), [
+    choice = prompt.select(blue(format(Loc.get("song_exists"), File.basename(folder))), [
       { name: Loc.get("continue_creation"), value: :continue },
       { name: Loc.get("open_folder_question"), value: :open },
     ], show_help: false)
     case choice
     when :continue then resume_existing_song(prompt, folder)
-    when :open then offer_open_folder(prompt, folder)
+    when :open then open_in_file_manager(folder)
     end
   end
 

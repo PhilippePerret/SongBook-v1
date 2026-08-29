@@ -309,21 +309,24 @@ module PageBuilder
     File.exist?(svg_path) && (source_paths + [TABLATOR_PATH]).all? { |p| File.mtime(p) <= File.mtime(svg_path) }
   end
 
-  # `name` sans extension — "intro+couplet" (Phil, 2026-08-26) : FUSION, pure mise bout
-  # à bout des CODES de "intro.tab" et "couplet.tab" (frontmatter du 1er fichier repris
-  # tel quel, corps concaténés). Renvoie [contenu, dossier_de_sortie, .tab source(s)],
-  # ou nil si une source manque.
+  # `name` sans extension — "intro+couplet" (Phil, 2026-08-26) : FUSION, mise bout à
+  # bout de "intro.tab" et "couplet.tab" ; chaque source garde SA PROPRE métrique/
+  # unité (Phil, 2026-08-28 : "changement de métrique d'un segment à l'autre" —
+  # "amorce" en 3/4, la suite en 4/4 — jamais celle du 1er fichier imposée aux
+  # autres, voir `Tablator.parse_source_measures`). Renvoie [contenus (liste, 1
+  # par source, dans l'ordre), dossier_de_sortie, .tab source(s)], ou nil si une
+  # source manque.
   def self.tab_source_content(folder, name)
     if name.include?("+")
       tab_paths = name.split("+").map { |n| locate_resource(folder, "#{n}.tab") }
       return nil unless tab_paths.all?
 
-      [merge_tab_contents(tab_paths), File.dirname(tab_paths.first), tab_paths]
+      [tab_paths.map { |p| File.read(p) }, File.dirname(tab_paths.first), tab_paths]
     else
       tab_path = locate_resource(folder, "#{name}.tab")
       return nil unless tab_path
 
-      [File.read(tab_path), File.dirname(tab_path), [tab_path]]
+      [[File.read(tab_path)], File.dirname(tab_path), [tab_path]]
     end
   end
 
@@ -379,28 +382,6 @@ module PageBuilder
 
     Layout.conflict!("#{kind} \"#{name}\" introuvable (#{name}.{#{RESOURCE_EXTENSIONS.join(",")}})", solution: "élément ignoré")
     nil
-  end
-
-  # `---\n<frontmatter yaml>\n---\n<corps>` (même format que `Tablator.parse_frontmatter`,
-  # pas rechargé ici — juste une découpe texte).
-  TAB_FRONTMATTER_RE = /\A(---\n.*?\n---\n)?(.*)\z/m
-
-  # Fusion "bout à bout SANS traitement" (Phil, 2026-08-28) : les barres de CHAQUE
-  # source sont retirées avant la concaténation des corps — sinon la barre de fin
-  # d'un fichier pensé pour être autonome (ex. "amorce", 1 seul temps) force une
-  # coupure de mesure au point de jonction, et produit une mesure quasi vide/
-  # absurde en tête du morceau fusionné (bug constaté sur "amorce+intro"). Seule
-  # la segmentation par durée/métrique (`Tablator.parse_measures`) décide des
-  # mesures du morceau fusionné, jamais les barres d'origine des fichiers sources.
-  # `Tablator.strip_comments` d'abord (pas `Tablator.tokenize`, qui tokenise aussi
-  # les barres — ici on reconstruit un CORPS texte, pas des tokens) : sans ça, un
-  # commentaire non terminé par une fin de ligne (aplati par le `split(/\s+/)`
-  # qui suit) avalerait le reste du corps.
-  def self.merge_tab_contents(tab_paths)
-    parts = tab_paths.map { |p| TAB_FRONTMATTER_RE.match(File.read(p)).captures }
-    frontmatter = parts.first.first.to_s
-    body = parts.map { |_, b| Tablator.strip_comments(b.to_s).split(/\s+/).reject { |t| Tablator::BAR_RE.match?(t) }.join(" ") }.join(" ")
-    "#{frontmatter}#{body}\n"
   end
 
   # Valeurs par défaut (Phil, 2026-08-17 : "le moins de définitions possibles" — un `.gab`
