@@ -11,7 +11,10 @@
                     | <<song-creation, Création d'une chanson>>.
                     | <<song-assistant, **Assistant pour la création** de la chanson>>.
                     | <<song-chords-assistant, Assistant pour la **pose des accords**>>.
-.2* | Paroles       | <<lyrics-file, le fichier des paroles de la chanson>>.
+.3* | Diagrammes    | <<diags, Généralités sur les diags (diagrammes d'accord)>>
+                    | <<diags-list, Liste des diagrammes existants et choix>>
+                    | <<song-schemas, Diagrammes propres à la chanson>>
+.3* | Paroles       | <<lyrics-file, le fichier des paroles de la chanson>>.
                     | <<song-chords-assistant, Assistant pour la **pose des accords**>>.
                     | <<gabarit-file, disposition des paroles sur la page>>.
 |====

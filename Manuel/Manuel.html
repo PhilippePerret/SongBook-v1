@@ -696,11 +696,48 @@ Si c&#8217;est votre première chanson, <strong><em>SongBook</em></strong> vous 
 <div class="paragraph">
 <p>Mais vous pouvez tout aussi bien créer cette chanson « à la main ».</p>
 </div>
+<div class="ulist">
+<ul>
+<li>
+<p>Créez d&#8217;abord un <a href="#song-folder">dossier conforme</a>, dans votre dossier principal contenant toutes vos chansons.</p>
+</li>
+<li>
+<p>éditez le fichier <code>.lyrics</code> pour y mettre les paroles et les accords (<code>&gt; songbook edit lyrics --song "titre"</code>).</p>
+</li>
+<li>
+<p>éditez le fichier <code>.infos</code> pour y mettre les informations (méta-données) (<code>&gt; songbook edit infos --song "titre"</code>).</p>
+</li>
+<li>
+<p>si besoin, éditez le fichier <code>.gabarit</code> pour <a href="#gabarit-file">définir le gabarit de la chanson</a>(<code>&gt; songbook edit gabarit --song "titre"</code>).</p>
+</li>
+<li>
+<p>lancer la construction du fichier PDF (<code>&gt; songbook build "titre"</code>).</p>
+</li>
+<li>
+<p>ajuster les paramètres du gabarit au besoin pour obtenir un affichage optimal (attention, cet affichage peut être différent selon le carnet choisi et si la chanson est gravée hors carnet).</p>
+</li>
+</ul>
+</div>
 </div>
 <div class="sect2">
 <h3 id="song-folder">Dossier de la chanson</h3>
 <div class="paragraph">
-<p>Une chanson doit être contenue dans un dossier qui contient les éléments qui sont indispensables à la définir. La structure classique est :</p>
+<p>Une chanson doit être contenue dans un dossier qui contient les éléments qui sont indispensables à la définir.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+Une chanson pouvant appartenir à plusieurs carnets, il est bon de la créer <em>en dehors</em> de tout dossier de carnet, même si c&#8217;est tout à fait possible.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>La structure classique d&#8217;un dossier de chanson est :</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -709,7 +746,7 @@ Si c&#8217;est votre première chanson, <strong><em>SongBook</em></strong> vous 
   |— titres-et-gens.infos
   | [Optionel]
   |— scores/      # Dossier des partitions et tablatures
-  |— images/      # Dosssier des images
+  |— images/      # Dossier des images
   |— format.gab
   |— configuration.config</pre>
 </div>
@@ -1115,6 +1152,12 @@ In /em:this proud land</pre>
 </div>
 <div class="paragraph">
 <p>Choisissez bien le nom pour qu&#8217;il « n&#8217;écrase » pas un accord existant déjà (<em>rassurez-vous cependant, il ne sera pas vraiment « écrasé »</em>). C&#8217;est ce nom que vous devrez utiliser pour le fichier <code>.lyr</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="diags-position">Placement des diagrammes</h4>
+<div class="paragraph">
+<p>Pour placer les diagrammes dans la chanson ou le carnet, utiliser le <a href="#gabarit">le fichier Gabarit</a> de la chanson ou les règles du <a href="#songbook-layout layout (mise en page)">[songbook-layout layout (mise en page)]</a> du carnet.</p>
 </div>
 </div>
 </div>
@@ -2001,7 +2044,10 @@ Noter que s&#8217;il y des options réglées pour le carnet en construction et d
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>songbook tdm "titre approximatif"</pre>
+<pre>songbook tdm "titre approximatif"
+songbook open tdm "titre"
+songbook open toc
+songbook edit tdm</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2041,7 +2087,8 @@ Noter que s&#8217;il y des options réglées pour le carnet en construction et d
 <div class="sect2">
 <h3 id="songbook-schemas">Diagrammes propres</h3>
 <div class="paragraph">
-<p>Le fichier <code>.schemas</code> (ou <code>.sch</code>) permet de définir des diagrammes propres au seul carnet qui contient ce fichier.</p>
+<p>Il n&#8217;est pas raisonnable de ne concevoir des diags juste pour un carnet, <em><strong>SongBook</strong></em> ne permet donc pas de le faire. Les diags doivent être définis pour l&#8217;application elle-même ou, s&#8217;ils sont vraiment propres à une chanson, dans le dossier
+Le fichier <code>.schemas</code> (ou <code>.sch</code>) permet de définir des diagrammes propres au seul carnet qui contient ce fichier.</p>
 </div>
 <div class="paragraph">
 <p>En général, il est préférable de définir ces schémas (et les SVG qui en résultent) directement <a href="#song-schemas">dans la chanson</a> afin que tous les carnets puissent en profiter (voir justement cette partie pour savoir comment les utiliser).</p>
@@ -2621,10 +2668,19 @@ keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#song-creation">Création d&#8217;une chanson</a>.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#song-assistant">Assistant pour la <strong>création</strong> de la chanson</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#song-assistant"><strong>Assistant pour la création</strong> de la chanson</a>.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#song-chords-assistant">Assistant pour la pose des accords</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#song-chords-assistant">Assistant pour la <strong>pose des accords</strong></a>.
+.2*</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Paroles</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#lyrics-file">le fichier des paroles de la chanson</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#song-chords-assistant">Assistant pour la <strong>pose des accords</strong></a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#gabarit-file">disposition des paroles sur la page</a>.</p></td>
 </tr>
 </tbody>
 </table>
