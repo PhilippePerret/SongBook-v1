@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -115 420 445" font-family="sans-serif">
-<text x="150" y="-60" dy="0.35em" text-anchor="middle"><tspan font-size="56" font-weight="bold">B</tspan><tspan font-size="34" font-weight="bold" dx="2">b6</tspan></text>
+<text x="150" y="-60" dy="0.35em" text-anchor="middle"><tspan font-size="56" font-weight="bold">B</tspan><tspan font-size="56" font-weight="bold" dx="-14">♭</tspan><tspan font-size="56" font-weight="bold"></tspan><tspan font-size="48" font-weight="bold" dx="-7">6</tspan></text>
 <line x1="0" y1="0" x2="300" y2="0" stroke="black" stroke-width="3"/>
 <line x1="0" y1="51" x2="300" y2="51" stroke="black" stroke-width="3"/>
 <line x1="0" y1="102" x2="300" y2="102" stroke="black" stroke-width="3"/>
@@ -12,8 +12,6 @@
 <line x1="225" y1="0" x2="225" y2="255" stroke="black" stroke-width="3"/>
 <line x1="300" y1="0" x2="300" y2="255" stroke="black" stroke-width="3"/>
 <text y="-47" dy="0.35em" font-family="Georgia, serif" text-anchor="middle"><tspan x="37.5" font-size="40" font-weight="bold">6</tspan><tspan font-size="28" font-weight="bold" dy="-0.5em">e</tspan></text>
-<circle cx="37.5" cy="255" r="22" fill="#000000"/>
-<text x="37.5" y="255" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">1</text>
 <circle cx="187.5" cy="204" r="22" fill="#000000"/>
 <text x="187.5" y="204" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">3</text>
 <line x1="-34.89949493661167" y1="143.10050506338834" x2="-15.100505063388335" y2="162.89949493661166" stroke="black" stroke-width="3"/>
@@ -22,6 +20,6 @@
 <text x="112.5" y="102" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">2</text>
 <circle cx="187.5" cy="51" r="22" fill="#000000"/>
 <text x="187.5" y="51" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">4</text>
-<circle cx="37.5" cy="0" r="22" fill="#000000"/>
-<text x="37.5" y="0" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">1</text>
+<line x1="37.5" y1="0" x2="37.5" y2="255" stroke="black" stroke-width="36" stroke-linecap="round"/>
+<text x="37.5" y="127.5" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">1</text>
 </svg>
