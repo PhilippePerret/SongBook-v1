@@ -208,6 +208,10 @@ module Layout
   # '/' qui les sépare"). Petit espace de chaque côté, PAS un vrai espace de mot (juste de
   # quoi respirer — "éloigner à peine, 3pt max" au total, 2 côtés).
   CHORD_SLASH_GAP = 1.5
+  # Basse SEULE (ex. "[fd]" -> "/fa♯", rien avant le "/") : note rapprochée du "/"
+  # (Phil, 2026-08-30) — NE concerne PAS un accord+basse ("Bb6/C"), qui garde
+  # `CHORD_SLASH_GAP` normal des deux côtés.
+  CHORD_SLASH_GAP_BASS_ONLY = 0.5
   DIAG_W = 60
   DIAG_TEXT_GAP = 26
   # RAD3 : largeur plancher sous laquelle un diag ne doit jamais être réduit (valeur
@@ -1142,7 +1146,9 @@ module Layout
       if row.size == 2
         block, nxt = row
         draw_block(pdf_, block, x0 + h_gutter, y, col1_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
-        draw_block(pdf_, nxt, x0 + h_gutter + col1_w + h_gutter, y, col2_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
+        block1_w = block_width(pdf_, block)
+        col2_x = [x0 + h_gutter + col1_w + h_gutter, x0 + h_gutter + block1_w + max_h_dist].min
+        draw_block(pdf_, nxt, col2_x, y, col2_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
       else
         block = row[0]
         centered = block.directives[:block_align] != "left"
@@ -1655,8 +1661,9 @@ module Layout
 
   def self.slash_label_width(pdf, text, size)
     parts = text.split("/")
+    trailing_gap = parts.first.to_s.empty? ? CHORD_SLASH_GAP_BASS_ONLY : CHORD_SLASH_GAP
     parts.sum { |p| pdf.width_of(p, size: size, style: :bold) } +
-      (parts.length - 1) * (pdf.width_of("/", size: size, style: :bold) + 2 * CHORD_SLASH_GAP)
+      (parts.length - 1) * (pdf.width_of("/", size: size, style: :bold) + CHORD_SLASH_GAP + trailing_gap)
   end
 
   def self.draw_chord_label(pdf, chord, x, y, size: CHORD_SIZE)
@@ -1688,7 +1695,8 @@ module Layout
 
       cx += CHORD_SLASH_GAP
       engrave(bottom: y - descent, context: "accord (slash) séparateur") { pdf.draw_text "/", at: [cx, y], size: size, style: :bold }
-      cx += pdf.width_of("/", size: size, style: :bold) + CHORD_SLASH_GAP
+      trailing_gap = part.empty? ? CHORD_SLASH_GAP_BASS_ONLY : CHORD_SLASH_GAP
+      cx += pdf.width_of("/", size: size, style: :bold) + trailing_gap
     end
   end
 
