@@ -19,7 +19,7 @@ module SongCreator
   extend AnsiColors
 
   def self.run(title = nil, performer = nil)
-    prompt = TTY::Prompt.new
+    prompt = colored_prompt
 
     title ||= prompt.ask(blue("Titre de la chanson :")) { |q| q.required true }
 

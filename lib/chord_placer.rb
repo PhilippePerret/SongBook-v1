@@ -193,7 +193,7 @@ module ChordPlacer
     # Terminal déjà restauré ici (ensure de `with_raw_terminal`, qu'on sorte par
     # `break` ou par Ctrl+C). Rien demandé si RIEN n'a changé (Phil) — sinon TOUJOURS
     # soumis à validation, jamais un enregistrement silencieux.
-    save.call if dirty && TTY::Prompt.new.yes?(blue(Loc.get("save_changes_question")), default: false)
+    save.call if dirty && colored_prompt.yes?(blue(Loc.get("save_changes_question")), default: false)
   end
 
   def self.editable_line?(line)
@@ -496,7 +496,7 @@ module ChordPlacer
   def self.confirm_delete_all
     print "\e>"
     system("stty icanon echo")
-    result = TTY::Prompt.new.yes?(blue(Loc.get("confirm_delete_all_chords")))
+    result = colored_prompt.yes?(blue(Loc.get("confirm_delete_all_chords")))
     system("stty -icanon -echo min 1 time 0")
     print "\e="
     result

@@ -25,6 +25,10 @@ def touche(s) = "#{ORANGE}#{s}#{RESET}"
 # Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil).
 def blue(s) = "#{AnsiColors::BLUE}#{s}#{AnsiColors::RESET}"
 
+# Notre bleu comme couleur de l'item survolé, pas le vert par défaut de la gem
+# (réservé aux résultats/succès) — voir `AnsiColors#colored_prompt`.
+def colored_prompt = TTY::Prompt.new(active_color: ->(s) { blue(s) })
+
 HELP_TEXT = <<~TXT
   #{GRAS}diag#{RESET} — saisie assistée du schéma d'un diagramme d'accord
 
@@ -141,7 +145,7 @@ class DiagSchem
   # redondance. Si rien enregistré ET que `-o`/`--output` n'a pas déjà produit le
   # SVG, propose (à défaut) de le produire quand même dans le dossier courant.
   def proposer_enregistrement
-    prompt = TTY::Prompt.new
+    prompt = colored_prompt
     enregistrer_dans_application(prompt)
     return if @svg_path || @output_svg
 

@@ -19,7 +19,7 @@ module SongbookCreator
   extend AnsiColors
 
   def self.run(title = nil)
-    prompt = TTY::Prompt.new
+    prompt = colored_prompt
 
     title ||= prompt.ask(blue("Titre du carnet :")) { |q| q.required true }
     folder_name = prompt.ask(blue("Nom du dossier :"), default: "Carnet-#{CarnetBuilder.slugify(title)}") { |q| q.required true }

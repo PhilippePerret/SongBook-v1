@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "tty-prompt"
+
 # Couleurs ANSI partagées entre les assistants interactifs — évite qu'un même bleu
 # (#00b9ff, Phil) soit redéfini ailleurs sous une autre forme.
 module AnsiColors
@@ -25,5 +27,13 @@ module AnsiColors
 
   def gray(text)
     "#{GRAY}#{text}#{RESET}"
+  end
+
+  # `TTY::Prompt.new` avec notre bleu comme couleur de l'item survolé (Phil, 2026-08-30
+  # — défaut de la gem `active_color: :green`, trompeur : le vert est réservé aux
+  # messages de résultat/succès dans cette appli, `success`). À utiliser PARTOUT à la
+  # place de `TTY::Prompt.new` nu.
+  def colored_prompt
+    TTY::Prompt.new(active_color: ->(s) { blue(s) })
   end
 end

@@ -2,6 +2,7 @@
 
 require "readline"
 require "shellwords"
+require "io/console"
 require "tty-prompt"
 require_relative "carnet_builder"
 require_relative "layout"
@@ -21,6 +22,7 @@ require_relative "idml_cover_builder"
 require_relative "kdp"
 require_relative "missing_diags"
 require_relative "songs_list"
+require_relative "tdm_creator"
 require_relative "../tools/DiagSchem/diagschem"
 require_relative "../tools/ChordDiagram/generate_chord_diagrams"
 
@@ -200,7 +202,7 @@ module CLI
             { name: missing_names ? "#{key} (#{songs.join(", ")})" : key, value: key }
           end
           begin
-            TTY::Prompt.new.multi_select(message, choices, echo: false, show_help: false, per_page: 20)
+            colored_prompt.multi_select(message, choices, echo: false, show_help: false, per_page: 20)
           rescue Interrupt
             puts
           end
@@ -215,9 +217,9 @@ module CLI
 
       choices = entries.map { |e| { name: SongsList.label(e), value: File.join(AppConfig.songs_dir, e[:folder]) } }
       begin
-        folder = TTY::Prompt.new.select(blue(Loc.get("songs_pick_question")), choices, filter: true, per_page: 20, show_help: false)
+        folder = colored_prompt.select(blue(Loc.get("songs_pick_question")), choices, filter: true, per_page: 20, show_help: false)
         Session.song = folder
-        action = TTY::Prompt.new.select(blue(format(Loc.get("songs_action_question"), SongResolver.display_name(folder))), [
+        action = colored_prompt.select(blue(format(Loc.get("songs_action_question"), SongResolver.display_name(folder))), [
           { name: Loc.get("songs_action_open"), value: %w[open song] },
           { name: Loc.get("songs_action_edit_chords"), value: %w[edit chords] },
           { name: Loc.get("songs_action_edit_tab"), value: %w[edit tab] },
@@ -278,21 +280,7 @@ module CLI
         end
       when "tdm", "toc"
         begin
-          carnet_folder = if Session.carnet
-            Session.carnet
-          else
-            name = songs_carnet_opt || TTY::Prompt.new.ask(blue(Loc.get("tdm_carnet_name_question"))).to_s.strip
-            abort "aucun nom donné" if name.to_s.strip.empty?
-
-            resolve_or_create_carnet_folder(name)
-          end
-          FileUtils.mkdir_p(carnet_folder)
-
-          chosen = pick_songs_for_tdm(SongsList.sort(SongsList.entries, "alpha"))
-          tdm_path = FileFinder.find(carnet_folder, :tdm) || File.join(carnet_folder, "c.tdm")
-          File.write(tdm_path, chosen.map { |e| "- #{e[:infos]["id"]}" }.join("\n") << "\n")
-          Session.carnet = carnet_folder
-          puts success("👍 #{format(Loc.get("tdm_created"), raccourci(tdm_path))}")
+          TdmCreator.run(carnet_opt: songs_carnet_opt)
         rescue Interrupt
           puts
         end
@@ -467,7 +455,7 @@ module CLI
           abort "aucun fichier connu trouvé dans #{song_folder}" if choices.empty?
 
           puts "Ouverture de « #{title} »"
-          selected = TTY::Prompt.new.multi_select(blue(Loc.get("open_which_files")), choices, default: defaults, echo: false, show_help: false)
+          selected = colored_prompt.multi_select(blue(Loc.get("open_which_files")), choices, default: defaults, echo: false, show_help: false)
           files = selected - [:folder]
           system("open", "-a", AppConfig.user_song_editor, *files) unless files.empty?
           SongCreator.open_in_file_manager(song_folder) if selected.include?(:folder)
@@ -565,10 +553,10 @@ module CLI
 
           if Layout.log_conflict_count.to_i.positive?
             puts error("#{format(Loc.get("song_build_conflicts_count"), Layout.log_conflict_count)}")
-            system("open", Layout.conflict_log_path) if TTY::Prompt.new.yes?(blue(Loc.get("song_build_open_conflicts_question")))
+            system("open", Layout.conflict_log_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_conflicts_question")))
           end
 
-          system("open", pdf_path) if TTY::Prompt.new.yes?(blue(Loc.get("song_build_open_pdf_question")))
+          system("open", pdf_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_pdf_question")))
         end
       rescue Interrupt
         puts
@@ -625,54 +613,6 @@ module CLI
 
   def self.resolve_carnet_folder(name)
     SongResolver.resolve_carnet_folder(name)
-  end
-
-  # Pendant de `resolve_carnet_folder`, mais pour `create tdm` (Phil, 2026-08-30) : un nom
-  # sans correspondance ne fait PAS `abort` — le carnet est simplement à créer (dossier
-  # pas encore présent).
-  def self.resolve_or_create_carnet_folder(name)
-    return File.expand_path(name) if Dir.exist?(File.expand_path(name))
-
-    songbooks_dir = AppConfig.songbooks_dir
-    matches = CarnetBuilder.find_carnet_by_title(songbooks_dir, name)
-    return matches.first[:folder] if matches.size == 1
-    return SongResolver.select_song(nil, matches) if matches.size > 1
-
-    File.join(songbooks_dir, name)
-  end
-
-  # Boucle "un par un" (Phil, 2026-08-30) : PAS un `multi_select` classique — les
-  # chansons déjà choisies retirées de la liste proposée (jamais perdues de vue si le
-  # filtre les aurait fait disparaître) et affichées à part, dans un panneau FIXE
-  # (nombre + titres) réaffiché à chaque tour, avec une option pour en retirer une.
-  def self.pick_songs_for_tdm(entries)
-    label = ->(e) { e[:infos]["performer"].to_s.strip.empty? ? e[:infos]["title"].to_s : "#{e[:infos]["title"]} (#{e[:infos]["performer"]})" }
-    chosen = []
-    remaining = entries.dup
-    loop do
-      system("clear")
-      puts blue(format(Loc.get("tdm_chosen_count"), chosen.size))
-      chosen.each { |e| puts "  - #{e[:infos]["title"]}" }
-      puts
-
-      choices = remaining.map { |e| { name: label.call(e), value: e } }
-      choices << { name: gray(Loc.get("tdm_remove_option")), value: :remove } unless chosen.empty?
-      choices << { name: Loc.get("tdm_done_option"), value: :done }
-      picked = TTY::Prompt.new.select(blue(Loc.get("tdm_pick_songs_question")), choices, filter: true, per_page: 20, show_help: false)
-
-      case picked
-      when :done
-        break
-      when :remove
-        removed = TTY::Prompt.new.select(blue(Loc.get("tdm_remove_question")), chosen.map { |e| { name: label.call(e), value: e } }, filter: true, per_page: 20, show_help: false)
-        chosen.delete(removed)
-        remaining << removed
-      else
-        chosen << picked
-        remaining.delete(picked)
-      end
-    end
-    chosen
   end
 
   # Contexte courant pour `open folder`/`infos`/`gabarit`/`pdf` — chanson PRIORITAIRE
@@ -757,7 +697,7 @@ module CLI
   # (question bleue) plutôt que de simplement refuser — créé vide puis renvoyé (l'appel
   # `system("open", ...)` suivant l'ouvre normalement). `nil` si refusé.
   def self.propose_create_file(folder, ext)
-    return nil unless TTY::Prompt.new.yes?(blue(format(Loc.get("create_missing_file_question"), ext)))
+    return nil unless colored_prompt.yes?(blue(format(Loc.get("create_missing_file_question"), ext)))
 
     path = File.join(folder, "#{most_common_root(folder)}.#{ext}")
     File.write(path, "")
@@ -828,7 +768,7 @@ module CLI
 
   def self.build_not_found_menu(songs_dir, songbooks_dir)
     puts Loc.get("build_nothing_found")
-    choice = TTY::Prompt.new.select(blue(Loc.get("build_what_to_build")), [
+    choice = colored_prompt.select(blue(Loc.get("build_what_to_build")), [
       { name: Loc.get("build_choice_carnet"), value: :carnet },
       { name: Loc.get("build_choice_song"), value: :song },
       { name: Loc.get("build_choice_cancel"), value: nil },

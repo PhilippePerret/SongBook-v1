@@ -48,7 +48,7 @@ module SongResolver
   def self.select_song(message, songs)
     choices = songs.map { |s| { name: s[:title] ? "#{s[:name]} (#{s[:title]})" : s[:name], value: s[:folder] } }
     choices << { name: Loc.get("none_of_these"), value: nil }
-    folder = TTY::Prompt.new.select(blue(message.to_s), choices, show_help: false, filter: true)
+    folder = colored_prompt.select(blue(message.to_s), choices, show_help: false, filter: true)
     abort "aucune correspondance retenue" unless folder
 
     folder
