@@ -193,7 +193,7 @@ module ChordPlacer
     # Terminal déjà restauré ici (ensure de `with_raw_terminal`, qu'on sorte par
     # `break` ou par Ctrl+C). Rien demandé si RIEN n'a changé (Phil) — sinon TOUJOURS
     # soumis à validation, jamais un enregistrement silencieux.
-    save.call if dirty && TTY::Prompt.new.yes?(blue(Loc.get("save_changes_question")))
+    save.call if dirty && TTY::Prompt.new.yes?(blue(Loc.get("save_changes_question")), default: false)
   end
 
   def self.editable_line?(line)

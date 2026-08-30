@@ -315,7 +315,7 @@ module TablatorAssistant
         return
       end
 
-      return if ask_before_save && !TTY::Prompt.new.yes?(blue(Loc.get("save_changes_question")))
+      return if ask_before_save && !TTY::Prompt.new.yes?(blue(Loc.get("save_changes_question")), default: false)
 
       meta["metrique"] = metrique if metrique
       out_path = save_tablature(tokens, meta, unit, edit_path)
