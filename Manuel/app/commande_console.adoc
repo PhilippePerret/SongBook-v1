@@ -14,5 +14,5 @@ Dans cette aide, vous saurez que l'on se trouve en mode interactif lorsqu'il y a
 Utiliser `songbook -h` ou `songbook --help` pour obtenir une aide rapide (moins détaillée qu'ici) — ou simplement `-h` en mode interactif.
 
 ----
-🎸> --help
+🎸> help
 ----

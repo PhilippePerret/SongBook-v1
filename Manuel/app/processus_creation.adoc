@@ -9,7 +9,7 @@ Le **processus classique de création d'un carnet** est le suivant (cette liste 
 - s'ils n'existent pas vous créez <<diags, les diagrammes>> d'accord propres à ces chansons (avec ou sans l'<<diag-schema-producer, assistant>>),
 - vous créez <<tablature, les tablatures>>, <<score, les partitions>> dont elles ont besoin,
 - vous établissez <<gabarit-file, le gabarit de la chanson>> pour y injecter tous ces éléments et les disposer,
-- vous créez <<songbook-tdm, la table des matières du carnet>>, donc la liste des chansons qu'il doit contenir,
+- vous créez <<songbook-tdm-assistant, la table des matières du carnet à l'aide de l'assistant>>, donc la liste des chansons qu'il doit contenir,
 - vous définissez <<songbook-infos, les caractéristiques du carnet>> et peut-être même <<songbook-layout, sa mise en page>> (ou vous adoptez une <<app-layouts, mise en page déjà définie>>),
 - vous <<songbook-run-build, lancez le processus de fabrication du carnet>>,
 - vous ajustez <<gabarit-file, les gabarits des chansons>> qui peuvent poser problème,

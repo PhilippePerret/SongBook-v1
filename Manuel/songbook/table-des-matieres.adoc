@@ -25,10 +25,11 @@ Imaginons un carnet des tubes des années 1986 qui portera le nom `Carnets/Carne
 ...
 ----
 
-- Le premier fait référence à l'identifiant,(`id`) de la chanson dans son fichier `.infos`.
-- le second fait référence au titre (`title`) dans le même fichier `.infos`,
-- le troisième fait référence au nom du dossier dans le dossier `Chansons`.
+* Le premier fait référence à l'identifiant,(`id`) de la chanson dans son fichier `.infos`.
+* le second fait référence au titre (`title`) dans le même fichier `.infos`,
+* le troisième fait référence au nom du dossier dans le dossier `Chansons`.
  
+ [[songbook-tdm-assistant]]
  ==== Construction assistée d'une table des matières ====
  
  ----
@@ -36,3 +37,5 @@ Imaginons un carnet des tubes des années 1986 qui portera le nom `Carnets/Carne
  ----
  
  Cette commande afficher la liste des chansons et permet de les choisir pour former une table des matières.
+ 
+ Penser à filtrer la liste des chansons pour les retrouver plus vite, surtout si votre liste est longue.

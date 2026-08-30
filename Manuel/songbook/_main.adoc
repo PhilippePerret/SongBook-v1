@@ -7,6 +7,9 @@ include::presentation.adoc[]
 // Assistant
 include::assistant.adoc[]
 
+// Création du carnet
+include::creation.adoc[]
+
 // Fichier des informations
 include::infos.adoc[]
 // Options

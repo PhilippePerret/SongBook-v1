@@ -1,0 +1,11 @@
+[[songbook-creation]]
+=== Création du carnet de chant ===
+
+Une fois <<song-creation, vos chansons créées>>, vous pouvez les rassembler dans un carnet de chant.
+
+> Notez que vous n'avez même pas besoin d'avoir des chansons pour créer votre premier carnet de chant.
+
+La création du carnet comprend ces étapes (notez que beaucoup d'entre elles ne sont pas à faire __à la main__ car elles sont automatisées grâce aux nombreux assistants) :
+
+* Création du dossier contenant tous les carnets, s'il n'est pas encore fait,
+* Création du dossier du carnet de chant

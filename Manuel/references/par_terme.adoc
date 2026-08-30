@@ -7,6 +7,10 @@
 .2+| ** Accords**   | <<song-chords-assistant, Assistant pour la pose des accords>>.
                     | <<chords-syntax, Syntaxe des accords>>.
 
+.3+| **Carnet de chant**  | <<song-creation, Création du carnet de chant>>.
+                          | <<songbook-best-practices, Meilleures pratiques pour la création du cahier de chant>>.
+                          | <<songbook-tdm-assistant, Assistant de construction de **table des matières**>>.
+                          
 .5+| **Chanson**    | <<song, Tout sur les chansons>>.
                     | <<song-creation, Création d'une chanson>>.
                     | <<song-assistant, **Assistant pour la création** de la chanson>>.
