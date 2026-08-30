@@ -1,0 +1,20 @@
+[[riffs, riffs]]
+==== Riffs, les « petits bouts de musique » ====
+
+**CETTE PARTIE N'EST PAS IMPLÉMENTE, IL FAUT ENCORE Y RÉFLÉCHIR**
+
+Il est possible, grâce à la balise `/riff ...:` d'ajouter un petit bout de musique, un __riff__ par exemple, comme dans la chanson __Le Sud__ (riff de début) ou la chanson __All You Need Is Love__ (riff de fin):
+
+----
+# Le Sud
+/riff intro: _ C'est un en/c:droit qui res/c/b:semble
+----
+
+----
+# All You Need Is Love
+/f:Love, /c:love, /dm7:love /riff riff: _
+----
+
+Pour ces deux riffs, on doit trouver les fichiers `riff.tab` (tablature) ou `riff.score` (partition) et `intro.tab` ou `intro.score` quelque part dans le dossier de la chanson.
+
+Pour la définition d'une tablature ou d'une partition, voir <<tablature>> et <<score>>.

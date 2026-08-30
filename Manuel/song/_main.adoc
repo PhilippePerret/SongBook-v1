@@ -24,6 +24,9 @@ include::chords.adoc[]
 // Diagrammes
 include::diags.adoc[]
 
+// Les riffs de musique
+include::riffs.adoc[]
+
 // Tablatures et partitions
 include::tablas-et-scores.adoc[]
 
