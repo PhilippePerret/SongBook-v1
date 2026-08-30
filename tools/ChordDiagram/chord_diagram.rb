@@ -105,9 +105,9 @@ module ChordDiagram
     # pour ♯), et ce qui suit (qualité) tiré vers le ♭ à son tour (-7), sinon ça flotte.
     bemol = root.end_with?("♭")
     main = name_tspans(root, size: 56, accidental_dx: bemol ? -14 : -6)
-    main += name_tspans(quality, size: 34, accidental_dx: 2, leading_dx: bemol ? -7 : 2) unless quality.empty?
+    main += name_tspans(quality, size: 48, accidental_dx: 2, leading_dx: bemol ? -7 : 2) unless quality.empty?
     if bass
-      %(<text x="150" y="-60" dy="0.35em" text-anchor="middle">#{main}<tspan font-size="34" font-weight="bold" dx="6">/</tspan>#{name_tspans(bass, size: 34, accidental_dx: 2, leading_dx: 4)}</text>\n)
+      %(<text x="150" y="-60" dy="0.35em" text-anchor="middle">#{main}<tspan font-size="48" font-weight="bold" dx="6">/</tspan>#{name_tspans(bass, size: 48, accidental_dx: 2, leading_dx: 4)}</text>\n)
     else
       %(<text x="150" y="-60" dy="0.35em" text-anchor="middle">#{main}</text>\n)
     end

@@ -1,4 +1,5 @@
 require_relative "chord_diagram"
+require_relative "../../lib/transpose"
 
 # Lit les `schemas.txt` (un par dossier de lettre, format décidé par Phil 2026-08-17 :
 # "<Nom>-<case> : <6 tokens>", un token par corde 1(aiguë/e)..6(grave/E), chaque token
@@ -103,7 +104,7 @@ module GenerateChordDiagrams
   def self.build(name:, tokens_str:)
     root, bass = parse_name(name)
     d = decode(tokens_str)
-    ChordDiagram.build(name: display_name(root), positions: d[:positions], fingers: d[:fingers], barre: d[:barre], bass: bass && display_name(bass), optionals: d[:optionals])
+    ChordDiagram.build(name: display_name(root), positions: d[:positions], fingers: d[:fingers], barre: d[:barre], bass: bass && Transpose.italian_bass_symbol(bass), optionals: d[:optionals])
   end
 
   # Plus de versionnement (Phil, 2026-08-18) : un accord à actualiser se met à

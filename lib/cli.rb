@@ -65,7 +65,7 @@ module CLI
 
       line = line.strip
       next if line.empty?
-      break if %w[exit quit q].include?(line)
+      break if %w[exit quit q Q].include?(line)
 
       begin
         # `Shellwords.split` renvoie des tokens taggés ASCII-8BIT quel que soit

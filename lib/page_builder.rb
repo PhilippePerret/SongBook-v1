@@ -659,6 +659,7 @@ module PageBuilder
     # 2026-08-25 : sans ce reset, une chanson sans `tabla_preset:` reprendrait par erreur
     # le preset de la précédente).
     Tablator.active_preset = resolve_tabla_preset(meta, carnet_folder) || "regular-tablatures"
+    Layout.rebalance_pages = resolve_shrink_option(meta, carnet_folder, "rebalance_pages")
     Layout.shrink_diags = resolve_shrink_option(meta, carnet_folder, "shrink_diags")
     Layout.shrink_tabla = resolve_shrink_option(meta, carnet_folder, "shrink_tabla")
     Layout.shrink_score = resolve_shrink_option(meta, carnet_folder, "shrink_score")

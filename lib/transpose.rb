@@ -88,6 +88,18 @@ module Transpose
     tonique, qualite = m[1], m[2]
     "#{transpose_note(tonique, decalage_lettres, decalage_demitons)}#{qualite}"
   end
+
+  BASS_NOTE_ITALIAN = { "a" => "la", "b" => "si", "c" => "do", "d" => "ré",
+                        "e" => "mi", "f" => "fa", "g" => "sol" }.freeze
+
+  def self.italian_bass_symbol(note)
+    syllabe = BASS_NOTE_ITALIAN.fetch(note[0].downcase, note[0].downcase)
+    case note[1]
+    when "d" then "#{syllabe}♯#{note[2..]}"
+    when "b" then "#{syllabe}♭#{note[2..]}"
+    else "#{syllabe}#{note[1..]}"
+    end
+  end
 end
 
 if $PROGRAM_NAME == __FILE__

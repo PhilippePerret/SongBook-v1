@@ -3,6 +3,7 @@ require "prawn-svg"
 require_relative "app_config"
 require_relative "ansi_colors"
 require_relative "../tools/tablator/tablator"
+require_relative "transpose"
 
 # Moteur de mise en page : primitives de dessin (police, en-tête, couplets/accords,
 # diagrammes, tabla) et pagination générique — indépendant du format source d'une
@@ -79,7 +80,7 @@ module Layout
   class << self
     attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing,
       :sensitivity, :log_conflict_count, :shrink_diags, :shrink_tabla, :shrink_score, :shrink_text, :score_title_size,
-      :score_title_style, :tabla_measures_per_page
+      :score_title_style, :tabla_measures_per_page, :rebalance_pages
   end
   CONFLICTS = []
 
@@ -1175,7 +1176,7 @@ module Layout
   # même `top_type`) n'en réserve que 15 (`:band_strophe`) : la pagination refusait des
   # contenus qui, eux, tenaient réellement au rendu (bug constaté 2026-08-23, Phil : "il
   # prend les valeurs mini et teste").
-  def self.paginate(elements, first_avail_h, page_height, pinned: [], type: :default, top_type: type)
+  def self.paginate(elements, first_avail_h, page_height, pinned: [], type: :default, top_type: type, trailing_extra: 0)
     heights = elements.map(&:height)
     avail_h = first_avail_h
     idx = 0
@@ -1202,8 +1203,8 @@ module Layout
       # une page d'un seul élément par ce mécanisme — bug trouvé (remarques.txt Carnet-1,
       # 2026-08-18) où 2 couplets pleins étaient repoussés à 1 seul pour "corriger" une
       # page suivante elle-même peu remplie, résultat pire que le problème visé.
-      while type != :diags && idx - start > 2 && idx < elements.length && !pinned.include?(idx - 1) &&
-            heights[idx...elements.length].sum < REBALANCE_MIN_FILL * page_height
+      while rebalance_pages != false && type != :diags && idx - start > 2 && idx < elements.length && !pinned.include?(idx - 1) &&
+            heights[idx...elements.length].sum + trailing_extra < REBALANCE_MIN_FILL * page_height
         idx -= 1
         page_sum -= heights[idx]
       end
@@ -1258,7 +1259,8 @@ module Layout
   def self.paginate_and_draw(pdf, elements, first_avail_h, kdp:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, text_x: 0, text_w: nil, debug_marks: false,
       dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil, row_excess: [], row_excess_w: DIAG_W)
     heights = elements.map(&:height)
-    pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned, top_type: :band_strophe)
+    trailing_extra = row_excess.any? ? estimate_excess_grid_height(row_excess, text_w || pdf.bounds.width) : 0
+    pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned, top_type: :band_strophe, trailing_extra: trailing_extra)
     want_left_for = ->(page_no) { dynamic_mode.nil? || (dynamic_mode == :int) == kdp.recto?(page_no) }
 
     side_elements = []
@@ -1615,7 +1617,7 @@ module Layout
     chord.split("/").map do |part|
       root, bass = part.include?("[") ? part.split("[", 2) : [part, nil]
       out = convert_note_symbol(root)
-      out += "/" + italian_bass_symbol(bass.chomp("]")) if bass
+      out += "/" + Transpose.italian_bass_symbol(bass.chomp("]")) if bass
       out
     end.join("/")
   end
@@ -1628,21 +1630,6 @@ module Layout
     end
   end
 
-  # Lettre -> syllabe de solfège italien (Phil, 2026-08-28 : "les basses doivent
-  # toujours être gravées en minuscule + en italien" — do/ré/mi/fa/sol/la/si, jamais
-  # les lettres A-G). Alteration "d"/"b" (2e position, même convention que
-  # `convert_note_symbol`) -> ♯/♭ ajouté APRÈS la syllabe.
-  BASS_NOTE_ITALIAN = { "a" => "la", "b" => "si", "c" => "do", "d" => "ré",
-                        "e" => "mi", "f" => "fa", "g" => "sol" }.freeze
-
-  def self.italian_bass_symbol(note)
-    syllabe = BASS_NOTE_ITALIAN.fetch(note[0].downcase, note[0].downcase)
-    case note[1]
-    when "d" then "#{syllabe}♯#{note[2..]}"
-    when "b" then "#{syllabe}♭#{note[2..]}"
-    else "#{syllabe}#{note[1..]}"
-    end
-  end
 
   # Racine (1ère lettre + éventuel ♯/♭) affichée pleine taille, tout le reste de l'accord
   # (qualité : "m", "7", "7M", "sus4", "dim"...) plus petit — généralisé (Phil, 2026-08-19)
@@ -2001,6 +1988,16 @@ module Layout
   # tenir avant d'abandonner à `MIN_SIZE[:diags][:width]`. Renvoie [largeur, nombre qui
   # tient] — `nombre qui tient < paths.size` => excédent, voir `paginate_and_draw`
   # (RAD5/6/7/10, même mécanisme que l'excédent de colonne).
+  def self.estimate_excess_grid_height(paths, avail_w)
+    return 0 if paths.empty?
+
+    w, n_fit = diag_row_width(paths, avail_w)
+    n_fit = [n_fit, 1].max
+    row_h = svg_height_for(File.read(paths.first), w)
+    n_rows = (paths.size / n_fit.to_f).ceil
+    n_rows * row_h + [n_rows - 1, 0].max * min_v_dist(:diags)
+  end
+
   def self.diag_row_width(paths, avail_w)
     return [DIAG_W, 0] if paths.empty?
 
