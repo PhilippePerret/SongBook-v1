@@ -1482,7 +1482,7 @@ module Layout
             elsif gap_v >= PAGE_NUMBER_INK_ZONE_PT
               0.0
             else
-              conflict!("grille de diags en trop (bas de page) trop proche du numéro de page, place insuffisante pour la dégager pleinement", solution: "remontée de 10pt quand même")
+              log_build("grille de diags en trop (bas de page) trop proche du numéro de page, place insuffisante pour la dégager pleinement — remontée de 10pt quand même")
               10.0
             end
             effective_gap_v = gap_v + shift
