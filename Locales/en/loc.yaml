@@ -30,6 +30,10 @@ ask_song_chords: "Song chords (or nothing): "
 chord_no_diagram: "%s: no diagram yet"
 open_which_files: "Open:"
 open_folder_label: "Folder"
+missing_diags_prompt: "Missing chords:"
+missing_diags_none: "No missing chord."
+missing_diags_hint_all: "--all to search across all songs"
+missing_diags_hint_name: "-n/--name to show the songs using each chord"
 
 # build (search by title)
 build_nothing_found: "Nothing found."

@@ -1,7 +1,6 @@
 [[songbook-schemas, diagrammes propres]]
-=== Diagrammes propres ===
+=== Diagrammes de carnet ===
 
-Il n'est pas raisonnable de ne concevoir des diags juste pour un carnet, __**SongBook**__ ne permet donc pas de le faire. Les diags doivent être définis pour l'application elle-même ou, s'ils sont vraiment propres à une chanson, dans le dossier 
-Le fichier `.schemas` (ou `.sch`) permet de définir des diagrammes propres au seul carnet qui contient ce fichier.
+Il n'est pas raisonnable de ne concevoir des diags juste pour un carnet, __**SongBook**__ ne permet donc pas de le faire. Les diags doivent être définis pour l'application elle-même ou, s'ils sont vraiment propres à une chanson, dans le dossier de cette chanson.
 
-En général, il est préférable de définir ces schémas (et les SVG qui en résultent) directement <<song-schemas, dans la chanson>> afin que tous les carnets puissent en profiter (voir justement cette partie pour savoir comment les utiliser).
+Voir <<diags>>.

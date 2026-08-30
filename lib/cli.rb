@@ -19,6 +19,7 @@ require_relative "tablator_assistant"
 require_relative "ansi_colors"
 require_relative "idml_cover_builder"
 require_relative "kdp"
+require_relative "missing_diags"
 require_relative "../tools/DiagSchem/diagschem"
 require_relative "../tools/ChordDiagram/generate_chord_diagrams"
 
@@ -109,6 +110,8 @@ module CLI
       end
     end
     debug_marks = !!argv.delete("-x")
+    missing_all = !!argv.delete("--all")
+    missing_names = !!(argv.delete("-n") || argv.delete("--name"))
 
     # `--create`/`--build` : zappent le 1er choix de `tablator assistant` (voir
     # `TablatorAssistant.run`).
@@ -154,10 +157,37 @@ module CLI
 
     Session.with_song(song_override) do
     case command
-    when "-h", "--help"
+    when "-h", "--help", "help"
       puts colorize_help(USAGE)
     when "diags"
       puts raccourci(DiagsPage.build_and_open!)
+    when "missing"
+      case arg1
+      when "diags"
+        folders = MissingDiags.songs_to_scan(all: missing_all)
+        abort "aucun contexte pour missing diags (use song/songbook, --all, ou dossier courant)" if folders.nil?
+
+        missing = MissingDiags.scan(folders)
+        if missing.empty?
+          puts success("👍 #{Loc.get("missing_diags_none")}")
+        else
+          hints = []
+          hints << Loc.get("missing_diags_hint_all") unless missing_all
+          hints << Loc.get("missing_diags_hint_name") unless missing_names
+          message = blue(Loc.get("missing_diags_prompt"))
+          message += "\n#{gray(hints.join(", "))}" unless hints.empty?
+          choices = missing.sort.map do |key, songs|
+            { name: missing_names ? "#{key} (#{songs.join(", ")})" : key, value: key }
+          end
+          begin
+            TTY::Prompt.new.multi_select(message, choices, echo: false, show_help: false, per_page: 20)
+          rescue Interrupt
+            puts
+          end
+        end
+      else
+        abort unknown_command_message("missing #{arg1}")
+      end
     when "update"
       case arg1
       when "diags"

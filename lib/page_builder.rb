@@ -603,6 +603,23 @@ module PageBuilder
     [elements, shrink_jobs]
   end
 
+  # Paires [accord, case] d'une chanson SEULES (`ChordDiagrams.collect_chord_frets`),
+  # transposition appliquée comme en production réelle (`build`) — scan LÉGER pour
+  # `missing diags` (CLI) : aucun PDF généré, juste `.lyr`/`.infos` lus.
+  def self.chord_frets_for_song(folder)
+    lyr_path = FileFinder.find(folder, :lyr)
+    return [] unless lyr_path
+
+    infos_path = FileFinder.find(folder, :inf)
+    meta = infos_path ? parse_infos(infos_path) : {}
+    lyr_blocks, = parse_lyr(lyr_path)
+    if meta["transpose"]
+      decalage_lettres, decalage_demitons = Transpose.parser_entete(meta["transpose"])
+      ChordDiagrams.transpose_blocks!(lyr_blocks, decalage_lettres, decalage_demitons)
+    end
+    ChordDiagrams.collect_chord_frets(lyr_blocks.values)
+  end
+
   # Orchestrateur .gab/.lyr/.infos : un dossier = une chanson + une mise en page. `.gab`
   # OPTIONNEL (voir `default_items`). page_count/first_page_no : voir `build_from_dsl`.
   # `layout:` (Hash title_band:/diags_position:/lyrics_flux:, voir `CarnetBuilder::LAYOUTS`

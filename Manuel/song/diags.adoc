@@ -16,6 +16,7 @@ songbook diags
 
 Elle ouvre un fichier HTML où sont présentés tous les diagrammes, et il suffit de cliquer sur leur diagrammes pour mettre le nom dans le presse-papier et le coller dans la chanson.
 
+
 ==== Produire ses propres diagrammes ====
 
 On peut aller plus loin et produire ses propres diagrammes personnalisés. Pour ça
@@ -49,3 +50,28 @@ Choisissez bien le nom pour qu'il « n'écrase » pas un accord existant déj�
 ==== Placement des diagrammes ====
 
 Pour placer les diagrammes dans la chanson ou le carnet, utiliser le <<gabarit>> de la chanson ou les règles du <<songbook-layout layout (mise en page)>> du carnet.
+
+[[diags-missing]]
+==== Diagrammes manquant ====
+
+On peut obtenir la liste des diags introuvables (ni dans l'app ni dans la chanson).
+
+----
+songbook diags missing --song "titre approx"
+# => Liste dans la chanson
+
+songbook diags missing --songbook "titre approx"
+# => Liste dans le carnet de chant
+
+songbook diags missing --all
+# => Liste dans toutes les chansons
+----
+
+En <<interactive-mode, mode interactif>>, c'est la chanson ou le carnet courant qui est pris en référence :
+
+----
+songbook -i
+🎸> use song titre-approx
+🎸> diags missing
+# => Liste des diagrammes manquant dans la chanson.
+----
