@@ -280,7 +280,7 @@ module CLI
         end
       when "tdm", "toc"
         begin
-          TdmCreator.run(carnet_opt: songs_carnet_opt)
+          TdmCreator.run(carnet_opt: songs_carnet_opt, command: "create")
         rescue Interrupt
           puts
         end
@@ -317,7 +317,11 @@ module CLI
       when "gabarit", "gab"
         open_gabarit_file
       when "tdm", "toc"
-        open_tdm_file(arg2)
+        begin
+          TdmCreator.run(carnet_opt: songs_carnet_opt, command: "edit")
+        rescue Interrupt
+          puts
+        end
       else
         abort unknown_command_message("edit #{arg1}")
       end

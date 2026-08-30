@@ -11,6 +11,9 @@ module AnsiColors
   # (RGB), même forme truecolor que `BLUE`.
   ERROR = "\e[38;2;255;90;90m"
   GRAY = "\e[90m"
+  # Couleur des items "hors liste" dans un picker (ex. "Terminé", "Nouveau carnet…",
+  # Phil 2026-08-30) — jamais un contenu réel, une ACTION à part du contenu choisi.
+  ORANGE = "\e[38;2;255;165;0m"
   RESET = "\e[0m"
 
   def blue(text)
@@ -29,11 +32,20 @@ module AnsiColors
     "#{GRAY}#{text}#{RESET}"
   end
 
+  def orange(text)
+    "#{ORANGE}#{text}#{RESET}"
+  end
+
   # `TTY::Prompt.new` avec notre bleu comme couleur de l'item survolé (Phil, 2026-08-30
   # — défaut de la gem `active_color: :green`, trompeur : le vert est réservé aux
   # messages de résultat/succès dans cette appli, `success`). À utiliser PARTOUT à la
   # place de `TTY::Prompt.new` nu.
+  # Un `choice.name` peut déjà porter sa propre couleur (ex. `orange(...)`, item "hors
+  # liste") — l'item survolé doit rester bleu malgré tout : la gem enveloppe TEL QUEL le
+  # nom déjà coloré dans le bleu (`decorate`), ce qui imbrique les codes ANSI et fait
+  # ressortir la couleur d'origine (le code couleur imbriqué l'emporte visuellement).
+  # Nettoyée d'abord pour repartir d'un texte neutre.
   def colored_prompt
-    TTY::Prompt.new(active_color: ->(s) { blue(s) })
+    TTY::Prompt.new(active_color: ->(s) { blue(s.gsub(/\e\[[\d;]*m/, "")) })
   end
 end

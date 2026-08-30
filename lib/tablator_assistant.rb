@@ -273,7 +273,7 @@ module TablatorAssistant
               (1..6).each { |s| matrix[s - 1][col] = nil }
               bars.delete(col)
               rests[col] = key
-            when "q"
+            when "q", "Q"
               ask_before_save = true
               commit_bar.call
               break

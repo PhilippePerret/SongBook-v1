@@ -152,9 +152,10 @@ class DiagSchem
     @svg_path = generer_svg if prompt.yes?(blue(Loc.get('diag_output_question')))
   end
 
-  # Nom demandé à l'user (texte libre, AUCUN défaut/pré-remplissage) : c'est LE NOM
-  # EXACT, tel quel, à la fois du FICHIER SVG et de l'entrée dans `schemas.txt` (Phil,
-  # 2026-08-26 : rien n'est ajouté derrière, ni case ni autre). `Nom-case` reconnu si
+  # Nom demandé à l'user (texte libre, défaut = nom du schéma en cours, Phil
+  # 2026-08-30) : c'est LE NOM EXACT, tel quel (repris tel quel ou modifié), à la fois
+  # du FICHIER SVG et de l'entrée dans `schemas.txt` (Phil, 2026-08-26 : rien n'est
+  # ajouté derrière, ni case ni autre). `Nom-case` reconnu si
   # déjà présent dans le texte tapé (case reprise telle quelle) ; sinon la case en cours
   # dans le tableau est utilisée pour reconstituer la ligne `schemas.txt` (`SchemaLibrary`
   # exige un `Nom-case`), mais le SVG s'appelle toujours EXACTEMENT le texte tapé.
@@ -163,7 +164,7 @@ class DiagSchem
   # (Phil : "trop dangereux"). Sinon insère (`SchemaLibrary`, ordre dicté par Phil) et
   # produit tout de suite le SVG dans le dossier de la lettre (pas le dossier courant).
   def enregistrer_dans_application(prompt)
-    texte = prompt.ask(blue(Loc.get('diag_name_prompt'))).to_s.strip
+    texte = prompt.ask(blue(Loc.get('diag_name_prompt')), default: @nom).to_s.strip
     return if texte.empty?
 
     m = texte.match(/\A(.+)-(\d+)\z/)
@@ -634,7 +635,7 @@ class DiagSchem
   # --- Affichage ------------------------------------------------------
 
   INTERIOR_WIDTH = 40
-  NOM_W = 7
+  NOM_W = 20
   CASEREF_W = 2
 
   # Colonnes de la ligne d'en-tête
@@ -660,7 +661,7 @@ class DiagSchem
     w("\e[2J\e[H") # clear + home, sans dépendre de la commande externe 'clear'
     w(bordure('┌', '┐'))
     w(cadre(ligne_labels_entete))
-    w(cadre(ligne_valeurs_entete))
+    w(ligne_valeurs_entete_avec_curseur)
     w(bordure('├', '┤'))
     w(cadre(' Corde  Case  Doigt'))
     @entries.each_with_index { |e, i| w(cadre(ligne_corde(e, i))) }
@@ -687,6 +688,21 @@ class DiagSchem
     l[COL_MARK_REF] = marker_ref
     l[COL_REF, CASEREF_W] = ref_str.ljust(CASEREF_W)
     l
+  end
+
+  # Curseur (fond inversé) sous la PROCHAINE lettre à taper, dans le champ "Accord"
+  # (Phil, 2026-08-30 : "ça se fait à l'aveugle" sans lui) — posé APRÈS `cadre` (jamais
+  # avant : les codes ANSI, s'ils étaient déjà là, fausseraient le compte de caractères
+  # de `ljust`/la troncature, même technique que `render_line` dans `chord_placer.rb`).
+  def ligne_valeurs_entete_avec_curseur
+    line = cadre(ligne_valeurs_entete)
+    return line unless @row == -1 && @col.zero?
+
+    idx = 1 + COL_NOM + @buffer.length
+    return line if idx >= line.length
+
+    line[idx] = "\e[7m#{line[idx]}\e[0m"
+    line
   end
 
   def ligne_corde(e, i)

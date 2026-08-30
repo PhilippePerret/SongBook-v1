@@ -3,6 +3,7 @@
 require_relative "app_config"
 require_relative "file_finder"
 require_relative "song_cache"
+require_relative "carnet_builder"
 
 # `songbook songs` : liste filtrable de TOUTES les chansons (ou d'un seul carnet via
 # `--sb/--songbook`), pour choisir une chanson puis une action à lui appliquer.
@@ -32,12 +33,26 @@ module SongsList
   def self.sort(entries, key)
     case key
     when "year"
-      entries.sort_by { |e| [e[:infos]["year"].to_s, e[:infos]["title"].to_s] }
+      entries.sort_by { |e| [e[:infos]["year"].to_s, alpha_key(e[:infos]["title"])] }
     when "performer"
-      entries.sort_by { |e| [e[:infos]["performer"].to_s, e[:infos]["title"].to_s] }
+      entries.sort_by { |e| [alpha_key(e[:infos]["performer"]), alpha_key(e[:infos]["title"])] }
     else
-      entries.sort_by { |e| e[:infos]["title"].to_s }
+      entries.sort_by { |e| alpha_key(e[:infos]["title"]) }
     end
+  end
+
+  # Tri alphabétique correct (Phil, 2026-08-30, `_dev/specs/specs.md`) : article défini
+  # de tête retiré ("le"/"la"/"les"/"l'" — `CarnetBuilder::ARTICLE_HEAD_RE`, PAS "un"/
+  # "des", volontairement gardés), accents neutralisés (`CarnetBuilder.slugify`).
+  def self.alpha_key(text)
+    CarnetBuilder.slugify(text.to_s.sub(CarnetBuilder::ARTICLE_HEAD_RE, ""))
+  end
+
+  # Texte accent-neutre pour un filtrage insensible aux accents (Phil, 2026-08-30) —
+  # SANS toucher aux espaces/ponctuation (contrairement à `alpha_key`, réservé au tri) :
+  # une regex tapée avec un espace doit continuer à matcher normalement.
+  def self.fold_accents(text)
+    text.to_s.unicode_normalize(:nfkd).encode("ASCII", invalid: :replace, undef: :replace, replace: "")
   end
 
   # "titre (performer, année)" (Phil, 2026-08-30) — parenthèse omise si les deux

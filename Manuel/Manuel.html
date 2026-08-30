@@ -449,7 +449,6 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#song">Chansons</a>
 <ul class="sectlevel2">
-<li><a href="#song-assistant">Assistant de création de la chanson</a></li>
 <li><a href="#song-creation">Création de la chanson</a></li>
 <li><a href="#song-folder">Dossier de la chanson</a></li>
 <li><a href="#infos-file">Fichier des informations de la chanson</a></li>
@@ -588,7 +587,7 @@ a {
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>🎸&gt; --help</pre>
+<pre>🎸&gt; help</pre>
 </div>
 </div>
 </div>
@@ -600,7 +599,7 @@ a {
 <div class="ulist">
 <ul>
 <li>
-<p>vous <a href="#song-assistant">créez des chansons</a> ou vous les <a href="#load-song-from-site">récupérez depuis notre site</a>,</p>
+<p>vous <a href="#create-song-tool">créez des chansons</a> ou vous les <a href="#load-song-from-site">récupérez depuis notre site</a>,</p>
 </li>
 <li>
 <p>vous <a href="#lyrics-file">écrivez les paroles</a>,</p>
@@ -618,7 +617,7 @@ a {
 <p>vous établissez <a href="#gabarit-file">le gabarit de la chanson</a> pour y injecter tous ces éléments et les disposer,</p>
 </li>
 <li>
-<p>vous créez <a href="#songbook-tdm">la table des matières du carnet</a>, donc la liste des chansons qu&#8217;il doit contenir,</p>
+<p>vous créez <a href="#songbook-tdm-assistant">la table des matières du carnet à l&#8217;aide de l&#8217;assistant</a>, donc la liste des chansons qu&#8217;il doit contenir,</p>
 </li>
 <li>
 <p>vous définissez <a href="#songbook-infos">les caractéristiques du carnet</a> et peut-être même <a href="#songbook-layout">sa mise en page</a> (ou vous adoptez une <a href="#app-layouts">mise en page déjà définie</a>),</p>
@@ -656,45 +655,9 @@ a {
 <p>La <em>chanson</em> est la base de tout carnet de chant. C&#8217;est pour présenter des <em>chansons</em> et les jouer que le <a href="#songbook">carnet de chant</a> est conçu.</p>
 </div>
 <div class="sect2">
-<h3 id="song-assistant">Assistant de création de la chanson</h3>
-<div class="paragraph">
-<p>Pour créer rapidement une chanson, on peut utiliser l&#8217;assistant. Dans un Terminal (ouvert n&#8217;importe où) jouer la commande :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook create song</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Ou, si vous connaissez déjà le titre et l&#8217;interprète :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook create song "Le titre de la chanson"
-
-songbook create song "le titre de la chanson" "le chanteur"</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Sinon, ils vous seront demandés au fur et à mesure, comme toutes les informations suivantes.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Note</div>
-</td>
-<td class="content">
-Si c&#8217;est votre première chanson, <strong><em>SongBook</em></strong> vous demandera aussi de définir le dossier où devront être créées toutes les chansons.
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect2">
 <h3 id="song-creation">Création de la chanson</h3>
 <div class="paragraph">
-<p>Le plus simple pour créer une chanson est d'<a href="#song-assistant">l&#8217;assistant de création</a>.</p>
+<p>Le plus simple pour créer une chanson est d'<a href="#create-song-tool">l&#8217;assistant de création</a>.</p>
 </div>
 <div class="paragraph">
 <p>Mais vous pouvez tout aussi bien créer cette chanson « à la main ».</p>
@@ -2478,7 +2441,7 @@ Utilisez l'<a href="#songbook-tdm-assistant">assistant table des matières</a> p
 <div class="sect2">
 <h3 id="create-song-tool">Outil de création de chanson</h3>
 <div class="paragraph">
-<p>avec cet outil qui recherche sur le net toutes les informations sur la chanson et même les paroles, vous pouvez créer très rapidement vos chansons.</p>
+<p>Grâce à cet outil qui recherche sur le net toutes les informations sur la chanson et même les paroles, vous pouvez créer très rapidement et confortablement vos chansons.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2487,6 +2450,31 @@ Utilisez l'<a href="#songbook-tdm-assistant">assistant table des matières</a> p
 </div>
 <div class="paragraph">
 <p>Ou simplement <code>create song</code> en <a href="#interactive-mode">version interactive</a>.</p>
+</div>
+<div class="paragraph">
+<p>Si vous connaissez déjà le titre et l&#8217;interprète :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook create song "Le titre de la chanson"
+
+songbook create song "le titre de la chanson" "la chanteuse"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Sinon, ils vous seront demandés au fur et à mesure, comme toutes les informations suivantes.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Si c&#8217;est votre première chanson, <strong><em>SongBook</em></strong> vous demandera aussi de définir le dossier où devront être créées toutes les chansons. Choisis son emplacement avec soin.
+</td>
+</tr>
+</table>
 </div>
 </div>
 <div class="sect2">

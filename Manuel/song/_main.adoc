@@ -3,9 +3,6 @@
 
 La __chanson__ est la base de tout carnet de chant. C'est pour présenter des __chansons__ et les jouer que le <<songbook, carnet de chant>> est conçu.
 
-// Assistant
-include::assistant.adoc[]
-
 // Création de la chanson
 include::creation.adoc[]
 

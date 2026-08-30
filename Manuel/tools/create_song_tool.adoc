@@ -1,10 +1,23 @@
 [[create-song-tool]]
 === Outil de création de chanson ===
 
-avec cet outil qui recherche sur le net toutes les informations sur la chanson et même les paroles, vous pouvez créer très rapidement vos chansons.
+Grâce à cet outil qui recherche sur le net toutes les informations sur la chanson et même les paroles, vous pouvez créer très rapidement et confortablement vos chansons.
 
 ----
 songbook create song
 ----
 
 Ou simplement `create song` en <<interactive-mode, version interactive>>.
+
+
+Si vous connaissez déjà le titre et l'interprète : 
+
+----
+songbook create song "Le titre de la chanson"
+
+songbook create song "le titre de la chanson" "la chanteuse"
+----
+
+Sinon, ils vous seront demandés au fur et à mesure, comme toutes les informations suivantes.
+
+NOTE: Si c'est votre première chanson, **__SongBook__** vous demandera aussi de définir le dossier où devront être créées toutes les chansons. Choisis son emplacement avec soin.

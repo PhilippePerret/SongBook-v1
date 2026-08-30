@@ -242,6 +242,21 @@ module PageBuilder
         dirs[:title] ||= declared_name if declared_name && !declared_name.empty?
         type = %i[tabla score image].find { |k| dirs.key?(k) } || :unknown
         GabItem.new(type, dirs)
+      # `{diags; position: End;}` : "diags" en tête SANS ":" (même forme que
+      # `{intro; tab: ...}` ci-dessus) matchait `ROW_TOKEN_RE` et se faisait chercher
+      # comme un bloc de paroles nommé "diags" dans le `.lyr` (bug constaté, Phil,
+      # 2026-08-30 : "bloc diags introuvable"). "diags" n'est PAS un nom de bloc
+      # possible (mot réservé, position des diagrammes), intercepté ici en premier.
+      elsif para =~ /\A\{\s*diags\s*(;|\})/i
+        inner = para[/\A\{(.*)\}\z/m, 1] || ""
+        dirs = {}
+        inner.split(";")[1..].to_a.each do |pair|
+          k, v = pair.split(":", 2)
+          next unless k && v && !k.strip.empty?
+
+          dirs[k.strip.to_sym] = v.strip.gsub(/\A["']|["']\z/, "")
+        end
+        GabItem.new(:diags, dirs)
       elsif (cols = para.split("//").map(&:strip)).all? { |c| c =~ ROW_TOKEN_RE }
         row_directives = {}
         names = cols.map do |c|

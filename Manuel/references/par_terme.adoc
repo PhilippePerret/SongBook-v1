@@ -11,15 +11,15 @@
                           | <<songbook-best-practices, Meilleures pratiques pour la création du cahier de chant>>.
                           | <<songbook-tdm-assistant, Assistant de construction de **table des matières**>>.
                           
-.5+| **Chanson**    | <<song, Tout sur les chansons>>.
-                    | <<song-creation, Création d'une chanson>>.
-                    | <<song-assistant, **Assistant pour la création** de la chanson>>.
-                    | <<song-chords-assistant, Assistant pour la **pose des accords**>>.
-                    | <<infos-file, Informations sur la chanson (métadonnées)>>.
-.3+| Diagrammes    | <<diags, Généralités sur les diags (diagrammes d'accord)>>
-                    | <<diags-list, Liste des diagrammes existants et choix>>
-                    | <<song-schemas, Diagrammes propres à la chanson>>
-.3+| Paroles       | <<lyrics-file, le fichier des paroles de la chanson>>.
-                    | <<song-chords-assistant, Assistant pour la **pose des accords**>>.
-                    | <<gabarit-file, disposition des paroles sur la page>>.
+.5+| **Chanson**          | <<song, Tout sur les chansons>>.
+                          | <<song-creation, Création d'une chanson>>.
+                          | <<song-assistant, **Assistant pour la création** de la chanson>>.
+                          | <<song-chords-assistant, Assistant pour la **pose des accords**>>.
+                          | <<infos-file, Informations sur la chanson (métadonnées)>>.
+.3+| Diagrammes           | <<diags, Généralités sur les diags (diagrammes d'accord)>>
+                          | <<diags-list, Liste des diagrammes existants et choix>>
+                          | <<song-schemas, Diagrammes propres à la chanson>>
+.3+| Paroles              | <<lyrics-file, le fichier des paroles de la chanson>>.
+                          | <<song-chords-assistant, Assistant pour la **pose des accords**>>.
+                          | <<gabarit-file, disposition des paroles sur la page>>.
 |====

@@ -1,7 +1,7 @@
 [[song-creation]]
 === Création de la chanson ===
 
-Le plus simple pour créer une chanson est d'<<song-assistant, l'assistant de création>>.
+TIP: Le plus simple pour créer une chanson est d'utiliser <<create-song-tool, l'assistant de création>>.
 
 Mais vous pouvez tout aussi bien créer cette chanson « à la main ».
 

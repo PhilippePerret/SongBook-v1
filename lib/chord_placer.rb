@@ -72,7 +72,7 @@ module ChordPlacer
     "x sup acc | X sup tous | A-G Nouvel accord",
     "J/L début/fin vers | T/V début/fin chanson",
     "←/→ ←Syllabe→ | n/p ←Lettre→ |",
-    "Enter Sauver | ^c Annuler",
+    "Enter Sauver | q/^c Annuler",
   ].freeze
 
   def self.run(lyr_path)
@@ -100,7 +100,7 @@ module ChordPlacer
     typing = nil
 
     commit_typing = lambda do
-      chord = typed_match(typing, letters) || capitalize_chord(typing)
+      chord = typed_match(typing, letters, active_letters(letters, chord_lines)) || capitalize_chord(typing)
       register_chord(letters, chord)
       save_cached_chords(song_dir, letters.values.flatten)
       chord_lines[editable[pos]].set_chord(cursor, chord)
@@ -113,15 +113,20 @@ module ChordPlacer
     # normalement (voir en-tête du fichier) — Entrée/Retour arrière traités À PART
     # (Entrée valide SANS s'exécuter comme "quitter", Retour arrière édite le buffer).
     command_key = lambda do |k|
-      (k.is_a?(Hash) && k[:arrow]) || (k.is_a?(String) && %w[x X J L T V n p].include?(k))
+      (k.is_a?(Hash) && k[:arrow]) || (k.is_a?(String) && %w[x X J L T V n p q Q].include?(k))
     end
+    # "q"/Ctrl+C : sortie AVEC confirmation par défaut "n" — Entrée (sortie normale, PAS
+    # en cours de composition) : confirmation par défaut "y" (Phil, 2026-08-30, cohérent
+    # avec `TablatorAssistant`).
+    quit_early = false
 
     begin
       with_raw_terminal do
         loop do
           current = chord_lines[editable[pos]]
-          live = typing && (typed_match(typing, letters) || typing)
-          render_window(editable, chord_lines, pos, cursor, active_letters(letters, chord_lines), notice, live)
+          active = active_letters(letters, chord_lines)
+          live = typing && (typed_match(typing, letters, active) || typing)
+          render_window(editable, chord_lines, pos, cursor, active, notice, live)
           key = read_key
 
           if typing
@@ -149,6 +154,9 @@ module ChordPlacer
 
           case key
           when :enter
+            break
+          when "q", "Q"
+            quit_early = true
             break
           when "x"
             if current.chord_at(cursor)
@@ -187,13 +195,13 @@ module ChordPlacer
         end
       end
     rescue Interrupt
-      nil
+      quit_early = true
     end
 
     # Terminal déjà restauré ici (ensure de `with_raw_terminal`, qu'on sorte par
     # `break` ou par Ctrl+C). Rien demandé si RIEN n'a changé (Phil) — sinon TOUJOURS
     # soumis à validation, jamais un enregistrement silencieux.
-    save.call if dirty && colored_prompt.yes?(blue(Loc.get("save_changes_question")), default: false)
+    save.call if dirty && colored_prompt.yes?(blue(Loc.get("save_changes_question")), default: !quit_early)
   end
 
   def self.editable_line?(line)
@@ -230,7 +238,9 @@ module ChordPlacer
   # encore disponibles au clavier, `.cached` — voir `save_cached_chords`) : seul
   # l'AFFICHAGE de la légende est filtré ici.
   def self.active_letters(letters, chord_lines)
-    used = chord_lines.values.flat_map { |cl| cl.chords.values }.uniq
+    # Une valeur "A2-0/A-0" (2 accords collés, voir `ChordLine.parse`) doit compter pour
+    # SES DEUX morceaux ici, pas comme un seul accord composé introuvable (Phil, 2026-08-30).
+    used = chord_lines.values.flat_map { |cl| cl.chords.values }.flat_map { |v| ChordLine.split_for_write(v) }.uniq
     letters.each_with_object({}) do |(letter, chords), h|
       kept = chords.select { |c| used.include?(c) }
       h[letter] = kept unless kept.empty?
@@ -255,11 +265,33 @@ module ChordPlacer
   # confusionnant qu'un ordre a/b/c/d arbitraire). Collision (plusieurs accords partagent
   # la même 1re lettre) : `letters[lettre]` = liste, dans l'ordre de rencontre —
   # désambiguïsée en continuant à taper le nom complet (voir `typed_match`).
+  # Une basse SEULE ("[b]"/"[fd]", `ChordDiagrams::BASS_ONLY_RE`) n'est PAS un accord
+  # au sens raccourci — jamais indexée sous "[" comme si "[" était une lettre de
+  # raccourci valide (bug constaté, Phil, 2026-08-30 : "on ne met pas les basses seules
+  # en raccourci").
   def self.register_chord(letters, chord)
+    return nil if chord.match?(ChordDiagrams::BASS_ONLY_RE)
+
     letter = chord[0].downcase
     letters[letter] ||= []
     letters[letter] << chord unless letters[letter].include?(chord)
     letter
+  end
+
+  # "/" = séparateur d'accords (Phil, 2026-08-30) — SAUF le "/" natif du groupe accord
+  # de `DSLParser::CHORD_RE` lui-même (ex. "Bb6/C", SANS case sur aucun des deux côtés) :
+  # bug constaté par le passé (Phil : "il s'agit de deux accords" appliqué à tort ici,
+  # "Bb6/C" est UN SEUL accord avec basse) — RESTE un accord unique. En revanche un "/"
+  # accidentellement capturé dans le groupe case de `CHORD_RE` (case AVANT le "/", ex.
+  # "A2-0/A-0" -> chord="A2" fret="0/A-0", `[^: ]+` trop permissif) est bien DEUX accords
+  # distincts, chacun sa propre case (Phil, 2026-08-30, "If You Don't Know Me By Now").
+  def self.chord_names(chord, fret)
+    chord = capitalize_chord(chord)
+    return [fret ? "#{chord}-#{fret}" : chord] unless fret&.include?("/")
+
+    real_fret, *extra = fret.split("/")
+    first = real_fret.empty? ? chord : "#{chord}-#{real_fret}"
+    [first] + extra.map { |c| capitalize_chord(c) }
   end
 
   # {lettre => [accords]}, amorcée à partir de TOUS les accords déjà présents dans le
@@ -268,16 +300,13 @@ module ChordPlacer
     letters = {}
     seen = []
     lines.each do |raw|
-      # `DSLParser::CHORD_RE` (pas une regex maison) : un accord "slash" (ex. "Bb6/C")
-      # a bien un "/" INTERNE à son nom — une regex qui l'exclut le coupe en 2 et ne
-      # récupère que la partie après le dernier "/" (bug constaté, Phil : "il s'agit de
-      # deux accords" alors que "Bb6/C" est UN accord unique avec basse).
       raw.scan(DSLParser::CHORD_RE) do |m|
-        chord = capitalize_chord(m[0])
-        next if seen.include?(chord)
+        chord_names(m[0], m[1]).each do |chord|
+          next if seen.include?(chord)
 
-        seen << chord
-        register_chord(letters, chord)
+          seen << chord
+          register_chord(letters, chord)
+        end
       end
     end
     letters
@@ -334,10 +363,11 @@ module ChordPlacer
   # `typing` (buffer tel que tapé) correspond-il à un accord déjà connu ? Nom RÉEL de
   # cet accord si oui, `nil` sinon — MAJUSCULE initiale : jamais de correspondance,
   # toujours `nil` (voir en-tête du fichier, règle Phil 2026-08-26).
-  def self.typed_match(typing, letters)
+  def self.typed_match(typing, letters, active)
     return nil if typing[0].match?(/[A-Z]/)
 
-    bucket = letters[typing[0].downcase]
+    letter = typing[0].downcase
+    bucket = letters[letter]
     return nil unless bucket
 
     # 1 seule lettre tapée = raccourci immédiat (Phil, 2026-08-26 : "b" -> "Bdim" même
@@ -347,17 +377,19 @@ module ChordPlacer
     # existant repris seulement si "F7" lui-même est déjà connu, pas juste "F...").
     return bucket.first if typing.length == 1
 
-    # "b2" = 2e accord de la lettre "b" (voir `chord_label`, légende "b2 = ...") : raccourci
-    # par INDEX, PRIORITAIRE sur la correspondance exacte (Phil, 2026-08-27 : un accord
-    # inutilisé mais encore en cache — ex. "B2" — ne doit JAMAIS voler le raccourci de
-    # position, sinon "b2" devient injoignable tant que ce résidu traîne). Correspondance
-    # exacte seulement en repli, si l'index tapé ne pointe aucune position du bucket
-    # (nécessaire pour "f"+"7" : "F7" existant repris seulement si "F7" lui-même est déjà
-    # connu, pas juste "F...").
+    # "b2" = 2e accord de la lettre "b" TEL QU'AFFICHÉ dans la légende (`chord_label`) —
+    # index résolu dans le bucket ACTIF (`active_letters`), PAS le bucket complet : un
+    # accord en cache mais pas posé est absent de la légende, donc absent de sa
+    # numérotation — sinon "e2" affiché pour "E7" tapait en fait un autre accord resté
+    # sur "E" (bug constaté, Phil, 2026-08-30 : les deux buckets n'étaient pas alignés).
+    # Repli sur correspondance EXACTE (bucket complet) si l'index ne pointe rien
+    # d'actif (nécessaire pour "f"+"7" : "F7" existant repris seulement si "F7"
+    # lui-même est déjà connu, pas juste "F...").
     m = typing.match(/\A[a-z](\d+)\z/)
     if m
       idx = m[1].to_i - 1
-      return bucket[idx] if idx >= 0 && idx < bucket.size
+      active_bucket = active[letter]
+      return active_bucket[idx] if active_bucket && idx >= 0 && idx < active_bucket.size
     end
 
     candidate = capitalize_chord(typing)

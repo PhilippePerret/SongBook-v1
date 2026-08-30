@@ -7,6 +7,7 @@ require_relative "carnet_builder"
 require_relative "file_finder"
 require_relative "app_config"
 require_relative "session"
+require_relative "../tools/ChordDiagram/generate_chord_diagrams"
 
 # `songbook missing diags` : accords utilisés dans des chansons sans diagramme SVG
 # correspondant — scan LÉGER (parsing `.lyr` seul, sans génération de PDF, Phil : "si
@@ -50,6 +51,11 @@ module MissingDiags
   # jamais confondus sous la même étiquette "Am" — sinon la liste ment dès qu'un
   # AUTRE "Am" du même texte, générique, résout bien vers `Am-0.svg`).
   def self.scan(folders)
+    # Un schéma peut exister dans `schemas.txt` (assistant `diag`) SANS que son SVG
+    # ait jamais été produit — dans ce cas, "manquant" est FAUX : il faut d'abord
+    # construire tous les diags d'application en attente (Phil, 2026-08-30, "B-7").
+    GenerateChordDiagrams.run
+
     previous_sensitivity = Layout.sensitivity
     Layout.sensitivity = "low"
     missing = Hash.new { |h, k| h[k] = [] }
