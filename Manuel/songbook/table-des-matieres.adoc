@@ -29,3 +29,10 @@ Imaginons un carnet des tubes des années 1986 qui portera le nom `Carnets/Carne
 - le second fait référence au titre (`title`) dans le même fichier `.infos`,
 - le troisième fait référence au nom du dossier dans le dossier `Chansons`.
  
+ ==== Construction assistée d'une table des matières ====
+ 
+ ----
+ songbook build tdm[ --songbook "Mon nouveau carnet de chant"]
+ ----
+ 
+ Cette commande afficher la liste des chansons et permet de les choisir pour former une table des matières.

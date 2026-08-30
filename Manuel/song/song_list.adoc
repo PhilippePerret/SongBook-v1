@@ -1,0 +1,30 @@
+[[song-list]]
+=== Liste des chansons ===
+
+Pour afficher la liste de toutes les chansons (filtrable) :
+
+----
+songbook songs
+----
+
+On peut également n'afficher que les chansons d'un carnet :
+
+----
+songbook songs --songbook "titre"
+songbook songs --sb "titre"
+----
+
+On peut les classer de façons différentes avec l'option `--sort` qui peut avoir les valeurs suivantes :
+
+----
+songbook songs --sort alpha
+# => valeur par défaut, ordre alphabétique
+
+songbook songs --sort performer
+# => ordre alphabétique des interprètes
+
+songbook songs --sort year
+# => classement par années
+# (taper ensuite l'année pour ne voir que les chansons d'une certaine année)
+
+----

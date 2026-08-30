@@ -36,5 +36,8 @@ include::layout.adoc[]
 // Gabarit
 include::gabarit.adoc[]
 
+// Liste des chansons
+include::song_list.adoc[]
+
 // Mode interactif
 include::interactive_mode.adoc[]
