@@ -6,5 +6,9 @@ require_relative "lib/cli"
 if ARGV.delete("-i") || ARGV.delete("--interactive")
   CLI.run_interactive
 else
-  CLI.run(ARGV)
+  begin
+    CLI.run(ARGV)
+  rescue Interrupt # Ctrl+C -> sortie silencieuse, pas de backtrace
+    puts
+  end
 end

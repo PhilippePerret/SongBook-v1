@@ -187,14 +187,16 @@ module CLI
       case arg1
       when "diags"
         folders = MissingDiags.songs_to_scan(all: missing_all)
-        abort "aucun contexte pour missing diags (use song/songbook, --all, ou dossier courant)" if folders.nil?
+        auto_all = folders.nil?
+        folders = MissingDiags.songs_to_scan(all: true) if auto_all
 
         missing = MissingDiags.scan(folders)
         if missing.empty?
           puts success("👍 #{Loc.get("missing_diags_none")}")
         else
-          hints = []
-          hints << Loc.get("missing_diags_hint_all") unless missing_all
+          hints = [Loc.get("missing_diags_hint_enter")]
+          hints << Loc.get("missing_diags_hint_all") unless missing_all || auto_all
+          hints << Loc.get("missing_diags_hint_context") if auto_all
           hints << Loc.get("missing_diags_hint_name") unless missing_names
           message = blue(Loc.get("missing_diags_prompt"))
           message += "\n#{gray(hints.join(", "))}" unless hints.empty?
