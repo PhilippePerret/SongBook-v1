@@ -42,6 +42,54 @@ Le troisième couplet
 ...
 ----
 
+===== Définitions pour les diags =====
+
+On peut définir les propriétés des diagrammes d'accord au début du fichier gabarit.
+
+----
+{diags; position:End; width:50px;}
+----
+
+[[gabarit-insert-tablas]]
+===== Insertion de tablatures =====
+
+Pour insérer une tablature à l'endroit voulu, on lui trouve un identifiant unique, on définit la tablature à prendre à l'aide de la propriété `tab` suivi du nom composé ou non de la tablature :
+
+----
+{intro; tab:intro;}
+----
+
+On peut faire suivre bien sûr par toutes les propriétés qui peuvent s'appliquer aux images.
+
+----
+{intro; tab:intro; height:50px;}
+----
+
+Une des fonctionnalités formidable des tablatures est la faculté d'associer plusieurs tablatures juste avec le signe `+`, ce qui apporte beaucoup de granularité. Par exemple, si vous avez une tablature `riff-intro.tab`, une autre `couplet-normal.tab` et une troisième `fin.tab` vous pouvez les assembler de cette manière : 
+
+----
+{intro; tab:riff-intro+couplet-normal+fin;}
+----
+
+Cela créera une **unique** tablature avec les trois éléments !
+
+Bien sûr, les tablatures fonctionnent exactement comme les autres éléments et vous pouvez donc utiliser des marques comme ci-dessous pour placer relativement les éléments :
+
+----
+{intro; tab:intro;} // {couplet-1}
+----
+
+Ci-dessus, la tablature `intro.tab` sera placée en vis à vis du premier couplet.
+
+[[gabarit-insert-score]]
+===== Insertion de partitions =====
+
+Les partitions répondent aux mêmes fonctionnalités que <<gabarit-insert-tablas, la tablatures dans le gabarit>> donc vous pouvez consulter cette partie (ci-dessus) pour voir comment utiliser les partitions dans le fichier `.gabarit` de la chanson.
+
+[[gabarit-insert-image]]
+===== Insertion d'image =====
+
+
 [[gabarit, le fichier Gabarit]]
 === Fichier gabarit ===
 
@@ -62,9 +110,10 @@ Par exemple :
 
 {tabla: accompagnement;}
 
-{lyrics: refrain; align: center; text_align: left;}
+{refrain-1; align: center; text_align: left;}
 
 ----
+
 
 
 

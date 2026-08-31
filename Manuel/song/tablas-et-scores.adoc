@@ -4,7 +4,9 @@ Le système de __partitions__ et de __tablatures__ de __SongBook__ reste rudimen
 
 - produire une <<score>>/<<tablature>> de la mélodie avec les paroles,
 - produire une partition/tablature de l'accompagnement,
-- produire une partition/tablature d'un riff, d'un petit bout de musique.
+- produire une partition/tablature d'un riff, d'un petit bout de musique à insérer quelque part, souvent au début ou à la fin de la chanson.
+
+Voir comment <<gabarit-insert-tablas, insérer une tablature>> dans la page de la chanson.
 
 [[tablature, tablature]]
 ==== Tablatures ====
@@ -18,3 +20,4 @@ Pour l'écriture de la tablature, voir <<tablator, l'outil Tablator>>.
 
 Pour le moment, on ne peut pas encore produire de partitions.
 
+Voir comment <<gabarit-insert-score, insérer une partition>> dans la page de la chanson.
