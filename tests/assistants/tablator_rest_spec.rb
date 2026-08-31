@@ -5,7 +5,7 @@ require "tablator_assistant"
 require "tmpdir"
 require "fileutils"
 
-# Silence explicite ("r" visible, "s" invisible, Phil 2026-08-28) : posé comme une
+# Silence explicite ("r" visible, "s" invisible) : posé comme une
 # note, la position de l'événement suivant détermine sa durée. "s" minuscule est
 # libéré pour ce sens ("s SVG sans quitter" passe à "S" majuscule, même principe que
 # "B" pour barre : une lettre à plat ne porte qu'un seul sens).

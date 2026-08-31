@@ -6,7 +6,7 @@ require "tmpdir"
 require "fileutils"
 
 # "J"/"L" (début/fin de la tablature) : mêmes lettres que "début/fin de vers" dans
-# l'édition des accords (`ChordPlacer`, Phil, 2026-08-27).
+# l'édition des accords (`ChordPlacer`).
 RSpec.describe "TablatorAssistant.write_tablature : navigation J/L" do
   before do
     @song_dir = Dir.mktmpdir

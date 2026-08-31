@@ -4,7 +4,7 @@ require_relative "../spec_helper"
 require "cli"
 
 # `update diags` : régénère les diagrammes SVG manquants de l'application ET la page
-# HTML qui les liste toutes (Phil, 2026-08-26 — remplace l'alias `build-diags`).
+# HTML qui les liste toutes  — remplace l'alias `build-diags`).
 RSpec.describe "commande update diags" do
   it "produit les diagrammes manquants ET régénère la page HTML" do
     expect(GenerateChordDiagrams).to receive(:run).and_return([[], []])
@@ -18,7 +18,7 @@ RSpec.describe "commande update diags" do
   end
 end
 
-# `diags` : jamais le home complet en clair dans le chemin affiché (Phil, 2026-08-26).
+# `diags` : jamais le home complet en clair dans le chemin affiché .
 RSpec.describe "commande diags" do
   it "affiche un chemin raccourci (~/...), pas le home complet" do
     chemin = File.join(Dir.home, "Documents", "all-diags.html")

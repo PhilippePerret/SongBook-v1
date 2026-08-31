@@ -5,7 +5,7 @@ require "cli"
 require "fileutils"
 require "tmpdir"
 
-# `build` sur une chanson (Phil, 2026-08-27) : succès (vert) AVANT tout, puis nombre de
+# `build` sur une chanson  : succès (vert) AVANT tout, puis nombre de
 # conflits (rouge) s'il y en a, puis proposition (bleue) d'ouvrir le fichier des
 # conflits, puis proposition d'ouvrir le PDF généré — dans cet ordre précis.
 RSpec.describe "commande build (chanson)" do

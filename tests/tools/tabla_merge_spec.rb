@@ -6,7 +6,7 @@ require "layout"
 require "tmpdir"
 require "fileutils"
 
-# Fusion de tablatures ("+" dans le nom, Phil 2026-08-26) — `{tabla: intro+couplet}` =
+# Fusion de tablatures ("+" dans le nom) — `{tabla: intro+couplet}` =
 # mise bout à bout PURE des codes de "intro.tab" et "couplet.tab", un seul SVG produit.
 RSpec.describe "fusion de tablatures (\"+\")" do
   around do |example|
@@ -23,7 +23,7 @@ RSpec.describe "fusion de tablatures (\"+\")" do
   end
 
   describe ".tab_source_content (nom avec \"+\")" do
-    it "renvoie les contenus SÉPARÉS, dans l'ordre (Phil, 2026-08-28 : chaque source garde sa propre métrique)" do
+    it "renvoie les contenus SÉPARÉS, dans l'ordre  : chaque source garde sa propre métrique)" do
       write_tab("intro", "title: Intro", "50/4 60/4 |")
       write_tab("couplet", "title: Couplet", "70/4 |")
 
@@ -40,7 +40,7 @@ RSpec.describe "fusion de tablatures (\"+\")" do
     end
   end
 
-  describe "changement de métrique d'une source à l'autre (Phil, 2026-08-28)" do
+  describe "changement de métrique d'une source à l'autre " do
     it "chaque mesure garde SA PROPRE métrique, jamais celle du 1er fichier imposée aux autres" do
       write_tab("amorce", "title: Amorce\nmetrique: 3/4", "s4 50/4 60/4 |")
       write_tab("intro", "title: Intro", "10/4 20/4 30/4 40/4 |")

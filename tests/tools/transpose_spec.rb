@@ -5,8 +5,8 @@ require "transpose"
 
 # Tests des outils
 #
-# Grilles reprises telles quelles depuis les tests manuels déjà validés par Phil
-# (2026-08-19, voir le bas de `lib/transpose.rb`) — même attendu, formalisé en RSpec.
+# Grilles reprises telles quelles depuis les tests manuels
+# voir le bas de `lib/transpose.rb`) — même attendu, formalisé en RSpec.
 RSpec.describe "transposition des accords" do
   let(:normaliser) { ->(c) { c.tr("#", "♯").tr("b", "♭") } }
   let(:grille) { %w[Am Eb F# Bb C C#] }
@@ -28,7 +28,7 @@ RSpec.describe "transposition des accords" do
   it "Garder le même écart de lettre plutôt que choisir un accord au hasard" do
     dl, dt = Transpose.parser_entete("Am → Cm")
     # Bb (une bémol) doit rester une note "en b" (Db), jamais son équivalent
-    # enharmonique "au hasard" (C#) — Phil, voir le commentaire en tête de fichier.
+    # enharmonique "au hasard" (C#), voir le commentaire en tête de fichier.
     expect(Transpose.transpose_chord("Bb", dl, dt)).to eq("D♭")
   end
 

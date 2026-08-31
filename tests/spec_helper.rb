@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Config RSpec pour toute la suite `tests/` — TOUT ce qui concerne les tests vit ICI,
-# nulle part ailleurs (Phil). Isole complètement les vrais dossiers de l'user :
+# nulle part ailleurs . Isole complètement les vrais dossiers de l'user :
 # - `AppConfig.songs_dir`/`songbooks_dir` sont TOUJOURS stubbés vers `tests/materiel/`
 #   (jamais lus/écrits dans `config.yaml`, jamais un test ne touche aux vrais Carnets/
 #   Chansons de Phil).

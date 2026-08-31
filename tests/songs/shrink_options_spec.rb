@@ -51,7 +51,7 @@ RSpec.describe "options shrink_diags/shrink_tabla/shrink_score" do
     expect(PageBuilder.resolve_shrink_option(meta, @carnet_folder, "shrink_score")).to eq(false)
   end
 
-  describe "shrink_text (défaut FALSE, inverse des autres, Phil 2026-08-26)" do
+  describe "shrink_text (défaut FALSE, inverse des autres)" do
     it "false par défaut, absent de la chanson et du carnet" do
       write_carnet_infos("title: Carnet\n")
       expect(PageBuilder.resolve_shrink_option({}, @carnet_folder, "shrink_text", default: false)).to eq(false)

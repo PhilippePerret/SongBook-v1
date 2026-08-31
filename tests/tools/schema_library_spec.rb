@@ -5,7 +5,7 @@ require_relative "../../tools/DiagSchem/schema_library"
 require "tmpdir"
 
 # `SchemaLibrary` — insertion d'un nouveau schéma dans `schemas.txt`. Règle dictée par
-# Phil (2026-08-26), appliquée MÉCANIQUEMENT : bémol < naturel < dièse, majeur < mineur,
+# appliquée MÉCANIQUEMENT : bémol < naturel < dièse, majeur < mineur,
 # noms du plus court au plus long, une ligne vide entre chaque "type" (couple
 # altération/qualité).
 RSpec.describe "SchemaLibrary (insertion de schémas)" do

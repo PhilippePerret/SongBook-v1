@@ -5,7 +5,7 @@ require "tablator_assistant"
 require "tmpdir"
 require "fileutils"
 
-# Une barre traverse TOUTE la tablature (Phil, 2026-08-27) : dessinée sur les 6 cordes,
+# Une barre traverse TOUTE la tablature  : dessinée sur les 6 cordes,
 # retirable avec un simple "x" depuis N'IMPORTE QUELLE corde à sa colonne.
 RSpec.describe "TablatorAssistant : barres" do
   before do

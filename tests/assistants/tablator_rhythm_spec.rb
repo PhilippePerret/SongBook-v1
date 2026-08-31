@@ -55,7 +55,7 @@ RSpec.describe "rythme de l'assistant tablature" do
     expect(matrix[0]).to eq([1, 3, 4, nil])
   end
 
-  it "Maj+→ décale AUSSI les barres et silences, pas seulement les notes (bug constaté, Phil)" do
+  it "Maj+→ décale AUSSI les barres et silences, pas seulement les notes (bug constaté)" do
     matrix = Array.new(6) { [nil] * 4 }
     bars = { 1 => "|", 2 => "||" }
     rests = { 3 => "r" }

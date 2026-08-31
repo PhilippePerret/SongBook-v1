@@ -33,7 +33,7 @@ RSpec.describe "lecture des paroles et accords (.lyr)" do
       expect(DSLParser.normalize_chord("am7")).to eq("Am7")
     end
 
-    it "Forcer la basse d'un accord entre crochets en MINUSCULE (règle inverse de la fondamentale, Phil 2026-08-28)" do
+    it "Forcer la basse d'un accord entre crochets en MINUSCULE (règle inverse de la fondamentale)" do
       expect(DSLParser.normalize_chord("a[C]m7")).to eq("A[c]m7")
     end
 

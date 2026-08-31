@@ -7,7 +7,7 @@ require "file_finder"
 require "fileutils"
 
 # `edit lyrics/lyr`, `edit infos/inf`, `edit gabarit/gab` : alias de `open lyrics/lyr`,
-# `open infos/inf`, `open gabarit/gab` (Phil, 2026-08-28) — même comportement, mêmes
+# `open infos/inf`, `open gabarit/gab`  — même comportement, mêmes
 # abréviations, sans dupliquer la logique (voir `CLI.open_lyrics_file`/`open_infos_file`/
 # `open_gabarit_file`, partagées entre les deux commandes).
 RSpec.describe "commande edit : alias de open (lyrics/infos/gabarit)" do

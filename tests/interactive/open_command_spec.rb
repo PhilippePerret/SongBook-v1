@@ -126,7 +126,7 @@ RSpec.describe "commande open" do
     end
   end
 
-  describe "fichier manquant : propose de le créer (Phil, 2026-08-26 — vaut pour tout type de fichier)" do
+  describe "fichier manquant : propose de le créer  — vaut pour tout type de fichier)" do
     around do |example|
       Dir.mktmpdir do |dir|
         @song_dir = dir

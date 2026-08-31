@@ -7,7 +7,7 @@ require "fileutils"
 
 # `write_tablature` : "q" demande confirmation (bleu) avant d'enregistrer, cohérence
 # avec les autres éditeurs de l'app ; Entrée enregistre directement, sans redemander
-# (Phil, 2026-08-26). Message d'enregistrement : vert + "👍 ".
+# . Message d'enregistrement : vert + "👍 ".
 RSpec.describe "TablatorAssistant.write_tablature : sortie q vs Entrée" do
   # `before` (pas `around`) : le `before` GLOBAL de `spec_helper` (`Session.song = nil`
   # avant CHAQUE exemple) s'exécute APRÈS le début d'un `around` mais AVANT un `before`

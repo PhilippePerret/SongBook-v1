@@ -5,7 +5,7 @@ require "tablator_assistant"
 require "tmpdir"
 require "fileutils"
 
-# Machine à états de saisie clavier (Phil, 2026-08-26) : "0p2"/"0+2" (doigté droit +
+# Machine à états de saisie clavier  : "0p2"/"0+2" (doigté droit +
 # gauche) et "|"/"." (barres, ex. "|." fin du morceau) — y compris la collision de la
 # touche "c" (doigté auriculaire pendant une note, sinon commande "config").
 RSpec.describe "TablatorAssistant.write_tablature : composition clavier" do

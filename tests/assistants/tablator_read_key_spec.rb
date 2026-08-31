@@ -4,7 +4,7 @@ require_relative "../spec_helper"
 require "tablator_assistant"
 
 # `TablatorAssistant.read_key` : une séquence ESC qui n'est PAS une CSI ("\e[...") ne
-# doit JAMAIS attendre un octet de plus après les 2 premiers (Phil, 2026-08-27 — bug
+# doit JAMAIS attendre un octet de plus après les 2 premiers  — bug
 # constaté : Option/Alt+lettre envoyé en "Meta" par le terminal, ex. "\e" + "L", faisait
 # bloquer la lecture jusqu'à la frappe SUIVANTE, avalée à tort comme si elle appartenait
 # à cette séquence).

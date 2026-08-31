@@ -45,7 +45,7 @@ RSpec.describe "outil tablator (rendu SVG direct)" do
     expect(result[:height_pt]).to be > 0
   end
 
-  it "measures_per_line plus petit que le nombre de mesures produit plusieurs systèmes indépendants (Phil, 2026-08-28)" do
+  it "measures_per_line plus petit que le nombre de mesures produit plusieurs systèmes indépendants " do
     content = "50/4 51/4 52/4 53/4 54/4 55/4 56/4 57/4\n" # 2 mesures réelles en 4/4
     two_systems = Tablator.render_tab_svg(content, measures_per_line: 1)
     single_system = Tablator.render_tab_svg(content, measures_per_line: 999)
@@ -79,7 +79,7 @@ RSpec.describe "outil tablator (rendu SVG direct)" do
     expect(result[:svg]).to include("<line")
   end
 
-  describe "doigtés (main droite p/i/m/a/c + main gauche chiffre, Phil 2026-08-26)" do
+  describe "doigtés (main droite p/i/m/a/c + main gauche chiffre)" do
     it "main droite seule" do
       ev = Tablator.parse_event("60/4-p", "4")
       expect(ev.rh).to eq("p")

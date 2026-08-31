@@ -4,7 +4,7 @@ require_relative "../spec_helper"
 require "tablator_assistant"
 
 # `matrix_to_tokens`/`matrix_from_tokens` : doigtés (main droite p/i/m/a/c + main
-# gauche chiffre) et barres de mesure (Phil, 2026-08-26), notamment le cas central —
+# gauche chiffre) et barres de mesure , notamment le cas central —
 # une barre borne la durée de la note qui la précède, plus jamais `width` (arbitraire).
 RSpec.describe "TablatorAssistant : grille (doigtés + barres)" do
   def cell(kase, rh: nil, lh: nil)
@@ -73,7 +73,7 @@ RSpec.describe "TablatorAssistant : grille (doigtés + barres)" do
       expect(TablatorAssistant.matrix_to_tokens(matrix(4), "croche")).to eq([])
     end
 
-    it "silence explicite ('r'/'s', Phil 2026-08-28) : durée = span jusqu'à l'événement suivant, comme une note" do
+    it "silence explicite ('r'/'s') : durée = span jusqu'à l'événement suivant, comme une note" do
       m = matrix(6, [5, 0] => cell(0), [4, 4] => cell(2))
       tokens = TablatorAssistant.matrix_to_tokens(m, "croche", rests: { 2 => "r" })
       expect(tokens).to eq(["50/4", "r4", "42/4"])
@@ -117,7 +117,7 @@ RSpec.describe "TablatorAssistant : grille (doigtés + barres)" do
       expect(bars).to eq({ 2 => "||" })
     end
 
-    it "reconnaît un silence explicite ('r'/'s') et sa colonne (Phil, 2026-08-28)" do
+    it "reconnaît un silence explicite ('r'/'s') et sa colonne " do
       _, _bars, rests = TablatorAssistant.matrix_from_tokens(["50/4", "r4", "62/4"], 6, "croche")
       expect(rests).to eq({ 2 => "r" })
     end

@@ -5,12 +5,12 @@ require "layout"
 
 # `Layout.missing_chords_summary` : le titre entre parenthèses distingue les chansons
 # d'un CARNET (plusieurs chansons possibles) mais est purement redondant pour une
-# chanson SEULE (toujours la même) — `with_song_names: false` l'omet (Phil, 2026-08-28).
+# chanson SEULE (toujours la même) — `with_song_names: false` l'omet .
 RSpec.describe "Layout.missing_chords_summary" do
   before { Layout.reset_conflicts! }
   # `current_song` (état GLOBAL du module, comme `@missing_chords`) fuiterait sinon dans
   # les tests suivants du même process rspec — `reset_conflicts!` ne le touche pas
-  # (seul un vrai build le fixe), donc à restaurer ici explicitement (Phil, 2026-08-28).
+  # (seul un vrai build le fixe), donc à restaurer ici explicitement .
   after { Layout.current_song = nil }
 
   it "par défaut (carnet) : liste chaque accord avec les chansons concernées" do

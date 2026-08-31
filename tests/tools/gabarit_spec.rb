@@ -35,7 +35,7 @@ RSpec.describe "lecture du gabarit (.gab)" do
     expect(items.first.data[:tabla]).to eq("intro.tab")
   end
 
-  it "'tab' est un diminutif toléré pour 'tabla' (Phil, 2026-08-26)" do
+  it "'tab' est un diminutif toléré pour 'tabla' " do
     items = parse("{tab: intro+couplet;}")
     expect(items.first.type).to eq(:tabla)
     expect(items.first.data[:tabla]).to eq("intro+couplet")

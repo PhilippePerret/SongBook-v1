@@ -88,12 +88,12 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       expect(ChordPlacer.chord_known?("Zzz9", Dir.mktmpdir)).to be false
     end
 
-    it "basse seule (\"[fd]\", Phil 2026-08-28) : jamais de diagramme dédié, jamais signalé" do
+    it "basse seule (\"[fd]\") : jamais de diagramme dédié, jamais signalé" do
       expect(ChordPlacer.chord_known?("[fd]", Dir.mktmpdir)).to be true
     end
   end
 
-  describe "ChordPlacer.capitalize_chord (basse entre crochets TOUJOURS minuscule, Phil 2026-08-28)" do
+  describe "ChordPlacer.capitalize_chord (basse entre crochets TOUJOURS minuscule)" do
     it "basse seule : minuscule forcée, même tapée en majuscule" do
       expect(ChordPlacer.capitalize_chord("[FD]")).to eq("[fd]")
     end
@@ -153,7 +153,7 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
     end
   end
 
-  describe "ChordPlacer.active_letters (légende affichée = accords ACTIVEMENT posés, Phil 2026-08-26)" do
+  describe "ChordPlacer.active_letters (légende affichée = accords ACTIVEMENT posés)" do
     it "retire un accord qui n'est plus posé nulle part (bug constaté : restait affiché après suppression)" do
       chord_lines = { 0 => ChordLine.new("bonjour", { 0 => "A" }) }
       letters = { "a" => ["A"], "d" => ["D"] } # "D" jamais posé dans chord_lines
@@ -173,7 +173,7 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
     end
   end
 
-  describe "ChordPlacer.normalize_digit (un chiffre est un chiffre, Phil 2026-08-26)" do
+  describe "ChordPlacer.normalize_digit (un chiffre est un chiffre)" do
     it "chiffre du haut du clavier => lui-même" do
       expect(ChordPlacer.normalize_digit("7")).to eq("7")
     end
@@ -234,7 +234,7 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       expect(File.readlines(path).first.chomp).to eq("bonjour tout/G:")
     end
 
-    it "\"[\" démarre la saisie d'une basse SEULE (\"[fd]\", TOUJOURS minuscule, Phil 2026-08-28)" do
+    it "\"[\" démarre la saisie d'une basse SEULE (\"[fd]\", TOUJOURS minuscule)" do
       path = write_lyr(["bonjour tout"])
       simulate(path, "\nL[FD]\r\r") # tapé en MAJUSCULE : doit quand même s'enregistrer en minuscule
       expect(File.readlines(path).first.chomp).to eq("bonjour tout/[fd]:")
