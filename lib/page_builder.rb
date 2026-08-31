@@ -16,7 +16,7 @@ module PageBuilder
   TABLATOR_PATHS = Dir.glob(File.expand_path("../tools/tablator/*.rb", __dir__))
 
   # Clés canoniques (anglais) attendues par le gabarit : title/year/lyrics/composer/performer.
-  # Table des alias construite en INVERSANT `Loc.get` sur ces clés (Phil, 2026-08-20) :
+  # Table des alias construite en INVERSANT `Loc.get` sur ces clés  :
   # `TABLE[Loc.get(canon)] = canon`. Mémoïsée une fois (`Loc` lui-même ne charge qu'une
   # langue, celle de l'utilisateur — voir `lib/locale.rb`).
   INFOS_CANONICAL_KEYS = %w[title performer composer lyrics year transpose].freeze
@@ -29,11 +29,11 @@ module PageBuilder
   end
 
   # `.infos` : métadonnées, une par ligne "clé: valeur" (pas de YAML/---). Clés alternatives
-  # tolérées (Phil, 2026-08-17 : "tu les prends comme possibles dans le code" — pas de
+  # tolérées  : "tu les prends comme possibles dans le code" — pas de
   # réécriture de fichier imposée) : n'écrasent JAMAIS la clé canonique si elle est déjà
   # présente.
   # `shrink_diags`/`shrink_tabla`/`shrink_score` : clé de PREMIER NIVEAU (pas de forme
-  # imbriquée `options:`, volontairement simplifié, Phil 2026-08-26), chanson prioritaire
+  # imbriquée `options:`, volontairement simplifié), chanson prioritaire
   # sur le carnet. `true` par défaut si absente des deux `.infos`.
   def self.resolve_shrink_option(meta, carnet_folder, key, default: true)
     return meta[key] != "false" if meta.key?(key)
@@ -49,7 +49,7 @@ module PageBuilder
     default
   end
 
-  # `tabla_preset` (Phil, 2026-08-28) : nom d'un preset `Tablator::PRESETS`
+  # `tabla_preset`  : nom d'un preset `Tablator::PRESETS`
   # ("regular-tablatures"/"mini-tablatures"...) — chanson (`.infos`) prioritaire
   # sur le carnet, même principe que `resolve_shrink_option`. `nil` si absent des
   # deux (l'appelant retombe alors sur le défaut, "regular-tablatures").
@@ -80,7 +80,7 @@ module PageBuilder
 
   # `.lyr` : couplets — chaque paragraphe commence par `{nom}` (SANS ":", à ne pas confondre
   # avec une directive `{clé: valeur}`), suivi des lignes accord/texte. Le nom est OPTIONNEL
-  # (règle : rien ne doit être impossible, Phil 2026-08-17) — un paragraphe sans `{nom}` reçoit
+  # (règle : rien ne doit être impossible) — un paragraphe sans `{nom}` reçoit
   # `couplet-N` (N = position du paragraphe dans le fichier).
   # `{nom}` répété SANS corps : rappel — reprend à cette position le contenu déjà défini
   # sous ce nom (ex. refrain qui revient plusieurs fois dans la chanson). Répété AVEC corps :
@@ -94,12 +94,12 @@ module PageBuilder
   # AYNL, dernier refrain recopié en entier sans `{refrain}`). Sans ça, le paragraphe
   # récupère le mauvais "type" (`couplet-N` auto), ce qui casse le pairage par type (RAO5).
   # Deux paragraphes de MÊME NOM mais de contenu DIFFÉRENT restent une vraie redéfinition :
-  # au lieu d'écraser (perte de contenu, interdit — Phil 2026-08-18), le 2nd est renommé en
+  # au lieu d'écraser (perte de contenu, interdit), le 2nd est renommé en
   # suffixe (`nom-2`, `nom-3`...) pour que les deux soient rendus.
   # Un paragraphe = un bloc, séparé normalement par une ligne vide — MAIS une ligne
   # `{nom}` démarre TOUJOURS un nouveau bloc, MÊME collée SANS ligne vide à la strophe
   # précédente, MÊME collée à la fin de la dernière ligne de texte (aucun saut de ligne
-  # du tout — Phil, 2026-08-24, "Au fur et à mesure" : "Je t'écris des mots purs…{final}",
+  # du tout — , "Au fur et à mesure" : "Je t'écris des mots purs…{final}",
   # `{final}` sur la MÊME ligne que "purs…", jamais reconnu). `line.split` sur le motif
   # d'en-tête AVEC capture isole "{nom}" de ce qui l'entoure sur la même ligne, dans
   # l'ordre — le texte qui précède reste rattaché au bloc EN COURS, "{nom}" ouvre le
@@ -181,7 +181,7 @@ module PageBuilder
 
   # Ligne ENTIÈREMENT entourée de crochets (ex. `[Intro : /Em://Em9:]`) : étiquette, pas
   # des paroles — toujours sur une seule ligne (règle trouvée dans le .lyr d'"À bicyclette",
-  # Phil 2026-08-23), jamais accords au-dessus/texte en dessous. Les crochets eux-mêmes ne
+  # jamais accords au-dessus/texte en dessous. Les crochets eux-mêmes ne
   # sont que la marque de syntaxe, jamais affichés. Aucune ambiguïté possible avec les
   # crochets de basse d'accord (`/accord[basse]:`, voir Manuel/song/chords.adoc) : ceux-là
   # sont TOUJOURS précédés de `/`, jamais en tout début de ligne.
@@ -200,7 +200,7 @@ module PageBuilder
   # clé qu'elle porte : titre/tabla/diags), soit une row de contenu `{song: nom}` (une ou
   # deux, séparées par `//` pour le côte-à-côte, comme le `//` du DSL simple), soit une row
   # de blocs `.lyr` référencés DIRECTEMENT par leur nom `{nom}` (sans `song:`) — `+` entre
-  # deux `{nom}` CONCATÈNE leurs paroles en un seul bloc rendu (Phil, 2026-08-19 : forcer
+  # deux `{nom}` CONCATÈNE leurs paroles en un seul bloc rendu  : forcer
   # un pseudo-refrain coupé en plusieurs blocs à s'afficher comme un seul, à côté d'un
   # couplet, via `//`). Ex. `{couplet-1} // {refrain-part1-1} + {refrain-part2-1}`.
   # `{nom; clé:valeur;}` : directive(s) inline sur UN bloc précis d'une row — bug constaté
@@ -213,40 +213,94 @@ module PageBuilder
   # plusieurs lignes et a donc besoin d'une ligne vide pour savoir où elle s'arrête — un
   # paragraphe `.gab` tient TOUJOURS sur une seule ligne, `{nom}`/`{song: nom}`/directive,
   # jamais ambigu : exiger une ligne vide entre chaque n'avait pas de sens ici, imposé sans
-  # concertation par une session précédente — retiré, Phil 2026-08-21). Lignes vides
+  # concertation par une session précédente — retiré). Lignes vides
   # tolérées (ignorées), ni obligatoires ni interdites.
+  # `{nom; tab: ...}` / `{nom; score: ...}` / `{nom; image: ...}` : forme déclarative
+  # (nom en tête suivi d'attributs) — malgré le nom en tête qui la fait matcher
+  # ROW_TOKEN_RE, PAS une row de paroles : une ressource (tabla/score/image).
+  RESOURCE_DECLARATION_RE = /;\s*(?:tab|score|image)\s*:/.freeze
+
+  # Une seule marque `{nom; tab/score/image: ...}` (déjà isolée par l'appelant, que ce
+  # soit la ligne entière ou une seule colonne d'un `//`) -> l'item ressource.
+  def self.parse_resource_declaration(chunk)
+    inner = chunk[/\A\{(.*)\}\z/m, 1] || ""
+    segments = inner.split(";")
+    # Nom en tête sans ":" (ex. "intro" dans "{intro; tab: intro;...}") : titre par
+    # défaut de la marque, SAUF `title:` explicite.
+    declared_name = segments.first && !segments.first.include?(":") ? segments.first.strip : nil
+    dirs = {}
+    segments.each do |pair|
+      k, v = pair.split(":", 2)
+      next unless k && v && !k.strip.empty?
+
+      key = k.strip.to_sym
+      key = :tabla if key == :tab
+      dirs[key] = v.strip.gsub(/\A["']|["']\z/, "")
+    end
+    dirs[:title] ||= declared_name if declared_name && !declared_name.empty?
+    type = %i[tabla score image].find { |k| dirs.key?(k) } || :unknown
+    GabItem.new(type, dirs)
+  end
+
+  # Une colonne (résultat d'un split sur `//`) qui est un `{nom}`/`{nom-N}` de paroles
+  # (jamais une ressource, voir `RESOURCE_DECLARATION_RE`) -> son nom ("nomA+nomB" si
+  # concaténée), les directives inline (`{nom; clé:valeur;}`) posées dans `row_directives`.
+  def self.row_col_name(col, row_directives)
+    return nil unless col =~ ROW_TOKEN_RE
+
+    col.scan(/\{([^:;}]+)(?:;([^}]*))?\}/).map do |name, dirs_str|
+      name = name.strip
+      dirs_str.to_s.split(";").each do |pair|
+        k, v = pair.split(":", 2)
+        next unless k && v && !k.strip.empty?
+
+        (row_directives[name] ||= {})[k.strip.to_sym] = v.strip.gsub(/\A["']|["']\z/, "")
+      end
+      name
+    end.join("+")
+  end
+
+  # Ligne `//` mêlant AU MOINS une marque ressource (`tab:`/`score:`/`image:`) et
+  # d'autres colonnes (paroles) — chaque marque ressource devient son propre item, les
+  # colonnes de paroles adjacentes restent groupées dans une row `//` normale.
+  def self.split_gab_row_with_resources(para)
+    items = []
+    pending_names = []
+    pending_directives = {}
+    flush = lambda do
+      next if pending_names.empty?
+
+      items << GabItem.new(:row, { names: pending_names.dup, directives: pending_directives.dup })
+      pending_names = []
+      pending_directives = {}
+    end
+    para.split("//").map(&:strip).each do |col|
+      if col =~ RESOURCE_DECLARATION_RE
+        flush.call
+        items << parse_resource_declaration(col)
+      else
+        name = row_col_name(col, pending_directives)
+        pending_names << name if name
+      end
+    end
+    flush.call
+    items
+  end
+
   def self.parse_gab(path)
-    File.read(path).split("\n").map(&:strip).reject(&:empty?).map do |para|
+    File.read(path).split("\n").map(&:strip).reject(&:empty?).flat_map do |para|
       if para.include?("{song:")
         names = para.split("//").filter_map { |chunk| chunk[/\{song:\s*([^;}]+)/, 1]&.strip }
-        GabItem.new(:row, { names: names, directives: {} })
-      # `{nom; tab: ...}` / `{nom; score: ...}` / `{nom; image: ...}` : forme déclarative
-      # (nom en tête suivi d'attributs) — malgré le nom en tête qui la fait matcher
-      # ROW_TOKEN_RE, PAS une row de paroles : une ressource (tabla/score/image),
-      # `{nom}`/`{nom-N}` SEULS restent la forme paroles (Phil, 2026-08-27).
-      elsif !para.include?("//") && para =~ /;\s*(?:tab|score|image)\s*:/
-        inner = para[/\A\{(.*)\}\z/m, 1] || ""
-        segments = inner.split(";")
-        # Nom en tête sans ":" (ex. "intro" dans "{intro; tab: intro;...}") : titre par
-        # défaut de la marque, SAUF `title:` explicite (Phil, 2026-08-27).
-        declared_name = segments.first && !segments.first.include?(":") ? segments.first.strip : nil
-        dirs = {}
-        segments.each do |pair|
-          k, v = pair.split(":", 2)
-          next unless k && v && !k.strip.empty?
-
-          key = k.strip.to_sym
-          key = :tabla if key == :tab
-          dirs[key] = v.strip.gsub(/\A["']|["']\z/, "")
-        end
-        dirs[:title] ||= declared_name if declared_name && !declared_name.empty?
-        type = %i[tabla score image].find { |k| dirs.key?(k) } || :unknown
-        GabItem.new(type, dirs)
+        [GabItem.new(:row, { names: names, directives: {} })]
+      elsif para.include?("//") && para.split("//").any? { |c| c.strip =~ RESOURCE_DECLARATION_RE }
+        split_gab_row_with_resources(para)
+      elsif !para.include?("//") && para =~ RESOURCE_DECLARATION_RE
+        [parse_resource_declaration(para)]
       # `{diags; position: End;}` : "diags" en tête SANS ":" (même forme que
       # `{intro; tab: ...}` ci-dessus) matchait `ROW_TOKEN_RE` et se faisait chercher
-      # comme un bloc de paroles nommé "diags" dans le `.lyr` (bug constaté, Phil,
-      # 2026-08-30 : "bloc diags introuvable"). "diags" n'est PAS un nom de bloc
-      # possible (mot réservé, position des diagrammes), intercepté ici en premier.
+      # comme un bloc de paroles nommé "diags" dans le `.lyr` (bug constaté : "bloc
+      # diags introuvable"). "diags" n'est PAS un nom de bloc possible (mot réservé,
+      # position des diagrammes), intercepté ici en premier.
       elsif para =~ /\A\{\s*diags\s*(;|\})/i
         inner = para[/\A\{(.*)\}\z/m, 1] || ""
         dirs = {}
@@ -256,22 +310,11 @@ module PageBuilder
 
           dirs[k.strip.to_sym] = v.strip.gsub(/\A["']|["']\z/, "")
         end
-        GabItem.new(:diags, dirs)
+        [GabItem.new(:diags, dirs)]
       elsif (cols = para.split("//").map(&:strip)).all? { |c| c =~ ROW_TOKEN_RE }
         row_directives = {}
-        names = cols.map do |c|
-          c.scan(/\{([^:;}]+)(?:;([^}]*))?\}/).map do |name, dirs_str|
-            name = name.strip
-            dirs_str.to_s.split(";").each do |pair|
-              k, v = pair.split(":", 2)
-              next unless k && v && !k.strip.empty?
-
-              (row_directives[name] ||= {})[k.strip.to_sym] = v.strip.gsub(/\A["']|["']\z/, "")
-            end
-            name
-          end.join("+")
-        end
-        GabItem.new(:row, { names: names, directives: row_directives })
+        names = cols.map { |c| row_col_name(c, row_directives) }
+        [GabItem.new(:row, { names: names, directives: row_directives })]
       else
         inner = para[/\A\{(.*)\}\z/m, 1] || ""
         dirs = {}
@@ -279,8 +322,8 @@ module PageBuilder
           k, v = pair.split(":", 2)
           next unless k && v && !k.strip.empty?
 
-          # "tab" = diminutif toléré pour "tabla" (Phil, 2026-08-26) — même convention
-          # que les formes longues/courtes déjà tolérées ailleurs (`FileFinder`).
+          # "tab" = diminutif toléré pour "tabla" — même convention que les formes
+          # longues/courtes déjà tolérées ailleurs (`FileFinder`).
           key = k.strip.to_sym
           key = :tabla if key == :tab
           dirs[key] = v.strip.gsub(/\A["']|["']\z/, "")
@@ -288,21 +331,21 @@ module PageBuilder
         # `tabla`/`score`/`image`/`diags` avant `title` : leur directive porte elle-même
         # une clé `title` (sa légende) — sinon elle se ferait passer pour la config d'en-tête.
         type = %i[tabla score image diags title].find { |k| dirs.key?(k) } || :unknown
-        GabItem.new(type, dirs)
+        [GabItem.new(type, dirs)]
       end
     end
   end
 
   # Génère le SVG de la tabla à la demande si absent, ou si le/les `.tab` source(s)
   # sont plus récent(s) que le `.svg` déjà là (cache invalidé par date de fichier).
-  # `name` sans extension — "intro+couplet" (Phil, 2026-08-26) : FUSION, pure mise
+  # `name` sans extension — "intro+couplet"  : FUSION, pure mise
   # bout à bout des CODES de "intro.tab" et "couplet.tab" (frontmatter du 1er fichier
   # repris tel quel, corps concaténés), un SEUL SVG produit ("intro+couplet.svg").
   # Renvoie le chemin du SVG, ou nil si les sources nécessaires n'existent pas toutes.
   # Dossiers RÉELS des ressources (tab/score/image) d'une chanson, dans l'ordre de
   # recherche : `/scores`, `/images`, racine du dossier chanson, PUIS tous les
-  # sous-dossiers (récursif — jamais des milliers de fichiers dans une chanson, Phil
-  # 2026-08-27) si toujours introuvable.
+  # sous-dossiers (récursif — jamais des milliers de fichiers dans une chanson
+  # si toujours introuvable.
   RESOURCE_SUBDIRS = %w[scores images].freeze
 
   def self.resource_search_dirs(folder)
@@ -318,15 +361,15 @@ module PageBuilder
   end
 
   # Cache invalidé si un `.tab` source OU l'outil `tablator.rb` lui-même a changé depuis
-  # (Phil, 2026-08-27 : SVG jamais régénéré après une correction de tablator.rb, comparé
+  #  : SVG jamais régénéré après une correction de tablator.rb, comparé
   # seulement au `.tab` — bug constaté, servait un SVG périmé).
   def self.svg_fresh?(svg_path, *source_paths)
     File.exist?(svg_path) && (source_paths + TABLATOR_PATHS).all? { |p| File.mtime(p) <= File.mtime(svg_path) }
   end
 
-  # `name` sans extension — "intro+couplet" (Phil, 2026-08-26) : FUSION, mise bout à
+  # `name` sans extension — "intro+couplet"  : FUSION, mise bout à
   # bout de "intro.tab" et "couplet.tab" ; chaque source garde SA PROPRE métrique/
-  # unité (Phil, 2026-08-28 : "changement de métrique d'un segment à l'autre" —
+  # unité  : "changement de métrique d'un segment à l'autre" —
   # "amorce" en 3/4, la suite en 4/4 — jamais celle du 1er fichier imposée aux
   # autres, voir `Tablator.parse_source_measures`). Renvoie [contenus (liste, 1
   # par source, dans l'ordre), dossier_de_sortie, .tab source(s)], ou nil si une
@@ -346,14 +389,14 @@ module PageBuilder
   end
 
   # SVG généré à la demande (`Tablator.render_tab_svg` — rendu géométrique direct,
-  # plus de dépendance LilyPond, Phil 2026-08-28), UN FICHIER PAR SYSTÈME (Phil,
+  # plus de dépendance LilyPond), UN FICHIER PAR SYSTÈME (Phil,
   # 2026-08-28 : "chaque système doit être un élément de pagination indépendant" —
   # 2 systèmes peuvent tenir sur une page, le suivant passer sur la page d'après ;
   # `build_song_elements` pousse donc un `PageElement` par système). Cache : la
   # fraîcheur du 1er fichier (`.s1.svg`) sert de sentinelle pour tout le lot (écrits
   # ensemble, dans le même appel). `measures_override` : `tabla_measures_per_page`
   # (layout), prime sur le calcul automatique. Écrits dans `<chanson>/.export/`
-  # (Phil, 2026-08-27 : jamais les fichiers générés dans le dossier de l'user,
+  #  : jamais les fichiers générés dans le dossier de l'user,
   # `scores/` reste UNIQUEMENT ses `.tab`).
   EXPORT_DIRNAME = ".export"
 
@@ -365,7 +408,7 @@ module PageBuilder
     FileUtils.mkdir_p(export_dir)
 
     # Le preset actif (`Tablator.active_preset`) fait partie de la clé de cache —
-    # sinon un changement de preset (Phil, 2026-08-28, "mini-tablatures") sert un
+    # sinon un changement de preset , "mini-tablatures") sert un
     # SVG périmé tant que les sources .tab n'ont pas changé.
     key = "#{Tablator.active_preset}.#{measures_override ? "mo#{measures_override}" : "w#{available_width_pt.round}"}"
     first_path = File.join(export_dir, "#{name}.#{key}.s1.svg")
@@ -399,7 +442,7 @@ module PageBuilder
     nil
   end
 
-  # Valeurs par défaut (Phil, 2026-08-17 : "le moins de définitions possibles" — un `.gab`
+  # Valeurs par défaut  : "le moins de définitions possibles" — un `.gab`
   # ne sert qu'à ÉCARTER ces défauts, jamais à les répéter). PLUS TARD : fichier YAML de
   # config SongBook, pour qui veut les changer sans toucher au code.
   DEFAULT_TITLE_BAND = true
@@ -449,7 +492,7 @@ module PageBuilder
   end
 
   # Bloc `.gab` référencé introuvable TEL QUEL dans le `.lyr` : traitement intelligent
-  # (Phil, 2026-08-21), jamais un crash qui bloquerait tout le carnet pour une chanson en
+  # , jamais un crash qui bloquerait tout le carnet pour une chanson en
   # défaut. `candidates` = blocs RÉELS du `.lyr` du même type (`block_kind`, "couplet" pour
   # "couplet-3" comme pour "couplet"), dans leur ordre RÉEL d'apparition (`lyr_order`,
   # dédupliqué : un refrain repris 3 fois n'y compte qu'une fois).
@@ -490,7 +533,7 @@ module PageBuilder
   # `row_directives` (voir `parse_gab`, `{nom; clé:valeur;}`) : directives inline posées sur
   # UN nom précis de la row — appliquées LIGNE PAR LIGNE, seulement aux lignes de CE
   # sous-bloc (`nomA`), jamais à celles d'un autre sous-bloc concaténé avec lui via "+"
-  # (Phil, 2026-08-23 : "la ligne contenant l'intro doit être alignée à droite", PAS le
+  #  : "la ligne contenant l'intro doit être alignée à droite", PAS le
   # couplet-1 qui la suit dans "{intro; align:Right;} + {couplet-1}").
   def self.resolve_block(lyr_blocks, name, lyr_order, counters, row_directives: {})
     return apply_extra_directives(fetch_block(lyr_blocks, name, lyr_order, counters), name, row_directives) unless name.include?("+")
@@ -508,7 +551,7 @@ module PageBuilder
     Block.new(lines: lines, directives: block.directives.merge(dirs), paired_with_previous: block.paired_with_previous)
   end
 
-  # "intro-1" -> "intro" (Phil, 2026-08-20 : "le premier mot dans un {...}, découpé selon
+  # "intro-1" -> "intro"  : "le premier mot dans un {...}, découpé selon
   # les '-', le deuxième élément étant souvent le numéro").
   def self.block_name_kind(name)
     name.split("-").first
@@ -533,10 +576,10 @@ module PageBuilder
   # pour une position dynamique `int`/`ext` (voir `build`). `rows` déjà résolu
   # (`resolve_block`/`with_intro_align`, compteurs `bare_kind_counters`) — ne dépend pas
   # de `text_x`, jamais recalculé ici (fausserait le mapping positionnel des blocs
-  # génériques si appelé deux fois, Phil, 2026-08-24).
-  # Échelle UNIFORME pour TOUTE la chanson (Phil, 2026-08-27 : "on l'applique à TOUTES")
+  # génériques si appelé deux fois).
+  # Échelle UNIFORME pour TOUTE la chanson  : "on l'applique à TOUTES")
   # — jamais tabla par tabla. Chaque tab/score vectoriel a une largeur physique NATURELLE
-  # (calculée directement par `Tablator.render_tab_svg`, Phil 2026-08-28 — plus de
+  # (calculée directement par `Tablator.render_tab_svg` — plus de
   # dépendance LilyPond) : un seul facteur de réduction (si la plus large dépasse la
   # colonne) s'applique à toutes (`Layout.uniform_tab_scale`).
   # `name`/`item.type` -> chemins SVG : `ensure_tabla_svg` pour `:tabla`/`:score`
@@ -589,7 +632,7 @@ module PageBuilder
         align = item.data[:align]
         title = item.data[:title]
         count = item.data[:count]
-        # `image:` = toujours "image" (pleine page par défaut, Phil 2026-08-27) ; `tab:` =
+        # `image:` = toujours "image" (pleine page par défaut) ; `tab:` =
         # toujours notation générée ; `score:` = notation SI vectoriel, image SI
         # matriciel (photo/scan d'une partition).
         as_image = !asset_paths.is_a?(Array)
@@ -597,7 +640,7 @@ module PageBuilder
           elements << Layout.build_image_element(pdf, asset_paths, text_x, text_w, align: align, title: title, count: count)
           shrink_jobs << { index: elements.size - 1, svg_paths: asset_paths, align: align, title: title } if item.data[:shrink] == "true"
         else
-          # UN élément de pagination PAR SYSTÈME (Phil, 2026-08-28 : "chaque système
+          # UN élément de pagination PAR SYSTÈME  : "chaque système
           # doit être un élément indépendant" — 2 systèmes peuvent tenir sur une page,
           # le suivant passer sur la page d'après). Titre seulement sur le 1er système,
           # repère "x N" (`count:`) seulement sur le dernier.
@@ -607,7 +650,7 @@ module PageBuilder
             el = Layout.build_tabla_element_v2(pdf, [svg_path], text_x, text_w, align: align, title: sys_title, count: sys_count, scale: tab_scale)
             # Gouttière resserrée SEULEMENT entre 2 systèmes de LA MÊME tablature (jamais
             # celle qui précède le 1er, qui reste la gouttière normale — voir MIN/MAX_V_DIST
-            # `:tabla_system`, Phil 2026-08-28 : "systèmes trop séparés").
+            # `:tabla_system` : "systèmes trop séparés").
             el.gutter_type = :tabla_system if i.positive?
             elements << el
             shrink_jobs << { index: elements.size - 1, svg_paths: [svg_path], align: align, title: sys_title } if item.data[:shrink] == "true"
@@ -645,14 +688,14 @@ module PageBuilder
     DiagsSync.sync!(folder)
     gab_path = FileFinder.find(folder, :gab)
     # `.gab` vide (0 octet ou blanc) : traité comme absent, jamais une page blanche
-    # imprimée pour un fichier sans contenu (Phil, 2026-08-24, "Amstrong" — bon sens).
+    # imprimée pour un fichier sans contenu , "Amstrong" — bon sens).
     gab_path = nil if gab_path && File.read(gab_path).strip.empty?
     lyr_path = FileFinder.find(folder, :lyr)
     infos_path = FileFinder.find(folder, :inf)
     raise "fichiers .lyr/.lyrics ou .infos/.inf introuvables dans #{folder}" unless lyr_path && infos_path
 
     meta = parse_infos(infos_path)
-    # `Tablator.active_preset` est un état GLOBAL du module (Phil, 2026-08-28,
+    # `Tablator.active_preset` est un état GLOBAL du module ,
     # config "regular-tablatures"/"mini-tablatures", `tools/tablator/presets.rb`) —
     # TOUJOURS fixé ici, explicitement, jamais laissé hériter d'une chanson précédente
     # construite dans le MÊME process (même bug de principe que `Layout.building_log_path`,
@@ -663,12 +706,12 @@ module PageBuilder
     Layout.shrink_diags = resolve_shrink_option(meta, carnet_folder, "shrink_diags")
     Layout.shrink_tabla = resolve_shrink_option(meta, carnet_folder, "shrink_tabla")
     Layout.shrink_score = resolve_shrink_option(meta, carnet_folder, "shrink_score")
-    # Défaut FALSE (Phil, 2026-08-26 — inverse des autres `shrink_*`) : par défaut, la
+    # Défaut FALSE  — inverse des autres `shrink_*`) : par défaut, la
     # taille des caractères ne doit JAMAIS changer (`build_row_or_split`, couplets côte
     # à côte trop larges) — comportement actuel avant ce correctif.
     Layout.shrink_text = resolve_shrink_option(meta, carnet_folder, "shrink_text", default: false)
     # `score_title_size`/`score_title_style` : clés de LAYOUT (`layout:`/`.lay`), pas
-    # `.infos` (Phil, 2026-08-27) — comme `intro_align`, "pas encore stabilisé".
+    # `.infos`  — comme `intro_align`, "pas encore stabilisé".
     if layout && layout[:score_title_size]
       Layout.score_title_size = layout[:score_title_size].to_s[/[\d.]+/].to_f
     end
@@ -728,7 +771,7 @@ module PageBuilder
       # résolu à une seule valeur left/right ici — le côté reliure change de page en page
       # (recto/verso) DANS une même chanson (bug constaté 2026-08-24, "À bicyclette" p.4/
       # p.5 : reliure à droite sur l'une, à gauche sur l'autre, une seule chanson peut
-      # couvrir les deux — "on s'en branle d'où commence la chanson", Phil). Les deux
+      # couvrir les deux — "on s'en branle d'où commence la chanson"). Les deux
       # variantes gauche/droite sont construites ICI (`text_x`/`text_x_r`, `side_col`/
       # `side_col_r`), `Layout.paginate_and_draw` choisit la bonne PAGE PAR PAGE.
       dynamic_mode = %i[int ext].include?(diag_position) ? diag_position : nil
@@ -757,7 +800,7 @@ module PageBuilder
       # AUTRES éléments se trompe aussi, en pensant qu'il y a plus de place libre qu'il
       # n'y en aura réellement — vu en pratique, ça faisait remonter la page suivante sur
       # celle-ci). Ainsi la page d'à côté ne peut jamais déborder sur celle-ci
-      # (Phil, 2026-08-16).
+      # .
       pinned = shrink_jobs.map { |j| j[:index] }
       shrink_jobs.each do |job|
         pages = Layout.paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned)

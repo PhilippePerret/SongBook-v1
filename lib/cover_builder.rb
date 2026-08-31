@@ -10,14 +10,14 @@ require_relative "markdown_page"
 # Couverture KDP complète (1re/dos/4e, un seul PDF, extérieur uniquement — la 2e/3e de
 # couverture ne sont pas imprimées par ce fichier, ce sont les faces internes de la même
 # feuille cartonnée, jamais transmises via le PDF de couverture KDP standard).
-# Mise en page pilotée par un fichier `.cov` (Phil, 2026-08-22 — voir `CovParser`) :
+# Mise en page pilotée par un fichier `.cov`  — voir `CovParser`) :
 # sections `1.`/`4.`, blocs, directives `{champ; prop:valeur}`, `|` = colonnes alignées
 # BLOC à bloc. `align:` combine un mot horizontal (left/right/center/justify) et un mot
 # vertical (top/bot) — ex. `align:Right Bot` = texte aligné à droite, calé au bas de sa
 # colonne mais AU-DESSUS de tout ce qui suit dans cette même colonne (pas au bas de la
 # page). `:blank` (ligne `|` sans directive d'un côté) = espace vertical voulu.
 #
-# Les règles esthétiques de l'intérieur régissent aussi la couverture (Phil, 2026-08-22) :
+# Les règles esthétiques de l'intérieur régissent aussi la couverture  :
 # - RATX1 : texte non-lyrics, phrases longues, page > 15cm -> 2 colonnes, gouttière
 #   `text_column_guter`. `performer-list` reste un TEXTE continu (pas une liste — RATX1
 #   ne dit nulle part de restructurer en liste), simplement réparti sur 2 colonnes.
@@ -155,7 +155,7 @@ module CoverBuilder
   # Bloc scindé où un des 2 côtés est une image SEULE : l'image se cale sur la hauteur
   # RÉELLE de l'autre colonne (texte + éventuels `:blank` = espace voulu) — jamais une
   # hauteur de page devinée. Pour une image "presque pleine page", le `.cov` ajoute des
-  # lignes `|` vides dans la colonne texte (Phil, 2026-08-22) ; pour une image calée sur
+  # lignes `|` vides dans la colonne texte  ; pour une image calée sur
   # le seul titre, la colonne texte ne contient que le titre — LE `.cov` DÉCIDE, pas une
   # heuristique de comptage de blocs (erreur commise puis corrigée dans la même session).
   # Alignée sur le bord EXTÉRIEUR de sa colonne (Phil : "la guitare à gauche"). L'autre
@@ -211,7 +211,7 @@ module CoverBuilder
 
   # Empile les items d'UNE colonne. `container_h`, si fourni, fixe la hauteur totale du
   # bloc : un item `align:...Bot` reçoit alors tout l'espace mou (slack) juste AVANT lui —
-  # calé en bas de sa colonne, au-dessus de tout ce qui le suit (Phil, 2026-08-22).
+  # calé en bas de sa colonne, au-dessus de tout ce qui le suit .
   # `center` : bloc entier (pas le texte dedans) centré horizontalement dans [x0,x1]
   # (convention 4e de couverture).
   def self.stack_items(ctx, items, x0, x1, y_top, scale, dry, container_h:, center:)
@@ -223,7 +223,7 @@ module CoverBuilder
     anchor_idx = items.index { |it| it != :blank && parse_align(it).last == :bottom }
     # Sans indication explicite : le DERNIER item réel d'une colonne se comporte comme
     # `Bot` par défaut — un logo/élément qui ne précède rien d'autre va naturellement en
-    # bas, pas collé à ce qui le précède (Phil, 2026-08-22 : "un logo ne se place JAMAIS
+    # bas, pas collé à ce qui le précède  : "un logo ne se place JAMAIS
     # sous le bloc de texte"). Le premier reste en haut par le flux normal, sans réglage.
     anchor_idx ||= items.rindex { |it| it != :blank }
 
@@ -277,7 +277,7 @@ module CoverBuilder
     case name
     when "performer-list" then entries.any? { |e| !e[:performer].to_s.empty? }
     when "song-list" then entries.any?
-    when "code_barres" then false # zone réservée mais vide tant qu'aucun ISBN propre (Phil)
+    when "code_barres" then false # zone réservée mais vide tant qu'aucun ISBN propre 
     end
   end
 
@@ -405,7 +405,7 @@ module CoverBuilder
   end
 
   # Une colonne scindée peut contenir des `:blank` (lignes `|` vides côté image, servant
-  # à donner de la hauteur à l'AUTRE colonne — Phil, 2026-08-22) : on ne compte que les
+  # à donner de la hauteur à l'AUTRE colonne —  : on ne compte que les
   # items RÉELS pour décider si cette colonne est une image seule.
   def self.lone_image?(ctx, items, x0, x1)
     real = items&.reject { |it| it == :blank }

@@ -82,7 +82,7 @@ module SongCreator
 
   # Ne complète QUE les champs vides de la fiche existante (year/composer/lyrics) — ne
   # touche jamais un champ déjà renseigné. Paroles : remplacées seulement si `c.lyr` est
-  # encore le gabarit vide (`SONG_TEMPLATE`) tel quel, jamais si Phil a déjà écrit dedans.
+  # encore le gabarit vide (`SONG_TEMPLATE`) tel quel.
   def self.resume_existing_song(prompt, folder)
     infos_path = FileFinder.find(folder, :inf) || File.join(folder, "c.infos")
     lyr_path = FileFinder.find(folder, :lyr) || File.join(folder, "c.lyr")
@@ -178,7 +178,7 @@ module SongCreator
     end
   end
 
-  # Carnets de chant, pas une thèse (Phil) : 1 an d'écart entre sources = bruit (rééditions,
+  # Carnets de chant, pas une thèse  : 1 an d'écart entre sources = bruit (rééditions,
   # dates de dépôt légal différentes...), pas une vraie divergence — prendre la plus basse
   # SANS demander de choisir. Le select n'apparaît que si l'écart dépasse 1 an.
   def self.ask_year(prompt, title, performer)

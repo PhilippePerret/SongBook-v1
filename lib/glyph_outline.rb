@@ -1,7 +1,7 @@
 require "ttfunk"
 
 # Extraction des contours vectoriels d'un glyphe TrueType (table `glyf`) — pour
-# convertir du texte en contours (Phil, 2026-08-22 : reproduire ce qu'InDesign fait
+# convertir du texte en contours  : reproduire ce qu'InDesign fait
 # avec "Créer les contours", nécessaire pour un cadre texte qui s'étire comme un
 # dessin). `ttfunk` (déjà présent, dépendance Prawn) ne décode QUE l'en-tête du
 # glyphe (bornes, nombre de contours) — jamais les points eux-mêmes (il sert au

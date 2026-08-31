@@ -35,7 +35,7 @@ module AppConfig
   end
 
   # Chemin d'un dossier configuré (clé `key` de config.yaml), REVÉRIFIÉ À CHAQUE APPEL
-  # (Phil, 2026-08-28 : "s'assurer à chaque fois que ce dossier existe bien et le
+  #  : "s'assurer à chaque fois que ce dossier existe bien et le
   # redemander s'il a été déplacé, supprimé ou autre") — pas juste demandé une fois au
   # premier besoin puis considéré acquis : un chemin enregistré mais devenu invalide
   # (dossier déplacé/supprimé/renommé depuis) redéclenche la question, jusqu'à un chemin

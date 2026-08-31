@@ -3,7 +3,7 @@
 
 # tablator : traduit une tablature écrite en syntaxe simplifiée (corde:case)
 # en image SVG, par calcul géométrique direct (pas de moteur de notation
-# externe — Phil, 2026-08-28 : "on y va sur le SVG custom pour la tablature").
+# externe —  : "on y va sur le SVG custom pour la tablature").
 #
 # Format d'entrée : frontmatter YAML optionnel entre "---", puis le corps.
 #   ---
@@ -19,7 +19,7 @@
 #   |  |.  ||  :|  |:  :|:          barre de mesure (6 formes)
 # Numérotation des cordes : 1 = aiguë (mi aigu, ligne du HAUT) ... 6 = grave (mi grave, ligne du BAS).
 #
-# Découpé en modules (Phil, 2026-08-28, "un module editor.rb serait plus
+# Découpé en modules , "un module editor.rb serait plus
 # intelligent que de tout mettre dans tablator.rb" — même principe appliqué
 # ici) pour limiter les collisions d'édition entre préoccupations distinctes :
 #   parser.rb    lecture syntaxe -> mesures (Tablator.tokenize, .parse_measures...)

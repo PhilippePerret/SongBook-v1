@@ -53,11 +53,11 @@ module MarkdownPage
 
   # Dessine tout le fichier `md_path` dans les bounds courantes de `pdf` (déjà margées/
   # numérotées par l'appelant), sur UNE SEULE page — pas de flux multi-page pour l'instant
-  # (limitation connue, Phil 2026-08-20). RATX1 : 2 colonnes si `width` > 15cm. RATX2 :
+  # (limitation connue). RATX1 : 2 colonnes si `width` > 15cm. RATX2 :
   # police dédiée (`text_font`, options.yaml), différente de celle des lyrics.
   # Garamond (quelle que soit la variante — `Garamond`, `Cormorant_Garamond`) rendu trop
-  # serré en prose longue (préface, avant-propos...) — Phil, 2026-08-21 : "écarter un peu
-  # les lettres". Valeur provisoire, jamais validée par Phil.
+  # serré en prose longue (préface, avant-propos...) —  : "écarter un peu
+  # les lettres". Valeur provisoire.
   GARAMOND_LETTER_SPACING = 0.15
 
   def self.render(pdf, md_path, width, top: pdf.bounds.height)

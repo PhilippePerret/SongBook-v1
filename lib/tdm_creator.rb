@@ -14,7 +14,7 @@ require_relative "song_creator"
 
 # `songbook create tdm`/`edit tdm` : construit (ou remplace) le `.tdm` d'un carnet.
 # `command:` ("create"/"edit") change UNIQUEMENT la position de "Nouveau carnet…" dans
-# le picker de carnet (Phil, 2026-08-30 : en tête pour "create", en fin pour "edit").
+# le picker de carnet  : en tête pour "create", en fin pour "edit").
 # Nom du (nouveau) carnet demandé APRÈS le choix des chansons, jamais avant — rien
 # écrit tant que la confirmation finale n'est pas donnée.
 module TdmCreator
@@ -61,8 +61,8 @@ module TdmCreator
   end
 
   # Chansons déjà présentes dans le `.tdm` du carnet choisi (id, titre, OU nom de
-  # dossier — le `.tdm` a toujours mélangé les deux, Phil) — pré-cochées à l'ouverture
-  # du picker (Phil, 2026-08-30 : "sa table des matières doit servir de base").
+  # dossier — le `.tdm` a toujours mélangé les deux) — pré-cochées à l'ouverture
+  # du picker  : "sa table des matières doit servir de base").
   def self.songs_of_tdm(carnet_folder, entries)
     return [] unless carnet_folder && Dir.exist?(carnet_folder)
 
@@ -87,13 +87,13 @@ module TdmCreator
   end
 
   # Liste UNIQUE, toujours la même (`entries`, jamais amputée) — chaque chanson porte
-  # une coche (☑/☐, même largeur pour garder les titres alignés, Phil 2026-08-30) : la
+  # une coche (☑/☐, même largeur pour garder les titres alignés) : la
   # choisir bascule son état (coché -> sort de la tdm, décoché -> y entre). Panneau FIXE
   # (nombre + titres choisis) réaffiché à chaque tour au-dessus du picker.
   # `TTY::Prompt#select(filter: true)` REPART TOUJOURS filtre vide à chaque appel
   # (`@filter = []` fixe dans `List#initialize`, gem tty-prompt, rien pour le
   # pré-remplir) — impossible d'avoir un filtre qui PERSISTE d'une sélection à l'autre
-  # avec cet outil. Widget maison à la place (Phil, 2026-08-30) : lecture clavier
+  # avec cet outil. Widget maison à la place  : lecture clavier
   # caractère par caractère (même principe que `ChordPlacer`/`TablatorAssistant`),
   # `filter_text` jamais réinitialisé entre deux choix — SEULE la touche Entrée sur
   # "Terminé" (position 0) sort de la boucle.
@@ -102,11 +102,11 @@ module TdmCreator
     chosen = already.dup
     filter_text = +""
     # Curseur par défaut sur la 1re chanson (pas "Terminé") : "Terminé" doit être vu en
-    # orange dès l'ouverture, pas bleu comme s'il était déjà sélectionné (Phil, 2026-08-30).
+    # orange dès l'ouverture, pas bleu comme s'il était déjà sélectionné .
     highlight = 1
 
     render = lambda do
-      # Filtre = EXPRESSION RÉGULIÈRE (Phil, 2026-08-30 : "^a" -> titres commençant par
+      # Filtre = EXPRESSION RÉGULIÈRE  : "^a" -> titres commençant par
       # "a") — recours au texte littéral tant que la regex tapée n'est pas encore valide
       # (parenthèse ouverte seule, etc.), jamais un crash pendant la frappe.
       regex = begin
@@ -131,7 +131,7 @@ module TdmCreator
       puts highlight.zero? ? blue("‣ #{Loc.get("tdm_done_option")}") : orange("  #{Loc.get("tdm_done_option")}")
 
       # Fenêtre glissante sur `matching` (jamais tout affiché d'un coup — débordait du
-      # terminal, header/curseur poussés hors écran, Phil 2026-08-30, capture d'écran)
+      # terminal, header/curseur poussés hors écran, capture d'écran)
       # — reste centrée sur l'item survolé.
       reserved_rows = 6 + [chosen.size, 5].min
       window = [rows - reserved_rows, 3].max

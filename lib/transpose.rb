@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 # Transposition d'accords par INTERVALLE (lettre + altération), pas par simple
-# décalage chromatique — impératif pour Phil (2026-08-19) : "Bb" transposé ne doit
+# décalage chromatique — impératif : "Bb" transposé ne doit
 # jamais devenir son équivalent enharmonique arbitraire (ex. "A#"), il doit garder
 # le même écart de LETTRE que l'intervalle de transposition (ex. Am → C#m : Bb
 # devient "D", jamais "C##" ni un choix au hasard).
 #
-# Validé à la main par Phil sur deux cas (Am → Cm, Am → C#m), voir tests en bas de
+# Validé à la main sur deux cas (Am → Cm, Am → C#m), voir tests en bas de
 # fichier. Câblé dans `PageBuilder.build` (lecture de `transpose: X → Y` dans les
 # `.infos`) et `ChordDiagrams.transpose_blocks!`/`transposed_fret` (gestion de la case).
 module Transpose
@@ -103,7 +103,7 @@ module Transpose
 end
 
 if $PROGRAM_NAME == __FILE__
-  # Tests à la main, validés par Phil (2026-08-19).
+  # Tests à la main.
   # sortie normalisée en ♯/♭ (jamais #/b) — les grilles attendues ci-dessous sont
   # écrites en ASCII pour la lisibilité du test, normalisées avant comparaison.
   normaliser = ->(c) { c.tr("#", "♯").tr("b", "♭") }

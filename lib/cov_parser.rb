@@ -1,4 +1,4 @@
-# Parseur du format `.cov` (mise en page de couverture, Phil 2026-08-22) :
+# Parseur du format `.cov` (mise en page de couverture) :
 # sections `1.`/`4.` (1re/4e de couverture), blocs séparés par ligne vide,
 # directives `{nom; prop:valeur; ...}` avec repli `{a|b}` (a si présent, sinon b).
 # `|` HORS des `{}`, à une colonne de caractère constante sur les lignes d'un
@@ -57,7 +57,7 @@ module CovParser
   end
 
   # `:blank` = ligne présente (avec `|`) mais sans directive d'un côté — espace
-  # vertical VOULU (Phil, 2026-08-22 : sert à agrandir une image alignée en face en
+  # vertical VOULU  : sert à agrandir une image alignée en face en
   # ajoutant des lignes vides), jamais juste ignoré/sauté.
   def self.parse_block(lines)
     pipes = lines.map { |l| top_level_pipe(l) }

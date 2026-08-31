@@ -6,7 +6,7 @@ require_relative "../tools/ChordDiagram/generate_chord_diagrams"
 # Avant toute construction (carnet ou chanson seule) : lit le `.schemas`/`.sch` de
 # `dir` s'il existe, régénère chaque SVG absent OU plus vieux que ce fichier (un seul
 # fichier pour tous les accords, comparaison de date au niveau du fichier entier, pas
-# accord par accord — Phil, 2026-08-23). Toujours écrit dans `images/diags/` DANS `dir`,
+# accord par accord — . Toujours écrit dans `images/diags/` DANS `dir`,
 # même si l'user a déjà placé des SVG ailleurs (bonnes habitudes) — `ChordDiagrams`
 # cherche ensuite dans TOUT `dir`, pas seulement `images/diags/` (l'user peut les avoir
 # mis n'importe où).

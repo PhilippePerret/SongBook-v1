@@ -47,7 +47,7 @@ module ChordPlacer
   KEYPAD_DIGITS = (1..9).map { |n| :"kp#{n}" }.freeze
 
   # Rangée du haut d'un clavier AZERTY français SANS Maj = ces symboles, pas les
-  # chiffres (Phil, 2026-08-26, confirmé jusqu'au 0 = "à") — un chiffre tapé
+  # chiffres , confirmé jusqu'au 0 = "à") — un chiffre tapé
   # "normalement" (sans forcer Maj) arrive comme ça en frappe brute. Même table que
   # `TablatorAssistant::AZERTY_DIGITS`.
   AZERTY_DIGITS = { "&" => "1", "é" => "2", "\"" => "3", "'" => "4", "(" => "5",
@@ -67,7 +67,7 @@ module ChordPlacer
 
   ARROW = { "A" => :up, "B" => :down, "C" => :right, "D" => :left }.freeze
   WINDOW_SIZE = 4
-  # ≤45 signes par ligne (Phil).
+  # ≤45 signes par ligne .
   HELP_LINES = [
     "x sup acc | X sup tous | A-G Nouvel accord",
     "J/L début/fin vers | T/V début/fin chanson",
@@ -116,7 +116,7 @@ module ChordPlacer
       (k.is_a?(Hash) && k[:arrow]) || (k.is_a?(String) && %w[x X J L T V n p q Q].include?(k))
     end
     # "q"/Ctrl+C : sortie AVEC confirmation par défaut "n" — Entrée (sortie normale, PAS
-    # en cours de composition) : confirmation par défaut "y" (Phil, 2026-08-30, cohérent
+    # en cours de composition) : confirmation par défaut "y" , cohérent
     # avec `TablatorAssistant`).
     quit_early = false
 
@@ -185,7 +185,7 @@ module ChordPlacer
           when ->(k) { k.is_a?(Hash) && k[:arrow] }
             pos, cursor = apply_arrow(key, pos, cursor, chord_lines, editable)
           else
-            # "[" (Phil, 2026-08-28) démarre aussi une saisie : basse SEULE, ex. "[fd]"
+            # "["  démarre aussi une saisie : basse SEULE, ex. "[fd]"
             # ("basse fa dièse", toujours enregistrée en minuscule, `capitalize_chord`)
             # — même syntaxe crochets que la basse embarquée dans un accord (`A[c]m7`,
             # Manuel/song/chords.adoc), affichée en rendu "/fa♯" (solfège italien,
@@ -199,7 +199,7 @@ module ChordPlacer
     end
 
     # Terminal déjà restauré ici (ensure de `with_raw_terminal`, qu'on sorte par
-    # `break` ou par Ctrl+C). Rien demandé si RIEN n'a changé (Phil) — sinon TOUJOURS
+    # `break` ou par Ctrl+C). Rien demandé si RIEN n'a changé  — sinon TOUJOURS
     # soumis à validation, jamais un enregistrement silencieux.
     save.call if dirty && colored_prompt.yes?(blue(Loc.get("save_changes_question")), default: !quit_early)
   end
@@ -208,9 +208,9 @@ module ChordPlacer
     !line.strip.empty? && !line.strip.match?(/\A\{[^}]*\}\z/)
   end
 
-  # 1re lettre en capitale, TOUJOURS (Phil) — écrite comme ça, pas juste affichée comme
-  # ça. Basse entre crochets (`[fd]` seule, ou embarquée dans un accord "A[c]m7", Phil
-  # 2026-08-28 : "entre crochets, c'est toujours des basses et les basses doivent
+  # 1re lettre en capitale, TOUJOURS  — écrite comme ça, pas juste affichée comme
+  # ça. Basse entre crochets (`[fd]` seule, ou embarquée dans un accord "A[c]m7"
+  # "entre crochets, c'est toujours des basses et les basses doivent
   # toujours s'écrire en minuscule") : règle INVERSE, tout le contenu d'un "[...]" est
   # forcé en minuscule — même règle que `DSLParser.normalize_chord`, pas de
   # ré-implémentation, une seule règle partout.
@@ -232,14 +232,14 @@ module ChordPlacer
   end
 
   # Légende affichée = seulement les accords RÉELLEMENT posés quelque part dans la
-  # chanson EN CE MOMENT (Phil, 2026-08-26 : bug constaté, la légende gardait tous les
+  # chanson EN CE MOMENT  : bug constaté, la légende gardait tous les
   # accords jamais tapés/mis en cache, même retirés depuis). `letters` complet (avec
   # les accords mis en cache mais plus posés) reste utilisé PARTOUT ailleurs (raccourcis
   # encore disponibles au clavier, `.cached` — voir `save_cached_chords`) : seul
   # l'AFFICHAGE de la légende est filtré ici.
   def self.active_letters(letters, chord_lines)
     # Une valeur "A2-0/A-0" (2 accords collés, voir `ChordLine.parse`) doit compter pour
-    # SES DEUX morceaux ici, pas comme un seul accord composé introuvable (Phil, 2026-08-30).
+    # SES DEUX morceaux ici, pas comme un seul accord composé introuvable .
     used = chord_lines.values.flat_map { |cl| cl.chords.values }.flat_map { |v| ChordLine.split_for_write(v) }.uniq
     letters.each_with_object({}) do |(letter, chords), h|
       kept = chords.select { |c| used.include?(c) }
@@ -267,7 +267,7 @@ module ChordPlacer
   # désambiguïsée en continuant à taper le nom complet (voir `typed_match`).
   # Une basse SEULE ("[b]"/"[fd]", `ChordDiagrams::BASS_ONLY_RE`) n'est PAS un accord
   # au sens raccourci — jamais indexée sous "[" comme si "[" était une lettre de
-  # raccourci valide (bug constaté, Phil, 2026-08-30 : "on ne met pas les basses seules
+  # raccourci valide (bug constaté : "on ne met pas les basses seules
   # en raccourci").
   def self.register_chord(letters, chord)
     return nil if chord.match?(ChordDiagrams::BASS_ONLY_RE)
@@ -278,13 +278,13 @@ module ChordPlacer
     letter
   end
 
-  # "/" = séparateur d'accords (Phil, 2026-08-30) — SAUF le "/" natif du groupe accord
+  # "/" = séparateur d'accords  — SAUF le "/" natif du groupe accord
   # de `DSLParser::CHORD_RE` lui-même (ex. "Bb6/C", SANS case sur aucun des deux côtés) :
   # bug constaté par le passé (Phil : "il s'agit de deux accords" appliqué à tort ici,
   # "Bb6/C" est UN SEUL accord avec basse) — RESTE un accord unique. En revanche un "/"
   # accidentellement capturé dans le groupe case de `CHORD_RE` (case AVANT le "/", ex.
   # "A2-0/A-0" -> chord="A2" fret="0/A-0", `[^: ]+` trop permissif) est bien DEUX accords
-  # distincts, chacun sa propre case (Phil, 2026-08-30, "If You Don't Know Me By Now").
+  # distincts, chacun sa propre case , "If You Don't Know Me By Now").
   def self.chord_names(chord, fret)
     chord = capitalize_chord(chord)
     return [fret ? "#{chord}-#{fret}" : chord] unless fret&.include?("/")
@@ -362,7 +362,7 @@ module ChordPlacer
 
   # `typing` (buffer tel que tapé) correspond-il à un accord déjà connu ? Nom RÉEL de
   # cet accord si oui, `nil` sinon — MAJUSCULE initiale : jamais de correspondance,
-  # toujours `nil` (voir en-tête du fichier, règle Phil 2026-08-26).
+  # toujours `nil` (voir en-tête du fichier).
   def self.typed_match(typing, letters, active)
     return nil if typing[0].match?(/[A-Z]/)
 
@@ -370,7 +370,7 @@ module ChordPlacer
     bucket = letters[letter]
     return nil unless bucket
 
-    # 1 seule lettre tapée = raccourci immédiat (Phil, 2026-08-26 : "b" -> "Bdim" même
+    # 1 seule lettre tapée = raccourci immédiat  : "b" -> "Bdim" même
     # si "B" seul n'existe pas — bug constaté, le nom tapé devait matcher EXACTEMENT,
     # cassait le raccourci 1 lettre pour tout accord de plus d'1 caractère). Au-delà
     # d'1 caractère, correspondance EXACTE seulement (nécessaire pour "f"+"7" : "F7"
@@ -381,7 +381,7 @@ module ChordPlacer
     # index résolu dans le bucket ACTIF (`active_letters`), PAS le bucket complet : un
     # accord en cache mais pas posé est absent de la légende, donc absent de sa
     # numérotation — sinon "e2" affiché pour "E7" tapait en fait un autre accord resté
-    # sur "E" (bug constaté, Phil, 2026-08-30 : les deux buckets n'étaient pas alignés).
+    # sur "E" (bug constaté : les deux buckets n'étaient pas alignés).
     # Repli sur correspondance EXACTE (bucket complet) si l'index ne pointe rien
     # d'actif (nécessaire pour "f"+"7" : "F7" existant repris seulement si "F7"
     # lui-même est déjà connu, pas juste "F...").
@@ -396,7 +396,7 @@ module ChordPlacer
     bucket.include?(candidate) ? candidate : nil
   end
 
-  # Un chiffre est un chiffre (Phil, 2026-08-26) : haut du clavier, pavé numérique
+  # Un chiffre est un chiffre  : haut du clavier, pavé numérique
   # (`\eOp`..`\eOy`, mode application DECKPAM) ou rangée du haut d'un AZERTY sans Maj
   # (`AZERTY_DIGITS`) — les trois formes normalisées vers le même caractère "0".."9".
   # `nil` si `key` n'est pas un chiffre, sous quelque forme que ce soit.
@@ -419,7 +419,7 @@ module ChordPlacer
 
   # Pages FIXES (`WINDOW_SIZE`) : ↑/↓ dans la page ne touche qu'au curseur (repositionné
   # dans la limite du texte de la nouvelle ligne), seul le passage à la page suivante
-  # ramène le curseur en tête (Phil).
+  # ramène le curseur en tête .
   def self.move_vertical(pos, cursor, chord_lines, editable, direction)
     return [pos, cursor] if (direction.negative? && pos.zero?) || (direction.positive? && pos == editable.length - 1)
 
@@ -459,11 +459,11 @@ module ChordPlacer
   # jamais négatif : `nil` si trouvé (rien à signaler), sinon un message neutre.
   # "-<case>" (ex. "F7M-1") : même convention que `DSLParser::CHORD_RE`/`.lyr` — accord
   # SIMPLE (pas de "-") => n'importe quelle case (`find_svg` fret nil, la plus basse) ;
-  # accord PRÉCIS (avec "-<case>") => CETTE case exacte et AUCUNE AUTRE (Phil, 2026-08-26
+  # accord PRÉCIS (avec "-<case>") => CETTE case exacte et AUCUNE AUTRE 
   # : bug constaté — cherchait "F7M-1-*.svg" en traitant tout le texte comme un nom
   # opaque, jamais "F7M-1.svg" lui-même, faux "sans diagramme" alors qu'il existait).
   def self.chord_known?(chord, song_dir)
-    # Basse seule (`[fd]`, Phil 2026-08-28) : aucun diagramme dédié n'existe pour ce
+    # Basse seule (`[fd]`) : aucun diagramme dédié n'existe pour ce
     # cas (convention absente de `GenerateChordDiagrams`), le signaler serait donc
     # TOUJOURS un faux négatif — rien à signaler.
     return true if chord.start_with?("[")
@@ -481,16 +481,16 @@ module ChordPlacer
 
   # Pages FIXES de WINDOW_SIZE vers (0-3, 4-7, ...) — jamais de glissement ligne par
   # ligne : ↓ dans la page ne touche qu'au curseur, seul le passage à la page suivante
-  # change ce qui est affiché (Phil).
+  # change ce qui est affiché .
   def self.render_window(editable, chord_lines, pos, cursor, letters, notice, typing = nil)
     total = editable.length
     window_start = (pos / WINDOW_SIZE) * WINDOW_SIZE
 
     print "\e[2J\e[H"
-    # Note/séparateur : 2 lignes RÉSERVÉES, toujours (présentes ou vides — Phil : les
+    # Note/séparateur : 2 lignes RÉSERVÉES, toujours (présentes ou vides : les
     # sauts d'écran sont intempestifs). La légende, elle, PEUT changer de nombre de
     # lignes (1 -> plusieurs) en cours d'édition — conséquence assumée du passage en
-    # multi-lignes au-delà du seuil (Phil), pas un saut accidentel.
+    # multi-lignes au-delà du seuil , pas un saut accidentel.
     legend_lines(letters).each { |line| puts blue(line) }
     puts gray(notice)
     puts

@@ -1,7 +1,7 @@
 require "ttfunk"
 require_relative "glyph_outline"
 
-# Texte converti en contours vectoriels (Phil, 2026-08-22 : reproduire "Créer les
+# Texte converti en contours vectoriels  : reproduire "Créer les
 # contours" d'InDesign — cadre qui s'étire comme un dessin, pas un cadre de texte
 # normal). Utilise `GlyphOutline` (parseur `glyf` TrueType, accents composites gérés).
 module TextOutliner

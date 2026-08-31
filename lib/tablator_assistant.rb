@@ -137,7 +137,7 @@ module TablatorAssistant
   }.freeze
 
   # Cellule de la grille : case (fret) + doigté main droite (p/i/m/a/c, `rh`) + doigté
-  # main gauche (chiffre, `lh`) — Phil, 2026-08-26. `rh`/`lh` restent `nil` tant que non
+  # main gauche (chiffre, `lh`) — . `rh`/`lh` restent `nil` tant que non
   # précisés (une cellule "0" seule reste valide, sans aucun doigté). `link` ("h"/"p",
   # issue #39) : hammer-on/pull-off, posé sur la case QUI SUIT (`Tablator::LINK_RE`,
   # même préfixe que le fichier `.tab` — corde implicite ici, c'est celle du curseur).
@@ -158,10 +158,10 @@ module TablatorAssistant
   # `c` ouvre la config, `s` produit le SVG SANS quitter (état courant écrit dans un
   # fichier `.tab` PROVISOIRE CACHÉ `.~<nom>.tab`, le SVG produit porte lui le nom
   # normal), `q` termine et enregistre, Ctrl+C annule. Le fichier provisoire est
-  # TOUJOURS détruit en sortie (`ensure`, y compris sur Ctrl+C, Phil). `edit_path:` :
+  # TOUJOURS détruit en sortie (`ensure`, y compris sur Ctrl+C). `edit_path:` :
   # tablature existante chargée dans la grille (frontmatter -> `title`/`unit`/
   # `metrique`, corps -> matrice), réenregistrée au même endroit (sinon nouveau
-  # fichier, titre demandé). `title:` (`create tab NOM`, Phil 2026-08-26) : pré-répond
+  # fichier, titre demandé). `title:` (`create tab NOM`) : pré-répond
   # à ce "Titre :" pour une NOUVELLE tablature — jamais redemandé si déjà donné.
   def self.write_tablature(edit_path: nil, title: nil)
     meta = {}
@@ -182,7 +182,7 @@ module TablatorAssistant
     string = 1
     col = 0
     # Composition en cours (une note "0p2"/"0+2", OU une barre "|" puis "." -> "|.") —
-    # `nil` tant qu'aucune saisie n'est en cours (Phil, 2026-08-26). Toute touche NON
+    # `nil` tant qu'aucune saisie n'est en cours . Toute touche NON
     # reconnue par la composition active la CLÔT (une saisie partielle, ex. "0p" sans
     # main gauche, reste un résultat valide) puis s'exécute normalement — voir fin de
     # boucle.
@@ -213,7 +213,7 @@ module TablatorAssistant
             draw_grid(matrix, bars, rests, string, col, unit)
             key = read_key
             key = AZERTY_DIGITS.fetch(key, key) if key.is_a?(String)
-            # "B" (Phil, 2026-08-27) : remplace "|" comme touche de saisie de barre
+            # "B"  : remplace "|" comme touche de saisie de barre
             # simple — "|" en direct nécessite Alt+Maj+L (AZERTY Mac), combinaison
             # invisible à l'écran tant que la barre n'est pas committée. Traduit AVANT
             # le `case` pour réutiliser tel quel tout le mécanisme de composition
@@ -226,7 +226,7 @@ module TablatorAssistant
             when :left then col = [col - 1, 0].max
             when :right then col = [col + 1, width - 1].min
             # Mêmes lettres que "début/fin de vers" dans l'édition des accords
-            # (`ChordPlacer` : "J"/"L", Phil, 2026-08-27).
+            # (`ChordPlacer` : "J"/"L").
             when "J" then col = 0
             when "L"
               col = (0...width).reverse_each.find { |c| bars[c] || (1..6).any? { |s| matrix[s - 1][c] } } || 0
@@ -256,7 +256,7 @@ module TablatorAssistant
               next
             when "c"
               unit, metrique = open_config(unit, metrique)
-            # "S" (Phil, 2026-08-28) : majuscule pour libérer "s" minuscule (silence
+            # "S"  : majuscule pour libérer "s" minuscule (silence
             # invisible, voir plus bas) — même logique que "B"/barre : une lettre à plat
             # ne peut porter qu'un seul sens.
             when "S"
@@ -267,7 +267,7 @@ module TablatorAssistant
               render_tab_svg(temp_path, out_base: out_base)
             # Silence explicite : "r" visible, "s" invisible ("skip") — posé tout de
             # suite comme une note, la position de l'événement suivant détermine sa
-            # durée (Phil, 2026-08-28 : "on a la chance d'être avec un instrument
+            # durée  : "on a la chance d'être avec un instrument
             # unique, profitons-en"). Efface tout ce qu'il y avait sur les 6 cordes à
             # cette colonne (un silence est global, pas par corde) et toute barre
             # posée là (une colonne ne porte qu'UN seul type de repère).
@@ -365,7 +365,7 @@ module TablatorAssistant
   # vide en `col` (la dernière colonne tombe hors grille), `←` supprime la colonne
   # `col` (écrase donc son contenu par ce qui suit) et ajoute une colonne vide en fin.
   # `bars`/`rests` (barres de mesure, silences explicites — dicts `colonne => ...`)
-  # décalés PAREIL que la matrice de notes (bug constaté, Phil : Maj+←/→ ne bougeait
+  # décalés PAREIL que la matrice de notes (bug constaté : Maj+←/→ ne bougeait
   # QUE les notes, laissant barres et silences sur place — décalage incohérent).
   def self.shift_right!(matrix, bars, rests, col, width)
     matrix.each do |row|
@@ -433,7 +433,7 @@ module TablatorAssistant
     "#{haut}/#{bas}"
   end
 
-  # Une barre traverse TOUTE la tablature (Phil, 2026-08-27) : dessinée sur les 6
+  # Une barre traverse TOUTE la tablature  : dessinée sur les 6
   # cordes à sa colonne, pas seulement sur une ligne à part sous la grille.
   def self.draw_grid(matrix, bars, rests, cur_string, cur_col, unit)
     print "\e[2J\e[H"
@@ -443,7 +443,7 @@ module TablatorAssistant
                  bars[col].ljust(COL_WIDTH)
                elsif rests[col]
                  # Silence global (6 cordes) : lettre R/S en MAJUSCULE seulement sur la
-                 # 3e ligne (Phil, 2026-08-28), les 5 autres portent un guillemet '"'
+                 # 3e ligne , les 5 autres portent un guillemet '"'
                  # (renvoi, comme un "idem" typographique) plutôt que répéter la lettre.
                  (string == 3 ? rests[col].upcase : '"').ljust(COL_WIDTH)
                elsif cell.nil?
@@ -463,7 +463,7 @@ module TablatorAssistant
   # ces séquences plus longues que les flèches simples. Toute séquence ESC qui n'est
   # PAS une CSI (2e octet ≠ "[", ex. Option/Alt+lettre envoyé en "Meta" par le terminal
   # — Terminal.app, réglage "Use Option as Meta key") est renvoyée TELLE QUELLE dès 2
-  # octets, SANS attendre un 3e octet qui n'arrivera jamais (Phil, 2026-08-27 : bug
+  # octets, SANS attendre un 3e octet qui n'arrivera jamais  : bug
   # constaté, la frappe suivante était alors avalée comme si elle appartenait à cette
   # séquence).
   def self.read_key
@@ -485,11 +485,11 @@ module TablatorAssistant
   # aucune corde jouée est ignorée EN TANT QUE COLONNE, mais PAS musicalement (Phil,
   # 2026-08-25 : "sinon tout est faux") — un "trou" (colonnes vides) après une note
   # PROLONGE cette note : sa durée réelle = span de colonnes (elle + le trou) jusqu'à
-  # l'événement suivant OU une barre (`bars`, Phil 2026-08-26 : "|." doit arrêter la
+  # l'événement suivant OU une barre (`bars` : "|." doit arrêter la
   # DERNIÈRE note, pas `width` — dépendait de la largeur du terminal, arbitraire), ou
   # la fin à défaut des deux, converti en durée LilyPond pointée via `duration_for`.
   # Plusieurs cordes sur la même colonne -> accord `<corde:case ...>` (doigté ignoré
-  # pour un accord, hors scope). Un trou AVANT la première note (Phil) compte aussi
+  # pour un accord, hors scope). Un trou AVANT la première note  compte aussi
   # (placement des barres) mais n'est PAS marqué par défaut (levée) -> silence
   # INVISIBLE (`sN`, "skip" LilyPond), jamais supprimé silencieusement.
   def self.matrix_to_tokens(matrix, unit, bars: {}, rests: {})
@@ -509,10 +509,10 @@ module TablatorAssistant
     # prochain repère) : dès `col` 0 et après chaque barre, tout écart avant le prochain
     # repère (note, silence ou barre suivante) doit être écrit comme silence invisible
     # ("s<durée>"), sinon une mesure sans note posée disparaît purement et simplement à
-    # l'enregistrement (bug constaté, Phil, 2026-08-28 : "une barre définit une longueur
+    # l'enregistrement (bug constaté : "une barre définit une longueur
     # de mesure, elle doit être remplie de silence"). Pas de comblement en fin de grille
     # SANS barre : la largeur de la grille est arbitraire (taille du terminal), pas une
-    # fin de mesure. Un silence EXPLICITE ("r"/"s" posé par l'utilisateur, Phil,
+    # fin de mesure. Un silence EXPLICITE ("r"/"s" posé par l'utilisateur,
     # 2026-08-28) se comporte comme une note : sa durée = span jusqu'au prochain repère
     # (même logique, "c'est la position de l'événement suivant qui détermine la durée").
     tokens = []
@@ -602,7 +602,7 @@ module TablatorAssistant
   end
 
   # Renvoie `[matrix, bars, rests]` — `bars` : `{colonne => "|."/"||"/...}`, `rests` :
-  # `{colonne => "r"/"s"}` (silence explicite, Phil, 2026-08-28 — voir `matrix_to_tokens`).
+  # `{colonne => "r"/"s"}` (silence explicite — voir `matrix_to_tokens`).
   # Le doigté ("-<main droite><main gauche>", groupes 4/5 de `Tablator::CORDE_CASE_RE`)
   # est reconstruit dans la `Cell` pour une note simple (jamais dans un accord `<...>`,
   # hors scope).

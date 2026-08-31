@@ -2,7 +2,7 @@ require_relative "page_builder"
 require_relative "file_finder"
 
 # Cache des infos de chansons, un fichier Marshal par `chansons_dir` — évite de relire/
-# parser tous les `.infos` à chaque recherche (Phil, 2026-08-20 : `stat()` quasi gratuit,
+# parser tous les `.infos` à chaque recherche  : `stat()` quasi gratuit,
 # parser systématiquement coûte cher sur beaucoup de chansons). 3 tables : nom de dossier
 # -> id, titre -> id, id -> {folder:, infos:, checked_at:} (`checked_at` = mtime du
 # `.infos` vue au dernier parsing, sert à savoir s'il faut relire).
@@ -23,7 +23,7 @@ module SongCache
     end
   end
 
-  # N'écrit RIEN si rien n'a changé depuis le dernier `save` (Phil, 2026-08-20).
+  # N'écrit RIEN si rien n'a changé depuis le dernier `save` .
   def self.save(chansons_dir)
     return unless @dirty[chansons_dir]
 

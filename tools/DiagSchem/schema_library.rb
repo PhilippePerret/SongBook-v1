@@ -5,7 +5,7 @@ require "fileutils"
 # Insertion d'un nouveau schéma dans `assets/chords_diags/<Lettre>/schemas.txt` —
 # logique PURE (pas d'I/O caché dans `insert`/`conflict`/`parse_lines`/`sort_key`,
 # testable sans fichiers), séparée de l'assistant interactif (`DiagSchem`) et de la
-# génération SVG (`ChordDiagram`). Règle d'ordre dictée par Phil, 2026-08-26 —
+# génération SVG (`ChordDiagram`). Règle d'ordre dictée par  —
 # appliquée MÉCANIQUEMENT, jamais en essayant de deviner/respecter une organisation
 # plus fine déjà présente dans les fichiers existants :
 #   - bémol puis naturel puis dièse
@@ -60,7 +60,7 @@ module SchemaLibrary
   # Raison de refus (`:nom` ou `:schema`), `nil` si l'insertion est permise. Vérifie
   # 1) le nom (même nom ET même case) 2) SURTOUT le schéma (mêmes positions, sous
   # n'importe quel autre nom/case — un doublon visuel, plus dangereux qu'un doublon de
-  # nom, Phil).
+  # nom).
   def self.conflict(entries, nom, case_ref, tokens)
     return :nom if entries.any? { |e| e.nom == nom && e.case_ref == case_ref.to_i }
     return :schema if entries.any? { |e| e.tokens == tokens }
@@ -83,7 +83,7 @@ module SchemaLibrary
     prev = after_idx ? (after_idx.zero? ? nil : entries[after_idx - 1]) : entries.last
 
     same_type = ->(e) { e && alteration_rank(e.nom) == alteration_rank(nom) && quality_rank(e.nom) == quality_rank(nom) }
-    # Juste après `prev` (JAMAIS juste avant `after`, Phil : sinon une ligne vide déjà
+    # Juste après `prev` (JAMAIS juste avant `after` : sinon une ligne vide déjà
     # présente entre les deux — séparant historiquement d'autres blocs — se retrouve du
     # mauvais côté de l'insertion) — à défaut de `prev`, juste avant `after` ; à défaut
     # des deux, en fin de fichier.

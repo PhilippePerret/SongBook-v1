@@ -29,17 +29,17 @@ module Layout
   # à côté du PDF produit (remarques.txt Carnet-1, 2026-08-18 : un log par production, pas
   # un fichier global partagé).
   @conflict_log_path = File.expand_path("../_dev/conflicts.log", __dir__)
-  # Trace des décisions de construction (Phil, 2026-08-20) — PAS le log de conflits :
+  # Trace des décisions de construction  — PAS le log de conflits :
   # aucun problème ici, juste ce que l'algo a choisi et pourquoi, pour comprendre son
   # comportement sans avoir à relire le code. Même redirection par production que
   # `conflict_log_path` (voir `CarnetBuilder.build`).
   @building_log_path = File.expand_path("../_dev/building.log", __dir__)
-  # EXPÉRIMENTAL (Phil, 2026-08-21) : espacement des caractères du texte des paroles,
+  # EXPÉRIMENTAL  : espacement des caractères du texte des paroles,
   # `pdf.character_spacing` — pour chercher jusqu'où RAL2.1 (réduction d'espace avant
   # d'abandonner au raccourcissement RAL2.2) peut aller. 0 = comportement normal, jamais
   # touché par défaut. PAS encore une règle appliquée automatiquement.
   @char_spacing = 0.0
-  # EXPÉRIMENTAL (Phil, 2026-08-21) : espacement des ESPACES seulement (entre les mots),
+  # EXPÉRIMENTAL  : espacement des ESPACES seulement (entre les mots),
   # jamais les lettres à l'intérieur d'un mot — RAL2.1 : "réduire l'espace entre les mots".
   # Prawn n'expose pas Tw (word spacing PDF natif) publiquement, donc chaque mot est
   # dessiné séparément avec un espace ajusté (voir `draw_words_with_spacing`).
@@ -47,7 +47,7 @@ module Layout
   # `shrink_diags`/`shrink_tabla`/`shrink_score` (`.infos` chanson prioritaire sur celui
   # du carnet, voir `PageBuilder.resolve_shrink_option`) : `false` interdit tout
   # rétrécissement sous la taille nominale. Portée DIFFÉRENTE selon la nature de l'image
-  # (Phil, 2026-08-26) :
+  #  :
   # - diags : taille nominale FIXÉE PAR L'APP (`DIAG_W`) — `shrink_diags` s'applique
   #   TOUJOURS, SVG compris (un tracé vectoriel n'a pas de "qualité" à perdre en changeant
   #   de largeur), voir `diag_column_width`.
@@ -61,21 +61,20 @@ module Layout
   @shrink_tabla = true
   @shrink_score = true
   # `shrink_text` (`build_row_or_split`, couplets côte à côte trop larges pour tenir
-  # dans la colonne) : DÉFAUT FALSE (Phil, 2026-08-26, inverse des autres `shrink_*`
+  # dans la colonne) : DÉFAUT FALSE , inverse des autres `shrink_*`
   # ci-dessus) — par défaut, la taille des caractères ne change JAMAIS ; `true` autorise
   # la réduire jusqu'à `MIN_TEXT_SIZE` avant d'abandonner le côte à côte (empilement).
   @shrink_text = false
   # Taille du titre tab/score/image (`title:`/nom de déclaration) — configurable
   # (layout, clé `score_title_size`, `assets/layouts/_default.yaml`). Défaut = `TEXT_SIZE`
-  # (Phil, 2026-08-27 : "ça ne devrait pas être plus gros qu'un INTRO dans le texte —
+  #  : "ça ne devrait pas être plus gros qu'un INTRO dans le texte —
   # ça devrait être pareil, en fait"), jamais en gras.
   @score_title_size = 11
   # Style du titre tab/score/image — configurable (layout, clé `score_title_style`).
-  # `nil` = normal (défaut, Phil 2026-08-27), sinon `:bold`/`:italic`/`:bold_italic`.
+  # `nil` = normal (défaut), sinon `:bold`/`:italic`/`:bold_italic`.
   @score_title_style = nil
   # Nombre de mesures par système de tablature — `nil` = calculé automatiquement
-  # (`Tablator.render_tab_svg`), surclassable (layout, clé `tabla_measures_per_page`,
-  # Phil 2026-08-27).
+  # (`Tablator.render_tab_svg`), surclassable (layout, clé `tabla_measures_per_page`)
   @tabla_measures_per_page = nil
   class << self
     attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing,
@@ -121,7 +120,7 @@ module Layout
     "ACCORDS MANQUANTS : #{@missing_chords.map { |chord, songs| "#{chord} (#{songs.join(', ')})" }.join(', ')}"
   end
 
-  # Point de passage OBLIGATOIRE avant toute gravure dans le PDF (Phil, 2026-08-20) :
+  # Point de passage OBLIGATOIRE avant toute gravure dans le PDF  :
   # AUCUN autre endroit du code n'appelle `pdf.svg`/`draw_text`/`text_box`/`fill_rectangle`
   # directement — tout passe par ici. Vérifie AVANT de graver que l'élément rentre dans le
   # cadre (jamais après-coup, contrairement à l'ancien système) : `bottom` = le point le
@@ -176,7 +175,7 @@ module Layout
     end
   end
 
-  # Console (Phil) : TOUJOURS `with_song_names: false`, même pour un carnet — le nom des
+  # Console  : TOUJOURS `with_song_names: false`, même pour un carnet — le nom des
   # chansons concernées reste réservé au log de conflits (`missing_chords_summary` par
   # défaut, écrit dans le fichier), la console n'affiche QUE le nom de l'accord manquant,
   # comme pour une chanson seule. Appelée AVANT `report_conflicts!` (annonce des conflits).
@@ -195,27 +194,27 @@ module Layout
   # RAA1 (Manuel/regles_esthetiques.adoc) : deux accords ne doivent JAMAIS être en
   # contact — un pas d'avancée strictement égal à la largeur du label précédent les
   # laissait TOUCHER (constaté sur l'intro d'À bicyclette, accords collés sans séparation
-  # quand le texte entre eux est vide/un simple séparateur "/", Phil 2026-08-20). Valeur
-  # provisoire, jamais validée par Phil.
+  # quand le texte entre eux est vide/un simple séparateur "/"). Valeur
+  # provisoire.
   CHORD_GAP = 2.0
   # Ligne "chords-only" (ex. intro "Am / Am9 G7M / G") : écart accord-accord DOIT être
   # visiblement plus petit qu'accord-barre, sinon les deux paraissent identiques (Phil,
-  # 2026-08-23, "À bicyclette"). Valeurs choisies par Phil, à ajuster si besoin.
+  # 2026-08-23, "À bicyclette"). Valeurs à ajuster si besoin.
   CHORD_SEP_GAP = 1.0
   CHORD_CHORD_GAP = 6.0
   # Accord "slash" (basse embarquée, ex. "Bb6/C") : les 2 noms collaient directement au
-  # "/" (bug constaté, Phil — "s'assurer qu'ils ne soient pas trop proches, les deux, du
   # '/' qui les sépare"). Petit espace de chaque côté, PAS un vrai espace de mot (juste de
+  # "/" (bug constaté — "s'assurer qu'ils ne soient pas trop proches, les deux, du
   # quoi respirer — "éloigner à peine, 3pt max" au total, 2 côtés).
   CHORD_SLASH_GAP = 1.5
   # Basse SEULE (ex. "[fd]" -> "/fa♯", rien avant le "/") : note rapprochée du "/"
-  # (Phil, 2026-08-30) — NE concerne PAS un accord+basse ("Bb6/C"), qui garde
+  #  — NE concerne PAS un accord+basse ("Bb6/C"), qui garde
   # `CHORD_SLASH_GAP` normal des deux côtés.
   CHORD_SLASH_GAP_BASS_ONLY = 0.5
   DIAG_W = 60
   DIAG_TEXT_GAP = 26
   # RAD3 : largeur plancher sous laquelle un diag ne doit jamais être réduit (valeur
-  # provisoire, à ajuster — Phil, 2026-08-19).
+  # provisoire, à ajuster — .
   MIN_SIZE = { diags: { width: 48.0 } }.freeze
 
   # Marges : plus de valeur fixe — imposées par la classe `KDP` (2026-08-17), jamais
@@ -228,7 +227,7 @@ module Layout
   HELVETICA_NEUE_DIR = File.expand_path("../assets/fonts/HelveticaNeue", __dir__)
   FONTS_DIR = File.expand_path("../assets/fonts", __dir__)
   # Taille de départ, standard éditorial courant pour un numéro de page — à ajuster
-  # visuellement sur le livre-test (Phil, 2026-08-17).
+  # visuellement sur le livre-test .
   PAGE_NUMBER_SIZE = 10
   # Air entre le numéro et la limite haute de la marge basse (le numéro reste DANS la
   # zone sûre KDP, pas dans la marge — un essai KDP réel, 2026-08-22, a rejeté un numéro
@@ -238,7 +237,7 @@ module Layout
   # Hauteur (pt) de la zone d'encre du numéro de page au-dessus de y=0 (contenu) —
   # approximation généreuse (PAGE_NUMBER_SIZE entier, pas le seul ascendeur, erre du côté
   # de la sécurité) — sert à vérifier qu'un bloc calé en bas de page (grille RAD7) ne le
-  # recouvre pas (Phil, 2026-08-24 : "jamais collés au numéro de page").
+  # recouvre pas  : "jamais collés au numéro de page").
   PAGE_NUMBER_INK_ZONE_PT = PAGE_NUMBER_TOP_INSET_PT + PAGE_NUMBER_SIZE
   # Marge visée quand on remonte la grille (cas 1.1, place suffisante au-dessus) — au-delà
   # de la zone d'encre, pour un espace visuellement net, pas juste "qui ne touche pas".
@@ -303,17 +302,17 @@ module Layout
   # proches reste moche) et distance MAXIMALE JAMAIS dépassée (même avec beaucoup de place
   # libre, trop écartés reste moche aussi) — même valeur pour les deux directions pour
   # l'instant, à affiner par type d'élément plus tard. Valeurs de départ, à ajuster après
-  # avoir vu le résultat. (Phil, 2026-08-16)
+  # avoir vu le résultat. 
   # Table par TYPE d'élément (:diags, :title, :score, :tabla, :strophe...) — clé absente ⇒
-  # valeur de :default. Seul :diags a une valeur propre pour l'instant (Phil, 2026-08-16),
+  # valeur de :default. Seul :diags a une valeur propre pour l'instant ,
   # les autres types tomberont sur :default tant qu'aucun besoin distinct n'est apparu.
   # `band_diag`/`band_strophe` : gouttière ENTRE la bande de titre et le 1er élément
   # (diag / couplet) — INDÉPENDANTE de la gouttière ENTRE éléments de même type (`diags`/
-  # `default`). Les deux ne doivent jamais partager la même plage (Phil, 2026-08-19) : sinon
+  # `default`). Les deux ne doivent jamais partager la même plage  : sinon
   # une plage resserrée pour "entre diags" resserre aussi, à tort, "sous le bandeau".
   # `tdm_num` (RATDM3) : distance entre le titre le plus long de la TDM et le chiffre de
   # page — valeur fixée à 20pt pour l'essai (Manuel, regles_esthetiques.adoc).
-  # `tabla_system` : PAS ici (Phil, 2026-08-28 : "garder cette config enregistrée en
+  # `tabla_system` : PAS ici  : "garder cette config enregistrée en
   # dur quelque part" — plancher/plafond lus depuis le preset Tablator ACTIF,
   # `system_gap_min`/`system_gap_max`, voir `tools/tablator/presets.rb` et
   # `min_v_dist`/`max_v_dist` ci-dessous), pour que TOUT le réglage tablature se
@@ -325,7 +324,7 @@ module Layout
   MIN_H_DIST = { default: 8.0, diags: 4.0, tdm_num: 20.0 }.freeze
   MAX_V_DIST = { default: 40.0, diags: 2.0, band_diag: 20.0, band_strophe: 40.0 }.freeze
 
-  # Rééquilibrage vertical (Phil, 2026-08-24, "L'Aigle noir" p.9 : bloc de paroles collé
+  # Rééquilibrage vertical , "L'Aigle noir" p.9 : bloc de paroles collé
   # en haut, grand vide en bas) : DUP (haut du bloc -> bas du bandeau/marge haut) et DDO
   # (bas du bloc -> marge basse) — si `(DUP - DDO).abs <= VERTICAL_BALANCE_THRESHOLD_PT`,
   # le bloc est recentré (DUP = DDO = moyenne) ; sinon laissé tel quel (contenu qui remplit
@@ -362,22 +361,21 @@ module Layout
   # Anti-page-clairsemée : si tout ce qui reste après la page courante ne remplirait
   # qu'une fraction (REBALANCE_MIN_FILL) de la page suivante, on repousse le dernier
   # élément de la page courante vers la suivante plutôt que de la laisser presque vide
-  # en regard d'une page bien remplie. Règle demandée par Phil (2026-08-16), formulation
-  # mathématique pas encore stabilisée — ce seuil est un point de départ, pas une valeur
-  # définitive.
+  # en regard d'une page bien remplie. formulation mathématique pas encore stabilisée — 
+  # ce seuil est un point de départ, pas une valeur définitive.
   REBALANCE_MIN_FILL = 0.4
 
   # Écartement CIBLE (en pt page) des lignes de la portée tab, une fois intégrée — choisie
   # au hasard pour amorcer le mécanisme, PAS une convention. Valeur provisoire : un carnet
-  # test de 24 pages imprimé doit trancher les vraies tailles par défaut (Phil, 2026-08-16).
+  # test de 24 pages imprimé doit trancher les vraies tailles par défaut .
   TAB_LINE_SPACING = 8.0
   # Discrète (indication plutôt que titre) mais grasse — trop discrète sans le gras
-  # (Phil, 2026-08-16).
+  # .
   TAB_TITLE_SIZE = 9
   TAB_TITLE_GAP = 10
   TAB_TITLE_COLOR = "666666"
   # Titre tab/score/image (nom de déclaration ou `title:`) : plus près de l'image que
-  # `TAB_TITLE_GAP` (Phil, 2026-08-27 : "devrait être moins loin de l'image").
+  # `TAB_TITLE_GAP`  : "devrait être moins loin de l'image").
   TAB_TITLE_IMAGE_GAP = 3
 
   TITLE_SIZE = 20
@@ -395,7 +393,7 @@ module Layout
   HEADER_PAD_X = 12
 
   # `gutter_type` (optionnel, nil = `:default`) : type de gouttière à utiliser
-  # AVANT cet élément (Phil, 2026-08-28 : systèmes de tablature quasi collés entre
+  # AVANT cet élément  : systèmes de tablature quasi collés entre
   # eux, `:tabla_system` — voir `MIN_V_DIST`/`MAX_V_DIST`/`distribute_v_gutters`).
   PageElement = Struct.new(:height, :draw, :gutter_type)
 
@@ -649,7 +647,7 @@ module Layout
   # Prawn lui-même : la méthode renvoie la taille de police PRÉCÉDENTE, pas le résultat du
   # yield — voir prawn/font.rb#font_size). Utilisé partout dans ce fichier pour lire
   # ascender/descender/height à une taille donnée : il faut capturer la valeur DANS le
-  # bloc, jamais compter sur le retour de `font_size` (Phil, 2026-08-16).
+  # bloc, jamais compter sur le retour de `font_size` .
   def self.font_metric(pdf, size)
     value = nil
     pdf.font_size(size) { value = yield }
@@ -700,7 +698,7 @@ module Layout
   end
 
   # `text_font` (options.yaml) est, par convention, le nom du DOSSIER sous
-  # `assets/fonts/` — jamais un nom de fichier en dur (Phil, 2026-08-20 : la convention de
+  # `assets/fonts/` — jamais un nom de fichier en dur  : la convention de
   # nommage des .ttf varie d'une police à l'autre, ex. Cormorant_Garamond utilise
   # "-Regular"/"-Bold", Garamond utilise "Book"/pas de suffixe). Résolution par motif
   # (gras/italique dans le nom de fichier) plutôt qu'un nom de fichier attendu.
@@ -717,7 +715,7 @@ module Layout
     { normal: regular, bold: bold || regular, italic: italic || regular, bold_italic: bold_italic || bold || italic || regular }
   end
 
-  # "(interprète)" — entre parenthèses, jamais de label (Phil, 2026-08-16). L'année N'Y
+  # "(interprète)" — entre parenthèses, jamais de label . L'année N'Y
   # est PLUS (Phil, bug constaté, 2026-08-28) : elle date la CRÉATION de la chanson —
   # œuvre du parolier/compositeur, pas de l'interprète — voir `format_parolier_compositeur`.
   def self.format_interprete(meta)
@@ -799,7 +797,7 @@ module Layout
     y - title_descent
   end
 
-  # Hauteur du bandeau FIXE À 30pt (Phil, 2026-08-23) — valeur EN DUR, AUCUN calcul ne
+  # Hauteur du bandeau FIXE À 30pt  — valeur EN DUR, AUCUN calcul ne
   # doit pouvoir la faire bouger (jamais deux chansons avec un bandeau de hauteur
   # différente).
   BAND_HEIGHT_PT = 30
@@ -849,7 +847,7 @@ module Layout
 
   # Parolier/compositeur : SEULE règle — posé en bas à droite du bandeau, taille NOMINALE
   # (`PC_SIZE`) toujours, ancré sur `band_bottom + PC_BOTTOM_PAD` — RIEN À VOIR avec le
-  # titre ni le centrage/`band_height` (Phil, 2026-08-23, "aucun rapport avec tout le
+  # titre ni le centrage/`band_height` , "aucun rapport avec tout le
   # reste, il n'y a rien d'autre à dire sur lui"). Renvoie `[pc_size, y_pc]`.
   def self.fit_pc_size(pdf, pc, band_bottom)
     return [PC_SIZE, band_bottom + PC_BOTTOM_PAD] if pc.empty?
@@ -860,7 +858,7 @@ module Layout
 
   # Titre + interprète sur `y` ; parolier/compositeur (fer à droite, taille `pc_size` —
   # voir `fit_pc_size`) sur `y_pc`, en dessous — variante band-only de `draw_header_row`
-  # (Phil, 2026-08-22 : plus "identique pour :inline et :band", seul :inline garde les 3
+  #  : plus "identique pour :inline et :band", seul :inline garde les 3
   # sur la même ligne de base).
   def self.draw_header_band_rows(pdf, meta, y, y_pc, pc_size, title_color:, info_color:)
     title = meta["title"].to_s
@@ -946,16 +944,16 @@ module Layout
 
   # Gouttières VERTICALES d'un bloc centré (page, colonne de diags) : mêmes parts pour
   # les gouttières internes, la première (haut) pondérée (TOP_GUTTER_WEIGHT) pour
-  # l'équilibre optique. AUCUNE gouttière après le DERNIER élément (Phil, 2026-08-23 :
+  # l'équilibre optique. AUCUNE gouttière après le DERNIER élément  :
   # "à quoi sert une gouttière avant la marge bas" — la marge bas EST déjà la respiration,
   # en rajouter une revenait à exiger deux fois de la place ; bug qui empêchait des
   # contenus de tenir alors qu'ils tenaient réellement, voir conversation "À bicyclette").
   # Retourne un tableau de n valeurs (avant le 1er élément, puis entre chaque paire).
   # Chaque valeur bornée par [min_v_dist(type), max_v_dist(type)] — SAUF la gouttière du
   # haut (indice 0) qui utilise `top_type` (ex. `:band_diag`/`:band_strophe` : distance
-  # bandeau-titre → 1er élément, plage INDÉPENDANTE de celle entre deux éléments — Phil,
+  # bandeau-titre → 1er élément, plage INDÉPENDANTE de celle entre deux éléments,
   # 2026-08-19). `top_type` vaut `type` par défaut (pages sans bandeau au-dessus).
-  # `types:` (Phil, 2026-08-28) : type PAR ÉLÉMENT (indice i = gouttière avant
+  # `types:`  : type PAR ÉLÉMENT (indice i = gouttière avant
   # l'élément i), prime sur `type` élément par élément — permet de mélanger sur
   # une même page des gouttières "normales" (rows) et resserrées (systèmes de
   # tablature consécutifs, `PageElement#gutter_type`). `nil` dans le tableau =
@@ -1004,7 +1002,7 @@ module Layout
   # `line.label` (voir `PageBuilder.build_lyr_line`) : ligne entre crochets dans le .lyr,
   # TOUJOURS rendue sur une seule ligne (chords-only), même si elle contient des mots
   # (ex. "Intro : Em Em9") — sinon indiscernable d'un vers normal (accords au-dessus,
-  # texte en dessous), ce qui était le bug d'origine (Phil, 2026-08-23).
+  # texte en dessous), ce qui était le bug d'origine .
   def self.chords_only_line?(line)
     line.label || (line_has_chord?(line) && !line_has_words?(line))
   end
@@ -1101,7 +1099,7 @@ module Layout
 
     # Abandon de l'alignement global pour CETTE row : rétrécie sur sa propre largeur
     # naturelle (col1_w global ne s'applique plus dès qu'on rétrécit ou empile).
-    # `shrink_text: false` (défaut, Phil 2026-08-26) : jamais de réduction de taille,
+    # `shrink_text: false` (défaut) : jamais de réduction de taille,
     # directement l'empilement ci-dessous.
     if shrink_text
       natural_w = block_width(pdf, row[0]) + block_width(pdf, row[1])
@@ -1167,7 +1165,7 @@ module Layout
   # que sa hauteur disponible permet, puis le reste (air en haut/bas + gouttière entre
   # éléments) est réparti sur CE QUI TIENT RÉELLEMENT sur la page — jamais sur le total.
   # RÈGLE ABSOLUE : un élément ne passe à la page suivante que s'il ne rentre vraiment pas,
-  # jamais sans raison de place (Phil, 2026-08-16).
+  # jamais sans raison de place .
   # Groupement en pages SEUL (ni dessin, ni dépendance à `pdf` au-delà de sa hauteur de
   # page) — réutilisé par `paginate_and_draw` et par la simulation de `shrink` (voir
   # `PageBuilder.build`) pour savoir, SANS dessiner, où un élément atterrirait et combien
@@ -1180,7 +1178,7 @@ module Layout
   # plancher plus bas que `:default`/`:diags` entre éléments) — sinon le test de faisabilité
   # réservait le plancher `:default` (20pt) même là où le vrai rendu (`distribute_v_gutters`,
   # même `top_type`) n'en réserve que 15 (`:band_strophe`) : la pagination refusait des
-  # contenus qui, eux, tenaient réellement au rendu (bug constaté 2026-08-23, Phil : "il
+  # contenus qui, eux, tenaient réellement au rendu (bug constaté : "il
   # prend les valeurs mini et teste").
   def self.paginate(elements, first_avail_h, page_height, pinned: [], type: :default, top_type: type, trailing_extra: 0)
     heights = elements.map(&:height)
@@ -1194,7 +1192,7 @@ module Layout
       # La place réservée pour MIN_V_DIST est comptée PENDANT l'accumulation (pas après
       # coup) : sinon, si le dernier élément inclus est épinglé (pinned), impossible de le
       # repousser pour faire de la place au plancher — la marge basse se retrouvait nulle.
-      # AUCUNE gouttière après le dernier élément (voir `distribute_v_gutters`, Phil,
+      # AUCUNE gouttière après le dernier élément (voir `distribute_v_gutters`,
       # 2026-08-23) : pour n éléments, gutter_top + (n-1) gouttières `type`, pas n+1.
       while idx < elements.length && page_sum + heights[idx] + gutter_top + min_v_dist(type) * (idx - start) <= avail_h
         page_sum += heights[idx]
@@ -1249,14 +1247,14 @@ module Layout
   # diags). Elle est bornée au nombre de pages du texte ; les diags en trop ("excès") sont
   # regroupés horizontalement, plusieurs par ligne, sur une ou des pages dédiées après la
   # chanson (`draw_diags_grid`) — seulement si RAD5 (jamais un diag seul) ne suffit plus.
-  # `dynamic_mode`/`elements_alt`/`side_col_alt`/`text_x_alt` (Phil, 2026-08-24) : position
+  # `dynamic_mode`/`elements_alt`/`side_col_alt`/`text_x_alt`  : position
   # `int`/`ext` (voir `PageBuilder.build`) — DEUX variantes gauche/droite pré-construites
   # (mêmes hauteurs, seul `x` diffère, donc MÊME pagination `pages`/`side_pages` valable
   # pour les deux), la bonne est choisie ICI, PAGE PAR PAGE, sur la parité recto/verso
   # réelle de cette page (`kdp.recto?`) — jamais figée sur la 1re page de la chanson (bug
   # constaté : "À bicyclette" p.4 (verso) et p.5 (recto), même chanson, reliure des deux
   # côtés, resterait fausse sur l'une des deux si résolue une seule fois pour la chanson).
-  # `row_excess`/`row_excess_w` (Phil, 2026-08-26, "même mécanisme que les colonnes") :
+  # `row_excess`/`row_excess_w` , "même mécanisme que les colonnes") :
   # diags qui ne rentrent pas dans une rangée (Top/Bot/Front, voir `Layout.layout_diags`)
   # — alimente `excess_paths` exactement comme l'excédent de colonne, `row_excess_w`
   # étant la largeur RÉELLE choisie pour la rangée (référence RAD10 pour la grille de
@@ -1301,7 +1299,7 @@ module Layout
         side_pages = side_pages_all
       end
 
-      # `DIAG_COLUMN_BOTTOM_SAFETY_PT` (Phil, 2026-08-24, "L'Aigle noir" : dernier diag
+      # `DIAG_COLUMN_BOTTOM_SAFETY_PT` , "L'Aigle noir" : dernier diag
       # collé au numéro de page) : retiré ICI, APRÈS pagination normale — jamais en
       # réduisant la hauteur passée à `paginate` (essai précédent : décale tout le haut
       # de la colonne vers le bas au lieu de ne rogner QUE le bas, effet de bord non voulu,
@@ -1330,7 +1328,7 @@ module Layout
     # Passe VIRTUELLE (aucun dessin) : les diags en trop, réagencés en grille à la largeur
     # de la colonne TEXTE (`text_w`, PAS la colonne de diags), tiennent-ils avec le reste
     # de la DERNIÈRE page de texte (E1, E2...) ? Décidé AVANT tout dessin : impossible de
-    # supprimer une page déjà construite avec Prawn (Phil, 2026-08-20). Règles Manuel/
+    # supprimer une page déjà construite avec Prawn . Règles Manuel/
     # regles_esthetiques.adoc :
     #   RAD7 : le bloc de lignes de diags reste TOUT EN BAS de la page — le reste (E1, E2)
     #          s'équilibre normalement dans l'espace qui reste AU-DESSUS, jamais mélangé.
@@ -1338,7 +1336,7 @@ module Layout
     #   RAD9 : une ligne plus courte (moins de diags) s'aligne vers la reliure — `text_x`
     #          de la variante (gauche/droite) choisie pour la page où tombe la fusion
     #          (`want_left_for`, position `int`/`ext` sensible à la parité recto/verso).
-    #   RAD10 (Phil, 2026-08-23, RÈGLE ABSOLUE) : TOUS les diagrammes d'une même chanson
+    #   RAD10 , RÈGLE ABSOLUE) : TOUS les diagrammes d'une même chanson
     #          ont TOUJOURS la même taille — les diags "en trop" reprennent EXACTEMENT la
     #          largeur de la colonne normale (`side_col[:width]`, déjà rétrécie par
     #          `diag_column_width` si besoin), jamais une taille recalculée à part (bug
@@ -1359,7 +1357,7 @@ module Layout
       last_page = pages.last
 
       # `column_bottom_y` (colonne verticale présente sur CETTE page) : "aligner sur le
-      # dernier diag de la colonne" = MÊME HAUTEUR (Y), pas même x (Phil, 2026-08-24) — la
+      # dernier diag de la colonne" = MÊME HAUTEUR (Y), pas même x  — la
       # grille reste dans la colonne TEXTE (x inchangé, `text_w`), simplement calée à la
       # même altitude que le bas du dernier diag de la colonne verticale, PAS collée en
       # bas de page. Aucun risque de chevauchement AVEC la colonne (x différents, côte à
@@ -1434,7 +1432,7 @@ module Layout
 
         # RAL4 (Manuel/regles_esthetiques.adoc) : pas de colonne de diags SUR CETTE PAGE
         # précise (position sans colonne, OU colonne existante mais épuisée ici — chanson
-        # à cheval sur plusieurs pages, diags déjà tous montrés plus tôt, Phil 2026-08-24,
+        # à cheval sur plusieurs pages, diags déjà tous montrés plus tôt,
         # "La Ballade des gens heureux" p.22) -> strophes centrées sur la page ENTIÈRE
         # (marges gauche/droite), pas dans la zone `text_w` réduite prévue pour la colonne.
         # `pdf.translate` (translation pure, aucune distorsion) plutôt que reconstruire les
@@ -1467,14 +1465,14 @@ module Layout
             # "Aligner sur le dernier diag de la colonne" = MÊME HAUTEUR (Y), la grille
             # reste dans la colonne TEXTE (x inchangé) — bas de la ligne du bas EXACTEMENT
             # au niveau du bas du dernier diag de la colonne (côte à côte, pas empilés,
-            # aucun risque de chevauchement avec elle). Phil, 2026-08-24.
+            # aucun risque de chevauchement avec elle). .
             effective_gap_v = column_bottom_y
           else
             # Pas de colonne sur cette page : ancrée près du bas, `y` = où le texte s'est
             # RÉELLEMENT arrêté (souvent bien au-dessus du plancher `gap_v`+`block_h`, les
             # gouttières texte étant PLAFONNÉES — `MIN_V_DIST`, jamais étirées à l'infini)
             # — `leftover_gap` = place morte entre ce point et le haut de la grille. RÈGLE
-            # (Phil, 2026-08-24) :
+            #  :
             #   1.1 : place >= 40pt -> la grille remonte jusqu'à une marge nette au-dessus
             #         du numéro (`PAGE_NUMBER_TARGET_CLEARANCE_PT`), sans jamais dépasser
             #         la place réellement dispo.
@@ -1498,7 +1496,7 @@ module Layout
           # (`cur_text_x`/`text_w`, comme le reste de la mise en page), jamais le x de la
           # colonne de diags (x différent, voir plus haut : l'alignement demandé est en Y,
           # pas en x). Écart colonne <-> premier/dernier diag de la ligne : le MÊME `gap_h`
-          # qu'entre deux diags de la ligne (Phil, 2026-08-24, "on s'efforce de faire
+          # qu'entre deux diags de la ligne , "on s'efforce de faire
           # quelque chose de beau") — jamais `DIAG_TEXT_GAP` (26pt, écart texte<->diags,
           # sans rapport), ni un `cur_text_x` qui ignore où la colonne s'arrête vraiment.
           cur_side_col = want_left ? side_col : side_col_alt
@@ -1552,7 +1550,7 @@ module Layout
 
   # RAD6 : diags en excès — regroupés horizontalement, plusieurs par ligne, sur une ou
   # plusieurs pages dédiées après la chanson (dernier recours, RAD5 ne suffit plus).
-  # `diag_w` : RÈGLE ABSOLUE (Phil, 2026-08-23) — TOUS les diagrammes d'une même chanson à
+  # `diag_w` : RÈGLE ABSOLUE  — TOUS les diagrammes d'une même chanson à
   # la MÊME taille, donc CELLE de la colonne normale (`heights` est déjà à cette échelle,
   # voir `layout_diags`/`diag_column_width`), jamais `DIAG_W` nominal redessiné à part
   # (bug constaté : diags de page dédiée plus grands, tailles/proportions différentes).
@@ -1588,7 +1586,7 @@ module Layout
   # Dessine le bloc : y0 = haut visuel réel (sommet de la hampe du 1er élément). `width` :
   # largeur de colonne dispo pour ce bloc, sert au RAL2 (`nil` = jamais de RAL2).
   # `line.align` (`.gab` UNIQUEMENT, ex. `{intro; align:Right;}` — jamais dans le `.lyr`,
-  # qui ne traite JAMAIS de mise en forme, Phil 2026-08-23) : "right" -> CETTE ligne collée
+  # qui ne traite JAMAIS de mise en forme) : "right" -> CETTE ligne collée
   # au bord DROIT de SA colonne (pas de la page), le reste de la colonne (`width`)
   # inchangé — par LIGNE, pas par bloc entier (un bloc "+"-concaténé peut mélanger des
   # lignes alignées et des lignes normales, voir `PageBuilder.apply_extra_directives`).
@@ -1615,9 +1613,9 @@ module Layout
   # "d"/"b" en 2e position d'un nom d'accord = dièse/bémol (convention interne, cf. noms
   # de fichiers de diags) → symbole réel ♯/♭ à l'affichage, jamais la lettre brute. Basse
   # SAISIE entre crochets (`A[c]m7`, `Am7[cd]`, `[cd]` seule, Manuel/song/chords.adoc) mais
-  # AFFICHÉE en notation slash standard (`Gm/fa♯`, pas `Gm[Fd]` — Phil, 2026-08-24, "Gm[B♭]"
+  # AFFICHÉE en notation slash standard (`Gm/fa♯`, pas `Gm[Fd]` — , "Gm[B♭]"
   # pas une notation musicale reconnaissable). La basse suit une règle DIFFÉRENTE de la
-  # fondamentale (Phil, 2026-08-28) : toujours en solfège ITALIEN (do/ré/mi/fa/sol/la/si),
+  # fondamentale  : toujours en solfège ITALIEN (do/ré/mi/fa/sol/la/si),
   # toujours en minuscule — jamais les lettres A-G utilisées pour le reste de l'accord.
   def self.display_chord(chord)
     chord.split("/").map do |part|
@@ -1638,8 +1636,8 @@ module Layout
 
 
   # Racine (1ère lettre + éventuel ♯/♭) affichée pleine taille, tout le reste de l'accord
-  # (qualité : "m", "7", "7M", "sus4", "dim"...) plus petit — généralisé (Phil, 2026-08-19)
-  # à partir du cas "sus" seul (Phil, 2026-08-18). Accord avec basse (slash, ex. "D/F♯") :
+  # (qualité : "m", "7", "7M", "sus4", "dim"...) plus petit — généralisé 
+  # à partir du cas "sus" seul . Accord avec basse (slash, ex. "D/F♯") :
   # pas encore désambiguïsé, affiché en un seul bloc pleine taille pour l'instant.
   def self.chord_label_parts(chord)
     text = display_chord(chord)
@@ -1705,7 +1703,7 @@ module Layout
   # formule pour le dessin (`draw_line`) ET la mesure (`line_width`) : jamais deux formules
   # à tenir synchronisées à la main (bug récurrent — `block_width` mesurait le texte SEUL,
   # `draw_line` avançait sur MAX(texte, accord) : le rendu réel débordait de la largeur
-  # mesurée, chevauchement constaté 2026-08-21, "All You Need Is Love" p.6 — Phil : "quelque
+  # mesurée, chevauchement constaté 2026-08-21, "All You Need Is Love" p.6 : "quelque
   # chose qui mesure VRAIMENT la taille d'un bloc").
   def self.text_line_steps(pdf, segments, chord_size, text_size)
     cx = 0
@@ -1846,8 +1844,8 @@ module Layout
     tok[:x] + pdf.width_of(prefix, size: size) + char_spacing * prefix.length
   end
 
-  # RAL2.1 (Manuel/regles_esthetiques.adoc) : valeurs limites décidées par Phil,
-  # 2026-08-21, sur "L'Aigle noir" — jamais dépassées. Mots resserrés en PREMIER (jusqu'à
+  # RAL2.1 (Manuel/regles_esthetiques.adoc) : valeurs limites,
+  # sur "L'Aigle noir" — jamais dépassées. Mots resserrés en PREMIER (jusqu'à
   # `RAL2_1_WORD_SPACING_MAX`) ; lettres resserrées SEULEMENT si ça ne suffit toujours pas
   # (jusqu'à `RAL2_1_CHAR_SPACING_MAX`, en PLUS du resserrement des mots déjà au max).
   RAL2_1_WORD_SPACING_MAX = -1.0
@@ -1880,14 +1878,14 @@ module Layout
   # l'avancée du TEXTE pour ça (RAL2.1 : le texte reste sa propre mesure, continue, intacte)
   # ; c'est le LABEL d'accord qui est repoussé si besoin, jamais le texte déplacé. MAIS un
   # accord `anchored:` (collé à un vrai mot, càd sa propre `seg.text` démarre par autre
-  # chose qu'une espace) ne bouge JAMAIS non plus (bug Blackbird refrain constaté, Phil :
+  # chose qu'une espace) ne bouge JAMAIS non plus (bug Blackbird refrain constaté :
   # "les blancs entre les paroles, pour glisser des accords, doivent toujours être
   # respectés" — un 2e "Black/F:" repoussé À DROITE par un large "Bb6/C:" voisin
   # atterrissait décollé de son mot). Seuls les accords "filler" (posés dans du blanc, sans
   # mot collé — ex. accord de passage entre 2 paroles) sont repoussés, et vers la GAUCHE (en
   # partant de la fin) pour laisser sa vraie place à l'accord ancré qui suit.
   # Deux basses SEULES ("[x]") consécutives ne doivent jamais être plus proches qu'une
-  # espace de texte (Phil, 2026-08-30, "Mélancolie" : "/do" collé à "/si") — repousse la
+  # espace de texte , "Mélancolie" : "/do" collé à "/si") — repousse la
   # 2e (ET son texte, une vraie espace insérée dans son segment, pas juste son étiquette
   # qui flotterait décollée). Mesure une fois avec le texte D'ORIGINE puis mute `segs` ;
   # `draw_line` retokenise ensuite normalement sur le résultat.
@@ -1949,9 +1947,7 @@ module Layout
     text_y = has_chord ? y - chord_size - LINE_GAP : y
     text_descent = font_metric(pdf, text_size) { pdf.font.descender }
 
-    # `word_spacing`/`char_spacing` (accesseurs globaux) : forcés SI Phil les a réglés
-    # explicitement (essais manuels, `songbook.rb song`) — sinon RAL2.1 décide seul, par
-    # ligne, le minimum de resserrement nécessaire.
+    # sinon RAL2.1 décide seul, par ligne, le minimum de resserrement nécessaire.
     natural_text = line.segments.map(&:text).join
     if word_spacing.zero? && char_spacing.zero?
       ws, cs = resolve_line_spacing(pdf, natural_text, width, text_size)
@@ -1999,7 +1995,7 @@ module Layout
   # Ligne SANS aucun mot réel — juste des accords séparés par de la ponctuation ("/",
   # espaces), typique d'une intro/outro instrumentale (ex. À bicyclette, `/Em://Em9:`) —
   # tout tenu sur la ligne d'accords elle-même (jamais de ligne de texte vide en dessous,
-  # jamais le séparateur affiché sous l'accord — Phil, 2026-08-20). Espacement RAA1
+  # jamais le séparateur affiché sous l'accord — . Espacement RAA1
   # (`CHORD_GAP`) partout, y compris entre accord et séparateur.
   def self.draw_chords_only_line(pdf, line, x, y, chord_size: CHORD_SIZE)
     descent = font_metric(pdf, chord_size) { pdf.font.descender }
@@ -2027,7 +2023,7 @@ module Layout
 
   # Largeur commune de chaque diagramme d'une rangée horizontale (Top/Bot/Front/End),
   # et nombre d'entre eux qui y tiennent réellement — JAMAIS sous `MIN_SIZE[:diags]
-  # [:width]` (bug constaté, Phil 2026-08-26 : 30 diags compressés uniformément pour
+  # [:width]` (bug constaté : 30 diags compressés uniformément pour
   # tenir dans la largeur, jusqu'à devenir illisibles, aucun plancher). `target` = TOUS
   # les diags (Phil, point 6) — contrairement à la colonne (`DIAG_COLUMN_TARGET_MIN`),
   # une rangée n'a pas de contrainte de densité par page : on essaie de tous les faire
@@ -2084,7 +2080,7 @@ module Layout
   # (pas concerné par ce bug — pas retouché). Top réduit l'espace disponible par le HAUT
   # (le contenu commence plus bas), Bot le réduit par le BAS de la page 1 SEULEMENT.
   # Nombre de diags visés par page de colonne, quitte à rétrécir en dessous de `DIAG_W`
-  # (Phil, 2026-08-24, "Angie" — 6 accords au total, seuls 5 tenaient à taille nominale,
+  # , "Angie" — 6 accords au total, seuls 5 tenaient à taille nominale,
   # le 6e partait seul sur une page entière). "On verra si ça peut être la valeur par
   # défaut" : pas encore figé ailleurs, ce chiffre-là seulement pour l'instant.
   DIAG_COLUMN_TARGET_MIN = 6
@@ -2099,7 +2095,7 @@ module Layout
   # tant pis, on s'arrête là (RAD6 gère le reste en page dédiée).
   # Tabla/score : pas de taille nominale propre (contrairement aux diags, `DIAG_W`) —
   # rétrécissement pertinent SEULEMENT pour une image à taille FIXE (PNG/JPEG), jamais
-  # pour un SVG (Phil, 2026-08-26 : "n'a par nature pas de dimension fixe").
+  # pour un SVG  : "n'a par nature pas de dimension fixe").
   RASTER_EXTENSIONS = %w[.png .jpg .jpeg].freeze
 
   def self.raster_image?(path)
@@ -2117,7 +2113,7 @@ module Layout
   def self.diag_column_width(paths, first_avail_h, page_height)
     return DIAG_W if paths.empty?
 
-    # `DIAG_COLUMN_BOTTOM_SAFETY_PT` réservé DÈS le calcul de taille (Phil, 2026-08-24,
+    # `DIAG_COLUMN_BOTTOM_SAFETY_PT` réservé DÈS le calcul de taille ,
     # "Angie" : 6 tenaient tout juste sans marge → le rognement séparé anti-numéro-de-page
     # (voir `paginate_and_draw`) en retirait un aussitôt, annulant ce calcul-ci — les deux
     # mécanismes doivent viser le MÊME budget, jamais l'un après l'autre sans se parler).
@@ -2141,7 +2137,7 @@ module Layout
     shrink_width_to_target(target, MIN_SIZE[:diags][:width], capacity_at)
   end
 
-  # Boucle de rétrécissement commune colonne/rangée (Phil, 2026-08-26, "même mécanisme
+  # Boucle de rétrécissement commune colonne/rangée , "même mécanisme
   # partout") : essaie `DIAG_W` nominal, sinon rétrécit par pas de 0.1pt jusqu'à ce que
   # `capacity_at.call(w) >= target`, jamais sous `floor_w`. `shrink_diags: false` :
   # jamais sous DIAG_W, même en SVG (un diag n'a pas de "qualité" à perdre en changeant
@@ -2161,7 +2157,7 @@ module Layout
     floor_w
   end
 
-  # Marge de sécurité (Phil, 2026-08-24, "L'Aigle noir" p.10 : dernier diag de la colonne
+  # Marge de sécurité , "L'Aigle noir" p.10 : dernier diag de la colonne
   # descendait jusqu'à toucher la zone du numéro de page) — réservée sur la hauteur RÉELLE
   # de PAGINATION de la colonne (`paginate_and_draw`), pas sur la largeur choisie par
   # `diag_column_width` : la taille des diags reste celle calculée normalement (essai
@@ -2303,7 +2299,7 @@ module Layout
   end
 
   # Largeur PHYSIQUE (pt) déclarée par `Tablator.render_tab_svg` lui-même (`width="Xpt"`
-  # sur la racine du SVG, Phil 2026-08-28 : rendu géométrique direct, plus de mm — le
+  # sur la racine du SVG : rendu géométrique direct, plus de mm — le
   # renderer calcule déjà en pt, donc l'écartement de lignes est le même pour toutes les
   # tabs par construction, sans mesure ni ajustement nécessaire ici).
   def self.svg_natural_width_pt(svg_data)
@@ -2326,7 +2322,7 @@ module Layout
     (top.to_f + height.to_f / 2.0) * (embed_w / vb_w)
   end
 
-  # Échelle COMMUNE à toute la chanson (Phil, 2026-08-27 : "on l'applique à TOUTES") —
+  # Échelle COMMUNE à toute la chanson  : "on l'applique à TOUTES") —
   # 1.0 (taille naturelle, donc écartement identique de facto) tant que la plus large
   # des tabs/scores vectoriels tient dans `available_width_pt` ; sinon, un seul facteur
   # de réduction, calculé sur la plus large, appliqué à TOUTES (jamais une réduction
@@ -2366,7 +2362,7 @@ module Layout
     PageElement.new(title_h + svg_h, draw)
   end
 
-  # Repère "x N" (`count:`, propriété universelle) : règle esthétique (Phil, 2026-08-27)
+  # Repère "x N" (`count:`, propriété universelle) : règle esthétique 
   # — jamais en modifiant la taille/position de l'élément lui-même. Priorité : 1) en
   # regard à droite (même hauteur, dans l'espace restant de la colonne) si la place ne
   # manque pas ; 2) sinon en dessous, centré. `elem_h` = hauteur de l'élément SEUL (sans
@@ -2386,7 +2382,7 @@ module Layout
     if right_space >= text_w + COUNT_MARK_GAP
       at_x = elem_x + elem_w + COUNT_MARK_GAP
       center = center_h || elem_h / 2.0
-      # Centré sur l'ENCRE RÉELLE du "x" seul (Phil, 2026-08-29 : "c'est le 'x'
+      # Centré sur l'ENCRE RÉELLE du "x" seul  : "c'est le 'x'
       # qu'il faut aligner, visuellement") — pas l'ascendant de la police
       # (trop haut, pense aux hampes/accents) ni la boîte du texte entier
       # ("x N" : le chiffre, plus grand qu'un "x" minuscule, fausserait le
@@ -2408,7 +2404,7 @@ module Layout
   end
 
   # `score_title_style` (layout) : liste combinable espacée, ex. "bold italic underline"
-  # (Phil, 2026-08-27) — "bold"/"italic" -> style de fonte Prawn (combinés en
+  #  — "bold"/"italic" -> style de fonte Prawn (combinés en
   # `:bold_italic`), "underline" -> soulignement dessiné à part (Prawn ne le gère pas via
   # `style:`, seulement `pdf.text`/`inline_format`, pas utilisé ici).
   def self.score_title_font_style
@@ -2449,13 +2445,13 @@ module Layout
   # = premier élément, "fin" = dernier). align:center la centre dans la largeur dispo.
   # max_height : si donné et que la tabla (titre + image) ne tiendrait pas dedans, l'image
   # est réduite (largeur, donc hauteur — ratio conservé) pour tenir EXACTEMENT dedans, sans
-  # plancher minimal ("sans limite", Phil 2026-08-16) — le titre, lui, ne rétrécit jamais.
+  # plancher minimal ("sans limite") — le titre, lui, ne rétrécit jamais.
   # Notation générée (tab/score vectoriel) : largeur = taille physique NATURELLE du SVG
   # (`svg_natural_width_pt`), multipliée par `scale` — échelle COMMUNE à toute la
   # chanson (`uniform_tab_scale`), jamais recalculée tabla par tabla (sinon écarts
-  # visiblement différents d'une tabla à l'autre, Phil, 2026-08-27).
+  # visiblement différents d'une tabla à l'autre).
   # `svg_paths` : liste à 1 élément (`PageBuilder.ensure_tabla_svg` — UN SEUL SVG
-  # multi-système depuis le rendu géométrique direct, Phil 2026-08-28, plus de
+  # multi-système depuis le rendu géométrique direct, plus de
   # fragmentation multi-fichiers).
   def self.build_tabla_element_v2(pdf, svg_paths, x0, width, align: nil, title: nil, max_height: nil, count: nil, scale: 1.0)
     svg_data = File.read(svg_paths.first)
@@ -2486,7 +2482,7 @@ module Layout
   end
 
   # `image:` (et `score:` matriciel) : PAS de largeur nominale propre — pleine largeur de
-  # colonne par défaut ("pleine page", Phil 2026-08-27), hauteur au ratio de l'image.
+  # colonne par défaut ("pleine page"), hauteur au ratio de l'image.
   # Propriétés explicites (width/height/position...) : pas encore implémentées, à faire
   # plus tard (Phil : "pour le moment, on met l'image telle qu'elle remplit la page").
   def self.build_image_element(pdf, image_path, x0, width, align: nil, title: nil, count: nil)

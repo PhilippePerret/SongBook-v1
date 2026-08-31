@@ -18,7 +18,7 @@ require_relative "diags_sync"
 # 2026-08-20 : "24, c'était juste pour KDP") — il sort de la somme réelle de ce qui est
 # effectivement rendu. Aucun Ruby dans le dossier du carnet (app grand public) : `.tdm`/`.toc`
 # (liste des chansons) + `.infos`/`.inf` (config, clé/valeur imbriquée par indentation —
-# PAS du YAML, parseur maison ci-dessous, Phil 2026-08-20). Root-name libre pour les deux
+# PAS du YAML, parseur maison ci-dessous). Root-name libre pour les deux
 # (voir `FileFinder`), jamais un nom de fichier imposé.
 module CarnetBuilder
   # Layouts nommés standards (Manuel/song/layout.adoc) — pas encore finalisés (Phil,
@@ -28,11 +28,11 @@ module CarnetBuilder
   # `music_position` (Manuel/song/layout.adoc) pas encore implémentés. `diags_position:
   # both` (Column/Column-B) pas encore implémenté — voir `Layout.layout_diags`, lève une
   # erreur claire si sélectionné. `int`/`ext` (côté reliure/extérieur) résolus en left/right
-  # sur la parité recto/verso de la 1re page de la chanson (Phil, 2026-08-24).
+  # sur la parité recto/verso de la 1re page de la chanson .
   # Un fichier YAML par layout sous `assets/layouts/` (nom de fichier = nom du layout,
   # ex. `regular-B.yaml`) — ajouter/modifier un layout ne touche jamais aux autres.
   # `_default.yaml` : valeurs par défaut, jamais un layout nommé lui-même — chaque layout
-  # part de ces valeurs et n'a besoin de définir que ses écarts (Phil, 2026-08-21).
+  # part de ces valeurs et n'a besoin de définir que ses écarts .
   LAYOUTS_DIR = File.expand_path("../assets/layouts", __dir__)
 
   def self.load_layout_yaml(path)
@@ -61,7 +61,7 @@ module CarnetBuilder
     parse_nested_infos(path).each_with_object({}) { |(k, v), h| h[k.to_sym] = v.is_a?(String) ? v.to_sym : v }
   end
 
-  # Cascade complète (Phil, 2026-08-21) : `_default.yaml` -> layout nommé du `.infos`/`.inf`
+  # Cascade complète  : `_default.yaml` -> layout nommé du `.infos`/`.inf`
   # du carnet (`layout:`, SI DÉFINI) -> `.lay`/`.layout` du carnet (SI DÉFINI) -> `.lay`/`.layout` de
   # la chanson (SI DÉFINI). Chaque étage écrase seulement les clés qu'il définit.
   def self.resolve_song_layout(song_folder, carnet_layout)
@@ -72,7 +72,7 @@ module CarnetBuilder
   TOC_LABELS = { song: "par chanson", performer: "par interprète", composer: "par compositeur", author: "par parolier" }.freeze
 
   # `.infos`/`.inf` du carnet : clé/valeur, imbrication par INDENTATION (comme le `.infos` des
-  # chansons, mais récursif) — pas du YAML, jamais passé à Psych (Phil, 2026-08-20).
+  # chansons, mais récursif) — pas du YAML, jamais passé à Psych .
   # `clé:` seule (valeur vide) ouvre un bloc enfant (les lignes plus indentées suivantes) ;
   # `true`/`false` convertis en booléen, tout le reste reste une chaîne brute (aucune règle
   # de caractère réservé, contrairement à YAML — ex. `@2026...` passe tel quel).
@@ -105,7 +105,7 @@ module CarnetBuilder
     root
   end
 
-  # Gabarit d'une chanson auto-créée (Phil, 2026-08-20) : jamais un .tdm sans dossier
+  # Gabarit d'une chanson auto-créée  : jamais un .tdm sans dossier
   # silencieusement ignoré, jamais de placeholder muet — une VRAIE chanson à compléter.
   SONG_TEMPLATE = <<~LYR
     {couplet-1}
@@ -126,7 +126,7 @@ module CarnetBuilder
   end
 
   # "Le Pénitencier" -> "Pénitencier (Le)", "L'Aigle noir" -> "Aigle noir (L')" — convention
-  # déjà en usage dans CHANSONS/ (Phil). NOM DE DOSSIER SEULEMENT, jamais `title` en .infos.
+  # déjà en usage dans CHANSONS/ . NOM DE DOSSIER SEULEMENT, jamais `title` en .infos.
   ARTICLES_DISPLAY = { "the" => "The", "les" => "Les", "le" => "Le", "la" => "La", "l'" => "L'" }.freeze
   ARTICLE_HEAD_RE = /\A(the|les|le|la|l['’])\s*/i
 
@@ -229,7 +229,7 @@ module CarnetBuilder
 
   # Sous-séquence ORDONNÉE : chaque mot de `target_words` doit se retrouver dans
   # `candidate`, dans le même ordre (pas forcément consécutifs), jamais en désordre.
-  # PRÉFIXE d'un mot du candidat, pas égalité stricte (Phil, 2026-08-27 : "vieux amant"
+  # PRÉFIXE d'un mot du candidat, pas égalité stricte  : "vieux amant"
   # doit retrouver "...vieux amants..." — l'expression tapée est bien EXACTEMENT
   # présente dans le nom, un pluriel/suffixe en plus ne doit pas casser le match).
   def self.words_match?(target_words, candidate)
@@ -322,7 +322,7 @@ module CarnetBuilder
       .map(&:first)
   end
 
-  # `songbook build "titre"`, étape "extrêmement proche" (Phil) : distance <= 1 SEULEMENT
+  # `songbook build "titre"`, étape "extrêmement proche"  : distance <= 1 SEULEMENT
   # (bien plus strict que le seuil de `fuzzy_find_songs`/`fuzzy_find_carnets`) — au-delà,
   # rien n'est proposé plutôt qu'une suggestion hasardeuse. UN SEUL résultat (le plus
   # proche), toujours soumis à confirmation par l'appelant, jamais retenu tel quel.
@@ -333,7 +333,7 @@ module CarnetBuilder
   end
 
   # Chanson listée dans le .tdm mais introuvable (cache + disque, voir `SongCache`) :
-  # créée, jamais écartée (Phil, 2026-08-20 : "si cette chanson a été décidée, elle a été
+  # créée, jamais écartée  : "si cette chanson a été décidée, elle a été
   # décidée"). `name` en forme d'id (kebab-case) -> titre dérivé (+ année si présente en
   # fin d'id) ; sinon `name` EST le titre -> id dérivé par slugification. Renvoie
   # `{folder:, infos:}` (forme attendue par le bloc de `SongCache.resolve`).
@@ -440,11 +440,11 @@ module CarnetBuilder
     out_path = File.join(export_dir, "#{slug}.pdf")
     PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout: layout)
     # Sur la DERNIÈRE ligne du log de conflits — chanson SEULE : sans le titre entre
-    # parenthèses (Phil, 2026-08-28), toujours le même ici, purement redondant.
+    # parenthèses , toujours le même ici, purement redondant.
     missing_chords_summary = Layout.missing_chords_summary(with_song_names: false)
     File.open(Layout.conflict_log_path, "a") { |f| f.puts missing_chords_summary } if missing_chords_summary
     # Rapport (succès/conflits/propositions d'ouverture) laissé à l'appelant interactif
-    # (`CLI`, Phil, 2026-08-27) — `build_song` reste une pure fonction de construction.
+    # (`CLI`) — `build_song` reste une pure fonction de construction.
     out_path
   end
 
@@ -519,7 +519,7 @@ module CarnetBuilder
     chansons_dir = File.expand_path("../../Chansons", carnet_folder)
     export_dir = File.join(carnet_folder, "export")
     # Carnet entier -> export/songbooks/ ; chanson isolée (only_song) -> export/songs/
-    # (Phil, 2026-08-21).
+    # .
     songbooks_dir = File.join(export_dir, "songbooks")
     songs_dir = File.join(export_dir, "songs")
     logs_dir = File.join(export_dir, "xlogs")
@@ -534,7 +534,7 @@ module CarnetBuilder
     version = (existing_versions.max || 0) + 1
     slug = File.basename(carnet_folder).downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-|-\z/, "")
     out_path = File.join(songbooks_dir, "#{slug}-v#{version}.pdf")
-    # Logs dans export/logs/ (Phil, 2026-08-21 : revient sur "à côté du PDF").
+    # Logs dans export/logs/  : revient sur "à côté du PDF").
     log_dir = logs_dir
     log_stem = only_song ? "#{slug}-song-#{slugify(only_song)}" : "#{slug}-v#{version}"
     Layout.conflict_log_path = File.join(log_dir, "#{log_stem}-conflicts.log")
@@ -546,7 +546,7 @@ module CarnetBuilder
 
     # --- 1) Résolution des dossiers (par nom de dossier, id ou title — jamais seulement
     # un nom littéral) — chanson du .tdm sans dossier : créée (gabarit vide), JAMAIS
-    # écartée (Phil, 2026-08-20 : "si cette chanson a été décidée, elle a été décidée").
+    # écartée  : "si cette chanson a été décidée, elle a été décidée").
     # Compte de pages provisoire pour la passe de mesure SEULEMENT : la marge de reliure
     # KDP a besoin d'un total, pas encore connu tant que les chansons ne sont pas rendues
     # — reset avec le total EXACT en passe 2.
@@ -596,9 +596,9 @@ module CarnetBuilder
       if only_song == name || only_song == entry[:folder]
         # `only_song` : ISOLE une seule chanson, rendue avec EXACTEMENT les mêmes
         # paramètres (page_count, first_page_no, layout résolu) que dans ce carnet réel —
-        # même appel `PageBuilder.build`, pas une simulation à part (Phil, 2026-08-21 :
+        # même appel `PageBuilder.build`, pas une simulation à part  :
         # "sortir la chanson EXACTEMENT comme elle sortirait"). Sortie PERSISTANTE, jamais
-        # un temp supprimé — numérotée en version (Phil, 2026-08-23), même convention que
+        # un temp supprimé — numérotée en version , même convention que
         # les carnets complets (`existing_versions`/`version` plus haut), sinon un second
         # essai écrase silencieusement le précédent.
         song_stem = "#{slug}-song-#{slugify(name)}"
@@ -632,8 +632,8 @@ module CarnetBuilder
     toc_end = toc_start + end_toc_list.size - 1
 
     colophon_page_no = toc_end + 1
-    # La page de crédits est TOUJOURS une belle-page (recto, numéro IMPAIR — Phil,
-    # 2026-08-20) : une page blanche est insérée avant si elle tomberait sur une page paire.
+    # La page de crédits est TOUJOURS une belle-page (recto, numéro IMPAIR)
+    # Une page blanche est insérée avant si elle tomberait sur une page paire.
     needs_blank_before_colophon = colophon_page_no.even?
     colophon_page_no += 1 if needs_blank_before_colophon
     total_page_count = colophon_page_no
@@ -696,7 +696,7 @@ module CarnetBuilder
     blank_before_colophon = render_blank_page.call(colophon_page_no - 1) if needs_blank_before_colophon
 
     # --- 5) Colophon (dernière page) : crédits SEULEMENT — le copyright est en page
-    # liminaire (voir 4), rien à voir avec les crédits (Phil, 2026-08-20).
+    # liminaire (voir 4), rien à voir avec les crédits .
     colophon_out = File.join(export_dir, ".tmp-colophon.pdf")
     Prawn::Document.generate(colophon_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
       Layout.register_fonts(pdf)
@@ -728,7 +728,7 @@ module CarnetBuilder
     end
 
     # Résumé des accords manquants sur la DERNIÈRE ligne du log de conflits, noms exacts
-    # (Phil, 2026-08-26) — donc APRÈS "Fin :", pas avant.
+    #  — donc APRÈS "Fin :", pas avant.
     File.open(Layout.conflict_log_path, "a") { |f| f.puts "Fin : #{Time.now}" }
     File.open(Layout.building_log_path, "a") { |f| f.puts "Fin : #{Time.now}" }
     missing_chords_summary = Layout.missing_chords_summary
@@ -741,9 +741,9 @@ module CarnetBuilder
 
   # Ordre = ordre des clés dans le `.infos`/`.inf` du carnet (half_title_page, pages_garde,
   # table_of_contents, forword, preface, acknowledgments) — pas une convention éditoriale
-  # décidée ici, juste l'ordre que Phil a lui-même écrit dans le fichier. Exception :
+  # décidée ici, juste l'ordre. Exception :
   # `copyright` (racine du fichier, pas dans `front_matter`) — n'a RIEN à voir avec les
-  # crédits/colophon (Phil, 2026-08-20). Convention imprimerie : mention légale sur la
+  # crédits/colophon. Convention imprimerie : mention légale sur la
   # fausse-page, en regard de la page de titre — insérée juste après la 1re page-titre
   # (`half_title`/`garde`, la première présente), pas dans `front_matter_specs` par un
   # réglage dédié puisque le `.infos`/`.inf` du carnet n'en a pas.
@@ -752,7 +752,7 @@ module CarnetBuilder
   # titre, gouttières calculées sur la pleine hauteur de page).
   TOC_HEADING_RESERVE = 40.0
 
-  # Taille de police PAR SORT (Phil, 2026-08-23) :
+  # Taille de police PAR SORT  :
   # - :performer -> 8,5pt fixe (réduite depuis 11pt par essais successifs).
   # - :song -> 10pt, SAUF si ça dépasse 2 pages à 10pt (`toc_paginate` à 10pt, pour de
   #   vrai, pas une estimation) : dans ce cas 9pt, jamais moins.
@@ -785,7 +785,7 @@ module CarnetBuilder
   end
 
   # RATDM6 : 1/2 ligne vide au-dessus de chaque bloc interprète, sauf le 1er de la colonne
-  # (Phil, 2026-08-23, essai) — MÊME valeur que `header_gap_factor` dans `draw_toc_2col`
+  # , essai) — MÊME valeur que `header_gap_factor` dans `draw_toc_2col`
   # (sinon la capacité calculée ici ne correspond plus à ce que `draw_toc_2col` dessine
   # réellement, et des rows débordent hors page, invisibles : bug constaté 2026-08-23,
   # TdM par interprète incomplète — le compte de pages ignorait le coût des en-têtes de
@@ -843,15 +843,15 @@ module CarnetBuilder
   end
 
   # `toc_specs_list` : non vide seulement si `tdm_position: front` — insérée AVANT tout
-  # texte (avant-propos/préface/remerciements), après garde/copyright (Phil, 2026-08-20 :
+  # texte (avant-propos/préface/remerciements), après garde/copyright  :
   # "elle se place avant tout texte, donc avant une préface").
   def self.front_matter_specs(fm, copyright, toc_specs_list, editor_name: nil, author: nil, book_designer: nil)
     specs = []
     specs << { kind: :half_title } if fm["half_title_page"]
     specs << { kind: :garde } if fm["pages_garde"]
-    # Page de TITRE (Phil, 2026-08-25) : titre + sous-titre + "auteur" du livre — un
+    # Page de TITRE  : titre + sous-titre + "auteur" du livre — un
     # carnet n'a pas d'auteur au sens classique, "Conçu par <book_designer>" à sa place
-    # (sauf `author` explicitement renseigné). Éditeur en haut de page PAR DÉFAUT (Phil).
+    # (sauf `author` explicitement renseigné). Éditeur en haut de page PAR DÉFAUT .
     # SANS RAPPORT avec la page de garde (:garde, ci-dessus) — celle-ci sert seulement à
     # empêcher de voir le titre par transparence, inutile ici, ne pas confondre.
     if fm["title_page"]
@@ -872,7 +872,7 @@ module CarnetBuilder
   end
 
   # TOC en configuration par défaut : PAS dans le front matter, à la fin, juste avant le
-  # colophon (Phil, 2026-08-20). Étalée sur autant de pages qu'il faut (voir
+  # colophon . Étalée sur autant de pages qu'il faut (voir
   # `toc_paginate`) — jamais coupée/chevauchée.
   # `toc_pages` calculé PAR SORT via `toc_paginate` (pas un compte approché sur
   # `song_count`/nombre brut de rows, bug constaté : la TdM par interprète/compositeur/
@@ -893,7 +893,7 @@ module CarnetBuilder
     specs
   end
 
-  # Règle de parité de la TDM (Phil, 2026-08-20) : 1 page -> belle-page (impaire) ;
+  # Règle de parité de la TDM  : 1 page -> belle-page (impaire) ;
   # 2 pages -> fausse-page (paire) ; plus de 2 pages -> toujours belle-page (impaire).
   def self.toc_parity(page_count)
     return nil if page_count.zero?
@@ -916,7 +916,7 @@ module CarnetBuilder
     when :half_title
       draw_centered_text_box(pdf, title, y: pdf.bounds.height / 2 + 10, size: 18, style: :bold)
     when :garde
-      # Titre centré, éventuellement l'auteur du livre en dessous (Phil, 2026-08-20) —
+      # Titre centré, éventuellement l'auteur du livre en dessous  —
       # aucun texte de substitution. RAT3 : sous-titre ajouté en dessous s'il existe.
       draw_centered_text_box(pdf, title, y: pdf.bounds.height / 2 + 10, size: 18, style: :bold)
       if subtitle
@@ -924,7 +924,7 @@ module CarnetBuilder
         draw_centered_text_box(pdf, subtitle, y: pdf.bounds.height / 2 + 10 - 26, size: 13)
       end
     when :title_page
-      # Éditeur en haut PAR DÉFAUT (Phil, 2026-08-25). Titre/sous-titre centrés comme
+      # Éditeur en haut PAR DÉFAUT . Titre/sous-titre centrés comme
       # `:garde`, puis l'"auteur" du livre — un carnet n'en a pas au sens classique,
       # "Conçu par <book_designer>" à sa place (`spec[:byline]`, déjà résolu par
       # `front_matter_specs`).
@@ -937,11 +937,11 @@ module CarnetBuilder
       end
       draw_centered_text_box(pdf, spec[:byline], y: byline_y, size: 10) if spec[:byline]
     when :copyright
-      # "en bas de page" (Phil, 2026-08-20) — PAS centré verticalement comme le reste du
+      # "en bas de page"  — PAS centré verticalement comme le reste du
       # front matter, une simple mention en pied de fausse-page.
       draw_centered_text_box(pdf, spec[:text], y: 40, size: 9)
     when :toc
-      # " (suite)" sur les pages 2+ d'une même TdM (Phil, 2026-08-23) — remplace la
+      # " (suite)" sur les pages 2+ d'une même TdM  — remplace la
       # décision précédente "jamais de (1/2)/(2/2)" par cette forme-là.
       suite = spec[:page].positive? ? " (suite)" : ""
       draw_heading(pdf, "Table des matières #{TOC_LABELS.fetch(spec[:sort])}#{suite}")
@@ -967,7 +967,7 @@ module CarnetBuilder
   end
 
   # `text_box` centré horizontalement, ancré en HAUT à `y` — passe par `Layout.engrave`
-  # (Phil, 2026-08-20 : plus aucune gravure directe hors de ce garde-fou).
+  #  : plus aucune gravure directe hors de ce garde-fou).
   def self.draw_centered_text_box(pdf, text, y:, size:, style: nil)
     opts = { width: pdf.bounds.width, size: size }
     h = pdf.height_of(text, **opts)
@@ -986,7 +986,7 @@ module CarnetBuilder
   # `sort` :song garde l'ordre du TDM (une ligne par chanson) ; :performer/:composer/
   # :author regroupent par le champ correspondant (performer/composer/lyrics), un en-tête
   # par valeur du champ (triées alphabétiquement) suivi des chansons de ce groupe en
-  # retrait — chansons au champ vide : pas d'en-tête, en fin de liste (Phil, 2026-08-21).
+  # retrait — chansons au champ vide : pas d'en-tête, en fin de liste .
   # Chaque ligne : {kind: :header/:song, label:, page: (nil pour :header), indent:}.
   def self.toc_rows(entries, sort)
     case sort
@@ -1032,9 +1032,8 @@ module CarnetBuilder
     rows
   end
 
-  # "@2026..." -> "©2026..." : Phil a mis un `@` volontairement (test), le signe correct
+
   # est ©. Normalisé au rendu plutôt que dans le fichier — INTERDICTION d'y toucher
-  # (Phil, 2026-08-20).
   def self.normalize_copyright(text)
     text.sub(/\A@/, "©")
   end
@@ -1079,7 +1078,7 @@ module CarnetBuilder
   def self.draw_toc_2col(pdf, rows, top: pdf.bounds.height, sort: :song, size:)
     # Interligne "1" d'un traitement de texte = la hauteur naturelle d'une ligne à cette
     # taille, sans rien ajouter — PAS l'équilibrage habituel (`distribute_v_gutters`), qui
-    # étirait les entrées sur toute la hauteur de page dispo (bug constaté, Phil 2026-08-20).
+    # étirait les entrées sur toute la hauteur de page dispo (bug constaté).
     row_h = Layout.font_metric(pdf, size) { pdf.font.height }
 
     chunks = toc_chunks(rows)
@@ -1096,7 +1095,7 @@ module CarnetBuilder
     Layout.log_build("TdM #{sort} : #{rows.size} ligne(s) réparties en #{chunks.size} bloc(s) (RATDM7), #{col1_chunks.sum(&:size)}/#{col2_chunks.sum(&:size)} lignes col1/col2 (RATDM1/2)")
 
     # RATDM6 : 1/2 ligne vide au-dessus de CHAQUE bloc interprète, sauf le 1er de la
-    # colonne (Phil, 2026-08-23, essai — valeur partagée avec `toc_fits?`/
+    # colonne , essai — valeur partagée avec `toc_fits?`/
     # `TOC_HEADER_GAP_FACTOR`, sinon désaccord pagination/rendu).
     # À L'INTÉRIEUR d'un bloc (header -> ses chansons, ou chanson -> chanson suivante du
     # même bloc), toujours 1 ligne pleine, jamais touché.
@@ -1106,8 +1105,8 @@ module CarnetBuilder
     end
     content_lines = [col_lines.call(col1_chunks), col_lines.call(col2_chunks)].max
 
-    # RATDM9.1 (Phil, 2026-08-21, valeur provisoire) : TdM courte en hauteur -> interligne
-    # 1,5 — SEULEMENT pour la TdM par chanson (`sort: :song`) : Phil, 2026-08-21, "l'autre
+    # RATDM9.1 , valeur provisoire) : TdM courte en hauteur -> interligne
+    # 1,5 — SEULEMENT pour la TdM par chanson (`sort: :song`) : , "l'autre
     # [la TdM par interprète] ne sera jamais courte". Décidé sur l'interligne "1" de base,
     # AVANT tout étirement, pour ne pas se rebalancer soi-même hors de la zone "courte".
     short = sort == :song && (content_lines * row_h) < top
@@ -1115,7 +1114,7 @@ module CarnetBuilder
     Layout.log_build("TdM #{sort} courte en hauteur : interligne passé à 1,5 (RATDM9.1)") if short
     content_h = content_lines * effective_row_h
 
-    # RATDM9.2 (Phil, 2026-08-21, valeur provisoire — "sans la mettre au milieu" : un tiers
+    # RATDM9.2 , valeur provisoire — "sans la mettre au milieu" : un tiers
     # de la place libre, pas la moitié) : TdM courte en hauteur -> séparée de son titre par
     # un espace, jamais glued dessous ni centrée dans la page.
     slack = [top - content_h, 0].max
@@ -1129,7 +1128,7 @@ module CarnetBuilder
     natural_col_w = num_x_offset + num_w
     # La gouttière ne doit JAMAIS être plus mince que la marge (bloc <-> bord de page) —
     # sinon un excès de place de chaque côté produit une gouttière ridiculement fine avec
-    # de grandes marges vides (Phil, 2026-08-21). À l'équilibre marge = gouttière, les deux
+    # de grandes marges vides . À l'équilibre marge = gouttière, les deux
     # valent slack/3 (page = marge + colonne + gouttière + colonne + marge) — le clamp de
     # `distribute_gutter` peut retomber sous cette valeur quand il y a beaucoup de place ;
     # `equal_thirds` est alors le plancher réel.
@@ -1140,7 +1139,7 @@ module CarnetBuilder
     h_gutter = gutter_for.call(natural_col_w)
     x1 = [(pdf.bounds.width - (natural_col_w * 2 + h_gutter)) / 2.0, 0].max
 
-    # RATDM8 (Phil, 2026-08-21, valeurs provisoires — "> 2cm ?"/"1cm ?") : gouttière+marge
+    # RATDM8 , valeurs provisoires — "> 2cm ?"/"1cm ?") : gouttière+marge
     # déjà généreuses -> on leur emprunte 1cm pour allonger les filets de conduite, plutôt
     # que de le laisser en blanc pur.
     if (h_gutter + x1) > AppConfig::CM_TO_PT * 2

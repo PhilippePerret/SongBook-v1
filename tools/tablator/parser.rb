@@ -4,7 +4,7 @@
 # (frontmatter, tokens, accords) et regroupement en mesures RÉELLES — aucun
 # dessin ici (voir `renderer.rb`). Séparé de `renderer.rb` pour limiter les
 # collisions d'édition entre "comment on LIT une tablature" et "comment on la
-# DESSINE" (Phil, 2026-08-28).
+# DESSINE" .
 
 require 'yaml'
 
@@ -37,14 +37,14 @@ module Tablator
   }.freeze
 
   # Durée restreinte à `[\d.]+` (pas `\S+`) : doit s'arrêter AVANT un éventuel
-  # `-<doigté>` (Phil, 2026-08-26). Groupes 4/5 : doigté main droite (p/i/m/a/c),
+  # `-<doigté>` . Groupes 4/5 : doigté main droite (p/i/m/a/c),
   # doigté main gauche (chiffre) — ex. "60/4-p2" (corde6 case0 noire, pouce + 2e doigt).
   CORDE_CASE_RE = %r{\A([1-6])(\d+)(?:/([\d.]+))?(?:-([pimac])?(\d)?)?\z}.freeze
   CHORD_RE = %r{\A(\w+)?<([^>]+)>(?:/(\S+))?\z}.freeze
   # `r<durée>` (silence visible) / `s<durée>` (silence invisible, "skip" — compte pour
   # le placement des barres sans être marqué, typiquement une levée).
   REST_RE = /\A([rs])([\d.]+)\z/.freeze
-  # Barres de mesure (les 6 formes — Phil, 2026-08-26 : simple, fin de morceau, double
+  # Barres de mesure (les 6 formes —  : simple, fin de morceau, double
   # (fin de partie), reprises) — un seul style de tracé pour l'instant (pas de
   # distinction visuelle simple/double/reprise, à affiner si besoin).
   BAR_RE = /\A(\|\.|\|\||:\|:|:\||\|:|\|)\z/.freeze
@@ -126,7 +126,7 @@ module Tablator
 
   # "N/D" affichable pour un total de temps (noire = 1) donné — GARDE le
   # dénominateur `base_den` de la métrique en cours (une mesure analysée à la
-  # lueur de la précédente, sauf indication contraire : Phil, 2026-08-29,
+  # lueur de la précédente, sauf indication contraire : ,
   # "si on est en /4, le temps est une noire" — jamais sauter à une autre
   # valeur de note, ex. "1/2", juste parce que ça tombe aussi juste). Affine
   # seulement (double le dénominateur) si `base_den` ne rend pas N entier.
@@ -188,7 +188,7 @@ module Tablator
     end
   end
 
-  # Regroupe les tokens en mesures RÉELLES (Phil, 2026-08-27) : accumulation des
+  # Regroupe les tokens en mesures RÉELLES  : accumulation des
   # durées de chaque événement contre la métrique (`time`, "N/D"), PAS le comptage
   # des barres explicites du code (souvent absentes/rares). Une barre explicite
   # force quand même une coupure (mesure incomplète volontaire, levée...).
@@ -240,7 +240,7 @@ module Tablator
 
   # Analyse UNE source `.tab` (frontmatter + corps) en mesures — chacune taguée
   # de SA PROPRE métrique/unité (`:time`/`:target_beats`/`:unit_denom`/`:slots`,
-  # Phil, 2026-08-28 : "changement de métrique d'un segment à l'autre" —
+  #  : "changement de métrique d'un segment à l'autre" —
   # "amorce" en 3/4, la suite en 4/4). Sert à fusionner plusieurs sources SANS
   # leur imposer la métrique du premier fichier (voir `PageBuilder.tab_source_content`,
   # qui ne fusionne plus le TEXTE mais transmet les sources séparément).
@@ -259,7 +259,7 @@ module Tablator
       # métrique cible) — une mesure coupée court (barre explicite avant la fin,
       # levée...) doit occuper moins de place qu'une mesure complète.
       m[:slots] = m[:beats] * unit_denom / 4.0
-      # Métrique EFFECTIVEMENT affichée pour cette mesure (Phil, 2026-08-29) :
+      # Métrique EFFECTIVEMENT affichée pour cette mesure  :
       # celle du frontmatter, SAUF si son nombre de temps réel diffère (mesure
       # incomplète/irrégulière) — affiche alors la métrique réelle ("2/4"), ce
       # qui déclenche aussi son propre changement d'indicatif (voir `render_tab_svg`).

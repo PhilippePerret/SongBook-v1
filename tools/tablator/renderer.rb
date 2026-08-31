@@ -4,14 +4,14 @@
 # notation externe) d'une tablature déjà parsée en mesures
 # (`Tablator.parse_measures`, voir `parser.rb`). Aucune logique de lecture/
 # syntaxe ici — séparé pour limiter les collisions d'édition entre "comment on
-# LIT une tablature" et "comment on la DESSINE" (Phil, 2026-08-28).
+# LIT une tablature" et "comment on la DESSINE" .
 #
 # Toutes les tailles/écarts viennent du preset ACTIF (`Tablator.param`, voir
-# `presets.rb`) — jamais de constante en dur ici (Phil, 2026-08-28 : "garder
+# `presets.rb`) — jamais de constante en dur ici  : "garder
 # cette config enregistrée en dur quelque part", pour pouvoir en essayer
 # d'autres, ex. "mini-tablatures", sans toucher au code).
 #
-# `render_tab_svg` renvoie UN SVG PAR SYSTÈME (Phil, 2026-08-28 : "chaque
+# `render_tab_svg` renvoie UN SVG PAR SYSTÈME  : "chaque
 # système doit être un élément de pagination indépendant" — 2 systèmes peuvent
 # tenir sur une page, le 3e passer sur la suivante). Chaque système est donc
 # géométriquement AUTONOME (largeur = exactement ses mesures, pas de marge
@@ -43,7 +43,7 @@ module Tablator
     %(<line x1="#{x1.round(2)}" y1="#{y1.round(2)}" x2="#{x2.round(2)}" y2="#{y2.round(2)}" stroke="black" stroke-width="#{width}"/>)
   end
 
-  # Chiffre corde:case — fond TRANSPARENT (Phil, 2026-08-28 : un rectangle blanc
+  # Chiffre corde:case — fond TRANSPARENT  : un rectangle blanc
   # débordait sur la ligne de corde du DESSUS). La ligne de corde elle-même est
   # coupée localement à son emplacement (voir `line_with_gaps`) : plus besoin de
   # la masquer après coup.
@@ -122,7 +122,7 @@ module Tablator
     stems = group.map do |g|
       ev = g[:ev]
       topmost_note = ev.notes.min_by { |n| n[:corde] }
-      # Hampe EXACTEMENT sur l'abscisse du chiffre (Phil, 2026-08-28, redemandé :
+      # Hampe EXACTEMENT sur l'abscisse du chiffre , redemandé :
       # "toujours désalignées" — un décalage, même proportionnel au chiffre, reste
       # visuellement détaché). Pas de risque de collision avec le chiffre lui-même :
       # la hampe reste toujours AU-DESSUS de la portée, le chiffre est SUR la ligne.
@@ -161,7 +161,7 @@ module Tablator
   end
 
   # Regroupe les événements POSITIONNÉS (`{ev:, x:, beat_idx:}`) d'une mesure
-  # en groupes "attachés par temps" (Phil, 2026-08-28) : notes consécutives
+  # en groupes "attachés par temps"  : notes consécutives
   # croche-ou-moins PARTAGEANT le même temps (`beat_idx`, partie entière de
   # l'accumulation de durée) — une noire/blanche, un silence, ou un changement
   # de temps rompt le groupe. Ronde (denom 1) : pas de hampe du tout.
@@ -191,7 +191,7 @@ module Tablator
     end
   end
 
-  # Hauteur de hampe RÉELLEMENT nécessaire pour ce système (Phil, 2026-08-28 :
+  # Hauteur de hampe RÉELLEMENT nécessaire pour ce système  :
   # "systèmes toujours trop écartés"/"titre trop loin" — plancher/plafond fixes
   # gaspillaient de la place même quand rien n'en avait besoin). 0 si aucune note
   # tenue (silence/ronde uniquement — cas rarissime, mais jamais négatif).
@@ -249,7 +249,7 @@ module Tablator
     end
   end
 
-  # Place pour le doigté (Phil, 2026-08-28, même remarque) : 0 si aucun événement
+  # Place pour le doigté , même remarque) : 0 si aucun événement
   # du système n'en porte, 1 rangée si un seul type (droite OU gauche) suffit,
   # 2 rangées seulement si un même événement cumule les deux.
   def fingering_extra_height(measures)
@@ -272,13 +272,13 @@ module Tablator
   # `slot_width` : PAS un réglage user (voir `presets.rb`) — calculé par
   # `render_tab_svg` pour que `measures_per_system` tienne dans la largeur de
   # colonne réelle, jamais en dessous de `min_slot_width` (lisibilité).
-  # `meta` : celle de la 1re source (capo/chord/titre — Phil, 2026-08-27,
+  # `meta` : celle de la 1re source (capo/chord/titre — ,
   # "frontmatter du 1er fichier"), PAS la métrique/unité (celles-ci sont
-  # PAR MESURE, voir `Tablator.parse_source_measures`, Phil 2026-08-28 :
+  # PAR MESURE, voir `Tablator.parse_source_measures` :
   # "changement de métrique d'un segment à l'autre").
   # `ppd_slot_width` : largeur d'un intervalle qui correspond à EXACTEMENT une
   # Plus Petite Durée (`unit_denom` de la mesure) — seule valeur élargie par
-  # `render_tab_svg` sur un système non justifié (Phil, 2026-08-29 : "n'augmente
+  # `render_tab_svg` sur un système non justifié  : "n'augmente
   # QUE les PPD" — un intervalle de plusieurs PPD, note plus longue, reste au
   # taux normal `slot_width`, jamais gonflé proportionnellement).
   def event_step_px(ev, unit_denom, slot_width, ppd_slot_width)
@@ -323,7 +323,7 @@ module Tablator
     height_pt = top_margin + sh + bottom_margin
 
     # 2e passe : position de chaque événement + occupation de chaque ligne de
-    # corde (pour la couper localement, `line_with_gaps` — Phil, 2026-08-28,
+    # corde (pour la couper localement, `line_with_gaps` — ,
     # "le fond des chiffres doit être transparent", pas un rectangle par-dessus).
     computed = measure_positions.map do |mp|
       measure = mp[:measure]
@@ -372,10 +372,10 @@ module Tablator
       draw_stems(parts, mp[:events], top_y)
       mp[:events].each { |e| draw_fingering(parts, e[:ev], e[:x], staff_bottom) }
       parts << svg_text(mp[:mid_x], chord_name_baseline, mp[:label], size: chord_name_size, weight: 'bold') if mp[:label]
-      # Pas de barre en tout DÉBUT de système (Phil, 2026-08-28) — seulement
-      # entre les mesures et à la toute fin. Double barre (Phil, 2026-08-29) si
+      # Pas de barre en tout DÉBUT de système  — seulement
+      # entre les mesures et à la toute fin. Double barre  si
       # la mesure SUIVANTE change de métrique — y compris en fin de système
-      # (Phil, 2026-08-29, redemandé) si c'est la 1re mesure du système SUIVANT
+      # , redemandé) si c'est la 1re mesure du système SUIVANT
       # qui change (`ends_with_double_bar`, calculé par `render_tab_svg`).
       bar_x = mp[:x0] + mp[:width]
       next_changes = computed[i + 1] ? computed[i + 1][:show_time] : (i == computed.size - 1 && ends_with_double_bar)
@@ -385,7 +385,7 @@ module Tablator
       parts << svg_line(bar_x, top_y, bar_x, staff_bottom)
     end
 
-    # `data-staff-top`/`data-staff-height` (Phil, 2026-08-29) : position/hauteur
+    # `data-staff-top`/`data-staff-height`  : position/hauteur
     # RÉELLE de la portée (6 cordes) dans ce SVG — le reste (`Layout.build_count_mark`,
     # `lib/layout.rb`) en a besoin pour centrer verticalement un repère ("x N")
     # sur la portée elle-même, jamais sur la boîte totale (marges hampes/doigtés
@@ -404,7 +404,7 @@ module Tablator
   # de la 1re imposée aux autres — "amorce" en 3/4, la suite en 4/4).
   # `contents` : un contenu `.tab` (String) ou une liste (fusion, dans
   # l'ordre) — voir `Tablator.parse_source_measures`.
-  # En autant de SVG que de systèmes (Phil, 2026-08-28 : pagination
+  # En autant de SVG que de systèmes  : pagination
   # indépendante système par système — voir l'en-tête du fichier).
   #
   # `slot_width` (largeur, en pt, d'une plus petite durée) N'EST PAS un
@@ -430,7 +430,7 @@ module Tablator
     raise ParseError, 'tablature vide' if all_measures.empty?
 
     # Indicatif affiché sur la 1re mesure du morceau ET à chaque CHANGEMENT
-    # de métrique (Phil, 2026-08-28, point 2) — jamais répété sinon (une
+    # de métrique , point 2) — jamais répété sinon (une
     # mesure dont la métrique est la même que la précédente ne le réaffiche pas).
     prev_time = nil
     all_measures.each do |m|
@@ -481,7 +481,7 @@ module Tablator
     end
     # Système non justifié (seul, ou dernier) : `baseline` (plancher de
     # lisibilité) est trop juste, pour la lecture des PPD, si l'unité déclarée
-    # est fine — SEULES les PPD isolées sont élargies (Phil, 2026-08-29 : "les
+    # est fine — SEULES les PPD isolées sont élargies  : "les
     # autres n'ont pas à être touchées"), jusqu'à (mais jamais au-delà de) la
     # largeur disponible. `slot_width` (notes plus longues) reste `baseline`.
     loosen_ppd = lambda do |system, baseline|
@@ -503,7 +503,7 @@ module Tablator
           systems = all_measures.each_slice(mpl).to_a
         end
       end
-      # Système UNIQUE (Phil, 2026-08-29) : rien à justifier PAR RAPPORT À —
+      # Système UNIQUE  : rien à justifier PAR RAPPORT À —
       # `fit.call` sur ce seul système donnerait la largeur qui l'étire pile à
       # la colonne, ce n'est pas une taille "naturelle". Jamais justifié.
       if systems.size == 1
@@ -547,9 +547,9 @@ module Tablator
     svg_text(x, y, "Capo : #{ordinal_fr(capo)}", size: param(:chord_name_size), anchor: 'start')
   end
 
-  # Chiffres empilés proches (Phil, 2026-08-28 : "trop écartés") — écart réduit
+  # Chiffres empilés proches  : "trop écartés") — écart réduit
   # au minimum lisible entre les deux lignes de base. Un peu plus gros que les
-  # chiffres corde:case, mais en gris (`#333333`, Phil, 2026-08-29) pour ne pas
+  # chiffres corde:case, mais en gris (`#333333`) pour ne pas
   # paraître plus FORT qu'eux malgré la taille — jamais une taille fixe
   # indépendante du preset.
   def time_signature_markup(time, x, y)

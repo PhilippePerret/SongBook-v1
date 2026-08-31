@@ -10,10 +10,10 @@ require_relative "session"
 require_relative "../tools/ChordDiagram/generate_chord_diagrams"
 
 # `songbook missing diags` : accords utilisés dans des chansons sans diagramme SVG
-# correspondant — scan LÉGER (parsing `.lyr` seul, sans génération de PDF, Phil : "si
+# correspondant — scan LÉGER (parsing `.lyr` seul, sans génération de PDF : "si
 # l'outil met plus d'une seconde sur toutes les chansons, je le rejetterai").
 module MissingDiags
-  # Chansons à scanner, selon le contexte (bon sens, Phil 2026-08-30) : chanson courante
+  # Chansons à scanner, selon le contexte (bon sens) : chanson courante
   # -> ses accords seuls ; carnet courant -> toutes ses chansons ; `all: true` -> TOUTE
   # la bibliothèque (`AppConfig.songs_dir`), quel que soit le contexte. `nil` = aucun
   # contexte trouvé (à l'appelant d'`abort`).
@@ -46,14 +46,14 @@ module MissingDiags
   # (`Layout.conflict!`, appelé en interne par `diag_path`), ce fichier reste réservé
   # aux VRAIES productions.
   # Clé du hash renvoyé = accord tel qu'écrit dans le `.lyr` + `-case` SEULEMENT si
-  # une case était explicitement demandée (Phil, 2026-08-30 : "Am" introuvable
+  # une case était explicitement demandée  : "Am" introuvable
   # (générique) et "Am-3" introuvable (case précise) sont deux manques DISTINCTS,
   # jamais confondus sous la même étiquette "Am" — sinon la liste ment dès qu'un
   # AUTRE "Am" du même texte, générique, résout bien vers `Am-0.svg`).
   def self.scan(folders)
     # Un schéma peut exister dans `schemas.txt` (assistant `diag`) SANS que son SVG
     # ait jamais été produit — dans ce cas, "manquant" est FAUX : il faut d'abord
-    # construire tous les diags d'application en attente (Phil, 2026-08-30, "B-7").
+    # construire tous les diags d'application en attente , "B-7").
     GenerateChordDiagrams.run
 
     previous_sensitivity = Layout.sensitivity

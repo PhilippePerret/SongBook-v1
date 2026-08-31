@@ -34,7 +34,7 @@ module CLI
 
   # `songbook song open` : ordre d'affichage + libellés clairs — TOUS les types connus
   # (`FileFinder::EXTENSIONS`), pas seulement `.lyr`/`.infos`. `.lyr`/`.gab` présélectionnés
-  # par défaut (Phil).
+  # par défaut .
   SONG_FILE_KINDS = {
     lyr: "Paroles (.lyr)",
     gab: "Gabarit (.gab)",
@@ -252,7 +252,7 @@ module CLI
       case arg1
       when "song"
         begin
-          # Nouvelle chanson créée -> devient le contexte courant (Phil, 2026-08-26 :
+          # Nouvelle chanson créée -> devient le contexte courant  :
           # bug constaté, l'ancien contexte `use song` restait en place).
           folder = SongCreator.run(arg2, arg3)
           Session.song = folder if folder.is_a?(String)
@@ -269,7 +269,7 @@ module CLI
           puts Loc.get("song_creation_cancelled")
         end
       when "tab"
-        # Seulement dans une chanson (Session.song), JAMAIS un carnet (Phil, 2026-08-26)
+        # Seulement dans une chanson (Session.song), JAMAIS un carnet 
         # — `--song`/`use song` la fixent déjà avant d'arriver ici (`Session.with_song`).
         abort "aucune chanson de contexte pour create tab (use song ou --song)" unless Session.song
 
@@ -438,7 +438,7 @@ module CLI
           infos = infos_path ? CarnetBuilder.parse_nested_infos(infos_path) : {}
           title = infos["title"] || File.basename(song_folder)
 
-          # `.gab` TOUJOURS proposé, créé (vide) s'il n'existe pas encore (Phil) — même
+          # `.gab` TOUJOURS proposé, créé (vide) s'il n'existe pas encore  — même
           # root-name que les autres fichiers de la chanson (`.lyr`/`.infos`), convention
           # déjà en usage (ex. "w.gab"/"w.lyr"/"w.infos").
           gab_path = FileFinder.find(song_folder, :gab)
@@ -622,7 +622,7 @@ module CLI
   end
 
   # Contexte courant pour `open folder`/`infos`/`gabarit`/`pdf` — chanson PRIORITAIRE
-  # sur le carnet (même règle que `build` sans argument, Phil 2026-08-25). `open
+  # sur le carnet (même règle que `build` sans argument). `open
   # lyrics`, lui, n'existe QUE pour une chanson (voir `open` ci-dessus), pas ici.
   def self.resolve_open_context
     if Session.song
@@ -634,7 +634,7 @@ module CLI
     end
   end
 
-  # `open lyrics/lyr` ET `edit lyrics/lyr` (alias, Phil 2026-08-28) partagent ce code —
+  # `open lyrics/lyr` ET `edit lyrics/lyr` (alias) partagent ce code —
   # une seule liste d'abréviations à tenir à jour, garantit un comportement identique.
   def self.open_lyrics_file
     abort "aucune chanson sélectionnée (use song) — 'lyrics' n'existe que pour les chansons" unless Session.song
@@ -661,7 +661,7 @@ module CLI
     system("open", "-a", AppConfig.user_song_editor, gab_path)
   end
 
-  # `tdm`, `open tdm/toc` ET `edit tdm/toc` (alias, Phil) partagent ce code — table des
+  # `tdm`, `open tdm/toc` ET `edit tdm/toc` partagent ce code — table des
   # matières du CARNET (pas de la chanson), "toc" toléré comme synonyme anglais de "tdm".
   def self.open_tdm_file(carnet_arg)
     carnet_folder = resolve_carnet_folder(carnet_arg || Session.carnet)
@@ -683,13 +683,13 @@ module CLI
     end
   end
 
-  # Chemin affiché à l'user : jamais le home complet en clair (Phil).
+  # Chemin affiché à l'user : jamais le home complet en clair .
   def self.raccourci(chemin)
     chemin.sub(Dir.home, "~")
   end
 
   # Racine reprise du nom le PLUS UTILISÉ parmi les fichiers déjà présents (ex. "c.lyr"
-  # + "c.infos" -> "c") — "c" par défaut si le dossier est vide (Phil, 2026-08-26,
+  # + "c.infos" -> "c") — "c" par défaut si le dossier est vide ,
   # valable pour n'importe quel type de fichier manquant).
   def self.most_common_root(folder)
     exts = FileFinder::EXTENSIONS.values.flatten
@@ -702,7 +702,7 @@ module CLI
   # Fichier attendu absent (`open lyrics`/`infos`/`gabarit`...) : propose de le créer
   # (question bleue) plutôt que de simplement refuser — créé vide puis renvoyé (l'appel
   # `system("open", ...)` suivant l'ouvre normalement). `nil` si refusé.
-  # `confirm: false` (`edit gab`, Phil) : pas de question, la commande "edit" dit déjà
+  # `confirm: false` (`edit gab`) : pas de question, la commande "edit" dit déjà
   # l'intention de l'user — inutile de lui redemander s'il veut créer le fichier qu'il
   # vient justement de demander à éditer.
   def self.propose_create_file(folder, ext, confirm: true)
@@ -760,7 +760,7 @@ module CLI
 
   # `songbook build "titre"` quand l'argument n'est pas un dossier existant, ET SANS type
   # précisé (ni `song` ni `songbook`/`sb`) : recherche exacte/préfixe/mots CHANSONS
-  # D'ABORD, PUIS CARNETS (Phil), avec la même règle "extrêmement proche" que ci-dessus.
+  # D'ABORD, PUIS CARNETS , avec la même règle "extrêmement proche" que ci-dessus.
   # Sinon : rien trouvé, menu "Construire : un carnet / une chanson / renoncer" (Phil —
   # pas de suggestions floues hasardeuses ici, contrairement à `resolve_song_folder`).
   def self.resolve_build_target(name)

@@ -6,7 +6,7 @@
 - Date de dernière vérification : - Jamais effectuée -
 
 ## Tests — autorisé à les lancer sur ce projet
-Phil, 2026-08-30 : sur SongBook-app, lancer les tests soi-même en codant est autorisé (recommandé même) — pas besoin de demande explicite à chaque fois.
+ : sur SongBook-app, lancer les tests soi-même en codant est autorisé (recommandé même) — pas besoin de demande explicite à chaque fois.
 
 ## Séparation moteur/données
 Ce dépôt (`SongBook-app`, `origin: SongBook-v1.git`) = moteur seul. Les données d'un utilisateur (ex. `Carnets-de-chant`) vivent dans un dépôt séparé, avec sa propre mémoire process.

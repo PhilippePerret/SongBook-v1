@@ -3,16 +3,16 @@
 require "tty-prompt"
 
 # Couleurs ANSI partagées entre les assistants interactifs — évite qu'un même bleu
-# (#00b9ff, Phil) soit redéfini ailleurs sous une autre forme.
+# (#00b9ff) soit redéfini ailleurs sous une autre forme.
 module AnsiColors
   BLUE = "\e[38;2;0;185;255m"
   SUCCESS = "\e[32m"
-  # Rouge ANSI standard (`\e[31m`) trop sombre à l'usage (Phil) — vrai rouge clair
+  # Rouge ANSI standard (`\e[31m`) trop sombre à l'usage  — vrai rouge clair
   # (RGB), même forme truecolor que `BLUE`.
   ERROR = "\e[38;2;255;90;90m"
   GRAY = "\e[90m"
   # Couleur des items "hors liste" dans un picker (ex. "Terminé", "Nouveau carnet…",
-  # Phil 2026-08-30) — jamais un contenu réel, une ACTION à part du contenu choisi.
+  # jamais un contenu réel, une ACTION à part du contenu choisi.
   ORANGE = "\e[38;2;255;165;0m"
   RESET = "\e[0m"
 
@@ -36,7 +36,7 @@ module AnsiColors
     "#{ORANGE}#{text}#{RESET}"
   end
 
-  # `TTY::Prompt.new` avec notre bleu comme couleur de l'item survolé (Phil, 2026-08-30
+  # `TTY::Prompt.new` avec notre bleu comme couleur de l'item survolé 
   # — défaut de la gem `active_color: :green`, trompeur : le vert est réservé aux
   # messages de résultat/succès dans cette appli, `success`). À utiliser PARTOUT à la
   # place de `TTY::Prompt.new` nu.

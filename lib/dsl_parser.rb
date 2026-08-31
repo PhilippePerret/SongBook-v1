@@ -8,14 +8,14 @@ Segment = Struct.new(:chord, :fret, :text, keyword_init: true)
 class DSLParser
   # Groupe 2 optionnel : "-<case>" (ex. "/Bb-6:") = case (fret) explicite où jouer
   # l'accord, cohérent avec le nommage des fichiers de diag `<Accord>-<case>[-N].svg`
-  # (Phil, 2026-08-18). Sans lui, sélection du diagramme au fret le plus bas ("le plus
+  # . Sans lui, sélection du diagramme au fret le plus bas ("le plus
   # en haut du manche") — voir `ChordDiagrams.diag_path`. N'IMPORTE QUOI entre "-" et ":"
   # (pas seulement des chiffres) : "le nom seul sert à trouver l'accord" (Phil,
   # 2026-08-21) — le séparateur "-" existe, ce qui le suit n'a pas besoin d'être un
   # numéro propre pour que le NOM (groupe 1) soit reconnu (bug constaté : "/g2-0C:",
   # "En rouge et noir"/"Belle île en mer", pas reconnu DU TOUT faute de `-(\d+)` strict).
   # "+" (quinte augmentée, ex. "/d75+:", "Amstrong") : absent de la classe de caractères,
-  # accord jamais reconnu du tout (bug constaté 2026-08-24, Phil).
+  # accord jamais reconnu du tout (bug constaté).
   CHORD_RE = /\/((?:[A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)(?:\/[A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)?)(?:-([^: ]+))?:/
 
   def self.parse(source)
@@ -23,7 +23,7 @@ class DSLParser
   end
 
   # "_" (accord seul en début de vers, sans mot dessous — ex. All You Need Is Love,
-  # Phil 2026-08-17) -> 3 espaces, pour l'alignement plutôt qu'un underscore imprimé.
+  # -> 3 espaces, pour l'alignement plutôt qu'un underscore imprimé.
   # Méthode de classe (toujours publique) : seule source de vérité pour le découpage
   # accord/texte d'une ligne — réutilisée telle quelle par `PageBuilder` pour le format
   # `.lyr` (plus de logique dupliquée entre les deux formats).
@@ -52,7 +52,7 @@ class DSLParser
   # Écriture en minuscule tolérée pour la commodité de frappe ("/am:") — la
   # première lettre de la fondamentale doit toujours être rendue en capitale ("Am"),
   # le reste de la qualité inchangé (ex. "m7b5"). Basse entre crochets (`A[c]m7`,
-  # `Am7[c]`, `[cd]` seule) : REGLE INVERSE (Phil, 2026-08-28 — "entre crochets, c'est
+  # `Am7[c]`, `[cd]` seule) : REGLE INVERSE  — "entre crochets, c'est
   # toujours des basses et les basses doivent toujours s'écrire en minuscule") : tout
   # le contenu d'un "[...]" est forcé en minuscule, jamais capitalisé, même si tapé en
   # majuscule.

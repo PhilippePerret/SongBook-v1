@@ -2,8 +2,8 @@
 # ".ext" tout court). `Dir.glob("*.ext")` seul ne suffit JAMAIS : Ruby exclut les
 # dotfiles du `*` par défaut, donc un fichier nommé exactement ".ext" (sans root) ne
 # serait jamais trouvé — bug constaté 2026-08-21. Chaque type accepte une forme longue
-# ET une forme courte (Phil, 2026-08-21) — les deux valables indifféremment. Clé =
-# toujours la forme courte (Phil, 2026-08-21).
+# ET une forme courte  — les deux valables indifféremment. Clé =
+# toujours la forme courte .
 module FileFinder
   EXTENSIONS = {
     gab: %w[gabarit gab],

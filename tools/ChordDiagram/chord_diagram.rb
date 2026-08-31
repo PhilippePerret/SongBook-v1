@@ -100,7 +100,7 @@ module ChordDiagram
   def self.name_label(name, bass)
     root, quality = split_name(name)
     # Le glyphe ♭ garde, même resserré sur la lettre, une avance naturelle plus large
-    # que le ♯ dans cette police — écarts calés visuellement par Phil, 2026-08-19
+    # que le ♯ dans cette police — écarts calés visuellement par 
     # (comparatif lettré, choix "G") : ♭ tiré davantage vers la lettre (-14 contre -6
     # pour ♯), et ce qui suit (qualité) tiré vers le ♭ à son tour (-7), sinon ça flotte.
     bemol = root.end_with?("♭")

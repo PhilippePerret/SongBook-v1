@@ -21,7 +21,7 @@ class ChordLine
     @chords = chords
   end
 
-  # "/" = séparateur d'accords (Phil, 2026-08-30) : DEUX marqueurs "/accord:" collés
+  # "/" = séparateur d'accords  : DEUX marqueurs "/accord:" collés
   # SANS AUCUN caractère de parole entre eux (ex. "/A2-0:/A-0:") tombent au même
   # `offset` — fusionnés en une valeur composée "A2-0/A-0" plutôt que le 2e écrasant
   # le 1er (bug constaté sur "If You Don't Know Me By Now"). `serialize` (plus bas)
@@ -47,7 +47,7 @@ class ChordLine
   # accord UNIQUE, un seul marqueur "/accord:" (bug déjà constaté par le passé, ne pas
   # re-casser). Un "/" entre deux morceaux dont AU MOINS un porte sa propre case
   # ("-chiffre", ex. "A2-0/A-0") = DEUX accords distincts, DEUX marqueurs "/accord:"
-  # collés (Phil, 2026-08-30).
+  # collés .
   def self.split_for_write(name)
     return [name] unless name.include?("/") && name.match?(/-\d/)
 
@@ -72,7 +72,7 @@ class ChordLine
 
   # "ch"/"ph"/"th"/"gn"/"qu" = UN seul son consonantique — comptées séparément (2
   # lettres), le VCCV plaçait la coupure EN PLEIN DEDANS ("a-ch-at" au lieu de "a-chat",
-  # bug constaté, Phil : "comme si l'outil ne savait pas reconnaître les syllabes").
+  # bug constaté : "comme si l'outil ne savait pas reconnaître les syllabes").
   DIGRAPH_CONSONANTS = %w[ch ph th gn qu].freeze
   # Groupe consonne+liquide (br/cr/dr/fr/gr/pr/tr/bl/cl/fl/gl/pl) : INSÉPARABLE, part
   # ENTIER avec la syllabe suivante ("en-tre", pas "ent-re" ; "bi-cy-clette", pas
@@ -93,7 +93,7 @@ class ChordLine
     # début de mot (lettre précédée d'un non-lettre) est TOUJOURS une frontière. Sans
     # ça, un mot court sans consonne interne ("du") n'avait AUCUNE frontière et se
     # faisait sauter entièrement par la navigation syllabe par syllabe (bug constaté,
-    # Phil : "tenir compte des espaces et des ponctuations").
+    # "tenir compte des espaces et des ponctuations").
     (1...n).each { |idx| bounds << idx if letter?(chars[idx]) && !letter?(chars[idx - 1]) }
 
     i = 0
@@ -138,7 +138,7 @@ class ChordLine
   # Décale UNIQUEMENT les paroles de `count` espaces à partir de `cursor` (direction +1
   # = insère à droite, -1 = retire des espaces existants à gauche — jamais une lettre des
   # paroles, `Shift+←` est un no-op tant qu'il n'y a pas d'espace à retirer). Renvoie le
-  # nouveau cursor. Les accords NE BOUGENT PAS (Phil) — leur offset numérique reste
+  # nouveau cursor. Les accords NE BOUGENT PAS  — leur offset numérique reste
   # inchangé, seul le texte se décale sous eux.
   def shift!(cursor, count, direction)
     if direction.positive?

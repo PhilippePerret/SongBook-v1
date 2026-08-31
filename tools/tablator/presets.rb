@@ -2,13 +2,13 @@
 
 # tools/tablator/presets.rb : réglages du rendu géométrique (`renderer.rb`).
 #
-# Phil, 2026-08-28 (redemandé, clarifié) : "les paramètres laissés à l'user
+#  (redemandé, clarifié) : "les paramètres laissés à l'user
 # doivent être MINIMUM, c'est l'algo qui calcule le reste et s'assure que tout
 # est bien affiché" — SEULS 3 réglages, dans `PRESETS` :
 #   number_size          taille des chiffres
 #   line_spacing          interligne
 #   measures_per_system   nombre de mesures visées par système (l'user pense
-#                          en mesures — Phil : "plus clair pour eux")
+#                          en mesures : "plus clair pour eux")
 #     ou, en variante avancée, `duration_units_per_system` (nombre de PLUS
 #     PETITE DURÉE, `unit:` du frontmatter — utile si le morceau mélange des
 #     mesures de densités très différentes, où compter en mesures brutes
@@ -56,7 +56,7 @@ module Tablator
     # Plancher de lisibilité pour `slot_width` (Phil : "l'algo s'assure que
     # tout est bien affiché") — en dessous, les chiffres consécutifs sur une
     # même corde se touchent. Calibré pour ne PAS réduire "regular-tablatures"
-    # (6 mesures/système, déjà validé visuellement par Phil) à la largeur de
+    # (6 mesures/système) à la largeur de
     # colonne réelle de Blackbird — un ratio trop haut (essayé : 1.38, calqué
     # sur l'ancien `slot_width` FIXE) réduisait à tort 6 → 5 mesures alors que
     # le rendu à 6 était déjà jugé bon.
@@ -65,14 +65,14 @@ module Tablator
     link_letter_size: 0.85,
   }.freeze
 
-  # Justification (Phil, 2026-08-29) : chaque système est étiré pour remplir
+  # Justification  : chaque système est étiré pour remplir
   # exactement la largeur de colonne, SAUF le dernier système d'un rendu (comme
   # la dernière ligne d'un paragraphe, jamais justifiée) ET sauf si l'étirement
   # nécessaire dépasse ce ratio par rapport au `slot_width` le plus serré du lot
   # (sinon un système avec peu de contenu s'étire de façon disproportionnée).
   JUSTIFY_MAX_STRETCH = 1.4
 
-  # Aération du `slot_width` (Phil, 2026-08-29) : quand un système ne va PAS
+  # Aération du `slot_width`  : quand un système ne va PAS
   # jusqu'au bout de la colonne (seul, ou dernier — jamais justifié) ET que sa
   # plus petite durée réelle est fine (double-croche, dénominateur >=
   # `FINE_NOTE_DENOM`), le plancher `min_slot_width`/`base_slot_width` est trop

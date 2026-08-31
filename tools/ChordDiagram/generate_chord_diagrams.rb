@@ -1,20 +1,20 @@
 require_relative "chord_diagram"
 require_relative "../../lib/transpose"
 
-# Lit les `schemas.txt` (un par dossier de lettre, format décidé par Phil 2026-08-17 :
+# Lit les `schemas.txt` (un par dossier de lettre :
 # "<Nom>-<case> : <6 tokens>", un token par corde 1(aiguë/e)..6(grave/E), chaque token
 # "<corde><frette>[/<doigt>]", frette = 0-15 ou "x" (étouffée). Génère le SVG manquant
 # correspondant, jamais ceux déjà présents (sauf demande explicite, non gérée ici).
 module GenerateChordDiagrams
   # Parenthèses autour d'un token entier : note FACULTATIVE (même doigt qu'une autre
   # corde, qui peut s'étendre là en plus) — NE COMPTE JAMAIS pour la détection de barré,
-  # même si elle partage frette et doigt avec une autre corde (Phil, 2026-08-17).
+  # même si elle partage frette et doigt avec une autre corde .
   TOKEN_RE = /\A(\()?([1-6])(x|\d{1,2})(?:\/(\w+))?(\))?\z/
   LINE_RE = /\A(\S+)-(\S+)\s*:\s*(.+)\z/
 
   # Nom AFFICHÉ (pas le nom de fichier) : "d"/"b" en 2e lettre = dièse/bémol (♯/♭,
   # convention historique pré-UTF8 du projet), SAUF "dim" (accord diminué — "d" suivi
-  # de "im" reste "dim", jamais "♯im"). Phil, 2026-08-17.
+  # de "im" reste "dim", jamais "♯im"). .
   def self.display_name(raw)
     root = raw[0]
     rest = raw[1..] || ""
@@ -107,7 +107,7 @@ module GenerateChordDiagrams
     ChordDiagram.build(name: display_name(root), positions: d[:positions], fingers: d[:fingers], barre: d[:barre], bass: bass && Transpose.italian_bass_symbol(bass), optionals: d[:optionals])
   end
 
-  # Plus de versionnement (Phil, 2026-08-18) : un accord à actualiser se met à
+  # Plus de versionnement  : un accord à actualiser se met à
   # jour en détruisant son SVG, ce module le refabrique alors automatiquement.
   def self.svg_path(dir, name, kase)
     File.join(dir, "#{name}-#{kase}.svg")

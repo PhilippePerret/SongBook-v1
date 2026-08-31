@@ -9,7 +9,7 @@ module ChordDiagrams
 
   # `fret` (case) explicite dans la source (ex. "/Bb-6:") → diagramme à CETTE case
   # exactement. Sans lui → case la plus basse disponible ("le plus en haut du manche",
-  # Phil, 2026-08-18 — plusieurs cases existeront à terme pour un même accord). Accord ou
+  #  — plusieurs cases existeront à terme pour un même accord). Accord ou
   # case introuvable : signalé via `Layout.conflict!` (l'user peut se tromper d'accord),
   # jamais une erreur silencieuse ni un crash.
   # Fichiers SVG nommés en ascii (`Bb7M-1.svg`) — un accord transposé sort en unicode
@@ -22,12 +22,12 @@ module ChordDiagrams
   end
 
   # Précédence : carnet (`carnet_dir`) fait loi, puis chanson (`song_dir`), puis
-  # `assets/chords_diags/` en dernier recours (Phil, 2026-08-23). Recherche RÉCURSIVE
+  # `assets/chords_diags/` en dernier recours . Recherche RÉCURSIVE
   # dans `carnet_dir`/`song_dir` (SongBook écrit lui-même dans `images/diags/`, mais
   # l'user peut avoir placé un SVG n'importe où dans le dossier).
   # Basse SEULE (ex. "[fd]", tout l'accord entre crochets — Manuel/song/chords.adoc,
   # `chord_placer.rb`) : jamais de diagramme dédié, une seule note tenue, pas un accord
-  # signalé "manquant" (bug constaté, Phil — le build les listait comme diagrammes
+  # signalé "manquant" (bug constaté — le build les listait comme diagrammes
   # absents alors qu'aucun n'existera jamais pour une basse seule).
   BASS_ONLY_RE = /\A\[[^\]]*\]\z/
 
@@ -83,7 +83,7 @@ module ChordDiagrams
   # avec/sans case explicite, ou à deux cases différentes, compte comme deux entrées —
   # chacune sélectionne un diagramme différent (voir `diag_path`).
   #
-  # RÈGLE (Phil, 2026-08-28) : un accord GÉNÉRIQUE (sans "-case") rencontré APRÈS un
+  # RÈGLE  : un accord GÉNÉRIQUE (sans "-case") rencontré APRÈS un
   # accord PRÉCIS du même nom hérite de CETTE case — la case la plus basse n'est
   # cherchée que pour un générique rencontré AVANT toute case précise de ce nom. Ex. :
   # "D6" puis "D6-10R" puis "D6" -> le 1er "D6" reste générique (case la plus basse),
@@ -117,7 +117,7 @@ module ChordDiagrams
   end
 
   # Case transposée pour `chord` (déjà transposé) à partir de la case D'ORIGINE et du
-  # décalage en demi-tons — règles posées avec Phil (2026-08-19, voir transpose.rb) :
+  # décalage en demi-tons — voir transpose.rb) :
   # pas de case au départ -> accord neutre ; case cible < 0 -> accord neutre ; case cible
   # dans [0, 10] et diagramme dispo -> direct ; dans [0, 10] mais diagramme pas encore
   # construit -> signalé, accord neutre en attendant ; case cible > 10 -> diagramme

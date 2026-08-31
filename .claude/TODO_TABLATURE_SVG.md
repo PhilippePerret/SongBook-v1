@@ -1,13 +1,13 @@
-# TODO rendu SVG tablature — points signalés par Phil (2026-08-28)
+# TODO rendu SVG tablature
 
 Tenu à jour à chaque point traité. Ne pas supprimer un point sans qu'il soit résolu ET vérifié visuellement.
 
 - [x] 1. Barre de mesure en tout DÉBUT de système à supprimer.
-- [x] 2. Notes trop collées à leur barre de gauche — décaler de quelques pixels à droite (pas trop). (NOTE_INSET 6→10pt, à confirmer visuellement par Phil)
+- [x] 2. Notes trop collées à leur barre de gauche — décaler de quelques pixels à droite (pas trop). (NOTE_INSET 6→10pt, à confirmer visuellement)
 - [x] 3. Système de hampe de noire (LilyPond) perdu — toute note (sauf ronde) doit avoir une hampe, pas seulement croche et moins.
 - [x] 4. Hampes de croches ridiculement petites — agrandir. (STEM_HEIGHT 8→22pt)
 - [x] 5. Hampes de croches doivent être attachées (beam) par temps, pas en crochets individuels.
-- [x] 6. Erreur de calcul : dernière note de plein de mesures considérée croche au lieu de noire. INVESTIGUÉ : parsing vérifié correct sur les .tab réels (dénominateur = exactement celui du fichier source, dernière note bien noire partout où le fichier le dit). Pas de bug de calcul trouvé — symptôme probablement dû à l'absence de hampe sur les noires (point 3, résolu) qui rendait noires/croches indiscernables. À reconfirmer visuellement par Phil sur le nouveau rendu.
+- [x] 6. Erreur de calcul : dernière note de plein de mesures considérée croche au lieu de noire. INVESTIGUÉ : parsing vérifié correct sur les .tab réels (dénominateur = exactement celui du fichier source, dernière note bien noire partout où le fichier le dit). Pas de bug de calcul trouvé — symptôme probablement dû à l'absence de hampe sur les noires (point 3, résolu) qui rendait noires/croches indiscernables.
 - [x] 7. Systèmes beaucoup trop écartés — réduire l'espacement. (empilement interne au SVG supprimé — chaque système est maintenant un élément autonome, espacé par le mécanisme standard de l'appli, pas un espacement custom)
 - [x] 8. Lignes de portée doivent s'arrêter à la dernière barre du système. (résolu de fait par le point 9 — chaque système a désormais sa largeur PROPRE, plus de largeur globale partagée)
 - [x] 9. Chaque système = élément de pagination indépendant. Vérifié bout en bout sur Blackbird : le système incomplet de "refrain+intro" (1 mesure) a basculé seul sur la page suivante pendant que les 2 précédents restaient sur la page courante.
@@ -67,7 +67,7 @@ Les 10 points sont traités et vérifiés (code + régénération réelle de Bla
 ## État (lot 6)
 31/31 traités et vérifiés (tests + régénération réelle de Blackbird via le pipeline standard, `tabla_preset: mini-tablatures` dans son `.infos`).
 
-## Paramètres user — MINIMUM, tout le reste calculé (Phil, 2026-08-28, tranché)
+## Paramètres user — MINIMUM, tout le reste calculé , tranché)
 Décision de Phil, sans appel : SEULS 3 réglages exposés, tout le reste est calculé par l'algorithme.
 1. **Taille des chiffres** (`number_size`).
 2. **Interligne** (`line_spacing`).
@@ -91,5 +91,5 @@ Décision de Phil, sans appel : SEULS 3 réglages exposés, tout le reste est ca
 ## État (lot 8)
 36/36 traités et vérifiés (tests + régénération réelle de Blackbird — "amorce" 3/4 → "intro" 4/4 affiché correctement, changement visible en cours de système sur INTRO et COUPLET).
 
-## Question ouverte de Phil (pas encore tranchée, pas implémentée)
+## Question pas encore tranchée, pas implémentée)
 "Comment compter le nombre de mesures par système : en nombre de mesures (variable, une mesure 6/8 ou en double-croches n'a pas la même largeur qu'une 4/4 en croches), ou en nombre de PLUS PETITE DURÉE (le nombre de 'slots' du point 26, `unit:`) ?" Fait, sans trancher : `measures_per_system` (presets) compte des MESURES ; `measure_width` (largeur d'une mesure) ne dépend QUE de la métrique (`target_beats × beat_width`), jamais de `unit:` — deux tabs avec la même métrique mais un `unit:` différent (croche vs double-croche) ont donc AUJOURD'HUI la même largeur de mesure alors que l'une est visuellement 2× plus dense que l'autre. Compter en "plus petite durée" rendrait la largeur d'une mesure proportionnelle à sa densité réelle (une mesure en double-croches deviendrait plus large qu'une en croches, à métrique égale) — cohérent avec l'algo du point 26 qui, lui, utilise déjà `unit:` PAR mesure. Pas implémenté, en attente de décision.

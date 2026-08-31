@@ -22,7 +22,7 @@ GRAS = "\e[1m"
 
 def touche(s) = "#{ORANGE}#{s}#{RESET}"
 
-# Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user (Phil).
+# Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user .
 def blue(s) = "#{AnsiColors::BLUE}#{s}#{AnsiColors::RESET}"
 
 # Notre bleu comme couleur de l'item survolé, pas le vert par défaut de la gem
@@ -135,9 +135,9 @@ class DiagSchem
 
   private
 
-  # Après production du schéma + copie presse-papier (Phil, 2026-08-26) : propose
+  # Après production du schéma + copie presse-papier  : propose
   # d'enregistrer dans la bibliothèque de l'application (`schemas.txt`). PAS de
-  # question oui/non préalable (bug constaté, Phil : un "Enregistrer ?" (Y/n) placé
+  # question oui/non préalable (bug constaté : un "Enregistrer ?" (Y/n) placé
   # AVANT la saisie du nom — un nom tapé directement à cette question, ex. "B-7",
   # loin d'être un booléen, faisait échouer `TTY::Prompt#yes?` avec son message
   # anglais générique "Invalid input.") — `enregistrer_dans_application` gère déjà
@@ -152,16 +152,16 @@ class DiagSchem
     @svg_path = generer_svg if prompt.yes?(blue(Loc.get('diag_output_question')))
   end
 
-  # Nom demandé à l'user (texte libre, défaut = nom du schéma en cours, Phil
+  # Nom demandé à l'user (texte libre, défaut = nom du schéma en cours
   # 2026-08-30) : c'est LE NOM EXACT, tel quel (repris tel quel ou modifié), à la fois
-  # du FICHIER SVG et de l'entrée dans `schemas.txt` (Phil, 2026-08-26 : rien n'est
+  # du FICHIER SVG et de l'entrée dans `schemas.txt`  : rien n'est
   # ajouté derrière, ni case ni autre). `Nom-case` reconnu si
   # déjà présent dans le texte tapé (case reprise telle quelle) ; sinon la case en cours
   # dans le tableau est utilisée pour reconstituer la ligne `schemas.txt` (`SchemaLibrary`
   # exige un `Nom-case`), mais le SVG s'appelle toujours EXACTEMENT le texte tapé.
   # Vérifie 1) le nom (même nom+case) 2) SURTOUT le schéma (mêmes positions, sous
   # n'importe quel autre nom) — refuse l'enregistrement si l'un des deux existe déjà
-  # (Phil : "trop dangereux"). Sinon insère (`SchemaLibrary`, ordre dicté par Phil) et
+  # (Phil : "trop dangereux"). Sinon insère (`SchemaLibrary`) et
   # produit tout de suite le SVG dans le dossier de la lettre (pas le dossier courant).
   def enregistrer_dans_application(prompt)
     texte = prompt.ask(blue(Loc.get('diag_name_prompt')), default: @nom).to_s.strip
@@ -264,7 +264,7 @@ class DiagSchem
   end
 
   # Corde sans doigt possible (case 0 ou "x") : sa cellule doigt n'est jamais
-  # une destination valide, pour aucune navigation (Phil, 2026-08-18).
+  # une destination valide, pour aucune navigation .
   def doigt_impossible_ici?
     @col == 1 && @row.between?(0, 5) && sans_doigt?(@entries[@row])
   end
@@ -407,7 +407,7 @@ class DiagSchem
   # - "1" : en attente d'un éventuel 2e chiffre (10-15) SEULEMENT si un accord ne peut
   #   pas avoir plus de 5 cases d'écart entre deux doigts (donc 6 entre la case de
   #   l'accord et celle d'une corde) laisse un 10-15 plausible, càd case_ref >= 4
-  #   (Phil, 2026-08-18). En dessous, "1" seul est forcément la valeur -> avance direct.
+  #   . En dessous, "1" seul est forcément la valeur -> avance direct.
   # - si le 2e chiffre dépasse 15, le "1" est verrouillé seul et le chiffre reçu est
   #   réinjecté sur la corde suivante
   def saisir_case_corde(char)
@@ -467,7 +467,7 @@ class DiagSchem
     @buffer = char
     appliquer_buffer
     # doigt impossible : verifier_immediat vient d'effacer la valeur — on reste sur
-    # la case (pas d'avance) pour retaper tout de suite (Phil, 2026-08-19).
+    # la case (pas d'avance) pour retaper tout de suite .
     return if @entries[@row].doigt_val.nil?
 
     @row, @col = pas_avant(@row, @col)
@@ -509,11 +509,11 @@ class DiagSchem
   end
 
   # Doigtés impossibles (p hors 5/6, conflit sur une même case, ordre case/doigt) —
-  # signalés dès la frappe, pas seulement à la soumission (Phil, 2026-08-19). Ne
+  # signalés dès la frappe, pas seulement à la soumission . Ne
   # porte que sur les cordes DÉJÀ dotées d'un doigt : une saisie encore incomplète
   # n'est jamais "impossible", juste "pas fini". Le doigt qui vient de créer
   # l'impossibilité est effacé tout de suite (jamais laissé en place, invalide) —
-  # le message reste affiché pour expliquer pourquoi (Phil, 2026-08-19).
+  # le message reste affiché pour expliquer pourquoi .
   def verifier_immediat
     erreur = erreurs_impossibles(entrees_avec_doigt).first
     if erreur && @row.between?(0, 5) && @col == 1
@@ -647,7 +647,7 @@ class DiagSchem
   # Colonnes de la table (alignées : case sous le "a" de "Case", doigt sous le "i" de "Doigt")
   # Décalées de 1 vers la droite par rapport à l'ancien layout : colonne 0
   # réservée à la parenthèse ouvrante d'une note facultative, une colonne après
-  # le doigt réservée à la fermante (Phil, 2026-08-19).
+  # le doigt réservée à la fermante .
   LARGEUR_TABLE = 20
   COL_OPT_OPEN  = 0
   COL_CORDE     = 1
@@ -691,7 +691,7 @@ class DiagSchem
   end
 
   # Curseur (fond inversé) sous la PROCHAINE lettre à taper, dans le champ "Accord"
-  # (Phil, 2026-08-30 : "ça se fait à l'aveugle" sans lui) — posé APRÈS `cadre` (jamais
+  #  : "ça se fait à l'aveugle" sans lui) — posé APRÈS `cadre` (jamais
   # avant : les codes ANSI, s'ils étaient déjà là, fausseraient le compte de caractères
   # de `ljust`/la troncature, même technique que `render_line` dans `chord_placer.rb`).
   def ligne_valeurs_entete_avec_curseur

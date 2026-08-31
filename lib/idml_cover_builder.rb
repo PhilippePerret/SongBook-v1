@@ -4,7 +4,7 @@ require "shellwords"
 require "pathname"
 require_relative "text_outliner"
 
-# Gabarit de couverture IDML (importable dans Affinity Publisher / InDesign) — Phil,
+# Gabarit de couverture IDML (importable dans Affinity Publisher / InDesign),
 # 2026-08-22 : mise en page automatique abandonnée. Ce module produit des CADRES
 # NOMMÉS, un par champ connu, répartis pour ne jamais se chevaucher — l'humain termine
 # la mise en page dans Affinity/InDesign.
@@ -28,21 +28,21 @@ module IdmlCoverBuilder
   COVER_IMAGE_FRAME_H = 200.0
   TEXT_FRAME_H = 24.0
   CHAR_WIDTH_FACTOR = 0.55 # largeur moyenne d'un caractère ≈ 0.55 × corps, police proportionnelle
-  TEXT_WIDTH_SCALE = 0.5 # Phil, 2026-08-22 : blocs de texte réduits d'au moins 50% (largeur, pas hauteur).
+  TEXT_WIDTH_SCALE = 0.5 #  : blocs de texte réduits d'au moins 50% (largeur, pas hauteur).
 
   FONT_SIZE = {
     "title" => 32.0, "subtitle" => 20.0, "author" => 13.0,
     "price" => 15.0, "isbn" => 12.0, "performers" => 11.0, "songs" => 11.0,
   }.freeze
 
-  # Titre/sous-titre/auteur en contours vectoriels (Phil, 2026-08-22 : cadre "qui
+  # Titre/sous-titre/auteur en contours vectoriels  : cadre "qui
   # s'étire comme un dessin" — vérifié : c'est du texte converti en contours dans
   # InDesign, pas un type de cadre. `TextOutliner`/`GlyphOutline` reproduisent la
   # conversion). Police : seule testée/vérifiée avec les accents français composites.
   OUTLINE_FIELDS = %w[title subtitle author].freeze
   OUTLINE_FONT = File.expand_path("../assets/fonts/HelveticaNeue/HelveticaNeue-Bold.ttf", __dir__)
 
-  # Bloc de renforcement de reliure (Phil, 2026-08-22 : "sur les vrais carnets, c'est un
+  # Bloc de renforcement de reliure  : "sur les vrais carnets, c'est un
   # renforcement de la reliure") — couvre le dos, déborde de 2cm sur 1re et 4e. Gris
   # foncé, VERROUILLÉ (`Locked="true"`) pour ne pas être déplacé par erreur.
   BINDING_OVERLAP_CM = 2.0
@@ -51,7 +51,7 @@ module IdmlCoverBuilder
   Field = Struct.new(:name, :kind, :resolver, keyword_init: true)
 
   # `cover_image` placé À PART (bord de la reliure), plus dans l'empilement — les 3
-  # textes + logo se centrent verticalement dans l'espace restant (Phil, 2026-08-22).
+  # textes + logo se centrent verticalement dans l'espace restant .
   COVER_IMAGE_FIELD = Field.new(name: "cover_image", kind: :image, resolver: ->(conf, _e) { conf.dig("cover", "image") })
 
   FRONT_FIELDS = [
@@ -77,7 +77,7 @@ module IdmlCoverBuilder
   def self.build(out_path, conf:, entries:, carnet_folder:, kdp:)
     bleed = kdp.class::BLEED_IN * 72.0
     # Marges intérieures du carnet (pas la marge cover de KDP) — alignement visuel avec
-    # les pages du livre (Phil, 2026-08-22), uniforme sur les 4 côtés (pas de recto/verso
+    # les pages du livre , uniforme sur les 4 côtés (pas de recto/verso
     # sur une couverture).
     margin = kdp.outside_margin * 72.0
     trim_w = kdp.trim_width * 72.0
@@ -106,7 +106,7 @@ module IdmlCoverBuilder
 
     # `cover_image` au bord de la reliure (côté 1re) — indépendante du texte, qui se
     # centre sur TOUTE la largeur de la page hors marge, sans tenir compte de l'image
-    # (Phil, 2026-08-22 : "je m'en fous de l'image, ça n'a rien à voir").
+    #  : "je m'en fous de l'image, ça n'a rien à voir").
     image_value = COVER_IMAGE_FIELD.resolver.call(conf, entries)
     if image_value && !image_value.to_s.strip.empty?
       img_x0 = spine_x1 + binding_overlap
@@ -124,7 +124,7 @@ module IdmlCoverBuilder
     frames.concat(bx[:frames])
     stories.concat(bx[:stories])
 
-    # Chemin RELATIF au fichier .idml lui-même (Phil, 2026-08-22 : "signalement d'une
+    # Chemin RELATIF au fichier .idml lui-même  : "signalement d'une
     # ressource manquante... le chemin est '../../images/guitare.png'" — Affinity résout
     # `LinkResourceURI` par rapport à l'emplacement du .idml, pas un chemin absolu `file:`
     # ni un dossier `Links/` interne au zip, deux essais précédents qui ont échoué).
@@ -199,7 +199,7 @@ module IdmlCoverBuilder
   end
 
   # Cadre en pointillés marquant le dos (bord à bord, bleed inclus) — repère toujours
-  # visible même quand les cadres de texte remplissent tout (Phil, 2026-08-22).
+  # visible même quand les cadres de texte remplissent tout .
   def self.spine_outline_frame(ids, spine_x0, spine_x1, h)
     { kind: :spine_outline, self: ids.next!, x: spine_x0, y: 0.0, w: spine_x1 - spine_x0, h: h }
   end
@@ -363,7 +363,7 @@ module IdmlCoverBuilder
     ext = File.extname(f[:image_path]).downcase
     format = LINK_FORMAT.fetch(ext, "$ID/")
     # `ActualPpi`/`EffectivePpi` — absents (encore un écart avec le fichier Adobe réel) :
-    # Phil signale une "taille minimale" à régler pour voir l'image, une fois le lien
+    # "taille minimale" à régler pour voir l'image, une fois le lien
     # résolu (2026-08-22) — calculés depuis la taille réelle affichée, pas une valeur en dur.
     actual_ppi = 72
     effective_ppi_w = (w0 * 72.0 / f[:w]).round
@@ -406,7 +406,7 @@ module IdmlCoverBuilder
   def self.story_xml(story)
     size = story[:font_size] || 12.0
     lines = story[:content].to_s.split("\n").map { |l| l.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;") }
-    # Retours chariot têtus (liste chansons, Phil 2026-08-22, plusieurs essais) : au lieu
+    # Retours chariot têtus (liste chansons, plusieurs essais) : au lieu
     # d'un `ParagraphStyleRange` par ligne (pourtant le motif Adobe standard, vérifié sur
     # un fichier réel), UN SEUL paragraphe avec `<Content>`/`<Br/>` alternés — 2e motif
     # réel Adobe rencontré (interview.idml, retours à l'intérieur d'un même paragraphe).
