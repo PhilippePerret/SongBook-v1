@@ -138,8 +138,10 @@ module TablatorAssistant
 
   # Cellule de la grille : case (fret) + doigté main droite (p/i/m/a/c, `rh`) + doigté
   # main gauche (chiffre, `lh`) — Phil, 2026-08-26. `rh`/`lh` restent `nil` tant que non
-  # précisés (une cellule "0" seule reste valide, sans aucun doigté).
-  Cell = Struct.new(:kase, :rh, :lh)
+  # précisés (une cellule "0" seule reste valide, sans aucun doigté). `link` ("h"/"p",
+  # issue #39) : hammer-on/pull-off, posé sur la case QUI SUIT (`Tablator::LINK_RE`,
+  # même préfixe que le fichier `.tab` — corde implicite ici, c'est celle du curseur).
+  Cell = Struct.new(:kase, :rh, :lh, :link)
 
   # Lettres de doigté main droite (Manuel/tools/tablator.adoc) — "c" (chiquito,
   # auriculaire) entre EN COLLISION avec la commande "config" existante ; résolu par
@@ -273,6 +275,15 @@ module TablatorAssistant
               (1..6).each { |s| matrix[s - 1][col] = nil }
               bars.delete(col)
               rests[col] = key
+            # Amorce une note LIÉE (hammer-on "h"/pull-off "p", issue #39) — la marque se
+            # pose sur la case qui SUIT, en PREMIER signe seulement (avant tout chiffre,
+            # même logique de démarrage que la branche chiffre juste en dessous ; sinon
+            # "h"/"p" ignorées, la marque doit être posée AVANT la case).
+            when ->(k) { %w[h p].include?(k) && !(composing && composing[:kind] == :note && composing[:stage] == :case && composing[:string] == string && composing[:col] == col) }
+              matrix[string - 1][col] = Cell.new(nil, nil, nil, key)
+              rests.delete(col)
+              composing = { kind: :note, stage: :case, string: string, col: col }
+              next
             when "q", "Q"
               ask_before_save = true
               commit_bar.call
@@ -438,7 +449,7 @@ module TablatorAssistant
                elsif cell.nil?
                  "-" * COL_WIDTH
                else
-                 "#{cell.kase}#{cell.rh}#{cell.lh}".ljust(COL_WIDTH, "-")
+                 "#{cell.link}#{cell.kase}#{cell.rh}#{cell.lh}".ljust(COL_WIDTH, "-")
                end
         string == cur_string && col == cur_col ? "\e[7m#{text}\e[0m" : text
       end.join
@@ -524,7 +535,7 @@ module TablatorAssistant
           if notes.size == 1
             string, cell = notes.first
             suffix = cell.rh || cell.lh ? "-#{cell.rh}#{cell.lh}" : ""
-            "#{string}#{cell.kase}/#{duree}#{suffix}"
+            "#{cell.link}#{string}#{cell.kase}/#{duree}#{suffix}"
           else
             "<#{notes.map { |s, c| "#{s}#{c.kase}" }.join(' ')}>/#{duree}"
           end
@@ -580,6 +591,7 @@ module TablatorAssistant
 
       duree =
         if (m = Tablator::CHORD_RE.match(token)) then m[3]
+        elsif (link = Tablator::LINK_RE.match(token)) && (m = Tablator::CORDE_CASE_RE.match(link[2])) then m[3]
         elsif (m = Tablator::CORDE_CASE_RE.match(token)) then m[3]
         end
       next unless m
@@ -621,6 +633,10 @@ module TablatorAssistant
             matrix[cm[1].to_i - 1][col] = Cell.new(cm[2].to_i, nil, nil) if cm
           end
           m[3]
+        elsif (link = Tablator::LINK_RE.match(token)) && (m = Tablator::CORDE_CASE_RE.match(link[2]))
+          _corde, kase, d, rh, lh = m.captures
+          matrix[m[1].to_i - 1][col] = Cell.new(kase.to_i, rh, lh, link[1])
+          d
         elsif (m = Tablator::CORDE_CASE_RE.match(token))
           _corde, kase, d, rh, lh = m.captures
           matrix[m[1].to_i - 1][col] = Cell.new(kase.to_i, rh, lh)

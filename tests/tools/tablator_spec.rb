@@ -103,4 +103,47 @@ RSpec.describe "outil tablator (rendu SVG direct)" do
       expect(ev.rh).to eq("p")
     end
   end
+
+  describe "hammer-on/pull-off (issue #39, marque en préfixe sur la note qui sonne)" do
+    it "hammer-on : case supérieure à la précédente occurrence de la corde" do
+      ev = Tablator.parse_event("h52/4", "4", { 5 => 0 })
+      expect(ev.link).to eq(:hammer)
+      expect(ev.notes).to eq([{ corde: 5, case: 2 }])
+    end
+
+    it "pull-off : case inférieure à la précédente occurrence de la corde" do
+      ev = Tablator.parse_event("p50/4", "4", { 5 => 2 })
+      expect(ev.link).to eq(:pull)
+    end
+
+    it "refuse un hammer-on sans occurrence précédente de la corde" do
+      expect { Tablator.parse_event("h52/4", "4", {}) }.to raise_error(Tablator::ParseError)
+    end
+
+    it "refuse un hammer-on vers une case inférieure ou égale" do
+      expect { Tablator.parse_event("h50/4", "4", { 5 => 2 }) }.to raise_error(Tablator::ParseError)
+    end
+
+    it "refuse un pull-off vers une case supérieure ou égale" do
+      expect { Tablator.parse_event("p52/4", "4", { 5 => 0 }) }.to raise_error(Tablator::ParseError)
+    end
+
+    it "la corde peut avoir sonné dans un accord, pas seulement en note seule" do
+      measures, = Tablator.parse_measures(["<50 61>/4", "h52/4"], "4/4", chord_names: false)
+      events = measures.flat_map { |m| m[:events] }
+      expect(events.last.link).to eq(:hammer)
+    end
+
+    it "la corde peut avoir sonné plusieurs notes plus tôt (pas forcément l'événement immédiat)" do
+      measures, = Tablator.parse_measures(%w[50/4 61/4 31/4 h52/4], "4/4", chord_names: false)
+      events = measures.flat_map { |m| m[:events] }
+      expect(events.last.link).to eq(:hammer)
+    end
+
+    it "dessine un arc + lettre H/P dans le SVG produit" do
+      result = Tablator.render_tab_svg("50/4 h52/4\n", measures_per_line: 4).first
+      expect(result[:svg]).to include("<path")
+      expect(result[:svg]).to include(">H<")
+    end
+  end
 end

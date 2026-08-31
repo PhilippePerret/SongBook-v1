@@ -41,6 +41,8 @@ module Tablator
     system_gap_max: 1.0,
     double_bar_gap: 0.4,
     time_sig_nudge: 0.3,
+    # Hauteur de l'arc hammer-on/pull-off (issue #39) au-dessus de sa corde.
+    link_arc_height: 1.6,
   }.freeze
 
   RATIO_OF_NUMBER_SIZE = {
@@ -59,6 +61,8 @@ module Tablator
     # sur l'ancien `slot_width` FIXE) réduisait à tort 6 → 5 mesures alors que
     # le rendu à 6 était déjà jugé bon.
     min_slot_width: 1.0,
+    # Taille de la lettre "H"/"P" (issue #39) au sommet de l'arc.
+    link_letter_size: 0.85,
   }.freeze
 
   # Justification (Phil, 2026-08-29) : chaque système est étiré pour remplir

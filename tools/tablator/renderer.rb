@@ -204,6 +204,51 @@ module Tablator
     any_stem ? param(:stem_height) : 0
   end
 
+  # Place pour l'arc + lettre H/P d'un hammer-on/pull-off (issue #39) — dessiné
+  # DIRECTEMENT au-dessus de la portée, dans la même zone que les hampes
+  # (`stems_extra_height`, `render_system` prend le MAX des deux : le plus
+  # souvent une note liée porte déjà une hampe, pas besoin d'espace en plus).
+  # 0 si aucun événement du système n'a de `link`.
+  def links_extra_height(measures)
+    any_link = measures.any? { |m| m[:events].any? { |ev| ev.kind == :notes && ev.link } }
+    any_link ? param(:link_arc_height) + param(:link_letter_size) : 0
+  end
+
+  # Arc (quadratique) + lettre "H"/"P" entre `x0` (dernière fois que la corde a
+  # sonné) et `x1` (note marquée), sur la ligne `y` de CETTE corde.
+  def link_markup(x0, x1, y, link)
+    arc_h = param(:link_arc_height)
+    letter_size = param(:link_letter_size)
+    mid_x = (x0 + x1) / 2.0
+    peak_y = y - arc_h
+    path = %(<path d="M #{x0.round(2)},#{y.round(2)} Q #{mid_x.round(2)},#{peak_y.round(2)} #{x1.round(2)},#{y.round(2)}" fill="none" stroke="black" stroke-width="0.6"/>)
+    "#{path}\n#{svg_text(mid_x, peak_y - letter_size * 0.3, link == :hammer ? 'H' : 'P', size: letter_size)}"
+  end
+
+  # Dessine les liaisons hammer-on/pull-off d'un système déjà positionné
+  # (`computed`, voir `render_system`). `last_x_by_corde` tenu à jour pour
+  # CHAQUE corde jouée (note seule ou note d'un accord) au fil des événements —
+  # une note marquée dont la corde n'a pas sonné DANS CE SYSTÈME (coupure de
+  # ligne, la précédente occurrence reste sur le système d'avant) ne dessine
+  # simplement pas d'arc (limite connue, comme `duration_for`) — le `.tab` a
+  # déjà été validé au parsing (`parser.rb`), donc jamais un token invalide ici.
+  def draw_links(parts, computed, top_y)
+    last_x_by_corde = {}
+    computed.each do |mp|
+      mp[:events].each do |e|
+        ev = e[:ev]
+        next unless ev.kind == :notes
+
+        if ev.link && ev.notes.size == 1
+          corde = ev.notes.first[:corde]
+          prev_x = last_x_by_corde[corde]
+          parts << link_markup(prev_x, e[:x], string_y(corde, top_y), ev.link) if prev_x
+        end
+        ev.notes.each { |n| last_x_by_corde[n[:corde]] = e[:x] }
+      end
+    end
+  end
+
   # Place pour le doigté (Phil, 2026-08-28, même remarque) : 0 si aucun événement
   # du système n'en porte, 1 rangée si un seul type (droite OU gauche) suffit,
   # 2 rangées seulement si un même événement cumule les deux.
@@ -254,7 +299,7 @@ module Tablator
 
     any_label = meta['chord'] || measures.any? { |m| m[:label] }
     show_capo = measures.first[:first_of_tab] && meta['capo']
-    top_margin = stems_extra_height(measures) + row_gap +
+    top_margin = [stems_extra_height(measures), links_extra_height(measures)].max + row_gap +
       (any_label ? chord_name_size + row_gap : 0) +
       (show_capo ? chord_name_size + row_gap : 0)
     bottom_margin = fingering_extra_height(measures) + row_gap
@@ -308,13 +353,14 @@ module Tablator
     end
 
     parts = []
-    chord_name_baseline = top_y - stems_extra_height(measures) - row_gap
+    chord_name_baseline = top_y - [stems_extra_height(measures), links_extra_height(measures)].max - row_gap
     capo_baseline = chord_name_baseline - chord_name_size - row_gap
     parts << capo_markup(meta['capo'], time_sig_w, capo_baseline) if show_capo
     (1..TAB_LINES).each do |c|
       y = string_y(c, top_y)
       parts.concat(line_with_gaps(0, total_content_w, y, occupancy[c]))
     end
+    draw_links(parts, computed, top_y)
 
     double_bar_gap = param(:double_bar_gap)
     computed.each_with_index do |mp, i|
