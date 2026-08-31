@@ -57,13 +57,13 @@ Pour placer les diagrammes dans la chanson ou le carnet, utiliser le <<gabarit>>
 On peut obtenir la liste des diags introuvables (ni dans l'app ni dans la chanson).
 
 ----
-songbook diags missing --song "titre approx"
+songbook missing diags --song "titre approx"
 # => Liste dans la chanson
 
-songbook diags missing --songbook "titre approx"
+songbook missing diags --songbook "titre approx"
 # => Liste dans le carnet de chant
 
-songbook diags missing --all
+songbook missing diags --all
 # => Liste dans toutes les chansons
 ----
 
@@ -72,6 +72,6 @@ En <<interactive-mode, mode interactif>>, c'est la chanson ou le carnet courant 
 ----
 songbook -i
 🎸> use song titre-approx
-🎸> diags missing
+🎸> missing diags
 # => Liste des diagrammes manquant dans la chanson.
 ----

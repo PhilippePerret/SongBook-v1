@@ -18,12 +18,12 @@ RSpec.describe "commande update diags" do
   end
 end
 
-# `diags` : jamais le home complet en clair dans le chemin affiché .
+# `diags` : jamais de chemin affiché (règle du projet, aucun path en sortie).
 RSpec.describe "commande diags" do
-  it "affiche un chemin raccourci (~/...), pas le home complet" do
+  it "n'affiche aucun chemin" do
     chemin = File.join(Dir.home, "Documents", "all-diags.html")
     allow(DiagsPage).to receive(:build_and_open!).and_return(chemin)
 
-    expect { CLI.run(%w[diags], interactive: true) }.to output("~/Documents/all-diags.html\n").to_stdout
+    expect { CLI.run(%w[diags], interactive: true) }.not_to output(/#{Regexp.escape(chemin)}|~\//).to_stdout
   end
 end

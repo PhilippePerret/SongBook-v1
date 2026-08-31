@@ -75,7 +75,9 @@ module SongCreator
     ], show_help: false)
     case choice
     when :continue then resume_existing_song(prompt, folder)
-    when :open then open_in_file_manager(folder)
+    when :open
+      open_in_file_manager(folder)
+      nil
     when :stop then nil
     end
   end

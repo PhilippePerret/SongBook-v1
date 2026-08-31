@@ -83,7 +83,9 @@ Entry = Struct.new(:case_val, :doigt_val, :optional)
 # du token entier, comme attendu par generate_chord_diagrams.rb), séparés par
 # des espaces. Attention : si espaces autour du ":", l'argument entier doit
 # être entre guillemets (sinon le shell le coupe en plusieurs arguments).
-SCHEMA_RE = /\A(.+)-(\d+)\s*:\s*(.+)\z/
+# Nom = tout ce qui précède le PREMIER "-" ; case = tout le reste, n'importe quoi,
+# jamais limité au numérique (`SchemaLibrary::ENTRY_RE`, même règle).
+SCHEMA_RE = /\A([^-]+)-(.+?)\s*:\s*(.+)\z/
 TOKEN_RE = /\A(\()?([1-6])(x|\d{1,2})(?:\/(\w+))?(\))?\z/
 
 class SchemaInvalide < StandardError; end
@@ -167,8 +169,10 @@ class DiagSchem
     texte = prompt.ask(blue(Loc.get('diag_name_prompt')), default: @nom).to_s.strip
     return if texte.empty?
 
-    m = texte.match(/\A(.+)-(\d+)\z/)
-    nom, case_ref = m ? [m[1], m[2].to_i] : [texte, @case_ref]
+    # Nom = tout ce qui précède le PREMIER "-" ; case = tout le reste, n'importe quoi,
+    # jamais limité au numérique (`SchemaLibrary::ENTRY_RE`, même règle).
+    m = texte.match(/\A([^-]+)-(.+)\z/)
+    nom, case_ref = m ? [m[1], m[2]] : [texte, @case_ref]
 
     tokens = @sortie.split(':', 2).last.strip
     case SchemaLibrary.save(nom, case_ref, tokens)
@@ -193,7 +197,7 @@ class DiagSchem
     raise SchemaInvalide, "schéma illisible : #{schema.inspect}" unless m
 
     @nom = m[1]
-    @case_ref = m[2].to_i
+    @case_ref = m[2]
     m[3].split.each do |token|
       tm = TOKEN_RE.match(token)
       raise SchemaInvalide, "token illisible : #{token.inspect}" unless tm
@@ -442,7 +446,7 @@ class DiagSchem
   end
 
   def case_ambigue?(premier_digit)
-    premier_digit == '1' && @case_ref && @case_ref >= 4
+    premier_digit == '1' && @case_ref && @case_ref.to_s[/\d+/].to_i >= 4
   end
 
   # Corde exclue ('x') ou à vide (case 0) : aucun doigt possible.

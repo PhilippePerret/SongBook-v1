@@ -49,7 +49,12 @@ module ChordDiagram
     svg << grid
     show_nut = base_fret == 1
     if base_fret > 1
-      svg << position_label(base_fret)
+      # Distance du numéro de case : rapprochée s'il n'y a RIEN (ni note, ni barré) sur
+      # la 1re corde (index 5) dans la case numérotée elle-même — sinon le numéro reste
+      # à sa distance normale, pour ne pas toucher la note/le barré.
+      string1_fretted_here = positions[5] == base_fret
+      string1_barred_here = barre && barre[:fret] == base_fret && barre[:span].include?(5)
+      svg << position_label(base_fret, close: !(string1_fretted_here || string1_barred_here))
     elsif show_nut
       svg << nut
     end
@@ -167,8 +172,10 @@ module ChordDiagram
   end
 
   # Case de départ : au-dessus de la 1ère case, pour une position décalée (pas de
-  # sillet dans ce cas).
-  def self.position_label(base_fret)
-    %(<text y="-47" dy="0.35em" font-family="Georgia, serif" text-anchor="middle"><tspan x="#{fret_x(1)}" font-size="40" font-weight="bold">#{base_fret}</tspan><tspan font-size="28" font-weight="bold" dy="-0.5em">e</tspan></text>\n)
+  # sillet dans ce cas). `close:` : rien à éviter sur la 1re corde à cette case (ni
+  # note, ni barré) -> numéro rapproché de la grille.
+  def self.position_label(base_fret, close: false)
+    y = close ? -34 : -47
+    %(<text y="#{y}" dy="0.35em" font-family="Georgia, serif" text-anchor="middle"><tspan x="#{fret_x(1)}" font-size="40" font-weight="bold">#{base_fret}</tspan><tspan font-size="28" font-weight="bold" dy="-0.5em">e</tspan></text>\n)
   end
 end

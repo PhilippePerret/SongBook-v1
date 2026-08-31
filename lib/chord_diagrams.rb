@@ -46,22 +46,26 @@ module ChordDiagrams
     return found if found
 
     Layout.conflict!("accord inconnu ou case absente: #{chord}#{fret ? "-#{fret}" : ""}", solution: "diagramme omis")
-    Layout.track_missing_chord(chord)
+    Layout.track_missing_chord(fret ? "#{chord}-#{fret}" : chord)
     nil
   end
 
+  # `fret` (case) : N'IMPORTE QUOI après le nom, pas de contrainte numérique,
+  # ex. "5C" (case 5, variante C). Sans `fret` donné, la case la plus basse disponible
+  # est choisie par sa partie numérique DE TÊTE ("10O" -> 10), jamais un tri de chaînes
+  # (sinon "10" < "2" lexicographiquement, faux musicalement).
   def self.find_svg(dir, fc, fret, recursive:)
     return nil unless Dir.exist?(dir)
 
     pattern = File.join(dir, *(recursive ? ["**"] : []), "#{Regexp.escape(fc)}-*.svg")
     entries = Dir.glob(pattern).filter_map do |f|
-      m = File.basename(f).match(/\A#{Regexp.escape(fc)}-(\d+)\.svg\z/)
-      [f, m[1].to_i] if m
+      m = File.basename(f).match(/\A#{Regexp.escape(fc)}-(.+)\.svg\z/)
+      [f, m[1]] if m
     end
-    entries.select! { |_, kase| kase == fret.to_i } if fret
+    entries.select! { |_, kase| kase == fret } if fret
     return nil if entries.empty?
 
-    target_case = fret ? fret.to_i : entries.map { |_, kase| kase }.min
+    target_case = fret || entries.min_by { |_, kase| kase[/\d+/].to_i }.last
     entries.find { |_, kase| kase == target_case }.first
   end
 

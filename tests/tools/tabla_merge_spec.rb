@@ -54,37 +54,33 @@ RSpec.describe "fusion de tablatures (\"+\")" do
   end
 
   describe ".ensure_tabla_svg (nom avec \"+\")" do
-    it "nil si l'une des sources manque" do
+    it "tableau vide si l'une des sources manque" do
       write_tab("intro", "title: Intro", "50/4")
       # "couplet.tab" n'existe pas.
-      expect(PageBuilder.ensure_tabla_svg(@dir, "intro+couplet")).to be_nil
+      expect(PageBuilder.ensure_tabla_svg(@dir, "intro+couplet", 300)).to eq([])
     end
 
-    it "produit le SVG fusionné (\"intro+couplet.svg\"), fichier temporaire nettoyé" do
+    it "produit le(s) SVG (rendu géométrique direct, un fichier par système) dans .export/" do
       write_tab("intro", "title: Intro", "50/4")
       write_tab("couplet", "title: Couplet", "60/4")
-      svg_path = File.join(@dir, "intro+couplet.svg")
 
-      expect(PageBuilder).to receive(:system).with("ruby", PageBuilder::TABLATOR_PATH, File.join(@dir, ".~intro+couplet.tab"), "-o", File.join(@dir, "intro+couplet"), out: File::NULL, err: File::NULL) do
-        File.write(svg_path, "<svg/>") # simule la production par tablator (pas de vrai lilypond ici)
-        true
-      end
+      result = PageBuilder.ensure_tabla_svg(@dir, "intro+couplet", 300)
 
-      result = PageBuilder.ensure_tabla_svg(@dir, "intro+couplet")
-
-      expect(result).to eq(svg_path)
-      expect(Dir.glob(File.join(@dir, ".~*.tab"))).to be_empty # fichier temporaire détruit
+      expect(result).not_to be_empty
+      expect(result.first).to match(%r{/\.export/intro\+couplet\..*\.s1\.svg\z})
+      expect(File.read(result.first)).to include("<svg")
     end
 
     it "réutilise le SVG déjà produit si aucune source n'a changé depuis (cache)" do
       write_tab("intro", "title: Intro", "50/4")
       write_tab("couplet", "title: Couplet", "60/4")
-      svg_path = File.join(@dir, "intro+couplet.svg")
-      File.write(svg_path, "<svg/>")
-      FileUtils.touch(svg_path, mtime: Time.now + 10) # plus récent que les sources
 
-      expect(PageBuilder).not_to receive(:system)
-      expect(PageBuilder.ensure_tabla_svg(@dir, "intro+couplet")).to eq(svg_path)
+      first = PageBuilder.ensure_tabla_svg(@dir, "intro+couplet", 300)
+      mtime_before = File.mtime(first.first)
+      second = PageBuilder.ensure_tabla_svg(@dir, "intro+couplet", 300)
+
+      expect(second).to eq(first)
+      expect(File.mtime(second.first)).to eq(mtime_before)
     end
   end
 end

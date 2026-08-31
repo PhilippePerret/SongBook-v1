@@ -4,13 +4,17 @@ require_relative "../../lib/transpose"
 # Lit les `schemas.txt` (un par dossier de lettre :
 # "<Nom>-<case> : <6 tokens>", un token par corde 1(aiguë/e)..6(grave/E), chaque token
 # "<corde><frette>[/<doigt>]", frette = 0-15 ou "x" (étouffée). Génère le SVG manquant
-# correspondant, jamais ceux déjà présents (sauf demande explicite, non gérée ici).
+# correspondant, jamais ceux déjà présents — sauf `force:` (voir `run`), qui régénère
+# tout.
 module GenerateChordDiagrams
   # Parenthèses autour d'un token entier : note FACULTATIVE (même doigt qu'une autre
   # corde, qui peut s'étendre là en plus) — NE COMPTE JAMAIS pour la détection de barré,
   # même si elle partage frette et doigt avec une autre corde .
   TOKEN_RE = /\A(\()?([1-6])(x|\d{1,2})(?:\/(\w+))?(\))?\z/
-  LINE_RE = /\A(\S+)-(\S+)\s*:\s*(.+)\z/
+  # Nom = tout ce qui précède le PREMIER "-" (jamais de "-" dans un nom d'accord) ; case
+  # = tout le reste, n'importe quoi, jamais limité au numérique (`SchemaLibrary::ENTRY_RE`,
+  # même règle).
+  LINE_RE = /\A([^-]+)-(\S+)\s*:\s*(.+)\z/
 
   # Nom AFFICHÉ (pas le nom de fichier) : "d"/"b" en 2e lettre = dièse/bémol (♯/♭,
   # convention historique pré-UTF8 du projet), SAUF "dim" (accord diminué — "d" suivi
@@ -121,8 +125,10 @@ module GenerateChordDiagrams
   # formée (ex. schema encore en cours d'écriture) n'arrête jamais le lot : elle est
   # rapportée à part (`skipped`), les autres lignes valides sont générées quand même.
   # `only:` restreint la génération à une liste d'accords (ex. ["Gsus-0", "A-0"]).
-  # Sans lui, tous les diags manquants sont générés.
-  def self.run(root = File.expand_path("../../assets/chords_diags", __dir__), only: nil)
+  # `force:` régénère TOUS les diags des `schemas.txt` (écrase les SVG existants,
+  # "update diags" doit actualiser, pas seulement compléter) — sans lui (défaut),
+  # seuls les diags manquants sont générés.
+  def self.run(root = File.expand_path("../../assets/chords_diags", __dir__), only: nil, force: false)
     created = []
     skipped = []
     Dir.glob(File.join(root, "*", "schemas.txt")).sort.each do |schema_path|
@@ -139,7 +145,7 @@ module GenerateChordDiagrams
 
         name, kase, tokens_str = m[1], m[2], m[3]
         next if only && !only.include?("#{name}-#{kase}")
-        next if existing?(dir, name, kase)
+        next if !force && existing?(dir, name, kase)
 
         begin
           svg = build(name: name, tokens_str: tokens_str)

@@ -15,7 +15,10 @@ require "fileutils"
 module SchemaLibrary
   ASSETS = File.expand_path("../../assets/chords_diags", __dir__)
 
-  ENTRY_RE = /\A(.+)-(\d+)\s*:\s*(.+)\z/
+  # Nom = tout ce qui précède le PREMIER "-" (jamais de "-" dans un nom d'accord, avec
+  # ou sans basse entre crochets) ; case = TOUT LE RESTE, n'importe quoi, jamais limité
+  # au numérique.
+  ENTRY_RE = /\A([^-]+)-(.+?)\s*:\s*(.+)\z/
 
   Entry = Struct.new(:nom, :case_ref, :tokens, :idx)
 
@@ -53,7 +56,7 @@ module SchemaLibrary
       m = ENTRY_RE.match(line.strip)
       next nil unless m
 
-      Entry.new(m[1], m[2].to_i, m[3].strip, idx)
+      Entry.new(m[1], m[2], m[3].strip, idx)
     end
   end
 
@@ -62,7 +65,7 @@ module SchemaLibrary
   # n'importe quel autre nom/case — un doublon visuel, plus dangereux qu'un doublon de
   # nom).
   def self.conflict(entries, nom, case_ref, tokens)
-    return :nom if entries.any? { |e| e.nom == nom && e.case_ref == case_ref.to_i }
+    return :nom if entries.any? { |e| e.nom == nom && e.case_ref.to_s == case_ref.to_s }
     return :schema if entries.any? { |e| e.tokens == tokens }
 
     nil

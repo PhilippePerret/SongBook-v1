@@ -225,9 +225,9 @@ module PageBuilder
   def self.parse_resource_declaration(chunk)
     inner = chunk[/\A\{(.*)\}\z/m, 1] || ""
     segments = inner.split(";")
-    # Nom en tête sans ":" (ex. "intro" dans "{intro; tab: intro;...}") : titre par
-    # défaut de la marque, SAUF `title:` explicite.
-    declared_name = segments.first && !segments.first.include?(":") ? segments.first.strip : nil
+    # Nom en tête sans ":" (ex. "intro" dans "{intro; tab: intro;...}") : un identifiant
+    # (Manuel/song/gabarit.adoc, "on lui trouve un identifiant unique"), JAMAIS un titre
+    # par défaut — seul `title:` explicite affiche quelque chose.
     dirs = {}
     segments.each do |pair|
       k, v = pair.split(":", 2)
@@ -237,7 +237,6 @@ module PageBuilder
       key = :tabla if key == :tab
       dirs[key] = v.strip.gsub(/\A["']|["']\z/, "")
     end
-    dirs[:title] ||= declared_name if declared_name && !declared_name.empty?
     type = %i[tabla score image].find { |k| dirs.key?(k) } || :unknown
     GabItem.new(type, dirs)
   end
@@ -261,30 +260,23 @@ module PageBuilder
   end
 
   # Ligne `//` mêlant AU MOINS une marque ressource (`tab:`/`score:`/`image:`) et
-  # d'autres colonnes (paroles) — chaque marque ressource devient son propre item, les
-  # colonnes de paroles adjacentes restent groupées dans une row `//` normale.
+  # d'autres colonnes (paroles) : `//` veut dire côte à côte PARTOUT dans ce format,
+  # quel que soit ce qu'il y a de chaque côté — un seul item `:side_by_side`, chaque
+  # colonne restant elle-même (`:resource` ou `:lyrics`), voir `build_song_elements`
+  # (chaque colonne devient son propre élément — position + taille — combinés ensuite,
+  # sans se soucier de leur nature).
   def self.split_gab_row_with_resources(para)
-    items = []
-    pending_names = []
-    pending_directives = {}
-    flush = lambda do
-      next if pending_names.empty?
-
-      items << GabItem.new(:row, { names: pending_names.dup, directives: pending_directives.dup })
-      pending_names = []
-      pending_directives = {}
-    end
-    para.split("//").map(&:strip).each do |col|
+    columns = para.split("//").map(&:strip).map do |col|
       if col =~ RESOURCE_DECLARATION_RE
-        flush.call
-        items << parse_resource_declaration(col)
+        item = parse_resource_declaration(col)
+        { kind: :resource, item: item }
       else
-        name = row_col_name(col, pending_directives)
-        pending_names << name if name
+        directives = {}
+        name = row_col_name(col, directives)
+        { kind: :lyrics, names: [name].compact, directives: directives }
       end
     end
-    flush.call
-    items
+    GabItem.new(:side_by_side, { columns: columns })
   end
 
   def self.parse_gab(path)
@@ -293,7 +285,7 @@ module PageBuilder
         names = para.split("//").filter_map { |chunk| chunk[/\{song:\s*([^;}]+)/, 1]&.strip }
         [GabItem.new(:row, { names: names, directives: {} })]
       elsif para.include?("//") && para.split("//").any? { |c| c.strip =~ RESOURCE_DECLARATION_RE }
-        split_gab_row_with_resources(para)
+        [split_gab_row_with_resources(para)]
       elsif !para.include?("//") && para =~ RESOURCE_DECLARATION_RE
         [parse_resource_declaration(para)]
       # `{diags; position: End;}` : "diags" en tête SANS ":" (même forme que
@@ -615,6 +607,120 @@ module PageBuilder
     Layout.uniform_tab_scale(svgs, text_w)
   end
 
+  # Ressource (tabla/score/image) -> ses éléments de pagination, à la position/taille
+  # données (`x0`/`width` — jamais `text_x`/`text_w` en dur : réutilisé aussi bien pour
+  # une ressource pleine largeur qu'une colonne d'un `:side_by_side`, voir plus bas).
+  # `shrink_jobs` renvoyés avec un index LOCAL (position dans le tableau `elements`
+  # renvoyé) — à l'appelant de le décaler une fois fusionné dans son propre tableau.
+  def self.build_resource_page_elements(pdf, item, folder, x0, width, tab_scale)
+    asset_paths = notation_asset_paths(item, folder, width)
+    return [[], []] unless asset_paths
+
+    align = item.data[:align]
+    title = item.data[:title]
+    count = item.data[:count]
+    elements = []
+    shrink_jobs = []
+    # `image:` = toujours "image" (pleine page par défaut) ; `tab:` =
+    # toujours notation générée ; `score:` = notation SI vectoriel, image SI
+    # matriciel (photo/scan d'une partition).
+    if !asset_paths.is_a?(Array)
+      elements << Layout.build_image_element(pdf, asset_paths, x0, width, align: align, title: title, count: count)
+      shrink_jobs << { local_index: 0, svg_paths: asset_paths, align: align, title: title } if item.data[:shrink] == "true"
+    else
+      # UN élément de pagination PAR SYSTÈME : "chaque système doit être un élément
+      # indépendant" — 2 systèmes peuvent tenir sur une page, le suivant passer sur la
+      # page d'après. Titre seulement sur le 1er système, repère "x N" (`count:`)
+      # seulement sur le dernier.
+      asset_paths.each_with_index do |svg_path, i|
+        sys_title = i.zero? ? title : nil
+        sys_count = i == asset_paths.size - 1 ? count : nil
+        el = Layout.build_tabla_element_v2(pdf, [svg_path], x0, width, align: align, title: sys_title, count: sys_count, scale: tab_scale)
+        # Gouttière resserrée SEULEMENT entre 2 systèmes de LA MÊME tablature (jamais
+        # celle qui précède le 1er, qui reste la gouttière normale — voir MIN/MAX_V_DIST
+        # `:tabla_system` : "systèmes trop séparés").
+        el.gutter_type = :tabla_system if i.positive?
+        elements << el
+        shrink_jobs << { local_index: i, svg_paths: [svg_path], align: align, title: sys_title } if item.data[:shrink] == "true"
+      end
+    end
+    [elements, shrink_jobs]
+  end
+
+  # Empile verticalement des éléments déjà construits (ex. plusieurs systèmes d'une
+  # même tablature dans UNE colonne d'un `:side_by_side`) en UN seul élément — chacun
+  # garde son `x` propre (déjà fixé à sa construction), seul `y` est décalé ici.
+  def self.stack_elements_vertically(elements, gutter)
+    return elements.first if elements.size <= 1
+
+    height = elements.sum(&:height) + gutter * (elements.size - 1)
+    draw = lambda do |pdf_, y|
+      cursor = y
+      elements.each do |el|
+        el.draw.call(pdf_, cursor)
+        cursor += el.height + gutter
+      end
+    end
+    Layout::PageElement.new(height, draw)
+  end
+
+  # Largeur RÉELLEMENT dessinée d'une ressource à cette largeur dispo (jamais une
+  # tranche arbitraire) — une image occupe toute la largeur donnée (comportement déjà
+  # établi de `build_image_element`, "pleine page par défaut").
+  def self.resource_natural_width(item, folder, width, tab_scale)
+    asset_paths = notation_asset_paths(item, folder, width)
+    return width unless asset_paths.is_a?(Array)
+
+    Layout.svg_embed_width(File.read(asset_paths.first), width, scale: tab_scale)
+  end
+
+  # Une colonne (`:resource` ou `:lyrics`) -> son élément, dessiné à `x` EXACT (aucun
+  # gutter ajouté en interne ici — géré une seule fois par l'appelant, entre les deux
+  # colonnes).
+  def self.side_by_side_column_element(pdf, col, folder, x, width, h_gutter, chord_ascent, text_ascent, text_descent, tab_scale)
+    if col[:kind] == :resource
+      els, = build_resource_page_elements(pdf, col[:item], folder, x, width, tab_scale)
+      stack_elements_vertically(els, h_gutter)
+    elsif col[:block]
+      Layout.build_text_column_element(pdf, col[:block], x, width, chord_ascent, text_ascent, text_descent)
+    end
+  end
+
+  # Côte à côte (`//`, issue "Le Sud") — le cas réel documenté (Manuel/song/gabarit.adoc,
+  # "tablature en vis-à-vis du premier couplet") est TOUJOURS 2 colonnes : la 1re prend
+  # SA largeur naturelle (celle d'une tablature courte, pas une moitié de page arbitraire
+  # — sinon le texte se retrouve inutilement loin, "pas aligné"), la 2e comble le reste,
+  # juste après une seule gouttière.
+  def self.build_side_by_side_element(pdf, item, folder, x0, width, h_gutter, chord_ascent, text_ascent, text_descent, tab_scale)
+    columns = item.data[:columns]
+    return nil if columns.empty?
+
+    if columns.size == 2
+      col1, col2 = columns
+      w1 = col1[:kind] == :resource ? resource_natural_width(col1[:item], folder, width, tab_scale) : (col1[:block] ? [Layout.block_width(pdf, col1[:block]), width].min : 0)
+      el1 = side_by_side_column_element(pdf, col1, folder, x0, w1, h_gutter, chord_ascent, text_ascent, text_descent, tab_scale)
+      x2 = x0 + w1 + h_gutter
+      el2 = side_by_side_column_element(pdf, col2, folder, x2, [width - w1 - h_gutter, 0].max, h_gutter, chord_ascent, text_ascent, text_descent, tab_scale)
+      sub_elements = [el1, el2].compact
+    else
+      # Plus de 2 colonnes (rare, hors du cas documenté) : partage égal, pas de
+      # calibrage fin par contenu.
+      n = columns.size
+      col_w = (width - h_gutter * (n - 1)) / n.to_f
+      x = x0
+      sub_elements = columns.map do |c|
+        el = side_by_side_column_element(pdf, c, folder, x, col_w, h_gutter, chord_ascent, text_ascent, text_descent, tab_scale)
+        x += col_w + h_gutter
+        el
+      end.compact
+    end
+    return nil if sub_elements.empty?
+
+    height = sub_elements.map(&:height).max
+    draw = lambda { |pdf_, y| sub_elements.each { |el| el.draw.call(pdf_, y) } }
+    Layout::PageElement.new(height, draw)
+  end
+
   def self.build_song_elements(pdf, items, rows, folder, text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
     row_idx = 0
     elements = []
@@ -625,37 +731,14 @@ module PageBuilder
       when :row
         elements.concat(Layout.build_row_or_split(pdf, rows[row_idx], text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent))
         row_idx += 1
+      when :side_by_side
+        el = build_side_by_side_element(pdf, item, folder, text_x, text_w, h_gutter, chord_ascent, text_ascent, text_descent, tab_scale)
+        elements << el if el
       when :tabla, :score, :image
-        asset_paths = notation_asset_paths(item, folder, text_w)
-        next unless asset_paths
-
-        align = item.data[:align]
-        title = item.data[:title]
-        count = item.data[:count]
-        # `image:` = toujours "image" (pleine page par défaut) ; `tab:` =
-        # toujours notation générée ; `score:` = notation SI vectoriel, image SI
-        # matriciel (photo/scan d'une partition).
-        as_image = !asset_paths.is_a?(Array)
-        if as_image
-          elements << Layout.build_image_element(pdf, asset_paths, text_x, text_w, align: align, title: title, count: count)
-          shrink_jobs << { index: elements.size - 1, svg_paths: asset_paths, align: align, title: title } if item.data[:shrink] == "true"
-        else
-          # UN élément de pagination PAR SYSTÈME  : "chaque système
-          # doit être un élément indépendant" — 2 systèmes peuvent tenir sur une page,
-          # le suivant passer sur la page d'après). Titre seulement sur le 1er système,
-          # repère "x N" (`count:`) seulement sur le dernier.
-          asset_paths.each_with_index do |svg_path, i|
-            sys_title = i.zero? ? title : nil
-            sys_count = i == asset_paths.size - 1 ? count : nil
-            el = Layout.build_tabla_element_v2(pdf, [svg_path], text_x, text_w, align: align, title: sys_title, count: sys_count, scale: tab_scale)
-            # Gouttière resserrée SEULEMENT entre 2 systèmes de LA MÊME tablature (jamais
-            # celle qui précède le 1er, qui reste la gouttière normale — voir MIN/MAX_V_DIST
-            # `:tabla_system` : "systèmes trop séparés").
-            el.gutter_type = :tabla_system if i.positive?
-            elements << el
-            shrink_jobs << { index: elements.size - 1, svg_paths: [svg_path], align: align, title: sys_title } if item.data[:shrink] == "true"
-          end
-        end
+        base_index = elements.size
+        els, sjs = build_resource_page_elements(pdf, item, folder, text_x, text_w, tab_scale)
+        elements.concat(els)
+        sjs.each { |sj| shrink_jobs << sj.merge(index: base_index + sj[:local_index]).except(:local_index) }
       end
     end
     [elements, shrink_jobs]
@@ -734,7 +817,12 @@ module PageBuilder
     if gab_path
       Layout.log_build(".gab trouvé (#{gab_path}) : mise en page explicite, layout du carnet ignoré pour l'agencement")
       items = parse_gab(gab_path)
-      referenced = items.select { |i| i.type == :row }.flat_map { |i| i.data[:names] }.flat_map { |n| n.split("+") }.to_set
+      referenced = items.flat_map { |i|
+        next i.data[:names] if i.type == :row
+        next i.data[:columns].select { |c| c[:kind] == :lyrics }.flat_map { |c| c[:names] } if i.type == :side_by_side
+
+        []
+      }.flat_map { |n| n.split("+") }.to_set
       lyr_order.uniq.reject { |name| referenced.include?(name) }.each do |name|
         Layout.conflict!("bloc \"#{name}\" du .lyr non mentionné dans le .gab", solution: "ajouté en fin de chanson")
         items << GabItem.new(:row, { names: [name], directives: {} })
@@ -789,6 +877,18 @@ module PageBuilder
 
       bare_kind_counters = Hash.new(0)
       rows = items.select { |i| i.type == :row }.map { |i| i.data[:names].map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: i.data[:directives]), name, layout) } }
+      # `:side_by_side` (issue "Le Sud", `//` mêlant une marque tab/score/image et des
+      # paroles) : chaque colonne `:lyrics` résolue en `Block` directement dans la
+      # colonne (`c[:block]`) — pas besoin d'indexation parallèle comme `rows`, chaque
+      # colonne ne sert qu'à SON item.
+      items.select { |i| i.type == :side_by_side }.each do |item|
+        item.data[:columns].each do |c|
+          next unless c[:kind] == :lyrics
+
+          name = c[:names].first
+          c[:block] = name ? with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: c[:directives]), name, layout) : nil
+        end
+      end
       col1_w, col2_w, h_gutter = Layout.row_column_widths(pdf, rows, text_w)
 
       elements, shrink_jobs = build_song_elements(pdf, items, rows, folder, text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)

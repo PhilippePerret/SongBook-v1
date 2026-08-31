@@ -1161,6 +1161,16 @@ module Layout
     PageElement.new(height, draw)
   end
 
+  # Colonne de paroles à une position/largeur EXACTES, sans gouttière ajoutée en interne
+  # (contrairement à `row_to_element`, pensé pour une row de 2 blocs de PAROLES align
+  # ées sur la grille globale) — utilisé pour composer une colonne à côté d'un élément
+  # d'une autre nature (ex. tablature, voir `PageBuilder.build_side_by_side_element`).
+  def self.build_text_column_element(pdf, block, x, width, chord_ascent, text_ascent, text_descent)
+    height = block_visual_height(pdf, chord_ascent, text_ascent, text_descent, block.lines, width)
+    draw = lambda { |pdf_, y| draw_block(pdf_, block, x, y, width, chord_ascent, text_ascent) }
+    PageElement.new(height, draw)
+  end
+
   # Pagination générique : chaque page reçoit autant d'éléments (rows de couplets, tabla...)
   # que sa hauteur disponible permet, puis le reste (air en haut/bas + gouttière entre
   # éléments) est réparti sur CE QUI TIENT RÉELLEMENT sur la page — jamais sur le total.
@@ -2307,6 +2317,15 @@ module Layout
     pt.to_f
   end
 
+  # Largeur RÉELLEMENT dessinée d'un SVG (jamais plus que `max_width` dispo) — utilisé
+  # aussi bien pour l'incruster (`build_tabla_element_v2`) que pour connaître sa largeur
+  # AVANT de positionner autre chose à côté (`PageBuilder.build_side_by_side_element`,
+  # issue "Le Sud" : le texte ne doit jamais être repoussé à une distance arbitraire,
+  # seulement celle réellement occupée par la tablature).
+  def self.svg_embed_width(svg_data, max_width, scale: 1.0)
+    [svg_natural_width_pt(svg_data) * scale, max_width].min
+  end
+
   # Centre vertical RÉEL de la portée tab (`data-staff-top`/`data-staff-height`,
   # `tools/tablator/renderer.rb`), mis à l'échelle `embed_w` — `nil` si absent
   # (SVG d'une autre origine, ex. `image:`) : le repère "x N" retombe alors sur
@@ -2455,7 +2474,7 @@ module Layout
   # fragmentation multi-fichiers).
   def self.build_tabla_element_v2(pdf, svg_paths, x0, width, align: nil, title: nil, max_height: nil, count: nil, scale: 1.0)
     svg_data = File.read(svg_paths.first)
-    embed_w = [svg_natural_width_pt(svg_data) * scale, width].min
+    embed_w = svg_embed_width(svg_data, width, scale: scale)
     svg_h = svg_height_for(svg_data, embed_w)
 
     title_ascent = title ? font_metric(pdf, score_title_size) { pdf.font.ascender } : 0

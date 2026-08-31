@@ -4,6 +4,7 @@ require "readline"
 require "shellwords"
 require "io/console"
 require "tty-prompt"
+require "tty-spinner"
 require_relative "carnet_builder"
 require_relative "layout"
 require_relative "help"
@@ -182,7 +183,8 @@ module CLI
     when "-h", "--help", "help"
       puts colorize_help(USAGE)
     when "diags"
-      puts raccourci(DiagsPage.build_and_open!)
+      DiagsPage.build_and_open!
+      puts success("👍 #{Loc.get("diags_page_opened")}")
     when "missing"
       case arg1
       when "diags"
@@ -237,11 +239,16 @@ module CLI
     when "update"
       case arg1
       when "diags"
-        created, skipped = GenerateChordDiagrams.run
-        created.each { |c| puts success("👍 #{raccourci(c[:path])}") }
+        # "update" = actualiser TOUS les diags, pas seulement compléter les manquants
+        # (`force: true`) — potentiellement long (toute la bibliothèque), spinner comme
+        # les recherches internet de `SongCreator`.
+        created, skipped = SongCreator.with_spinner(Loc.get("diags_update_in_progress")) { GenerateChordDiagrams.run(force: true) }
+        # Jamais de chemin en sortie (règle du projet) : nom d'accord+case pour un
+        # succès, la ligne de schéma (pas son fichier) pour un échec.
+        created.each { |c| puts success("👍 #{c[:name]}-#{c[:kase]}") }
         skipped.each do |s|
           msg = s[:error] ? "#{s[:line]} — #{s[:error]}" : s[:line]
-          puts error("👎 #{raccourci(s[:schema_path])} : #{msg}")
+          puts error("👎 #{msg}")
         end
         DiagsPage.build!
         puts success("👍 #{Loc.get("diags_updated")}")
@@ -681,11 +688,6 @@ module CLI
       Dir.glob(File.join(context[:folder], "export", "songbooks", "*-v*.pdf"))
         .max_by { |f| f[/-v(\d+)\.pdf\z/, 1].to_i }
     end
-  end
-
-  # Chemin affiché à l'user : jamais le home complet en clair .
-  def self.raccourci(chemin)
-    chemin.sub(Dir.home, "~")
   end
 
   # Racine reprise du nom le PLUS UTILISÉ parmi les fichiers déjà présents (ex. "c.lyr"

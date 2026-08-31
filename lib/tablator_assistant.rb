@@ -66,7 +66,7 @@ module TablatorAssistant
     File.write("#{out_base}.svg", result[:svg])
     puts success("👍 #{Loc.get('tablator_svg_produced')}")
   rescue Tablator::ParseError => e
-    warn "#{tab_path} : #{e.message}"
+    warn "#{File.basename(tab_path, ".tab")} : #{e.message}"
   end
 
   # `name` : nom APPROXIMATIF, même recherche progressive que chanson/carnet (Phil,

@@ -109,47 +109,53 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
 
   describe "ChordPlacer.typed_match (accord existant vs nouvel accord, refait à chaque frappe)" do
     it "minuscule initiale, correspond à un accord connu => ce nom exact" do
-      expect(ChordPlacer.typed_match("a", { "a" => ["A"] })).to eq("A")
+      letters = { "a" => ["A"] }
+      expect(ChordPlacer.typed_match("a", letters, letters)).to eq("A")
     end
 
     it "minuscule initiale, ne correspond à rien de connu => nil (nouvel accord)" do
-      expect(ChordPlacer.typed_match("d", {})).to be_nil
+      expect(ChordPlacer.typed_match("d", {}, {})).to be_nil
     end
 
     it "MAJUSCULE initiale => jamais de correspondance, même si ça matcherait en minuscule" do
-      expect(ChordPlacer.typed_match("A", { "a" => ["A"] })).to be_nil
+      letters = { "a" => ["A"] }
+      expect(ChordPlacer.typed_match("A", letters, letters)).to be_nil
     end
 
     it "se raffine à chaque caractère : 'f' matche 'F', 'f7' ne matche plus rien" do
       letters = { "f" => ["F"] }
-      expect(ChordPlacer.typed_match("f", letters)).to eq("F")
-      expect(ChordPlacer.typed_match("f7", letters)).to be_nil
+      expect(ChordPlacer.typed_match("f", letters, letters)).to eq("F")
+      expect(ChordPlacer.typed_match("f7", letters, letters)).to be_nil
     end
 
     it "'f7' matche si 'F7' est déjà connu de cette lettre" do
       letters = { "f" => %w[F F7] }
-      expect(ChordPlacer.typed_match("f7", letters)).to eq("F7")
+      expect(ChordPlacer.typed_match("f7", letters, letters)).to eq("F7")
     end
 
     it "1 SEULE lettre = raccourci immédiat même si le nom de l'accord fait plusieurs caractères (bug 2026-08-26 : 'b' -> 'Bdim' n'écrivait plus rien, exigeait un match EXACT)" do
-      expect(ChordPlacer.typed_match("b", { "b" => ["Bdim"] })).to eq("Bdim")
+      letters = { "b" => ["Bdim"] }
+      expect(ChordPlacer.typed_match("b", letters, letters)).to eq("Bdim")
     end
 
     it "1 seule lettre : reprend le PREMIER accord de cette lettre (ordre de rencontre)" do
-      expect(ChordPlacer.typed_match("a", { "a" => %w[Am7 A A7] })).to eq("Am7")
+      letters = { "a" => %w[Am7 A A7] }
+      expect(ChordPlacer.typed_match("a", letters, letters)).to eq("Am7")
     end
 
     it "'b2' = 2e accord de la lettre 'b' par INDEX (légende 'b2 = ...', bug 2026-08-26 : laissé tel quel)" do
-      expect(ChordPlacer.typed_match("b2", { "b" => %w[Bdim Bm9b] })).to eq("Bm9b")
+      letters = { "b" => %w[Bdim Bm9b] }
+      expect(ChordPlacer.typed_match("b2", letters, letters)).to eq("Bm9b")
     end
 
     it "'b9' = index hors bucket => nil (nouvel accord)" do
-      expect(ChordPlacer.typed_match("b9", { "b" => %w[Bdim Bm9b] })).to be_nil
+      letters = { "b" => %w[Bdim Bm9b] }
+      expect(ChordPlacer.typed_match("b9", letters, letters)).to be_nil
     end
 
     it "l'INDEX gagne même si un accord inutilisé porte littéralement le nom tapé (bug 2026-08-27 : un résidu 'B2' en cache volait le raccourci de position 'b2')" do
       letters = { "b" => %w[B7dim[d]-5 Bdim Bb Bbm B7dim B Bc B2 B3] }
-      expect(ChordPlacer.typed_match("b2", letters)).to eq("Bdim")
+      expect(ChordPlacer.typed_match("b2", letters, letters)).to eq("Bdim")
     end
   end
 
@@ -221,22 +227,21 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
 
     it "J ramène le curseur en tête du vers courant (remplace l'ancien raccourci A)" do
       path = write_lyr(["bonjour tout", "le monde"])
-      # "\n" saute la question des accords initiaux (aucun connu) ; flèche droite
-      # (déplace le curseur) ; J (retour en tête) ; "A" (nouvel accord) ; Entrée (valide
-      # l'accord) ; Entrée (quitte l'assistant).
-      simulate(path, "\n\e[CJA\r\r")
+      # Flèche droite (déplace le curseur) ; J (retour en tête) ; "A" (nouvel accord) ;
+      # Entrée (valide l'accord) ; Entrée (quitte l'assistant).
+      simulate(path, "\e[CJA\r\r")
       expect(File.readlines(path).first.chomp).to eq("/A:bonjour tout")
     end
 
     it "L ramène le curseur en fin du vers courant (remplace l'ancien raccourci Z)" do
       path = write_lyr(["bonjour tout", "le monde"])
-      simulate(path, "\nLG\r\r")
+      simulate(path, "LG\r\r")
       expect(File.readlines(path).first.chomp).to eq("bonjour tout/G:")
     end
 
     it "\"[\" démarre la saisie d'une basse SEULE (\"[fd]\", TOUJOURS minuscule)" do
       path = write_lyr(["bonjour tout"])
-      simulate(path, "\nL[FD]\r\r") # tapé en MAJUSCULE : doit quand même s'enregistrer en minuscule
+      simulate(path, "L[FD]\r\r") # tapé en MAJUSCULE : doit quand même s'enregistrer en minuscule
       expect(File.readlines(path).first.chomp).to eq("bonjour tout/[fd]:")
     end
 
@@ -249,7 +254,7 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
 
     it "une flèche valide aussi l'accord en cours de saisie, sans Entrée" do
       path = write_lyr(["bonjour tout"])
-      simulate(path, "\nBm\e[C\r")
+      simulate(path, "Bm\e[C\r")
       expect(File.readlines(path).first.chomp).to include("/Bm:bonjour")
     end
 
@@ -263,7 +268,7 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
     it "n/p avancent/reculent lettre par lettre (remplace Alt/Ctrl+flèche, abandonnés)" do
       path = write_lyr(["bonjour tout"])
       # 3x "n" : "b","o","n" -> curseur en position 3 ("bon|jour tout") ; 1x "p" -> 2.
-      simulate(path, "\nnnnpGm\r\r")
+      simulate(path, "nnnpGm\r\r")
       expect(File.readlines(path).first.chomp).to eq("bo/Gm:njour tout")
     end
 
@@ -306,7 +311,7 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
 
     it "X sans aucun accord dans la chanson : ne demande rien, ne casse rien" do
       path = write_lyr(["bonjour tout"])
-      simulate(path, "\nX\r", confirm: true)
+      simulate(path, "X\r", confirm: true)
       expect(File.readlines(path).first.chomp).to eq("bonjour tout")
     end
 
@@ -314,20 +319,20 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       path = write_lyr(["bonjour tout"])
       # "F" (nouvel accord) puis "7" via le pavé numérique (\eOw, DECKPAM) au lieu du
       # clavier normal.
-      simulate(path, "\nF\eOw\r\r")
+      simulate(path, "F\eOw\r\r")
       expect(File.readlines(path).first.chomp).to eq("/F7:bonjour tout")
     end
 
     it "chiffre AZERTY sans Maj (\"è\" = 7) en cours de saisie" do
       path = write_lyr(["bonjour tout"])
-      simulate(path, "\nFè\r\r")
+      simulate(path, "Fè\r\r")
       expect(File.readlines(path).first.chomp).to eq("/F7:bonjour tout")
     end
 
     it "une touche-commande (n/p/x/X/J/L/T/V) interrompt aussi la saisie en cours, comme une flèche" do
       path = write_lyr(["bonjour tout"])
       # "Gm" tapé, puis "n" (touche-commande) : valide "Gm" ET avance d'une lettre.
-      simulate(path, "\nGmn\r")
+      simulate(path, "Gmn\r")
       expect(File.readlines(path).first.chomp).to include("/Gm:")
     end
   end
