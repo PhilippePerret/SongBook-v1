@@ -98,6 +98,8 @@ diag_name_prompt: "Name to give the schema: "
 diag_conflict_nom: "This name already exists for this fret: %s"
 diag_conflict_schema: "This schema (same positions) already exists, under the name %s."
 diag_inserted: "Schema %s inserted."
+diags_page_opened: "Diagrams page opened."
+diags_update_in_progress: "Updating all diagrams…"
 diags_updated: "Application diagrams and HTML page updated (run the 'diags' command to see them)."
 
 # chord assistant (songbook add chords)

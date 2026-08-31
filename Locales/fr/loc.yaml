@@ -106,6 +106,8 @@ diag_name_prompt: "Nom à donner au schéma : "
 diag_conflict_nom: "Ce nom existe déjà pour cette case : %s"
 diag_conflict_schema: "Ce schéma (mêmes positions) existe déjà, sous le nom %s."
 diag_inserted: "Schéma %s inséré."
+diags_page_opened: "Page des diagrammes ouverte."
+diags_update_in_progress: "Actualisation de tous les diagrammes…"
 diags_updated: "Diagrammes de l'application et page HTML actualisés (jouer la commande 'diags' pour les voir)."
 
 # assistant d'accords (songbook add chords)
