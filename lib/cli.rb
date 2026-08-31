@@ -317,7 +317,7 @@ module CLI
       when "infos", "inf"
         open_infos_file
       when "gabarit", "gab"
-        open_gabarit_file
+        open_gabarit_file(confirm_create: false)
       when "tdm", "toc"
         begin
           TdmCreator.run(carnet_opt: songs_carnet_opt, command: "edit")
@@ -653,9 +653,9 @@ module CLI
     system("open", "-a", AppConfig.user_song_editor, inf_path)
   end
 
-  def self.open_gabarit_file
+  def self.open_gabarit_file(confirm_create: true)
     context = resolve_open_context
-    gab_path = FileFinder.find(context[:folder], :gab) || propose_create_file(context[:folder], "gab")
+    gab_path = FileFinder.find(context[:folder], :gab) || propose_create_file(context[:folder], "gab", confirm: confirm_create)
     abort "aucun fichier .gabarit/.gab trouvé dans #{context[:folder]}" unless gab_path
 
     system("open", "-a", AppConfig.user_song_editor, gab_path)
@@ -702,8 +702,11 @@ module CLI
   # Fichier attendu absent (`open lyrics`/`infos`/`gabarit`...) : propose de le créer
   # (question bleue) plutôt que de simplement refuser — créé vide puis renvoyé (l'appel
   # `system("open", ...)` suivant l'ouvre normalement). `nil` si refusé.
-  def self.propose_create_file(folder, ext)
-    return nil unless colored_prompt.yes?(blue(format(Loc.get("create_missing_file_question"), ext)))
+  # `confirm: false` (`edit gab`, Phil) : pas de question, la commande "edit" dit déjà
+  # l'intention de l'user — inutile de lui redemander s'il veut créer le fichier qu'il
+  # vient justement de demander à éditer.
+  def self.propose_create_file(folder, ext, confirm: true)
+    return nil if confirm && !colored_prompt.yes?(blue(format(Loc.get("create_missing_file_question"), ext)))
 
     path = File.join(folder, "#{most_common_root(folder)}.#{ext}")
     File.write(path, "")
