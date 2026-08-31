@@ -14,6 +14,8 @@ Elle permet de :
 - déplacer du texte pour glisser des accords entre les syllabes,
 - etc.
 
+TIP: Placer en tout premier lieu les accords les plus fréquents pour qu'ils soient __posables__ ensuite avec une simple lettre.
+
 [[add-chords-tips]]
 ==== Quelques tips sur des erreurs classiques ====
 

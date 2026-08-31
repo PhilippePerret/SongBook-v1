@@ -17,27 +17,23 @@ Et venant de nulle part
 surgit un aigle noir
 ----
 
-Cette définition (texte entre crochets) peut employer toutes les <<text-properties, propriété propres aux textes>>.
+Cet identifiant (`couplet-1`) peut avoir n'importe quel nom, peu importe. Il servira dans le <<gabarit-file, gabarit d'affichage>> pour préciser où et comment le texte doit être placé, et avec quelles caractéristiques (voir <<text-properties, propriété propres aux textes>>). Par exemple : 
 
 ----
-{couplet-1; font-size:14pt; align:center;}
-Un beau jour ou peut-être une nuit
-Près d'un lac je m'étais endormie
+# Dans ma-chanson.gabarit
+{couplet-1; font-size:14pt; align:center;} // {couplet-2}
 ----
 
-Cependant, la chanson pouvant être employée dans différents carnets, il vaut mieux définir ces propriétés dans un fichier gabarit propre au carnet comme cela est expliqué dans <<best-practices>>.
+La seule précaution à prendre est de **ne jamais donner le même identifiant à deux strophes**. Il en résulterait une confusion pour le __parseur__. Mais rassurez-vous, l'erreur vous sera signalée.
+
 
 === Fichier des paroles et accords ===
 
 Peu importe le nom-racine du fichier des paroles, il suffit qu'il porte l'extension `.lyr` ou `.lyrics` pour que l'application le reconnaisse.
 
-Ce fichier contient évidemment les paroles. Mais aussi les accords.
+Ce fichier contient évidemment les paroles. Mais aussi **les accords**. Pour les accords, contrairement à ChordPro, qui utilise des crochets peut-être clairs visuellement mais pas du tout pratiques à taper au clavier, nous avons opté pour un système simple à taper : "/accord:Syllabe du texte".
 
-Le format est simple, il suffit de mettre entre crochet comment s'appelle la strophe, sans espaces, par exemple "{couplet-2}", "{refrain}". Ces marques serviront dans le <<gabarit>> des pages.
-
-Pour les accords, contrairement à ChordPro, qui utilise des crochets peut-être clairs visuellement mais pas pratiques à taper au clavier, nous avons opté pour un système simple à taper : "/accord:Syllabe du texte".
-
-Nous expliquons ci-dessous comment formater les accords par rapport aux paroles, mais vous n'en aurez pas besoin si vous utilisez **<<song-chords-assistant, l'assistant de pose des accords>>**.
+TIP: Nous expliquons ci-dessous comment formater les accords par rapport aux paroles, mais vous n'en aurez pas besoin si vous utilisez **<<song-chords-assistant, l'assistant de pose des accords>>**, que nous vous recommandons vivement si vous voulez entrer les accords avec un confort et une efficacité maximals.
 
 L'accord doit être placé avant la syllabe sur laquelle il doit être joué, ou avant un « _ » (trait plat) s'il n'est pas joué sur une syllabe.
 

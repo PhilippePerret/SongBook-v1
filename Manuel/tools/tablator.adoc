@@ -52,12 +52,14 @@ __Voici les conventions de langage employées si vous devez écrire le fichier `
 
 [cols="2,4,3", options="header"]
 |====
-| Élément | Code | Exemple/note
-| Note    | `•corde••case•`         | `50` (5^e^ corde, à vide)
-| Note    | `•corde••case•/•duree•` | `60/4`
-| Accord  | `<•notes•>`             | `<11 23 32>`
+| Élément         | Code | Exemple/note
+| Note            | `•corde••case•`         | `50` (5^e^ corde, à vide)
+| Note            | `•corde••case•/•duree•` | `60/4`
+| Accord          | `<•notes•>`             | `<11 23 32>`
 | Accord avec durée | `<•notes•>/•duree•` | `<11 23 32>/8`
-| Accord arpégé | `[Arp]<•note•>` | [Arp]`<11 23 32>/8`
+| Accord arpégé   | `[Arp]<•note•>` | [Arp]`<11 23 32>/8`
+| Hammer-on       | `h•corde••case•` | `50 h52` 
+| Pull-off        | `p•corde••case•` | `52 p50` 
 |====
 
 |====

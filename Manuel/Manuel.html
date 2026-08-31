@@ -656,8 +656,17 @@ a {
 </div>
 <div class="sect2">
 <h3 id="song-creation">Création de la chanson</h3>
-<div class="paragraph">
-<p>Le plus simple pour créer une chanson est d'<a href="#create-song-tool">l&#8217;assistant de création</a>.</p>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+Le plus simple pour créer une chanson est d&#8217;utiliser <a href="#create-song-tool">l&#8217;assistant de création</a>.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>Mais vous pouvez tout aussi bien créer cette chanson « à la main ».</p>
@@ -843,17 +852,16 @@ surgit un aigle noir</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Cette définition (texte entre crochets) peut employer toutes les <a href="#text-properties">propriété propres aux textes</a>.</p>
+<p>Cet identifiant (<code>couplet-1</code>) peut avoir n&#8217;importe quel nom, peu importe. Il servira dans le <a href="#gabarit-file">gabarit d&#8217;affichage</a> pour préciser où et comment le texte doit être placé, et avec quelles caractéristiques (voir <a href="#text-properties">propriété propres aux textes</a>). Par exemple :</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>{couplet-1; font-size:14pt; align:center;}
-Un beau jour ou peut-être une nuit
-Près d'un lac je m'étais endormie</pre>
+<pre># Dans ma-chanson.gabarit
+{couplet-1; font-size:14pt; align:center;} // {couplet-2}</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Cependant, la chanson pouvant être employée dans différents carnets, il vaut mieux définir ces propriétés dans un fichier gabarit propre au carnet comme cela est expliqué dans <a href="#best-practices">les bonnes pratiques</a>.</p>
+<p>La seule précaution à prendre est de <strong>ne jamais donner le même identifiant à deux strophes</strong>. Il en résulterait une confusion pour le <em>parseur</em>. Mais rassurez-vous, l&#8217;erreur vous sera signalée.</p>
 </div>
 </div>
 </div>
@@ -2506,6 +2514,18 @@ Si c&#8217;est votre première chanson, <strong><em>SongBook</em></strong> vous 
 </li>
 </ul>
 </div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+Placer en tout premier lieu les accords les plus fréquents pour qu&#8217;ils soient <em>posables</em> ensuite avec une simple lettre.
+</td>
+</tr>
+</table>
+</div>
 <div class="sect3">
 <h4 id="add-chords-tips">Quelques tips sur des erreurs classiques</h4>
 <div class="paragraph">
@@ -2669,6 +2689,16 @@ Si c&#8217;est votre première chanson, <strong><em>SongBook</em></strong> vous 
 <td class="tableblock halign-left valign-top"><p class="tableblock">Accord arpégé</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[Arp]&lt;•note•&gt;</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code class="Arp">&lt;11 23 32&gt;/8</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hammer-on</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>h•corde••case•</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>50 h52</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pull-off</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>p•corde••case•</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>52 p50</code></p></td>
 </tr>
 </tbody>
 </table>
