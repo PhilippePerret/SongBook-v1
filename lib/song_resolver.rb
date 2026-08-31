@@ -61,4 +61,14 @@ module SongResolver
     infos = infos_path ? CarnetBuilder.parse_nested_infos(infos_path) : {}
     infos["title"] || File.basename(folder)
   end
+
+  # `display_name` + performer entre parenthèses si présent dans le `.infos` (issue #33,
+  # confirmation `use song`) — même style que `SongsList.label` ("titre (performer)").
+  def self.display_name_with_performer(folder)
+    infos_path = FileFinder.find(folder, :inf)
+    infos = infos_path ? CarnetBuilder.parse_nested_infos(infos_path) : {}
+    title = infos["title"] || File.basename(folder)
+    performer = infos["performer"].to_s.strip
+    performer.empty? ? title : "#{title} (#{performer})"
+  end
 end

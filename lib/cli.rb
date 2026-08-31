@@ -411,7 +411,7 @@ module CLI
       case arg1
       when "song", "s"
         Session.song = resolve_song_folder(arg2)
-        puts success("#{format(Loc.get("use_song_set"), SongResolver.display_name(Session.song))}")
+        puts success("#{format(Loc.get("use_song_set"), SongResolver.display_name_with_performer(Session.song))}")
       when "songbook", "sb"
         Session.carnet = resolve_carnet_folder(arg2)
         puts success("#{format(Loc.get("use_carnet_set"), SongResolver.display_name(Session.carnet))}")
