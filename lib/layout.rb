@@ -1886,6 +1886,43 @@ module Layout
   # atterrissait décollé de son mot). Seuls les accords "filler" (posés dans du blanc, sans
   # mot collé — ex. accord de passage entre 2 paroles) sont repoussés, et vers la GAUCHE (en
   # partant de la fin) pour laisser sa vraie place à l'accord ancré qui suit.
+  # Deux basses SEULES ("[x]") consécutives ne doivent jamais être plus proches qu'une
+  # espace de texte (Phil, 2026-08-30, "Mélancolie" : "/do" collé à "/si") — repousse la
+  # 2e (ET son texte, une vraie espace insérée dans son segment, pas juste son étiquette
+  # qui flotterait décollée). Mesure une fois avec le texte D'ORIGINE puis mute `segs` ;
+  # `draw_line` retokenise ensuite normalement sur le résultat.
+  def self.enforce_bass_gap!(pdf, segs, chord_size, text_size, cs)
+    space_w = pdf.width_of(" ", size: text_size)
+    full_text = segs.map(&:text).join
+    tokens, = line_tokens_x(pdf, full_text, text_size, char_spacing: cs)
+    seg_offset = 0
+    prev_end = nil
+    prev_seg = nil
+    segs.each do |seg|
+      if seg.chord&.match?(ChordDiagrams::BASS_ONLY_RE)
+        x = chord_x_at_offset(pdf, tokens, seg_offset, text_size, char_spacing: cs)
+        # L'espace pousse le TEXTE PRÉCÉDENT (pas celui-ci) : décale l'offset du chiffon
+        # courant SANS lui donner un texte qui commence par une espace, sinon il ne
+        # serait plus `anchored` (voir plus haut) et `spread_chord_positions` le
+        # traiterait comme un accord "filler", repoussé vers la GAUCHE — l'inverse de
+        # ce qu'on veut ici.
+        shortfall = prev_end && (prev_end + space_w - x)
+        if shortfall && shortfall.positive?
+          extra = (shortfall / space_w).ceil
+          prev_seg.text = "#{prev_seg.text}#{" " * extra}"
+          seg_offset += extra
+          x += extra * space_w
+        end
+        prev_end = x + chord_label_width(pdf, seg.chord, chord_size)
+        prev_seg = seg
+      else
+        prev_end = nil
+        prev_seg = nil
+      end
+      seg_offset += seg.text.length
+    end
+  end
+
   def self.spread_chord_positions(pdf, chord_steps, chord_size)
     max_x = nil
     chord_steps.reverse_each do |step|
@@ -1924,6 +1961,7 @@ module Layout
     end
 
     segs, overflow_text = split_overflow(pdf, line.segments, width, text_size, ws, cs)
+    enforce_bass_gap!(pdf, segs, chord_size, text_size, cs)
     full_text = segs.map(&:text).join
     tokens, = line_tokens_x(pdf, full_text, text_size, word_spacing: ws, char_spacing: cs)
 

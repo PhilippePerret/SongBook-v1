@@ -691,6 +691,11 @@ module PageBuilder
     if gab_path
       Layout.log_build(".gab trouvé (#{gab_path}) : mise en page explicite, layout du carnet ignoré pour l'agencement")
       items = parse_gab(gab_path)
+      referenced = items.select { |i| i.type == :row }.flat_map { |i| i.data[:names] }.flat_map { |n| n.split("+") }.to_set
+      lyr_order.uniq.reject { |name| referenced.include?(name) }.each do |name|
+        Layout.conflict!("bloc \"#{name}\" du .lyr non mentionné dans le .gab", solution: "ajouté en fin de chanson")
+        items << GabItem.new(:row, { names: [name], directives: {} })
+      end
     else
       Layout.log_build("agencement auto (default_items, RAO5 pairage par type)")
       items = default_items(lyr_blocks, lyr_order, title_band: title_band_default, diag_position: diag_position_default, lyrics_flux: lyrics_flux)
