@@ -497,6 +497,15 @@ module CLI
         abort unknown_command_message("open #{arg1}")
       end
     when nil, ".", "build"
+      if command == "build" && %w[tdm toc].include?(arg1)
+        begin
+          TdmCreator.run(carnet_opt: songs_carnet_opt, command: "edit")
+        rescue Interrupt
+          puts
+        end
+        return
+      end
+
       if command == "build" && arg1 == "diag" && arg2
         begin
           DiagSchem.build_svg_from_schema(arg2)

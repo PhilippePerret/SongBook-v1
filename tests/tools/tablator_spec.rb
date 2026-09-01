@@ -24,6 +24,20 @@ RSpec.describe "outil tablator (rendu SVG direct)" do
     expect(measures[0][:events].size).to eq(1)
   end
 
+  it "Sans barre de fin, garde la métrique de base (pas de fausse métrique déduite du reste tronqué)" do
+    content = "---\ntitle: t\nunit: double-croche\n---\n50/4 51/4 52/4\n"
+    measures, = Tablator.parse_source_measures(content)
+    expect(measures.last[:closed_by_bar]).to be false
+    expect(measures.last[:display_time]).to eq("4/4")
+  end
+
+  it "Avec barre de fin, déduit la métrique réelle du reste tronqué (comportement existant, inchangé)" do
+    content = "---\ntitle: t\nunit: double-croche\n---\n50/4 51/4 52/4 |\n"
+    measures, = Tablator.parse_source_measures(content)
+    expect(measures.last[:closed_by_bar]).to be true
+    expect(measures.last[:display_time]).to eq("3/4")
+  end
+
   it "Nom d'accord explicite [Nom] prime sur le calcul auto" do
     measures, = Tablator.parse_measures(["[Am7]", "<10 21>/4"], "4/4", chord_names: true)
     expect(measures[0][:label]).to eq("Am7")

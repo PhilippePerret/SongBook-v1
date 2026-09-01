@@ -7,6 +7,8 @@ require_relative "app_config"
 require_relative "ansi_colors"
 require_relative "locale"
 require_relative "file_finder"
+require_relative "session"
+require_relative "tdm_creator"
 
 # `songbook create songbook`/`create sb` : wizard interactif (TTY::Prompt) pour un
 # nouveau carnet — inspiré de la structure RÉELLE des carnets existants (Carnet-1,
@@ -45,15 +47,15 @@ module SongbookCreator
     system("open", "-a", editor, infos_path, tdm_path)
 
     print_success(Loc.get("songbook_created"))
-    offer_open_folder(prompt, folder)
+    open_folder_and_offer_songs(prompt, folder)
     folder
   end
 
   # `.infos` déjà là (dossier existant) : rien à "compléter" comme pour une chanson
-  # (pas de recherche web ici) — juste proposer d'ouvrir le dossier.
+  # (pas de recherche web ici) — juste ouvrir le dossier et proposer la TDM.
   def self.handle_existing_songbook(prompt, folder)
     puts format(Loc.get("songbook_exists"), folder)
-    offer_open_folder(prompt, folder)
+    open_folder_and_offer_songs(prompt, folder)
     nil
   end
 
@@ -97,10 +99,19 @@ module SongbookCreator
     end.join("\n")
   end
 
-  def self.offer_open_folder(prompt, folder)
-    return unless prompt.yes?(blue(Loc.get("open_folder_question")))
-
+  # Ouvre TOUJOURS le dossier du carnet (jamais de question dessus, jamais le
+  # texte "dossier de la chanson" hérité de `SongCreator` — Phil, bug constaté),
+  # puis demande si on choisit les chansons -> si oui, branche direct sur
+  # `edit tdm` (`TdmCreator.run`, carnet déjà connu via `carnet_opt:`).
+  def self.open_folder_and_offer_songs(prompt, folder)
     open_in_file_manager(folder)
+    return unless prompt.yes?(blue(Loc.get("songbook_choose_songs_question")))
+
+    # `Session.carnet` prime sur `carnet_opt` dans `TdmCreator.resolve_carnet`
+    # (contexte REPL) : fixé ici pour être sûr que c'est CE carnet-là qui
+    # s'édite, pas un carnet de contexte déjà en cours par ailleurs.
+    Session.carnet = folder
+    TdmCreator.run(carnet_opt: folder, command: "edit")
   end
 
   def self.open_in_file_manager(folder)

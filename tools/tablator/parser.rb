@@ -204,10 +204,15 @@ module Tablator
     last_duration = '4'
     last_case_by_corde = {}
 
-    close = lambda do
+    # `closed_by_bar:` : mesure refermée par une barre EXPLICITE (fin réelle,
+    # levée...) — PAS par la fin des tokens (composition arrêtée en cours de
+    # mesure, sans barre) ni par l'atteinte de la cible (mesure pile complète,
+    # peu importe). Sert en aval (`parse_source_measures`) à ne PAS afficher
+    # une métrique "réelle" bidon pour un reste juste tronqué faute de barre.
+    close = lambda do |by_bar: false|
       next if events.empty?
 
-      measures << { events: events, label: label, beats: acc }
+      measures << { events: events, label: label, beats: acc, closed_by_bar: by_bar }
       events = []
       label = nil
       acc = 0.0
@@ -215,7 +220,7 @@ module Tablator
 
     tokens.each do |t|
       if BAR_RE.match?(t)
-        close.call
+        close.call(by_bar: true)
         next
       end
       if (m = EXPLICIT_CHORD_RE.match(t))
@@ -260,12 +265,15 @@ module Tablator
       # levée...) doit occuper moins de place qu'une mesure complète.
       m[:slots] = m[:beats] * unit_denom / 4.0
       # Métrique EFFECTIVEMENT affichée pour cette mesure  :
-      # celle du frontmatter, SAUF si son nombre de temps réel diffère (mesure
-      # incomplète/irrégulière) — affiche alors la métrique réelle ("2/4"), ce
-      # qui déclenche aussi son propre changement d'indicatif (voir `render_tab_svg`).
+      # celle du frontmatter, SAUF si son nombre de temps réel diffère ET que la
+      # mesure est refermée par une barre EXPLICITE (mesure incomplète/irrégulière
+      # VOULUE) — affiche alors la métrique réelle ("2/4"), ce qui déclenche aussi
+      # son propre changement d'indicatif (voir `render_tab_svg`). SANS barre de
+      # fin (composition arrêtée en cours de mesure) : garde la métrique de base,
+      # jamais de changement d'indicatif bidon pour un reste tronqué.
       time_den = time.to_s[%r{/(\d+)\z}, 1].to_i
       time_den = 4 if time_den.zero?
-      m[:display_time] = (m[:beats] - target_beats).abs > 0.001 ? beats_to_time_str(m[:beats], time_den) : time
+      m[:display_time] = (m[:closed_by_bar] && (m[:beats] - target_beats).abs > 0.001) ? beats_to_time_str(m[:beats], time_den) : time
     end
     [measures, meta]
   end
