@@ -1,12 +1,21 @@
 [[best-practices, les bonnes pratiques]]
-=== Les bonnes pratiques en matière de chanson ===
+=== Les bonnes pratiques ===
 
 Dans cette partie vous trouverez des conseils pour gérer au mieux vos cahiers de chant.
 
-[[songs-folder, dossier des chansons]]
-==== Dossier des chansons ====
+[[song-best-practices]]
+==== Bonne pratiques en matière de chanson ====
 
-Les chansons pourront servir à former plusieurs carnets^*^, vous avez tout intérêt à les rassemblez dans un dossier séparé de vos carnets de chant.
+****
+* <<songs-folder>>
+* <<bestprat-song-infos>>
+* <<song-best-scores-folder>>
+****
+
+[[songs-folder, dossier des chansons]]
+===== Dossier des chansons =====
+
+Les chansons pouvant servir à former des carnets divers^*^, vous avez tout intérêt à les rassemblez dans un dossier séparé de vos carnets de chant.
 
 ^*^ Par exemple, la chanson __Don't Give Up__ pourrait faire partie du __Carnet des meilleurs duo__, du __Carnet des tubes de l'année 1986__ et du __Carnet Peter Gabriel__.
 
@@ -24,15 +33,18 @@ Dans le fichier des informations de la chanson (`.infos`), le mieux est d'indiqu
 id: dont-give-up-peter-gabriel-1986
 title: Don't Give Up
 interprete: Peter Gabriel & Kate Bush
+composer: Peter Gabriel
+lyrics: Peter Gabriel
+year: 1986
 ...
 ----
 
-Nous verrons dans les <<bestpract-songbook-tdm, bonnes pratiques concernant la table des matières>> en quoi l'usage d'un identifiant est une bonne chose.
+Nous verrons dans les <<bestpract-songbook-tdm, bonnes pratiques concernant la table des matières du carnet de chant>> en quoi l'usage d'un identifiant est une bonne chose.
 
 [[song-best-scores-folder]]
-===== Dossier des images =====
+===== Dossier des partitions et  images =====
 
-Pour placer les fichiers des tablatures et des partitions, le meilleur endroit est un dossier `scores` ou un dossier `images` (voire les deux).
+Pour placer les fichiers des tablatures et des partitions, le meilleur endroit est un dossier `scores` et un dossier `images`.
 
 ----
 Ma-Chanson/
@@ -45,11 +57,19 @@ Ma-Chanson/
   |     |— macCartney.jpg
 ----
 
+---
+
 [[songbook-best-practices]]
-=== Meilleures pratiques en matière de carnet de chant ===
+==== Meilleures pratiques en matière de carnet de chant ====
+
+****
+* <<songbooks-folder>>
+* <<songbook-folder, dossier __d'un__ carnet>>
+* <<bestpract-songbook-tdm>>
+****
 
 [[songbooks-folder, dossier des carnets]]
-==== Dossier des carnets ====
+===== Dossier des carnets =====
 
 Ensuite, par exemple au même niveau que le <<songs-folder>>, vous pouvez avoir le dossier où vous allez créer tous vos carnets.
 
@@ -60,7 +80,7 @@ Ensuite, par exemple au même niveau que le <<songs-folder>>, vous pouvez avoir 
 ----
 
 [[songbook-folder, dossier du carnet]]
-==== Dossier **du** carnet ====
+===== Dossier **du** carnet =====
 
 Et dans le dossier précédent, on peut créer le dossier du carnet en particulier.
 
@@ -73,7 +93,7 @@ Et dans le dossier précédent, on peut créer le dossier du carnet en particuli
 ----
 
 [[bestpract-songbook-tdm, table des matières du carnet]]
-==== Table des matières du carnet de chant ====
+===== Table des matières du carnet de chant =====
 
 TIP: Utilisez l'<<songbook-tdm-assistant, assistant table des matières>> pour vous faciliter la vie.
 

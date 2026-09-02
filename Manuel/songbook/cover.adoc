@@ -1,5 +1,5 @@
 [[cover, couverture]]
-=== La Couverture ===
+=== Couverture ===
 
 On peut construire une table des matières soi-même, mais on peut aussi la produire également automatiquement
 

@@ -457,9 +457,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#chords">Les accords</a></li>
 <li><a href="#diags">Diagrammes d&#8217;accords</a></li>
 <li><a href="#_tablatures_et_partitions">Tablatures et Partitions</a></li>
-<li><a href="#song-layout">Layout de la chanson</a></li>
 <li><a href="#gabarit-file">Gabarit de la chanson</a></li>
-<li><a href="#gabarit">Fichier gabarit</a></li>
+<li><a href="#song-layout">Layout de la chanson</a></li>
 <li><a href="#song-list">Liste des chansons</a></li>
 <li><a href="#song-interactive-mode">Travailler les chansons en mode interactif</a></li>
 </ul>
@@ -474,10 +473,9 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#songbook-layout">Layout d&#8217;un carnet</a></li>
 <li><a href="#songbook-tdm">Table des matières du carnet</a></li>
 <li><a href="#songbook-schemas">Diagrammes de carnet</a></li>
-<li><a href="#cover">La Couverture</a></li>
+<li><a href="#cover">Couverture</a></li>
 <li><a href="#songbook-run-build">Construction du carnet</a></li>
-<li><a href="#best-practices">Les bonnes pratiques en matière de chanson</a></li>
-<li><a href="#songbook-best-practices">Meilleures pratiques en matière de carnet de chant</a></li>
+<li><a href="#best-practices">Les bonnes pratiques</a></li>
 </ul>
 </li>
 <li><a href="#tools">Outils</a>
@@ -752,7 +750,7 @@ Une chanson pouvant appartenir à plusieurs carnets, il est bon de la créer <em
 <p>le <a href="#lyrics-file">fichier des paroles et accords</a> (<code>.lyr</code>) contient toutes les paroles, accompagnées des accords, ainsi que, éventuellement, les <a href="#riffs">riffs</a> et autres petits bouts de musique.</p>
 </li>
 <li>
-<p>le <a href="#gabarit">le fichier Gabarit</a> optionnel de la chanson (<code>.gab</code>), s&#8217;il est particulier à cette chanson ou qu&#8217;elle ne s&#8217;insère pas dans un <a href="#songbook">carnet</a> définissant son propre gabarit. <em>Notez qu&#8217;utiliser ce fichier dans ce dossier n’est pas considéré comme une <a href="#best-practices">bonne pratique</a></em>.</p>
+<p>le <a href="#gabarit-file">gabarit de la chanson</a> optionnel de la chanson (<code>.gab</code>), s&#8217;il est particulier à cette chanson ou qu&#8217;elle ne s&#8217;insère pas dans un <a href="#songbook">carnet</a> définissant son propre gabarit. <em>Notez qu&#8217;utiliser ce fichier dans ce dossier n’est pas considéré comme une <a href="#best-practices">bonne pratique</a></em>.</p>
 </li>
 </ul>
 </div>
@@ -894,7 +892,7 @@ Les /am:Portes /c:du pé/d:niten/f:cier</pre>
 <p>Notez que les accords sont précisés en minuscule, par commodité d&#8217;écriture, mais qu&#8217;ils seront toujours mis en majuscules ensuite dans le carnet de chant.</p>
 </div>
 <div class="paragraph">
-<p>La marque <code>{couplet-1}</code> par exemple sera reprise dans le <a href="#gabarit">le fichier Gabarit</a> du carnet ou de la chanson pour savoir où et comment placer les strophes en question.</p>
+<p>La marque <code>{couplet-1}</code> par exemple sera reprise dans le <a href="#gabarit-file">gabarit de la chanson</a> du carnet ou de la chanson pour savoir où et comment placer les strophes en question.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1108,7 +1106,7 @@ In /em:this proud land</pre>
 <div class="sect3">
 <h4 id="diags-position">Placement des diagrammes</h4>
 <div class="paragraph">
-<p>Pour placer les diagrammes dans la chanson ou le carnet, utiliser le <a href="#gabarit">le fichier Gabarit</a> de la chanson ou les règles du <a href="#songbook-layout layout (mise en page)">[songbook-layout layout (mise en page)]</a> du carnet.</p>
+<p>Pour placer les diagrammes dans la chanson ou le carnet, utiliser le <a href="#gabarit-file">gabarit de la chanson</a> de la chanson ou les règles du <a href="#songbook-layout layout (mise en page)">[songbook-layout layout (mise en page)]</a> du carnet.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1209,40 +1207,6 @@ songbook missing diags --all
 </div>
 </div>
 <div class="sect2">
-<h3 id="song-layout">Layout de la chanson</h3>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Tip</div>
-</td>
-<td class="content">
-Pour ouvrir directement ce fichier, <code>songbook open layout --song "titre carnet"</code>
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>Le <em>layout</em> de la chanson n&#8217;est pas à confondre avec le gabarit :</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Le <strong>gabarit</strong> définit OÙ les éléments des paroles vont se placer dans la page et l&#8217;un par rapport à l&#8217;autre.</p>
-</li>
-<li>
-<p>Le <strong>layout</strong> définit les métadonnées de la mise en page, comme la policier et la taille des caractères, les marges, les options de mise en page, etc.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>En général, on a souvent besoin de définir le <em>gabarit</em> d&#8217;une chanson  pour que tout tiennent bien dans la page, mais on laisse le <em>layout</em> défini pour le carnet s&#8217;occuper du reste, pour une mise ne page optimum.</p>
-</div>
-<div class="paragraph">
-<p>Aussi, si vous voulez en savoir  plus, pour vraiment créer un fichier <code>.layout</code> pour votre chanson, consultez la <a href="#songbook-layout">section consacrée</a> dans la partie sur les carnets de chant.</p>
-</div>
-</div>
-<div class="sect2">
 <h3 id="gabarit-file">Gabarit de la chanson</h3>
 <div class="admonitionblock tip">
 <table>
@@ -1257,28 +1221,24 @@ Pour ouvrir directement ce fichier, <code>songbook open gabarit --song "titre ch
 </table>
 </div>
 <div class="paragraph">
-<p>**TODO Ce fichier est à reprendre entièrement pour voir ce qui doit être implémenté.</p>
-</div>
-<div class="paragraph">
 <p>Alors que <a href="#song-layout">le fichier <code>.layout</code></a> définit les <em>règles</em> régissant la mise en forme de la chanson, laissant la liberté à <em><strong>SongBook</strong></em> de prendre toutes les décisions pour produire un affichage cohérent et esthétique, le fichier <code>.gabarit</code> va définir très précisément le positionnement des éléments de la chanson.</p>
 </div>
 <div class="paragraph">
-<p>On peut trouver ce fichier :</p>
+<p>Peu importe son nom pourvu que son extension soit <code>.gab</code> (comme "GABarit", <code>fichier.gab</code>) ou <code>.gabarit</code> (<code>machanson.gabarit</code>).</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>dans le <a href="#song-folder">Dossier de la chanson</a>, avec n&#8217;importe quel nom à extension <code>.gabarit</code> ou <code>.gab</code>. Dans ce cas, il définira l&#8217;affichage de la chanson quel que soit le carnet où elle est utilisée.</p>
-</li>
-<li>
-<p>dans le <a href="#songbook-folder">dossier du carnet</a>, pouvant définir le gabarit de toutes les chansons du carnet (extrêmement rare et dangereux) ou le bagarit de certaines chansons. Dans ce cas, le nom doit être impérativement <code>&lt;id chanson&gt;.gab</code>.</p>
-</li>
-</ul>
+<div class="paragraph">
+<p>On trouve principalement ce fichier dans le <a href="#song-folder">Dossier de la chanson</a>, sa place naturelle, entendu que chaque chanson, pratiquement, a besoin d&#8217;un mise en place particulière en fonction de sa structure, de ses paroles, etc. Dans ce cas, il définira l&#8217;affichage de la chanson quel que soit le carnet où elle est utilisée.</p>
+</div>
+<div class="paragraph">
+<p>Exceptionnellement, on peut trouver le gabarit d&#8217;une chanson dans le <a href="#songbook-folder">dossier du carnet</a> pour définir exceptionnellement le gabarit de telle chanson dans ce carnet-là, s&#8217;il a une forme particulière. Dans ce cas, le nom du fichier doit être impérativement <code>&lt;id chanson&gt; [&lt;&#8230;&#8203;&gt;].gab&lt;arit&gt;</code>. Par exemple : <code>id-de-ma-chanson [2 réduit].gabarit</code>.</p>
 </div>
 <div class="sect3">
 <h4 id="_définir_le_gabarit">Définir le gabarit</h4>
 <div class="paragraph">
-<p>Le fichier gabarit reprend les éléments définis entre crochets dans le <a href="#lyrics-file">fichier des paroles</a>.</p>
+<p>La fonction principale de ce fichier est de définir la position et l&#8217;aspect des différents éléments de la chanson, que ce soit les paroles, les partitions ou les images.</p>
+</div>
+<div class="paragraph">
+<p>Pour définir la position des paroles, le fichier gabarit reprend les éléments définis entre crochets dans le <a href="#lyrics-file">fichier des paroles</a>.</p>
 </div>
 <div class="paragraph">
 <p>Par exemple, si on trouve ça dans le fichier <code>.lyr</code> :</p>
@@ -1303,9 +1263,8 @@ Le troisième couplet
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>{couplet-1; margin-left: 1cm;}
-{couplet-2; margin-right: 1cm; font-size:0.85em;}
-{tabla: mon-fichier-tablature; align:center; width:400pt; }
+<pre>{lyrics: couplet-1} // {lyrics: couplet-2}
+{break; tab: mon-fichier-tablature; align:center; width:400pt; }
 {couplet-3; block-align:center; align:center; }
 ...</pre>
 </div>
@@ -1370,75 +1329,44 @@ Le troisième couplet
 </div>
 <div class="sect4">
 <h5 id="gabarit-insert-image">Insertion d&#8217;image</h5>
-
+<div class="paragraph">
+<p>Todo: à définir. Normalement, ça devrait être <code>{deco; img: image.jpg; title: L&#8217;illustration;}</code></p>
+</div>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="gabarit">Fichier gabarit</h3>
-<div class="paragraph">
-<p><em>Fichier définissant les gabarits, c&#8217;est-à-dire la disposition des éléments dans la page.</em></p>
+<h3 id="song-layout">Layout de la chanson</h3>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+Pour ouvrir directement ce fichier, <code>songbook open layout --song "titre carnet"</code>
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
-<p>Peu importe son nom pourvu que son extension soit <code>.gab</code> (comme "GABarit"). <code>fichier.gab</code></p>
+<p>Le <em>layout</em> de la chanson n&#8217;est pas à confondre avec le gabarit :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Le <strong>gabarit</strong> définit OÙ les éléments des paroles vont se placer dans la page et l&#8217;un par rapport à l&#8217;autre.</p>
+</li>
+<li>
+<p>Le <strong>layout</strong> définit les métadonnées de la mise en page, comme la policier et la taille des caractères, les marges, les options de mise en page, etc.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
-<p>Sa fonction principale est de définir la position et l&#8217;aspect des différents éléments de la chanson.</p>
+<p>En général, on a souvent besoin de définir le <em>gabarit</em> d&#8217;une chanson  pour que tout tiennent bien dans la page, mais on laisse le <em>layout</em> défini pour le carnet s&#8217;occuper du reste, pour une mise ne page optimum.</p>
 </div>
 <div class="paragraph">
-<p>Par exemple :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>\# Dans le fichier machanson.gab
-
-{title: band; infos: beside;}
-
-{lyrics: couplet-1} // {lyrics: couplet-2}
-
-{tabla: accompagnement;}
-
-{refrain-1; align: center; text_align: left;}</pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>À placer
-
-{
-  title: band|simple;   # type de titre. note : pris dans .infos
-  infos: under|beside;  # place des infos
-  align: left;          # Alignement
-}
-
-{
-  diags: all| [liste des accords à traiter];
-  position: Top|Left|Bot|Rigth|Ext|Int;
-}
-
-{
-  tabla: fichier-sans-ext;
-  shrink: true; # on peut réduire pour tenir
-}
-
-{
-  score: fichier-sans-ext;
-  shrink: true; # on peut réduire pour tenir
-}
-
-{
-  song: couplet-1; # partie à placer (prise dans .lyr)
-}
-
-\# Parties côte à côte (deux couplets par exemple)
-{song: ...} // {song: ...}</pre>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_gabarit_dans_un_carnet_de_chant">Gabarit dans un carnet de chant</h4>
-<div class="paragraph">
-<p>Comme nous l&#8217;avons vu, lorsque le fichier est dans un carnet de chant, et qu&#8217;il porte l&#8217;identifiant d&#8217;une chanson, il définit le gabarit à utiliser pour la chanson spécifiquement pour ce carnet-là et aucun autre (sauf duplication du fichier dans un autre carnet, évidemment). Cela permet d&#8217;adapter la chanson à une disposition de carnet particulière.</p>
-</div>
+<p>Aussi, si vous voulez en savoir  plus, pour vraiment créer un fichier <code>.layout</code> pour votre chanson, consultez la <a href="#songbook-layout">section consacrée</a> dans la partie sur les carnets de chant.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1706,6 +1634,129 @@ Noter que s&#8217;il y des options réglées pour le carnet en construction et d
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>low</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Aucune interruption, les erreurs sont logguées silencieusement.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="printer-options">Options d&#8217;impression</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 11.1111%;">
+<col style="width: 55.5555%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Prop.</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>printer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Une configuration prête à l&#8217;emploi.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>kdp</code>], &#8230;&#8203;</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>facing_pages</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Une page ou page en vis à vis, double page pour un livre</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>true</code>], <code>false</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>paper</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Si impression, le type de papier.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>white</code>], <code>cream</code>, <code>color_standard</code>, <code>color_premium</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bleed</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fond perdu ou pas.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>false</code>], <code>true</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>top_margin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La Marge en haut de page, avec son unité.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1.5cm</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bot_margin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La Marge en bas de page, avec son unité.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1in</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>left_margin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La Marge gauche,  quand <code>facing_pages</code> est <code>false</code>, avec son unité.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>10pt</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>right_margin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La Marge gauche,  quand <code>facing_pages</code> est <code>false</code>, avec son unité.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>10pt</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>outside_margin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La Marge extérieure,  quand <code>facing_pages</code> est <code>true</code>, avec son unité.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>20pt</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gutter_margin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La Marge intérieure (côté relieure),  quand <code>facing_pages</code> est <code>true</code>, avec son unité.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>25px</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>folio_position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Position du numéro de page</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cf. les valeurs ci-dessous</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Propritété</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="8"><p class="tableblock"><code>folio_position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Bot</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">En mode livre, le numéro est mis en bas (à l&#8217;extérieur)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Top</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">En mode livre, le numéro est mis en haut (à l&#8217;extérieur)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Top-Center</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">En mode page simple, le numéro est mis au centre en haut.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Bot-Center</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">En mode page simple, le numéro est mis au centre en bas.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Top-Left</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">En mode page simple, le numéro est mis à gauche en haut.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Top-Right</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">En mode page simple, le numéro est mis à droite en haut.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Bot-Left</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">En mode page simple, le numéro est mis à gauche en bas.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Bot-Right</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">En mode page simple, le numéro est mis à droite en bas.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2612,7 +2663,7 @@ font-family: Garamond</pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cover">La Couverture</h3>
+<h3 id="cover">Couverture</h3>
 <div class="paragraph">
 <p>On peut construire une table des matières soi-même, mais on peut aussi la produire également automatiquement</p>
 </div>
@@ -2716,14 +2767,33 @@ font-family: Garamond</pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="best-practices">Les bonnes pratiques en matière de chanson</h3>
+<h3 id="best-practices">Les bonnes pratiques</h3>
 <div class="paragraph">
 <p>Dans cette partie vous trouverez des conseils pour gérer au mieux vos cahiers de chant.</p>
 </div>
 <div class="sect3">
-<h4 id="songs-folder">Dossier des chansons</h4>
+<h4 id="song-best-practices">Bonne pratiques en matière de chanson</h4>
+<div class="sidebarblock">
+<div class="content">
+<div class="ulist">
+<ul>
+<li>
+<p><a href="#songs-folder">dossier des chansons</a></p>
+</li>
+<li>
+<p><a href="#bestprat-song-infos">infos de la chanson</a></p>
+</li>
+<li>
+<p><a href="#song-best-scores-folder">Dossier des partitions et  images</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="songs-folder">Dossier des chansons</h5>
 <div class="paragraph">
-<p>Les chansons pourront servir à former plusieurs carnets<sup>*</sup>, vous avez tout intérêt à les rassemblez dans un dossier séparé de vos carnets de chant.</p>
+<p>Les chansons pouvant servir à former des carnets divers<sup>*</sup>, vous avez tout intérêt à les rassemblez dans un dossier séparé de vos carnets de chant.</p>
 </div>
 <div class="paragraph">
 <p><sup>*</sup> Par exemple, la chanson <em>Don&#8217;t Give Up</em> pourrait faire partie du <em>Carnet des meilleurs duo</em>, du <em>Carnet des tubes de l&#8217;année 1986</em> et du <em>Carnet Peter Gabriel</em>.</p>
@@ -2732,6 +2802,7 @@ font-family: Garamond</pre>
 <div class="content">
 <pre>/Documents/Musique/Chant/
   |— Chansons/</pre>
+</div>
 </div>
 </div>
 <div class="sect4">
@@ -2744,17 +2815,20 @@ font-family: Garamond</pre>
 <pre>id: dont-give-up-peter-gabriel-1986
 title: Don't Give Up
 interprete: Peter Gabriel &amp; Kate Bush
+composer: Peter Gabriel
+lyrics: Peter Gabriel
+year: 1986
 ...</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Nous verrons dans les <a href="#bestpract-songbook-tdm">bonnes pratiques concernant la table des matières</a> en quoi l&#8217;usage d&#8217;un identifiant est une bonne chose.</p>
+<p>Nous verrons dans les <a href="#bestpract-songbook-tdm">bonnes pratiques concernant la table des matières du carnet de chant</a> en quoi l&#8217;usage d&#8217;un identifiant est une bonne chose.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="song-best-scores-folder">Dossier des images</h5>
+<h5 id="song-best-scores-folder">Dossier des partitions et  images</h5>
 <div class="paragraph">
-<p>Pour placer les fichiers des tablatures et des partitions, le meilleur endroit est un dossier <code>scores</code> ou un dossier <code>images</code> (voire les deux).</p>
+<p>Pour placer les fichiers des tablatures et des partitions, le meilleur endroit est un dossier <code>scores</code> et un dossier <code>images</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2768,13 +2842,30 @@ interprete: Peter Gabriel &amp; Kate Bush
   |     |— macCartney.jpg</pre>
 </div>
 </div>
+<hr>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="songbook-best-practices">Meilleures pratiques en matière de carnet de chant</h3>
 <div class="sect3">
-<h4 id="songbooks-folder">Dossier des carnets</h4>
+<h4 id="songbook-best-practices">Meilleures pratiques en matière de carnet de chant</h4>
+<div class="sidebarblock">
+<div class="content">
+<div class="ulist">
+<ul>
+<li>
+<p><a href="#songbooks-folder">dossier des carnets</a></p>
+</li>
+<li>
+<p><a href="#songbook-folder">dossier <em>d&#8217;un</em> carnet</a></p>
+</li>
+<li>
+<p><a href="#bestpract-songbook-tdm">table des matières du carnet</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="songbooks-folder">Dossier des carnets</h5>
 <div class="paragraph">
 <p>Ensuite, par exemple au même niveau que le <a href="#songs-folder">dossier des chansons</a>, vous pouvez avoir le dossier où vous allez créer tous vos carnets.</p>
 </div>
@@ -2786,8 +2877,8 @@ interprete: Peter Gabriel &amp; Kate Bush
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="songbook-folder">Dossier <strong>du</strong> carnet</h4>
+<div class="sect4">
+<h5 id="songbook-folder">Dossier <strong>du</strong> carnet</h5>
 <div class="paragraph">
 <p>Et dans le dossier précédent, on peut créer le dossier du carnet en particulier.</p>
 </div>
@@ -2801,8 +2892,8 @@ interprete: Peter Gabriel &amp; Kate Bush
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="bestpract-songbook-tdm">Table des matières du carnet de chant</h4>
+<div class="sect4">
+<h5 id="bestpract-songbook-tdm">Table des matières du carnet de chant</h5>
 <div class="admonitionblock tip">
 <table>
 <tr>
@@ -2837,6 +2928,7 @@ Utilisez l'<a href="#songbook-tdm-assistant">assistant table des matières</a> p
 </div>
 <div class="paragraph">
 <p>À partir de là, sans aucune autre précision, si vos fichiers chansons sont bien définis, tout peut se faire tout seul (<code>songbook .</code> dans le Terminal ouvert au dossier) pour générer le carnet prêt à être imprimé ou envoyé à votre imprimeur.</p>
+</div>
 </div>
 </div>
 </div>
@@ -3525,7 +3617,34 @@ On entre en mode interactif avec :</p>
 <p>Cette section d&#8217;annexe décrit toutes les propriétés qu&#8217;on peut utiliser sur tout objet des carnets de chant de l&#8217;application <em><strong>SongBook</strong></em>.</p>
 </div>
 <div class="sect3">
-<h4 id="position-properties">Propriété de placement des objets</h4>
+<h4 id="content-properties">Proprités de contenu</h4>
+<div class="paragraph">
+<p>Permet de définir ce que doit contenir l&#8217;élément.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 57.1428%;">
+<col style="width: 28.5715%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Propriété</th>
+<th class="tableblock halign-left valign-top">Définition</th>
+<th class="tableblock halign-left valign-top">Exemple</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Le titre à donner à l&#8217;élément, par exemple à un bout de partition. Noter que les guillemets ne sont pas nécessaires.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title: Intro;</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="position-properties">Propriétés de placement des objets</h4>
 <div class="paragraph">
 <p>Permet à tout <a href="#terminology">objet</a> d&#8217;être positionnné de la façon souhaitée dans la page du carnet.</p>
 </div>
@@ -3534,9 +3653,7 @@ On entre en mode interactif avec :</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>{couplet-1; margin-top:12px; }
-Un beau jour ou peut-être une nuit
-Près d'un lac je m'étais endormie</pre>
+<pre>{couplet-1; margin-top:12px; }</pre>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -3582,6 +3699,52 @@ Près d'un lac je m'étais endormie</pre>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>block-valign</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Alignement vertical du block dans son contexte. Valeurs <code>top</code> (défaut), <code>bottom</code>, <code>center</code>/<code>middle</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>block-valign:middle;</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Définit l&#8217;endroit où doit être placé l&#8217;objet (diag, paroles, image, etc.).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>position: Front</code></p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Propritété</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="6"><p class="tableblock"><code>position</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Front</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Placement sous la bande de titre, avant les paroles.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>End</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Placement à la fin de la chanson, après les paroles.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Left</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Placement à gauche des paroles.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Right</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Placement à droite des paroles.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Top</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Placement à haut de chaque page.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Bot</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Placement en bas de chaque page</p></td>
 </tr>
 </tbody>
 </table>
@@ -3814,7 +3977,7 @@ Près d'un lac je m'étais endormie</pre>
 </tbody>
 </table>
 <div class="paragraph">
-<p>Si l&#8217;user veut placer un élément à un endroit dans son <a href="#gabarit">le fichier Gabarit</a> mais que le calcul ne le permet pas.
+<p>Si l&#8217;user veut placer un élément à un endroit dans son <a href="#gabarit-file">gabarit de la chanson</a> mais que le calcul ne le permet pas.
 Solution proposée ?</p>
 </div>
 </div>

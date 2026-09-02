@@ -30,10 +30,9 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 [[printer-options]]
 ==== Options d'impression ====
 
-[cols="2,6,3,1,1", options="header"]
+[cols="1,5,3", options="header"]
 |====
-| Prop. | Description 
-| Valeurs | Opt. | Pr.
+| Prop. | Description | Valeurs
 
 | `printer`
 | Une configuration prête à l'emploi.
@@ -78,7 +77,6 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 | `folio_position`
 | Position du numéro de page
 | Cf. les valeurs ci-dessous
-
 
 |====
 

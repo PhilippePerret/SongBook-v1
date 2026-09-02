@@ -27,11 +27,11 @@ include::riffs.adoc[]
 // Tablatures et partitions
 include::tablas-et-scores.adoc[]
 
-// Layout
-include::layout.adoc[]
-
 // Gabarit
 include::gabarit.adoc[]
+
+// Layout
+include::layout.adoc[]
 
 // Liste des chansons
 include::song_list.adoc[]
