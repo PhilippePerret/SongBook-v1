@@ -32,29 +32,9 @@ module CarnetBuilder
   # both` (Column/Column-B) pas encore implémenté — voir `Layout.layout_diags`, lève une
   # erreur claire si sélectionné. `int`/`ext` (côté reliure/extérieur) résolus en left/right
   # sur la parité recto/verso de la 1re page de la chanson .
-  # Un fichier YAML par layout sous `assets/layouts/` (nom de fichier = nom du layout,
-  # ex. `regular-B.yaml`) — ajouter/modifier un layout ne touche jamais aux autres.
-  # `_default.yaml` : valeurs par défaut, jamais un layout nommé lui-même — chaque layout
-  # part de ces valeurs et n'a besoin de définir que ses écarts .
-  LAYOUTS_DIR = File.expand_path("../assets/layouts", __dir__)
-
-  def self.load_layout_yaml(path)
-    (YAML.safe_load_file(path, symbolize_names: false) || {}).each_with_object({}) do |(k, v), layout|
-      layout[k.to_sym] = v.is_a?(String) ? v.to_sym : v
-    end
-  end
-
-  DEFAULT_LAYOUT = load_layout_yaml(File.join(LAYOUTS_DIR, "_default.yaml")).freeze
-  # Sans `layout:` posé dans le `.infos` du carnet — jamais le `_default.yaml` brut
-  # (incomplet, pensé comme socle commun), un VRAI layout nommé.
-  DEFAULT_LAYOUT_NAME = "regular-B"
-
-  LAYOUTS = Dir.glob(File.join(LAYOUTS_DIR, "*.yaml")).each_with_object({}) do |path, h|
-    name = File.basename(path, ".yaml")
-    next if name == "_default"
-
-    h[name] = DEFAULT_LAYOUT.merge(load_layout_yaml(path))
-  end.freeze
+  # `LAYOUTS_DIR`/`DEFAULT_LAYOUT`/`DEFAULT_LAYOUT_NAME`/`LAYOUTS` : définis dans
+  # `PageBuilder` (seule source, `PageBuilder` défauts de rendu ET cascade carnet en
+  # dépendent tous les deux — jamais deux copies).
 
   # Layout customisé (chanson ou carnet) : `.lay`/`.layout` (voir `FileFinder`), même
   # parseur maison que le `.infos` du carnet (clé/valeur, PAS du YAML). Ne définit que les
@@ -449,7 +429,7 @@ module CarnetBuilder
   # de carnet à consulter). Passe 1 (mesure, page_count provisoire) -> passe 2 (page_count
   # réel), même principe que `build` pour la marge de reliure KDP.
   def self.build_song(song_folder)
-    layout = DEFAULT_LAYOUT
+    layout = PageBuilder::DEFAULT_LAYOUT
     page_size_in = layout.fetch(:format).to_s.split(/\s*x\s*/i).map { |v| AppConfig.length_pt(v) / AppConfig::IN_TO_PT }
     slug = slugify(File.basename(song_folder))
     export_dir = File.join(song_folder, "export")
@@ -568,23 +548,23 @@ module CarnetBuilder
     # ("21cm x 15cm") reste convertie normalement.
     page_size_in = conf.fetch("format") { AppConfig.get("format") }.split(/\s*x\s*/i).map { |v| v =~ /[a-z]/i ? AppConfig.length_pt(v) / AppConfig::IN_TO_PT : v.to_f }
     page_size_pt = page_size_in.map { |v| v * AppConfig::IN_TO_PT }
-    layout_name = conf["layout"] || DEFAULT_LAYOUT_NAME
-    base_layout = LAYOUTS.fetch(layout_name) { raise "layout inconnu : #{layout_name} (voir CarnetBuilder::LAYOUTS)" }
+    layout_name = conf["layout"] || PageBuilder::DEFAULT_LAYOUT_NAME
+    base_layout = PageBuilder::LAYOUTS.fetch(layout_name) { raise "layout inconnu : #{layout_name} (voir PageBuilder::LAYOUTS)" }
     carnet_layout_path = find_layout_file(carnet_folder)
     carnet_layout = carnet_layout_path ? base_layout.merge(load_layout_override(carnet_layout_path)) : base_layout
     # Sans AUCUNE option posée dans le `.infos` du carnet, `_default.yaml` doit à lui
     # seul suffire à produire un carnet valable (page de titre, garde, copyright,
     # bandeau, TOC, crédits) — fusion superficielle, la clé du carnet gagne SI présente.
-    default_fm = DEFAULT_LAYOUT.fetch(:front_matter, {})
+    default_fm = PageBuilder::DEFAULT_LAYOUT.fetch(:front_matter, {})
     fm = default_fm.merge(conf.fetch("front_matter", {}))
     fm["table_of_contents"] = default_fm.fetch("table_of_contents", {}).merge(fm.fetch("table_of_contents", {}))
     conf_credits = conf.fetch("credits", {}).select { |_, v| v.is_a?(String) && !v.strip.empty? }
-    credits = DEFAULT_LAYOUT.fetch(:credits, {}).merge(conf_credits)
+    credits = PageBuilder::DEFAULT_LAYOUT.fetch(:credits, {}).merge(conf_credits)
     # `copyright:` (valeur vide, sans rien d'indenté dessous) ouvre quand même un bloc
     # enfant VIDE (`parse_nested_infos`, "clé seule -> Hash") — pas une chaîne, jamais
     # confondu avec une vraie valeur posée.
     raw_copyright = conf["copyright"]
-    copyright = raw_copyright.is_a?(String) && !raw_copyright.strip.empty? ? raw_copyright : DEFAULT_LAYOUT[:copyright]&.to_s
+    copyright = raw_copyright.is_a?(String) && !raw_copyright.strip.empty? ? raw_copyright : PageBuilder::DEFAULT_LAYOUT[:copyright]&.to_s
     toc_conf = fm.fetch("table_of_contents", {})
     tdm_position = toc_conf.fetch("position", AppConfig.get("tdm_position"))
     # #54 : une chanson à 2 pages doit tomber en vis-à-vis (fausse-page/belle-page) —

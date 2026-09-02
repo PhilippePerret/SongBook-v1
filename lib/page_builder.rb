@@ -1,4 +1,5 @@
 require "fileutils"
+require "yaml"
 require_relative "dsl_parser"
 require_relative "layout"
 require_relative "chord_diagrams"
@@ -14,6 +15,32 @@ require_relative "../tools/tablator/tablator"
 # `ChordDiagrams` (résolution des diagrammes) et `Layout` (mise en page/dessin).
 module PageBuilder
   TABLATOR_PATHS = Dir.glob(File.expand_path("../tools/tablator/*.rb", __dir__))
+
+  # Un fichier YAML par layout sous `assets/layouts/` (nom de fichier = nom du layout,
+  # ex. `regular-B.yaml`) — ajouter/modifier un layout ne touche jamais aux autres.
+  # `_default.yaml` : valeurs par défaut, jamais un layout nommé lui-même — chaque layout
+  # part de ces valeurs et n'a besoin de définir que ses écarts. SEULE source des défauts
+  # de layout (`DEFAULT_TITLE_BAND`/`DEFAULT_DIAG_POSITION` ci-dessous en dérivent —
+  # jamais une valeur écrite une 2e fois en dur).
+  LAYOUTS_DIR = File.expand_path("../assets/layouts", __dir__)
+
+  def self.load_layout_yaml(path)
+    (YAML.safe_load_file(path, symbolize_names: false) || {}).each_with_object({}) do |(k, v), layout|
+      layout[k.to_sym] = v.is_a?(String) ? v.to_sym : v
+    end
+  end
+
+  DEFAULT_LAYOUT = load_layout_yaml(File.join(LAYOUTS_DIR, "_default.yaml")).freeze
+  # Sans `layout:` posé dans le `.infos` du carnet — jamais le `_default.yaml` brut
+  # (incomplet, pensé comme socle commun), un VRAI layout nommé.
+  DEFAULT_LAYOUT_NAME = "regular-B"
+
+  LAYOUTS = Dir.glob(File.join(LAYOUTS_DIR, "*.yaml")).each_with_object({}) do |path, h|
+    name = File.basename(path, ".yaml")
+    next if name == "_default"
+
+    h[name] = DEFAULT_LAYOUT.merge(load_layout_yaml(path))
+  end.freeze
 
   # Clés canoniques (anglais) attendues par le gabarit : title/year/lyrics/composer/performer.
   # Table des alias construite en INVERSANT `Loc.get` sur ces clés  :
@@ -445,10 +472,10 @@ module PageBuilder
   end
 
   # Valeurs par défaut  : "le moins de définitions possibles" — un `.gab`
-  # ne sert qu'à ÉCARTER ces défauts, jamais à les répéter). PLUS TARD : fichier YAML de
-  # config SongBook, pour qui veut les changer sans toucher au code.
-  DEFAULT_TITLE_BAND = true
-  DEFAULT_DIAG_POSITION = "left" # = "intérieur"
+  # ne sert qu'à ÉCARTER ces défauts, jamais à les répéter). Dérivées de `DEFAULT_LAYOUT`
+  # (`_default.yaml`), jamais réécrites en dur ici.
+  DEFAULT_TITLE_BAND = DEFAULT_LAYOUT.fetch(:title_band)
+  DEFAULT_DIAG_POSITION = DEFAULT_LAYOUT.fetch(:diags_position).to_s
 
   # `.gab` absent : couplets du `.lyr` pairés côte à côte 2 par 2, dans leur ordre
   # d'apparition RÉEL (`order`, répétitions incluses — un refrain qui revient 3 fois dans
