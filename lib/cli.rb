@@ -115,6 +115,7 @@ module CLI
       end
     end
     debug_marks = !!argv.delete("-x")
+    open_pdf = !!(argv.delete("-o") || argv.delete("--open"))
     missing_all = !!argv.delete("--all")
     missing_names = !!(argv.delete("-n") || argv.delete("--name"))
 
@@ -597,7 +598,7 @@ module CLI
             system("open", Layout.conflict_log_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_conflicts_question")))
           end
 
-          system("open", out_path) if colored_prompt.yes?(blue(format(Loc.get("carnet_build_open_pdf_question"), carnet_title)))
+          system("open", out_path) if open_pdf || colored_prompt.yes?(blue(format(Loc.get("carnet_build_open_pdf_question"), carnet_title)))
         else
           pdf_path = CarnetBuilder.build_song(target[:folder])
           puts success("👍 #{format(Loc.get("song_pdf_generated"), SongResolver.display_name(target[:folder]))}")
@@ -609,7 +610,7 @@ module CLI
             system("open", Layout.conflict_log_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_conflicts_question")))
           end
 
-          system("open", pdf_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_pdf_question")))
+          system("open", pdf_path) if open_pdf || colored_prompt.yes?(blue(Loc.get("song_build_open_pdf_question")))
         end
       rescue Interrupt
         puts

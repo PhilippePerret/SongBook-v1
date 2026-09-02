@@ -146,6 +146,7 @@ Constructeur de diagramme
   -b/--book PATH  Chemin d'accès au carnet
   --song TITRE    Chanson de contexte pour la commande (recherche intelligente, sans persistance)
   -x              Faire apparaitre les repères (marges)
+  -o/--open       Ouvrir le PDF produit sans demander confirmation
 
   TXT
 

@@ -1,0 +1,14 @@
+[[song-pdf]]
+=== Production du PDF ===
+
+Pour produire le fichier PDF de la chanson seule, on utilise la commande : 
+
+----
+songbook build "titre approx"
+----
+
+On peut demander l'ouverture immédiate du PDF avec l'option `-o/--open` : 
+
+----
+songbook build "titre approx" -o
+----

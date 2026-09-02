@@ -48,7 +48,7 @@ module Tablator
   # coupée localement à son emplacement (voir `line_with_gaps`) : plus besoin de
   # la masquer après coup.
   def number_glyph(x, y, text)
-    svg_text(x, y + param(:number_size) * 0.35, text, size: param(:number_size))
+    svg_text(x, y + param(:number_size) * 0.35, text, size: param(:number_size), weight: 'bold')
   end
 
   # Demi-largeur (+ un peu d'air) occupée par un chiffre à l'emplacement `x` —

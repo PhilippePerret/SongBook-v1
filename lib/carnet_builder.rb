@@ -474,6 +474,15 @@ module CarnetBuilder
 
     out_path = File.join(export_dir, "#{slug}.pdf")
     PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout: layout)
+    # Aperçu (macOS) affiche TOUJOURS la page 1 d'un PDF seule, jamais en vis-à-vis avec
+    # la 2 — page blanche ajoutée devant dès que la chanson a plus d'une page.
+    if page_count > 1
+      page_size_pt = page_size_in.map { |v| v * AppConfig::IN_TO_PT }
+      blank_out = File.join(export_dir, ".tmp-#{slug}-blank.pdf")
+      Prawn::Document.generate(blank_out, page_size: page_size_pt, margin: 0)
+      (CombinePDF.load(blank_out) << CombinePDF.load(out_path)).save(out_path)
+      File.delete(blank_out)
+    end
     # Sur la DERNIÈRE ligne du log de conflits — chanson SEULE : sans le titre entre
     # parenthèses , toujours le même ici, purement redondant.
     missing_chords_summary = Layout.missing_chords_summary(with_song_names: false)
@@ -1209,20 +1218,20 @@ module CarnetBuilder
   # remplit pas 2 colonnes pleines) + RATDM3 (chiffre placé à `plus long titre + MIN_H_DIST
   # [:tdm_num]`, la même position dans les deux colonnes) + RATDM4 (filet de conduite entre
   # titre et chiffre) + RATDM6 (ligne vide au-dessus de chaque bloc interprète, sauf le 1er
-  # de chaque colonne) + RATDM7 (jamais un bloc interprète coupé entre 2 colonnes) + RATDM8
+  # de chaque colonne) + RATDM7 (en-tête interprète jamais orphelin de sa 1re chanson) + RATDM8
   # (gouttière+marge généreuses -> filets plus longs) + RATDM9 (TdM courte en hauteur ->
   # séparée de son titre, sans être centrée). `rows` = [{kind:, label:, page:, indent:}, ...]
   # (voir `toc_rows`) — un `:header` (nom de groupe, gras, sans numéro/filet) n'est jamais
   # indenté ; un `:song` indenté (`TOC_INDENT_W`) appartient au groupe au-dessus.
   TOC_INDENT_W = 14.0
 
-  # RATDM7 : un groupe = un `:header` + les `:song` indentés qui suivent immédiatement ;
-  # toute autre ligne (`:song` non indenté — tri `:song`, ou entrée au champ vide) est son
-  # propre groupe d'1 ligne. Un groupe ne sera jamais coupé entre 2 colonnes.
+  # RATDM7 : insécable = `:header` + sa 1re `:song` seulement, le reste flotte librement.
   def self.toc_chunks(rows)
     chunks = []
     rows.each do |row|
-      if row[:indent] && chunks.last&.first&.dig(:kind) == :header
+      if row[:kind] == :header
+        chunks << [row]
+      elsif row[:indent] && chunks.last&.size == 1 && chunks.last&.first&.dig(:kind) == :header
         chunks.last << row
       else
         chunks << [row]
