@@ -3,6 +3,7 @@
 require "readline"
 require "shellwords"
 require "io/console"
+require "stringio"
 require "tty-prompt"
 require "tty-spinner"
 require_relative "carnet_builder"
@@ -20,7 +21,7 @@ require_relative "song_resolver"
 require_relative "tablator_assistant"
 require_relative "ansi_colors"
 require_relative "idml_cover_builder"
-require_relative "kdp"
+require_relative "printer_profile"
 require_relative "missing_diags"
 require_relative "songs_list"
 require_relative "tdm_creator"
@@ -377,18 +378,18 @@ module CLI
         case arg1
         when "dims"
           carnet_folder = resolve_carnet_folder(arg2 || Session.carnet)
-          kdp = kdp_for_carnet(carnet_folder)
-          print_cover_dims(kdp)
+          printer = printer_for_carnet(carnet_folder)
+          print_cover_dims(printer)
         when "idml", "modele"
           carnet_folder = resolve_carnet_folder(arg2 || Session.carnet)
-          kdp = kdp_for_carnet(carnet_folder)
+          printer = printer_for_carnet(carnet_folder)
           infos_path = FileFinder.find(carnet_folder, :inf)
           conf = CarnetBuilder.parse_nested_infos(infos_path)
           entries = CarnetBuilder.tdm_entries(carnet_folder)
           slug = File.basename(carnet_folder).downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-|-\z/, "")
           out_dir = File.join(carnet_folder, "export", "cover")
           FileUtils.mkdir_p(out_dir)
-          IdmlCoverBuilder.build(File.join(out_dir, "#{slug}-cover.idml"), conf: conf, entries: entries, carnet_folder: carnet_folder, kdp: kdp)
+          IdmlCoverBuilder.build(File.join(out_dir, "#{slug}-cover.idml"), conf: conf, entries: entries, carnet_folder: carnet_folder, printer: printer)
           puts success("👍 Modèle IDML de couverture produit.")
         else
           abort unknown_command_message("cover #{arg1}")
@@ -418,9 +419,11 @@ module CLI
       case arg1
       when "song", "s"
         Session.song = resolve_song_folder(arg2)
+        Session.carnet = nil
         puts success("#{format(Loc.get("use_song_set"), SongResolver.display_name_with_performer(Session.song))}")
       when "songbook", "sb"
         Session.carnet = resolve_carnet_folder(arg2)
+        Session.song = nil
         puts success("#{format(Loc.get("use_carnet_set"), SongResolver.display_name(Session.carnet))}")
       else
         abort unknown_command_message("use #{arg1}")
@@ -566,7 +569,35 @@ module CLI
           abort "pas un carnet (.tdm/.toc introuvable) : #{book_dir}" unless CarnetBuilder.carnet_folder?(book_dir)
           CarnetBuilder.build(book_dir, only_song: File.basename(target[:folder]), debug_marks: debug_marks)
         elsif target[:kind] == :carnet
-          CarnetBuilder.build(target[:folder], cover: cover, debug_marks: debug_marks)
+          # Tout ce que `CarnetBuilder.build` peut encore écrire PENDANT la construction
+          # (avertissement KDP...) est capturé ici et réaffiché APRÈS l'arrêt du spinner
+          # (sinon les deux s'entremêlent sur la même ligne de terminal) — le rapport
+          # (succès/erreurs/accords manquants/propositions d'ouverture) reste ENTIÈREMENT
+          # à la charge de cet appelant, jamais de `CarnetBuilder.build` lui-même.
+          captured = StringIO.new
+          out_path = SongCreator.with_spinner(Loc.get("carnet_building_in_progress")) do
+            orig_stdout, orig_stderr = $stdout, $stderr
+            $stdout = captured
+            $stderr = captured
+            begin
+              CarnetBuilder.build(target[:folder], cover: cover, debug_marks: debug_marks)
+            ensure
+              $stdout = orig_stdout
+              $stderr = orig_stderr
+            end
+          end
+          carnet_title = SongResolver.display_name(target[:folder])
+          puts success(format(Loc.get("carnet_build_success"), carnet_title))
+          print captured.string
+
+          Layout.report_conflicts!
+          Layout.report_missing_chords!
+
+          if Layout.log_conflict_count.to_i.positive?
+            system("open", Layout.conflict_log_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_conflicts_question")))
+          end
+
+          system("open", out_path) if colored_prompt.yes?(blue(format(Loc.get("carnet_build_open_pdf_question"), carnet_title)))
         else
           pdf_path = CarnetBuilder.build_song(target[:folder])
           puts success("👍 #{format(Loc.get("song_pdf_generated"), SongResolver.display_name(target[:folder]))}")
@@ -582,7 +613,7 @@ module CLI
         end
       rescue Interrupt
         puts
-      rescue RuntimeError => e
+      rescue RuntimeError, ArgumentError => e
         abort "Erreur : #{e.message}"
       end
     else
@@ -591,10 +622,12 @@ module CLI
     end
   end
 
-  # KDP du DERNIER PDF déjà construit pour ce carnet (nombre de pages réel) — `cover
-  # dims`/`cover idml` ont besoin du nombre de pages pour calculer le dos, mais ne
-  # reconstruisent pas tout le carnet pour l'obtenir.
-  def self.kdp_for_carnet(carnet_folder)
+  # Profil imprimeur du DERNIER PDF déjà construit pour ce carnet (nombre de pages réel) —
+  # `cover dims`/`cover idml` ont besoin du nombre de pages pour calculer le dos, mais ne
+  # reconstruisent pas tout le carnet pour l'obtenir. `paper:`/`bleed:`/`margin_*:` lus
+  # depuis le `.infos` du carnet (voir `CarnetBuilder.build`), défauts
+  # `PrinterProfile::DEFAULT_PAPER`/`DEFAULT_BLEED`/calcul du profil si absents.
+  def self.printer_for_carnet(carnet_folder)
     infos_path = FileFinder.find(carnet_folder, :inf)
     abort "aucun fichier .infos/.inf trouvé dans #{carnet_folder}" unless infos_path
 
@@ -605,20 +638,23 @@ module CLI
     abort "construisez d'abord le carnet (songbook build) pour en connaître le nombre de pages" unless latest_pdf
 
     page_count = CombinePDF.load(latest_pdf).pages.size
-    KDP.new(page_count: page_count, trim_width: page_size_in[0], trim_height: page_size_in[1], paper: :white, bleed: false)
+    paper = conf.fetch("paper", PrinterProfile::DEFAULT_PAPER).to_s.to_sym
+    bleed = conf.key?("bleed") ? conf["bleed"] == true : PrinterProfile::DEFAULT_BLEED
+    PrinterProfile.new(page_count: page_count, trim_width: page_size_in[0], trim_height: page_size_in[1], paper: paper, bleed: bleed,
+      facing_pages: PrinterProfile.facing_pages(conf), **PrinterProfile.margin_overrides(conf))
   end
 
-  def self.print_cover_dims(kdp)
-    bz = kdp.barcode_zone
+  def self.print_cover_dims(printer)
+    bz = printer.barcode_zone
     puts [
-      "format papier (largeur x hauteur) : #{kdp.trim_width.round(3)} x #{kdp.trim_height.round(3)} in",
-      "fond perdu (bleed) : #{KDP::BLEED_IN} in",
-      "marge extérieure (pages intérieures) : #{kdp.outside_margin.round(3)} in",
-      "marge de reliure (gouttière) : #{kdp.gutter_margin.round(3)} in",
-      "largeur du dos : #{kdp.spine_width.round(3)} in",
-      "couverture complète (largeur x hauteur) : #{kdp.cover_width.round(3)} x #{kdp.cover_height.round(3)} in",
-      "marge de sécurité texte (plats) : #{kdp.cover_text_safe_margin.round(3)} in",
-      "marge de sécurité texte (dos) : #{kdp.spine_text_safe_margin.round(3)} in",
+      "format papier (largeur x hauteur) : #{printer.trim_width.round(3)} x #{printer.trim_height.round(3)} in",
+      "fond perdu (bleed) : #{PrinterProfile::BLEED_IN} in",
+      "marge extérieure (pages intérieures) : #{printer.outside_margin.round(3)} in",
+      "marge de reliure (gouttière) : #{printer.gutter_margin.round(3)} in",
+      "largeur du dos : #{printer.spine_width.round(3)} in",
+      "couverture complète (largeur x hauteur) : #{printer.cover_width.round(3)} x #{printer.cover_height.round(3)} in",
+      "marge de sécurité texte (plats) : #{printer.cover_text_safe_margin.round(3)} in",
+      "marge de sécurité texte (dos) : #{printer.spine_text_safe_margin.round(3)} in",
       "zone code-barres : (#{bz[:x0].round(3)}, #{bz[:y0].round(3)}) à (#{bz[:x1].round(3)}, #{bz[:y1].round(3)}) in",
     ].join("\n")
   end

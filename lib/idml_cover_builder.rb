@@ -10,7 +10,7 @@ require_relative "text_outliner"
 # la mise en page dans Affinity/InDesign.
 #
 # UNE SEULE maquette (4e + dos + 1re côte à côte), pas 2 pages séparées (Phil,
-# 2026-08-22) — même géométrie que `CoverBuilder`/`KDP#cover_width` (PDF), page =
+# 2026-08-22) — même géométrie que `CoverBuilder`/`PrinterProfile#cover_width` (PDF), page =
 # feuille complète bleed inclus. Bleed en CARACTÉRISTIQUE DU DOCUMENT
 # (`DocumentPreference` bleed offsets, `Resources/Preferences.xml`) — Affinity/InDesign
 # affichent le repère de rognage automatiquement, pas besoin de traits dessinés.
@@ -74,16 +74,16 @@ module IdmlCoverBuilder
     Field.new(name: "price", kind: :text, resolver: ->(conf, _e) { conf["price"] && "Prix : #{conf["price"]}" }),
   ].freeze
 
-  def self.build(out_path, conf:, entries:, carnet_folder:, kdp:)
-    bleed = kdp.class::BLEED_IN * 72.0
-    # Marges intérieures du carnet (pas la marge cover de KDP) — alignement visuel avec
-    # les pages du livre , uniforme sur les 4 côtés (pas de recto/verso
+  def self.build(out_path, conf:, entries:, carnet_folder:, printer:)
+    bleed = printer.class::BLEED_IN * 72.0
+    # Marges intérieures du carnet (pas la marge cover de l'imprimeur) — alignement visuel
+    # avec les pages du livre , uniforme sur les 4 côtés (pas de recto/verso
     # sur une couverture).
-    margin = kdp.outside_margin * 72.0
-    trim_w = kdp.trim_width * 72.0
-    spine_w = kdp.spine_width * 72.0
-    cw = kdp.cover_width * 72.0
-    ch = kdp.cover_height * 72.0
+    margin = printer.outside_margin * 72.0
+    trim_w = printer.trim_width * 72.0
+    spine_w = printer.spine_width * 72.0
+    cw = printer.cover_width * 72.0
+    ch = printer.cover_height * 72.0
 
     back_x0 = bleed
     spine_x0 = bleed + trim_w

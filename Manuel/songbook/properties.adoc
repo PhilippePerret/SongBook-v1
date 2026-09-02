@@ -1,0 +1,22 @@
+
+[[universal-properties, Propriétés universelles]]
+==== Propriétés universelles ====
+
+On appelle __propriétés universelles__ les propriétés qui peuvent être attribuées à un grand nombre de paramètres de configuration.
+
+[cols="1,2,4", header]
+|====
+| Propriété
+| Description 
+| Valeurs
+
+| `font`
+| La fonte générale, par défaut. Une  police et une taille.
+| Par défaut : Helvetica 11pt
+
+| `position` 
+| Position de l'élément dans la page
+| Top = en haut, Left = à gauche, Bot = en bas, Right = à droite, Int = à l'intérieur (des double-pages), Ext = à l'extérieur (des double pages)
+
+|====
+

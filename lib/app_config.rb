@@ -94,14 +94,29 @@ module AppConfig
     end
   end
 
-  # "1cm" -> 28.35, "10mm" -> 28.35, "0.5in" -> 36.0, "12pt" -> 12.0, "12" -> 12.0.
-  def self.length_pt(value)
+  UNIT_TO_PT = { cm: CM_TO_PT, mm: MM_TO_PT, in: IN_TO_PT, pt: 1.0 }.freeze
+
+  # "1cm" -> {amount: 1.0, unit: :cm} ; "12" -> {amount: 12.0, unit: nil} (pas d'unité
+  # explicite — l'appelant décide du défaut, voir `length_pt`/`length_in`).
+  def self.parse_length(value)
     case value.to_s.strip
-    when /\A([\d.]+)\s*cm\z/ then $1.to_f * CM_TO_PT
-    when /\A([\d.]+)\s*mm\z/ then $1.to_f * MM_TO_PT
-    when /\A([\d.]+)\s*in\z/ then $1.to_f * IN_TO_PT
-    when /\A([\d.]+)\s*pt\z/ then $1.to_f
-    else value.to_f
+    when /\A([\d.]+)\s*cm\z/ then { amount: $1.to_f, unit: :cm }
+    when /\A([\d.]+)\s*mm\z/ then { amount: $1.to_f, unit: :mm }
+    when /\A([\d.]+)\s*in\z/ then { amount: $1.to_f, unit: :in }
+    when /\A([\d.]+)\s*pt\z/ then { amount: $1.to_f, unit: :pt }
+    else { amount: value.to_f, unit: nil }
     end
+  end
+
+  # "1cm" -> 28.35, "10mm" -> 28.35, "0.5in" -> 36.0, "12pt" -> 12.0, "12" -> 12.0 (pt).
+  def self.length_pt(value, default_unit: :pt)
+    parsed = parse_length(value)
+    parsed[:amount] * UNIT_TO_PT.fetch(parsed[:unit] || default_unit)
+  end
+
+  # Comme `length_pt`, mais en pouces et unité par défaut = pouce ("1" -> 1.0in, "2cm" ->
+  # 0.787in).
+  def self.length_in(value, default_unit: :in)
+    length_pt(value, default_unit: default_unit) / IN_TO_PT
   end
 end

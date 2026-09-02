@@ -204,14 +204,17 @@ module Tablator
     any_stem ? param(:stem_height) : 0
   end
 
-  # Place pour l'arc + lettre H/P d'un hammer-on/pull-off (issue #39) — dessiné
-  # DIRECTEMENT au-dessus de la portée, dans la même zone que les hampes
+  # Place au-dessus de la portée, dans la même zone que les hampes
   # (`stems_extra_height`, `render_system` prend le MAX des deux : le plus
   # souvent une note liée porte déjà une hampe, pas besoin d'espace en plus).
-  # 0 si aucun événement du système n'a de `link`.
+  # Hammer-on/pull-off (issue #39) : arc + lettre H/P, réserve arc_height +
+  # letter_size. Slide (`g`, sans arc, juste ↗/↘) : réserve seulement
+  # letter_size. 0 si aucun événement du système n'a de `link`.
   def links_extra_height(measures)
-    any_link = measures.any? { |m| m[:events].any? { |ev| ev.kind == :notes && ev.link } }
-    any_link ? param(:link_arc_height) + param(:link_letter_size) : 0
+    links = measures.flat_map { |m| m[:events] }.select { |ev| ev.kind == :notes && ev.link }
+    return 0 if links.empty?
+
+    links.any? { |ev| %i[hammer pull].include?(ev.link) } ? param(:link_arc_height) + param(:link_letter_size) : param(:link_letter_size)
   end
 
   # Arc (quadratique) + lettre "H"/"P" entre `x0` (dernière fois que la corde a
@@ -225,15 +228,25 @@ module Tablator
     "#{path}\n#{svg_text(mid_x, peak_y - letter_size * 0.3, link == :hammer ? 'H' : 'P', size: letter_size)}"
   end
 
-  # Dessine les liaisons hammer-on/pull-off d'un système déjà positionné
-  # (`computed`, voir `render_system`). `last_x_by_corde` tenu à jour pour
-  # CHAQUE corde jouée (note seule ou note d'un accord) au fil des événements —
-  # une note marquée dont la corde n'a pas sonné DANS CE SYSTÈME (coupure de
-  # ligne, la précédente occurrence reste sur le système d'avant) ne dessine
-  # simplement pas d'arc (limite connue, comme `duration_for`) — le `.tab` a
-  # déjà été validé au parsing (`parser.rb`), donc jamais un token invalide ici.
+  # Slide (`g`, Phil) : PAS d'arc — juste ↗ (case montante) ou ↘ (case
+  # descendante) entre `x0` et `x1`, sur la ligne `y` de la corde.
+  def slide_markup(x0, x1, y, ascending)
+    letter_size = param(:link_letter_size)
+    mid_x = (x0 + x1) / 2.0
+    svg_text(mid_x, y - letter_size * 0.3, ascending ? '↗' : '↘', size: letter_size)
+  end
+
+  # Dessine les liaisons hammer-on/pull-off/slide d'un système déjà positionné
+  # (`computed`, voir `render_system`). `last_x_by_corde`/`last_case_by_corde`
+  # tenus à jour pour CHAQUE corde jouée (note seule ou note d'un accord) au fil
+  # des événements — une note marquée dont la corde n'a pas sonné DANS CE
+  # SYSTÈME (coupure de ligne, la précédente occurrence reste sur le système
+  # d'avant) ne dessine simplement rien (limite connue, comme `duration_for`) —
+  # le `.tab` a déjà été validé au parsing (`parser.rb`), donc jamais un token
+  # invalide ici.
   def draw_links(parts, computed, top_y)
     last_x_by_corde = {}
+    last_case_by_corde = {}
     computed.each do |mp|
       mp[:events].each do |e|
         ev = e[:ev]
@@ -241,10 +254,19 @@ module Tablator
 
         if ev.link && ev.notes.size == 1
           corde = ev.notes.first[:corde]
+          kase = ev.notes.first[:case]
           prev_x = last_x_by_corde[corde]
-          parts << link_markup(prev_x, e[:x], string_y(corde, top_y), ev.link) if prev_x
+          if prev_x
+            y = string_y(corde, top_y)
+            case ev.link
+            when :hammer, :pull
+              parts << link_markup(prev_x, e[:x], y, ev.link)
+            when :slide
+              parts << slide_markup(prev_x, e[:x], y, kase > last_case_by_corde[corde])
+            end
+          end
         end
-        ev.notes.each { |n| last_x_by_corde[n[:corde]] = e[:x] }
+        ev.notes.each { |n| last_x_by_corde[n[:corde]] = e[:x]; last_case_by_corde[n[:corde]] = n[:case] }
       end
     end
   end

@@ -3,18 +3,19 @@
 
 TIP: Pour ouvrir directement ce fichier, `songbook open gabarit --song "titre chanson"`
 
-**TODO Ce fichier est à reprendre entièrement pour voir ce qui doit être implémenté.
-
 Alors que <<song-layout, le fichier `.layout`>> définit les __règles__ régissant la mise en forme de la chanson, laissant la liberté à __**SongBook**__ de prendre toutes les décisions pour produire un affichage cohérent et esthétique, le fichier `.gabarit` va définir très précisément le positionnement des éléments de la chanson.
 
-On peut trouver ce fichier : 
+Peu importe son nom pourvu que son extension soit `.gab` (comme "GABarit", `fichier.gab`) ou `.gabarit` (`machanson.gabarit`).
 
-- dans le <<song-folder>>, avec n'importe quel nom à extension `.gabarit` ou `.gab`. Dans ce cas, il définira l'affichage de la chanson quel que soit le carnet où elle est utilisée.
-- dans le <<songbook-folder>>, pouvant définir le gabarit de toutes les chansons du carnet (extrêmement rare et dangereux) ou le bagarit de certaines chansons. Dans ce cas, le nom doit être impérativement `<id chanson>.gab`.
+On trouve principalement ce fichier dans le <<song-folder>>, sa place naturelle, entendu que chaque chanson, pratiquement, a besoin d'un mise en place particulière en fonction de sa structure, de ses paroles, etc. Dans ce cas, il définira l'affichage de la chanson quel que soit le carnet où elle est utilisée.
+
+Exceptionnellement, on peut trouver le gabarit d'une chanson dans le <<songbook-folder>> pour définir exceptionnellement le gabarit de telle chanson dans ce carnet-là, s'il a une forme particulière. Dans ce cas, le nom du fichier doit être impérativement `<id chanson> [<...>].gab<arit>`. Par exemple : `id-de-ma-chanson [2 réduit].gabarit`.
 
 ==== Définir le gabarit ====
 
-Le fichier gabarit reprend les éléments définis entre crochets dans le <<lyrics-file, fichier des paroles>>.
+La fonction principale de ce fichier est de définir la position et l'aspect des différents éléments de la chanson, que ce soit les paroles, les partitions ou les images.
+
+Pour définir la position des paroles, le fichier gabarit reprend les éléments définis entre crochets dans le <<lyrics-file, fichier des paroles>>.
 
 Par exemple, si on trouve ça dans le fichier `.lyr` : 
 
@@ -35,9 +36,8 @@ Le troisième couplet
 … alors on peut définir dans le gabarit des choses comme : 
 
 ----
-{couplet-1; margin-left: 1cm;}
-{couplet-2; margin-right: 1cm; font-size:0.85em;}
-{tabla: mon-fichier-tablature; align:center; width:400pt; }
+{lyrics: couplet-1} // {lyrics: couplet-2}
+{break; tab: mon-fichier-tablature; align:center; width:400pt; }
 {couplet-3; block-align:center; align:center; }
 ...
 ----
@@ -89,67 +89,4 @@ Les partitions répondent aux mêmes fonctionnalités que <<gabarit-insert-tabla
 [[gabarit-insert-image]]
 ===== Insertion d'image =====
 
-
-[[gabarit, le fichier Gabarit]]
-=== Fichier gabarit ===
-
-__Fichier définissant les gabarits, c'est-à-dire la disposition des éléments dans la page.__
-
-Peu importe son nom pourvu que son extension soit `.gab` (comme "GABarit"). `fichier.gab`
-
-Sa fonction principale est de définir la position et l'aspect des différents éléments de la chanson.
-
-Par exemple : 
-
-----
-\# Dans le fichier machanson.gab
-
-{title: band; infos: beside;}
-
-{lyrics: couplet-1} // {lyrics: couplet-2}
-
-{tabla: accompagnement;}
-
-{refrain-1; align: center; text_align: left;}
-
-----
-
-
-
-
-----
-À placer
-
-{
-  title: band|simple;   # type de titre. note : pris dans .infos
-  infos: under|beside;  # place des infos
-  align: left;          # Alignement
-}
-
-{
-  diags: all| [liste des accords à traiter];
-  position: Top|Left|Bot|Rigth|Ext|Int; 
-}
-
-{ 
-  tabla: fichier-sans-ext;
-  shrink: true; # on peut réduire pour tenir
-}
-
-{
-  score: fichier-sans-ext;
-  shrink: true; # on peut réduire pour tenir
-}
-
-{
-  song: couplet-1; # partie à placer (prise dans .lyr)
-}
-
-\# Parties côte à côte (deux couplets par exemple)
-{song: ...} // {song: ...}
-----
-
-
-==== Gabarit dans un carnet de chant ====
-
-Comme nous l'avons vu, lorsque le fichier est dans un carnet de chant, et qu'il porte l'identifiant d'une chanson, il définit le gabarit à utiliser pour la chanson spécifiquement pour ce carnet-là et aucun autre (sauf duplication du fichier dans un autre carnet, évidemment). Cela permet d'adapter la chanson à une disposition de carnet particulière.
+Todo: à définir. Normalement, ça devrait être `{deco; img: image.jpg; title: L'illustration;}`

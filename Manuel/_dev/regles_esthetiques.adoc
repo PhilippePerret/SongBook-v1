@@ -78,7 +78,7 @@ Cette partie concerne les règles esthétiques qui doivent être appliquée pour
 |====
 
 
-Si l'user veut placer un élément à un endroit dans son <<gabarit>> mais que le calcul ne le permet pas.
+Si l'user veut placer un élément à un endroit dans son <<gabarit-file>> mais que le calcul ne le permet pas.
 Solution proposée ?
 
 

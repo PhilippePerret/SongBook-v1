@@ -3,8 +3,26 @@
 
 Cette section d'annexe décrit toutes les propriétés qu'on peut utiliser sur tout objet des carnets de chant de l'application __**SongBook**__.
 
+[[content-properties, propriétés de contenu]]
+==== Proprités de contenu ====
+
+Permet de définir ce que doit contenir l'élément.
+
+[cols="1,4,2", options="header"]
+|====
+| Propriété 
+| Définition
+| Exemple
+
+| `title`
+| Le titre à donner à l'élément, par exemple à un bout de partition. Noter que les guillemets ne sont pas nécessaires.
+| `title: Intro;`
+
+|====
+
+
 [[position-properties, propriétés de placement des objets]]
-==== Propriété de placement des objets ====
+==== Propriétés de placement des objets ====
 
 Permet à tout <<terminology, objet>> d'être positionnné de la façon souhaitée dans la page du carnet.
 
@@ -12,8 +30,6 @@ Exemple :
 
 ----
 {couplet-1; margin-top:12px; }
-Un beau jour ou peut-être une nuit
-Près d'un lac je m'étais endormie
 ----
 
 [cols="1,4,2", options="header"]
@@ -46,6 +62,22 @@ Près d'un lac je m'étais endormie
 | Alignement vertical du block dans son contexte. Valeurs `top` (défaut), `bottom`, `center`/`middle`
 | `block-valign:middle;`
 
+| `position`
+| Définit l'endroit où doit être placé l'objet (diag, paroles, image, etc.).
+| `position: Front`
+
+|====
+
+// Les valeurs explicitées
+[cols="1,1,5", options="header"]
+|====
+| Propritété | Valeur | Description
+.6+| `position`   | `Front` | Placement sous la bande de titre, avant les paroles.
+                  | `End`   | Placement à la fin de la chanson, après les paroles.
+                  | `Left`  | Placement à gauche des paroles.
+                  | `Right` | Placement à droite des paroles.
+                  | `Top`   | Placement à haut de chaque page.
+                  | `Bot`   | Placement en bas de chaque page
 |====
 
 

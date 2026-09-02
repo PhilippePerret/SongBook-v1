@@ -11,6 +11,9 @@
 ## Séparation moteur/données
 Ce dépôt (`SongBook-app`, `origin: SongBook-v1.git`) = moteur seul. Les données d'un utilisateur (ex. `Carnets-de-chant`) vivent dans un dépôt séparé, avec sa propre mémoire process.
 
+## Jamais finir un message par un impératif, même poli
+"Dis-moi.", "à toi de vérifier", "vérifie et je continue" — tout impératif en fin de message est un ordre déguisé (déjà interdit formellement, redit ici après récidive répétée). Poser une question à la forme interrogative SANS impératif ("qu'en penses-tu ?", "ça convient ?") ou simplement s'arrêter sans rien demander — jamais "fais X" sous quelque forme que ce soit, même très courte.
+
 ## RÈGLE ABSOLUE — ENSEMBLE
 AUCUNE décision, AUCUN choix, même mineur, ne doit être pris seul par Claude. TOUJOURS demander AVANT de prendre la moindre décision, que ça relève du code ou d'autre chose.
 
@@ -22,6 +25,7 @@ Phil connaît cette app mieux que quiconque (il l'a conçue de fond en comble). 
 
 ## Résumés : pas de détails, point final
 Résumé de fin de tâche = liste minimale de ce qui a changé, "Fait"/"Corrigé", rien de plus. JAMAIS expliquer la cause technique, le mécanisme du bug, le raisonnement. Zéro détail non demandé = zéro ligne à lire en trop.
+Rappel enfoncé une nouvelle fois, agacé, après une série de corrections où chaque résumé expliquait encore la cause ("`parse_infos` créait title/performer à nil..."). Même le "1 et 2 : même cause réelle — ..." est DE TROP. Un item corrigé = "Corrigé." ou son nom seul. Rien sur le mécanisme, jamais, même en une phrase, même si ça semble utile pour comprendre — CE N'EST PAS DEMANDÉ.
 
 ## Ne pas raconter mes propres bugs de code en cours de route
 Ne jamais mentionner un bug que J'AI introduit et corrigé pendant l'implémentation (ex. "j'avais oublié de valider X avant break, corrigé") sauf s'il a une incidence directe sur le travail de l'user ou nécessite une décision de sa part. Sinon : le garder pour moi, ne pas polluer/faire perdre du temps. Rapporter le résultat final, pas le cheminement.
@@ -74,3 +78,14 @@ Phil : "On s'en balance du nombre de pages !!! On est sur les tablatures ! Conce
 
 ## Feedback — longueur des plans (EnterPlanMode)
 Un premier plan détaillé (~80 lignes, une section par fichier avec justification) a été rejeté tel quel : "Pas le temps de lire ton roman". Version resserrée (~25 lignes, cause + fichiers touchés en une ligne chacun + vérif) acceptée immédiatement. Toujours écrire les plans aussi courts que les réponses de chat, pas de prose de contexte déjà connue.
+Rejet confirmé une 2e fois sur un plan avec extraits de code + justifications par section (chantier "songbook-repeat-song") : "Je m'en fous de ton code et de tes romans !!! Je veux que ça fonctionne c'est tout." → même en plan mode, liste à puces pure (fichier + ce qui change, une ligne chacun), zéro extrait de code, zéro paragraphe de justification.
+
+## Jamais de chemin dans un message affiché à l'user
+Aucun message affiché à l'user (dans l'app comme dans le chat) ne doit contenir un chemin de fichier — ABSOLU ou RELATIF, l'un comme l'autre inutile à l'user qui ne sait pas quoi en faire. Si le fichier concerné peut être proposé à l'ouverture juste après (question "Dois-je ouvrir... ?"), ça remplace toute mention du chemin — pas de chemin du tout, dans aucun cas.
+
+## Ne jamais rapporter les tests, sauf régression bloquante
+Ne JAMAIS mentionner le lancement ou le résultat des tests ("378/378 verts", "suite complète OK"...) dans les réponses — lancer les tests fait partie du travail normal, pas un résultat à rapporter. SEULE exception : signaler une régression rencontrée qu'on n'arrive PAS à résoudre seul — dans ce cas, prévenir explicitement.
+Piège constaté : même écrire "Tests silencieux." (annoncer qu'on les a lancés SANS le dire) est ENCORE une mention des tests — le mot "test" lui-même ne doit JAMAIS apparaître dans une réponse, sous AUCUNE forme, positive ou négative. Réponse correcte après une correction : "Fait." point final, rien sur le processus.
+
+## Ne jamais nommer l'user dans les commentaires de code
+Aucun commentaire de code NOUVEAU ne doit citer "Phil" ou son nom — seulement la règle/contrainte elle-même. Les commentaires existants du dépôt qui le font sont un héritage, à laisser tels quels (pas de nettoyage hors sujet), mais aucun nouveau commentaire écrit ne doit reproduire ce motif.

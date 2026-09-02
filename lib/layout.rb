@@ -2,6 +2,7 @@ require "prawn"
 require "prawn-svg"
 require_relative "app_config"
 require_relative "ansi_colors"
+require_relative "locale"
 require_relative "../tools/tablator/tablator"
 require_relative "transpose"
 
@@ -76,10 +77,71 @@ module Layout
   # Nombre de mesures par système de tablature — `nil` = calculé automatiquement
   # (`Tablator.render_tab_svg`), surclassable (layout, clé `tabla_measures_per_page`)
   @tabla_measures_per_page = nil
+  # `font-family`/`font-size` (`.infos`, résolus chanson > carnet > défaut) — remplacent
+  # respectivement le "HelveticaNeue" en dur et la constante `TEXT_SIZE` dans les
+  # fonctions de rendu, réinitialisés à chaque chanson (`PageBuilder.build`).
+  @font_family = "HelveticaNeue"
+  @font_size = 11 # = TEXT_SIZE (constante définie plus bas, pas encore chargée ici)
+  # Base du carnet (`CarnetBuilder.build`) : référence pour `show_specs` (ce qui diffère,
+  # chanson par chanson) et pour la page de copyright. Défaut = celui d'une chanson
+  # seule, hors carnet (`CarnetBuilder.build_song`, pas de carnet à consulter).
+  @carnet_font_baseline = { "font-family" => "HelveticaNeue", "font-size" => "11" }
+  # "Carnet de test d'impression" : chanson > carnet > false — réglable pour TOUT le
+  # carnet d'un coup (`.infos` du carnet), ou chanson par chanson.
+  @show_specs = false
+  # `{vertical: :top|:bot, horizontal: :left|:center|:right|nil}` — `horizontal` ignoré
+  # si `facing_pages: true` (côté automatique, voir `Layout.draw_page_number`).
+  @folio_position = { vertical: :bot, horizontal: nil }
   class << self
     attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing,
       :sensitivity, :log_conflict_count, :shrink_diags, :shrink_tabla, :shrink_score, :shrink_text, :score_title_size,
-      :score_title_style, :tabla_measures_per_page, :rebalance_pages
+      :score_title_style, :tabla_measures_per_page, :rebalance_pages, :font_family, :font_size, :carnet_font_baseline,
+      :show_specs, :folio_position
+  end
+
+  # Parse `folio_position:` du `.infos` ("Top"/"Bot" ou "Top-Left".."Bot-Right")
+  # selon `facing_pages` — défaut Bot (facing) / Bot-Center (non-facing).
+  def self.resolve_folio_position(raw, facing_pages)
+    tokens = raw.to_s.downcase.split("-")
+    vertical = tokens.include?("top") ? :top : :bot
+    return { vertical: vertical, horizontal: nil } if facing_pages
+
+    horizontal = if tokens.include?("left") then :left
+    elsif tokens.include?("right") then :right
+    else :center
+    end
+    { vertical: vertical, horizontal: horizontal }
+  end
+
+  # Réglages `.infos` TRACKÉS pour `show_specs` — liste ouverte, à compléter (zoom
+  # tablas/score...) quand leurs effets réels seront stabilisés. `label:` formate la
+  # valeur RÉSOLUE de la chanson (pas la valeur brute du `.infos`).
+  SPECS_TRACKED = [
+    { key: "font-family", label: ->(v) { v } },
+    { key: "font-size", label: ->(v) { "#{v.to_s[/[\d.]+/]}pt" } },
+  ].freeze
+
+  # Ligne `show_specs` d'UNE chanson : toute clé EXPLICITEMENT présente dans le `.infos`
+  # de CETTE chanson (`meta.key?`) — même si sa valeur est identique à la base du carnet
+  # (`carnet_font_baseline`) : présente dans le fichier == l'user la verra, donc affichée
+  # (Phil, bug constaté 2026-09-01 — masquée à tort sous prétexte "valeur par défaut").
+  def self.song_specs_line(meta)
+    SPECS_TRACKED.filter_map do |spec|
+      next unless meta.key?(spec[:key])
+
+      spec[:label].call(meta[spec[:key]])
+    end.join(" ")
+  end
+
+  def self.min_text_size
+    font_size - 2
+  end
+
+  # `CHORD_SIZE` fixe (9pt, calibré pour `TEXT_SIZE` = 11) ne suivait pas `font-size`
+  # (`.infos`) sans ceci — accords minuscules sur une police à 39pt, énormes sur du 8pt
+  # (bug constaté 2026-09-01). Mise à l'échelle proportionnelle, jamais sous 1pt.
+  def self.scaled_chord_size
+    [(CHORD_SIZE * font_size / TEXT_SIZE.to_f).round, 1].max
   end
   CONFLICTS = []
 
@@ -132,7 +194,7 @@ module Layout
   # Exception documentée : `draw_page_number` dessine via `pdf.canvas` (page ENTIÈRE),
   # hors du système de coordonnées `pdf.bounds` — donc hors périmètre de ce garde-fou par
   # nature. Sa position reste néanmoins DANS la zone sûre KDP (recalculée depuis
-  # `kdp.bottom_margin`), pas dans la marge — corrigé 2026-08-22 après rejet KDP réel.
+  # `printer.bot_margin`), pas dans la marge — corrigé 2026-08-22 après rejet KDP réel.
   def self.engrave(bottom:, context: nil)
     if bottom < -0.01
       conflict!("gravure refusée#{context ? " (#{context})" : ""} — déborderait de #{-bottom.round(2)}pt", solution: "rien dessiné")
@@ -171,7 +233,9 @@ module Layout
       warn error("Conflits rencontrés :")
       CONFLICTS.each { |e| warn error("- #{e}") }
     elsif log_conflict_count.to_i.positive?
-      warn error("Des erreurs sont produites (#{log_conflict_count}), voir le fichier #{conflict_log_path}")
+      n = log_conflict_count
+      msg = n == 1 ? Loc.get("conflicts_encountered_one") : format(Loc.get("conflicts_encountered_other"), n)
+      warn error(msg)
     end
   end
 
@@ -186,10 +250,6 @@ module Layout
 
   CHORD_SIZE = 9
   TEXT_SIZE = 11
-  # Plancher de rétrécissement d'une row côte à côte trop large (remarques.txt Carnet-1,
-  # 2026-08-18) — valeur de départ, à ajuster empiriquement (Phil : "un chiffre à
-  # déterminer, en constatant la diminution du texte"), PAS définitive.
-  MIN_TEXT_SIZE = TEXT_SIZE - 2
   LINE_GAP = 2
   # RAA1 (Manuel/regles_esthetiques.adoc) : deux accords ne doivent JAMAIS être en
   # contact — un pas d'avancée strictement égal à la largeur du label précédent les
@@ -216,12 +276,6 @@ module Layout
   # RAD3 : largeur plancher sous laquelle un diag ne doit jamais être réduit (valeur
   # provisoire, à ajuster — .
   MIN_SIZE = { diags: { width: 48.0 } }.freeze
-
-  # Marges : plus de valeur fixe — imposées par la classe `KDP` (2026-08-17), jamais
-  # laissées au choix de l'utilisateur (esthétique, pas un réglage). Voir
-  # `apply_kdp_margins`. Papier/bleed fixés ici tant qu'aucun autre besoin n'apparaît.
-  KDP_PAPER = :white
-  KDP_BLEED = false
 
   GEORGIA_DIR = File.expand_path("../assets/fonts/Georgia", __dir__)
   HELVETICA_NEUE_DIR = File.expand_path("../assets/fonts/HelveticaNeue", __dir__)
@@ -252,13 +306,13 @@ module Layout
   # après CHAQUE `start_new_page`, Prawn réinitialisant `bounds` sur la marge du document
   # à chaque nouvelle page.
   # `debug_marks:` (option CLI `-x`) : rectangle de repère sur la zone utile (`pdf.bounds`,
-  # DONC déjà nette des marges KDP) — même principe/couleur que les repères de couverture
+  # DONC déjà nette des marges) — même principe/couleur que les repères de couverture
   # (`CoverBuilder::DEBUG_COLOR`), jamais dessiné en dehors de ce garde-fou explicite.
-  def self.apply_kdp_margins(pdf, kdp, page_no, page_w_pt, page_h_pt, debug_marks: false)
-    lm = in_pt(kdp.left_margin(page_no))
-    rm = in_pt(kdp.right_margin(page_no))
-    tm = in_pt(kdp.top_margin)
-    bm = in_pt(kdp.bottom_margin)
+  def self.apply_print_margins(pdf, printer, page_no, page_w_pt, page_h_pt, debug_marks: false)
+    lm = in_pt(printer.left_margin(page_no))
+    rm = in_pt(printer.right_margin(page_no))
+    tm = in_pt(printer.top_margin)
+    bm = in_pt(printer.bot_margin)
     pdf.bounds = Prawn::Document::BoundingBox.new(
       pdf, pdf, [lm, page_h_pt - tm], width: page_w_pt - lm - rm, height: page_h_pt - tm - bm
     )
@@ -270,24 +324,32 @@ module Layout
     pdf.stroke_color "000000"
   end
 
-  # Numéro de page, coin extérieur bas (droite en recto, gauche en verso — convention
-  # livre), DANS la zone sûre KDP (jamais dans la marge — un essai KDP réel a rejeté la
-  # version précédente qui le posait volontairement dans la marge basse, 2026-08-22).
-  # `pdf.canvas` bascule sur la page ENTIÈRE (pas `pdf.bounds`), donc `y` est recalculé
-  # ici depuis `kdp.bottom_margin` plutôt que d'hériter de `apply_kdp_margins`.
-  def self.draw_page_number(pdf, kdp, page_no, page_w_pt)
+  # Numéro de page, position selon `Layout.folio_position` : côté horizontal automatique
+  # (coin extérieur, recto/verso) si `printer.facing_pages`, sinon fixe (`horizontal`).
+  # `pdf.canvas` bascule sur la page ENTIÈRE (pas `pdf.bounds`), donc `x`/`y` recalculés
+  # ici plutôt que d'hériter de `apply_print_margins`.
+  def self.draw_page_number(pdf, printer, page_no, page_w_pt, page_h_pt)
     pdf.font_families.update("Georgia" => {
       normal: File.join(GEORGIA_DIR, "Georgia-Regular.ttf"),
       bold: File.join(GEORGIA_DIR, "Georgia-Bold.ttf"),
       italic: File.join(GEORGIA_DIR, "Georgia-Italic.ttf"),
       bold_italic: File.join(GEORGIA_DIR, "Georgia-BoldItalic.ttf"),
     })
-    recto = kdp.recto?(page_no)
-    y = in_pt(kdp.bottom_margin) + PAGE_NUMBER_TOP_INSET_PT
+    fp = folio_position
+    recto = printer.recto?(page_no)
+    y = fp[:vertical] == :top ? page_h_pt - in_pt(printer.top_margin) - PAGE_NUMBER_INK_ZONE_PT : in_pt(printer.bot_margin) + PAGE_NUMBER_TOP_INSET_PT
     pdf.canvas do
       pdf.font("Georgia") do
         text_w = pdf.width_of(page_no.to_s, size: PAGE_NUMBER_SIZE, style: :bold)
-        x = recto ? page_w_pt - in_pt(kdp.right_margin(page_no)) - text_w : in_pt(kdp.left_margin(page_no))
+        x = if !printer.facing_pages && fp[:horizontal]
+          case fp[:horizontal]
+          when :left then in_pt(printer.left_margin(page_no))
+          when :right then page_w_pt - in_pt(printer.right_margin(page_no)) - text_w
+          else (page_w_pt - text_w) / 2.0
+          end
+        else
+          recto ? page_w_pt - in_pt(printer.right_margin(page_no)) - text_w : in_pt(printer.left_margin(page_no))
+        end
         pdf.draw_text page_no.to_s, at: [x, y], size: PAGE_NUMBER_SIZE, style: :bold
       end
     end
@@ -694,7 +756,8 @@ module Layout
     text_font_name = AppConfig.get("text_font")
     pdf.font_families.update(text_font_name => resolve_font_files(text_font_name))
 
-    pdf.font "HelveticaNeue"
+    pdf.font_families.update(font_family => resolve_font_files(font_family)) unless font_family == "HelveticaNeue"
+    pdf.font font_family
   end
 
   # `text_font` (options.yaml) est, par convention, le nom du DOSSIER sous
@@ -788,11 +851,27 @@ module Layout
     pdf.bounds.height - title_ascent
   end
 
+  # Taille/couleur de la ligne `show_specs` — overlay pur : PAS de `Layout.engrave`, PAS
+  # de gouttière réservée, dessinée DANS l'espace déjà prévu sous le bandeau/titre.
+  # N'influence donc jamais la pagination.
+  SPECS_LINE_SIZE = 9
+  SPECS_LINE_COLOR = "000000"
+
+  def self.draw_specs_overlay(pdf, meta, top_y)
+    return unless show_specs
+
+    line = song_specs_line(meta)
+    return if line.empty?
+
+    draw_text_colored(pdf, "Impression test : #{line}", at: [HEADER_PAD_X, top_y], size: SPECS_LINE_SIZE, color: SPECS_LINE_COLOR)
+  end
+
   def self.draw_header_inline(pdf, meta)
     y = title_baseline_y(pdf)
     title_descent = font_metric(pdf, TITLE_SIZE) { pdf.font.descender }
 
     draw_header_row(pdf, meta, y, title_color: "000000", info_color: "666666")
+    draw_specs_overlay(pdf, meta, y - title_descent - SPECS_LINE_SIZE)
 
     y - title_descent
   end
@@ -814,9 +893,10 @@ module Layout
   # aucun titre, quels que soient ses accents/jambages, ne peut faire bouger cette ligne.
   # Parolier/compositeur : ancré sur `band_bottom`.
   def self.draw_header_band(pdf, meta)
-    # `band_top` FIGÉ EN PREMIER, avant tout autre calcul — calé sur la limite KDP haute
-    # (`KDP#top_margin`, qui inclut déjà le point de sécurité `SAFETY_BUFFER_IN`, voir
-    # `kdp.rb`), appliquée à `pdf.bounds` par `apply_kdp_margins` AVANT l'appel à cette
+    # `band_top` FIGÉ EN PREMIER, avant tout autre calcul — calé sur la limite haute du
+    # profil imprimeur (`PrinterProfile#top_margin`, qui inclut déjà le point de sécurité
+    # `SAFETY_BUFFER_IN`, voir `printer_profile.rb`), appliquée à `pdf.bounds` par
+    # `apply_print_margins` AVANT l'appel à cette
     # méthode. `pdf.bounds.height` (repère relatif à la bounding box) = exactement cette
     # limite. RIEN de ce qui suit (hb, cap_height, baseline) ne doit jamais influencer
     # `band_top`.
@@ -841,6 +921,7 @@ module Layout
     end
 
     draw_header_band_rows(pdf, meta, y, y_pc, pc_size, title_color: "FFFFFF", info_color: "FFFFFF")
+    draw_specs_overlay(pdf, meta, band_bottom - SPECS_LINE_SIZE - 2)
 
     band_bottom
   end
@@ -1012,10 +1093,20 @@ module Layout
   # ligne d'excédent en plus SOUS ce vers, donc un pas de ligne de plus. Ligne sans mot
   # (accords seuls) : jamais de ligne de texte réservée en dessous (`draw_chords_only_line`
   # tient tout sur la ligne d'accords), donc jamais de RAL2 non plus.
-  def self.line_step(pdf, line, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE, reserve_chord_row: false)
+  # Distance verticale accord -> texte, sous cet accord. `chord_size + LINE_GAP` seul
+  # (comportement historique) suffit tant que `text_size` == `TEXT_SIZE` — un `font-size`
+  # de chanson plus grand (`Layout.font_size`, cascade `.infos`) fait grandir l'ascendant
+  # du texte SANS grandir cette distance, collant le texte sous l'accord (bug constaté :
+  # chanson en 14/16pt, mots touchant les accords juste au-dessus). Toute distance en trop
+  # au-delà de `TEXT_SIZE` s'ajoute ici — comportement au défaut STRICTEMENT inchangé.
+  def self.chord_to_text_drop(chord_size, text_size)
+    chord_size + LINE_GAP + [text_size - TEXT_SIZE, 0].max
+  end
+
+  def self.line_step(pdf, line, width, chord_size: scaled_chord_size, text_size: font_size, reserve_chord_row: false)
     return chord_size + LINE_GAP if chords_only_line?(line)
 
-    step = line_has_chord?(line) || reserve_chord_row ? chord_size + LINE_GAP + text_size + LINE_GAP : text_size + LINE_GAP
+    step = line_has_chord?(line) || reserve_chord_row ? chord_to_text_drop(chord_size, text_size) + text_size + LINE_GAP : text_size + LINE_GAP
     step += text_size + LINE_GAP if line_overflows?(pdf, line, width, chord_size, text_size)
     step
   end
@@ -1031,7 +1122,7 @@ module Layout
   # posée à côté d'une strophe AVEC accord aligne sa 1re ligne sur celle de l'autre —
   # `force_chord_baseline` (posé par `row_to_element` selon le voisin de row) impose
   # l'ancrage "1re ligne avec accord" même si CE bloc-ci n'en a pas lui-même.
-  def self.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, lines, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE, force_chord_baseline: false)
+  def self.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, lines, width, chord_size: scaled_chord_size, text_size: font_size, force_chord_baseline: false)
     return 0 if lines.empty?
 
     baseline = force_chord_baseline || line_has_chord?(lines.first) ? chord_ascent : text_ascent
@@ -1044,7 +1135,7 @@ module Layout
       last_text_offset = if chords_only_line?(line)
                             baseline
                           else
-                            baseline + (line_has_chord?(line) || reserve_chord_row ? chord_size + LINE_GAP : 0)
+                            baseline + (line_has_chord?(line) || reserve_chord_row ? chord_to_text_drop(chord_size, text_size) : 0)
                           end
       last_text_offset += text_size + LINE_GAP if !chords_only_line?(line) && line_overflows?(pdf, line, width, chord_size, text_size)
       baseline += line_step(pdf, line, width, chord_size: chord_size, text_size: text_size, reserve_chord_row: reserve_chord_row) if i < lines.length - 1
@@ -1057,7 +1148,7 @@ module Layout
   # ligne où le label d'accord est plus large que le mot ("Dm7" vs "LOVE,"), et le rendu
   # RÉEL déborde de la colonne qui lui a été allouée, empiétant sur la colonne suivante
   # (chevauchement constaté 2026-08-21, "All You Need Is Love" p.6, intro/couplet pairés).
-  def self.block_width(pdf, block, chord_size: CHORD_SIZE, text_size: TEXT_SIZE)
+  def self.block_width(pdf, block, chord_size: scaled_chord_size, text_size: font_size)
     block.lines.map { |l| line_width(pdf, l.segments, chord_size, text_size, label: l.label) }.max || 0
   end
 
@@ -1104,15 +1195,15 @@ module Layout
     if shrink_text
       natural_w = block_width(pdf, row[0]) + block_width(pdf, row[1])
       scale = avail / natural_w.to_f
-      text_size = (TEXT_SIZE * scale).floor
-      return [shrunk_row_element(pdf, row, x0, h_gutter, text_size)] if text_size >= MIN_TEXT_SIZE
+      text_size = (font_size * scale).floor
+      return [shrunk_row_element(pdf, row, x0, h_gutter, text_size)] if text_size >= min_text_size
     end
 
     row.map { |block| row_to_element(pdf, [block], x0, width, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent) }
   end
 
   def self.shrunk_row_element(pdf, row, x0, h_gutter, text_size)
-    chord_size = [(CHORD_SIZE * text_size / TEXT_SIZE.to_f).floor, 1].max
+    chord_size = [(scaled_chord_size * text_size / font_size.to_f).floor, 1].max
     chord_ascent = font_metric(pdf, chord_size) { pdf.font.ascender }
     text_ascent = font_metric(pdf, text_size) { pdf.font.ascender }
     text_descent = font_metric(pdf, text_size) { pdf.font.descender }
@@ -1261,7 +1352,7 @@ module Layout
   # `int`/`ext` (voir `PageBuilder.build`) — DEUX variantes gauche/droite pré-construites
   # (mêmes hauteurs, seul `x` diffère, donc MÊME pagination `pages`/`side_pages` valable
   # pour les deux), la bonne est choisie ICI, PAGE PAR PAGE, sur la parité recto/verso
-  # réelle de cette page (`kdp.recto?`) — jamais figée sur la 1re page de la chanson (bug
+  # réelle de cette page (`printer.recto?`) — jamais figée sur la 1re page de la chanson (bug
   # constaté : "À bicyclette" p.4 (verso) et p.5 (recto), même chanson, reliure des deux
   # côtés, resterait fausse sur l'une des deux si résolue une seule fois pour la chanson).
   # `row_excess`/`row_excess_w` , "même mécanisme que les colonnes") :
@@ -1270,12 +1361,14 @@ module Layout
   # étant la largeur RÉELLE choisie pour la rangée (référence RAD10 pour la grille de
   # secours, voir plus bas). Jamais les deux en même temps que `side_col` (une chanson a
   # soit une colonne, soit une rangée, jamais les deux).
-  def self.paginate_and_draw(pdf, elements, first_avail_h, kdp:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, text_x: 0, text_w: nil, debug_marks: false,
+  def self.paginate_and_draw(pdf, elements, first_avail_h, printer:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, text_x: 0, text_w: nil, debug_marks: false,
       dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil, row_excess: [], row_excess_w: DIAG_W)
     heights = elements.map(&:height)
     trailing_extra = row_excess.any? ? estimate_excess_grid_height(row_excess, text_w || pdf.bounds.width) : 0
     pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned, top_type: :band_strophe, trailing_extra: trailing_extra)
-    want_left_for = ->(page_no) { dynamic_mode.nil? || (dynamic_mode == :int) == kdp.recto?(page_no) }
+    # `int`/`ext` (alternance recto/verso) n'a de sens qu'en reliure (`facing_pages`) —
+    # sinon retombe sur `int` fixe (pas d'alternance sans vis-à-vis).
+    want_left_for = ->(page_no) { dynamic_mode.nil? || !printer.facing_pages || (dynamic_mode == :int) == printer.recto?(page_no) }
 
     side_elements = []
     side_elements_alt = []
@@ -1386,7 +1479,14 @@ module Layout
       row_top_y = column_bottom_y ? column_bottom_y + block_h : gap_v + block_h
 
       page_els = elements[last_page[:start]...last_page[:finish]]
-      remaining_h = last_page[:avail_h] - row_top_y
+      # `min_v_dist(:default)` de MARGE en plus (pas seulement `row_top_y`, déjà le haut
+      # de la grille, et surtout pas `gap_v` = `min_v_dist(:diags)`, 2pt à peine, pensé
+      # pour l'écart diag-diag, pas texte-diag) : sans cette marge, un ajustement EXACT
+      # (gutters qui remplissent `remaining_h` pile) laisse zéro respiration entre la
+      # dernière ligne de texte et la grille — texte qui semble la toucher/chevaucher
+      # (bug constaté, chanson avec plusieurs diagrammes en excédent fusionnés en bas de
+      # page).
+      remaining_h = last_page[:avail_h] - row_top_y - min_v_dist(:default)
       fits = remaining_h.positive? && (paginate(page_els, remaining_h, remaining_h).size == 1)
 
       if fits
@@ -1405,9 +1505,9 @@ module Layout
       self.current_page = page_no
       if i.positive?
         pdf.start_new_page
-        apply_kdp_margins(pdf, kdp, page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
+        apply_print_margins(pdf, printer, page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
       end
-      draw_page_number(pdf, kdp, page_no, page_w_pt)
+      draw_page_number(pdf, printer, page_no, page_w_pt, page_h_pt)
 
       want_left = want_left_for.call(page_no)
       cur_elements = want_left ? elements : (elements_alt || elements)
@@ -1554,7 +1654,7 @@ module Layout
 
     return if excess_paths.empty?
 
-    draw_diags_grid(pdf, excess_paths, excess_heights, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt,
+    draw_diags_grid(pdf, excess_paths, excess_heights, printer: printer, page_w_pt: page_w_pt, page_h_pt: page_h_pt,
       first_page_no: first_page_no + page_count, debug_marks: debug_marks, diag_w: side_col ? side_col[:width] : DIAG_W)
   end
 
@@ -1564,7 +1664,7 @@ module Layout
   # la MÊME taille, donc CELLE de la colonne normale (`heights` est déjà à cette échelle,
   # voir `layout_diags`/`diag_column_width`), jamais `DIAG_W` nominal redessiné à part
   # (bug constaté : diags de page dédiée plus grands, tailles/proportions différentes).
-  def self.draw_diags_grid(pdf, paths, heights, kdp:, page_w_pt:, page_h_pt:, first_page_no:, debug_marks: false, diag_w: DIAG_W)
+  def self.draw_diags_grid(pdf, paths, heights, printer:, page_w_pt:, page_h_pt:, first_page_no:, debug_marks: false, diag_w: DIAG_W)
     diag_h = heights.max
     gap_h = min_h_dist(:diags)
     gap_v = min_v_dist(:diags)
@@ -1578,8 +1678,8 @@ module Layout
       pdf.start_new_page
       page_no = first_page_no + gi
       self.current_page = page_no
-      apply_kdp_margins(pdf, kdp, page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
-      draw_page_number(pdf, kdp, page_no, page_w_pt)
+      apply_print_margins(pdf, printer, page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
+      draw_page_number(pdf, printer, page_no, page_w_pt, page_h_pt)
 
       slice.each_slice(cols).with_index do |row, ri|
         y = pdf.bounds.height - gap_v - ri * (diag_h + gap_v)
@@ -1600,7 +1700,7 @@ module Layout
   # au bord DROIT de SA colonne (pas de la page), le reste de la colonne (`width`)
   # inchangé — par LIGNE, pas par bloc entier (un bloc "+"-concaténé peut mélanger des
   # lignes alignées et des lignes normales, voir `PageBuilder.apply_extra_directives`).
-  def self.draw_block(pdf, block, x, y0, width, chord_ascent, text_ascent, chord_size: CHORD_SIZE, text_size: TEXT_SIZE, force_chord_baseline: false)
+  def self.draw_block(pdf, block, x, y0, width, chord_ascent, text_ascent, chord_size: scaled_chord_size, text_size: font_size, force_chord_baseline: false)
     y = y0 - (force_chord_baseline || line_has_chord?(block.lines.first) ? chord_ascent : text_ascent)
     block.lines.each_with_index do |line, i|
       line_x = x
@@ -1657,35 +1757,52 @@ module Layout
     [text[0...root_end], text[root_end..] || ""]
   end
 
+  # Accords TOUJOURS en HelveticaNeue, quelle que soit `Layout.font_family` de la
+  # chanson (paroles/titre) — une police choisie pour son style (Arial, Futura...) ne
+  # définit pas forcément ♯/♭, plantant ou trouant l'affichage des accords qui en ont
+  # besoin. Mesure ET dessin passent TOUS les deux ici, jamais l'un sans l'autre (sinon
+  # largeur mesurée ≠ largeur dessinée, positions faussées).
+  def self.with_chord_font(pdf)
+    result = nil
+    pdf.font("HelveticaNeue") { result = yield }
+    result
+  end
+
   def self.chord_label_width(pdf, chord, size)
     text = display_chord(chord)
     return slash_label_width(pdf, text, size) if text.include?("/")
 
     main, suffix = chord_label_parts(chord)
-    w = pdf.width_of(main, size: size, style: :bold)
-    w += pdf.width_of(suffix, size: size - 2, style: :bold) unless suffix.empty?
-    w
+    with_chord_font(pdf) do
+      w = pdf.width_of(main, size: size, style: :bold)
+      w += pdf.width_of(suffix, size: size - 2, style: :bold) unless suffix.empty?
+      w
+    end
   end
 
   def self.slash_label_width(pdf, text, size)
     parts = text.split("/")
     trailing_gap = parts.first.to_s.empty? ? CHORD_SLASH_GAP_BASS_ONLY : CHORD_SLASH_GAP
-    parts.sum { |p| pdf.width_of(p, size: size, style: :bold) } +
-      (parts.length - 1) * (pdf.width_of("/", size: size, style: :bold) + CHORD_SLASH_GAP + trailing_gap)
+    with_chord_font(pdf) do
+      parts.sum { |p| pdf.width_of(p, size: size, style: :bold) } +
+        (parts.length - 1) * (pdf.width_of("/", size: size, style: :bold) + CHORD_SLASH_GAP + trailing_gap)
+    end
   end
 
-  def self.draw_chord_label(pdf, chord, x, y, size: CHORD_SIZE)
+  def self.draw_chord_label(pdf, chord, x, y, size: scaled_chord_size)
     text = display_chord(chord)
     return draw_slash_chord_label(pdf, text, x, y, size) if text.include?("/")
 
     main, suffix = chord_label_parts(chord)
-    descent = font_metric(pdf, size) { pdf.font.descender }
-    engrave(bottom: y - descent, context: "accord #{chord}") { pdf.draw_text main, at: [x, y], size: size, style: :bold }
-    return if suffix.empty?
+    with_chord_font(pdf) do
+      descent = font_metric(pdf, size) { pdf.font.descender }
+      engrave(bottom: y - descent, context: "accord #{chord}") { pdf.draw_text main, at: [x, y], size: size, style: :bold }
+      next if suffix.empty?
 
-    suffix_descent = font_metric(pdf, size - 2) { pdf.font.descender }
-    engrave(bottom: y - suffix_descent, context: "accord #{chord} (suffixe)") do
-      pdf.draw_text suffix, at: [x + pdf.width_of(main, size: size, style: :bold), y], size: size - 2, style: :bold
+      suffix_descent = font_metric(pdf, size - 2) { pdf.font.descender }
+      engrave(bottom: y - suffix_descent, context: "accord #{chord} (suffixe)") do
+        pdf.draw_text suffix, at: [x + pdf.width_of(main, size: size, style: :bold), y], size: size - 2, style: :bold
+      end
     end
   end
 
@@ -1693,18 +1810,20 @@ module Layout
   # `CHORD_SLASH_GAP` de chaque côté du "/" — mêmes offsets ici et dans `slash_label_width`
   # (une seule formule pour mesurer et dessiner, voir commentaire `text_line_steps`).
   def self.draw_slash_chord_label(pdf, text, x, y, size)
-    descent = font_metric(pdf, size) { pdf.font.descender }
-    cx = x
-    parts = text.split("/")
-    parts.each_with_index do |part, i|
-      engrave(bottom: y - descent, context: "accord (slash) \"#{part}\"") { pdf.draw_text part, at: [cx, y], size: size, style: :bold }
-      cx += pdf.width_of(part, size: size, style: :bold)
-      next if i == parts.length - 1
+    with_chord_font(pdf) do
+      descent = font_metric(pdf, size) { pdf.font.descender }
+      cx = x
+      parts = text.split("/")
+      parts.each_with_index do |part, i|
+        engrave(bottom: y - descent, context: "accord (slash) \"#{part}\"") { pdf.draw_text part, at: [cx, y], size: size, style: :bold }
+        cx += pdf.width_of(part, size: size, style: :bold)
+        next if i == parts.length - 1
 
-      cx += CHORD_SLASH_GAP
-      engrave(bottom: y - descent, context: "accord (slash) séparateur") { pdf.draw_text "/", at: [cx, y], size: size, style: :bold }
-      trailing_gap = part.empty? ? CHORD_SLASH_GAP_BASS_ONLY : CHORD_SLASH_GAP
-      cx += pdf.width_of("/", size: size, style: :bold) + trailing_gap
+        cx += CHORD_SLASH_GAP
+        engrave(bottom: y - descent, context: "accord (slash) séparateur") { pdf.draw_text "/", at: [cx, y], size: size, style: :bold }
+        trailing_gap = part.empty? ? CHORD_SLASH_GAP_BASS_ONLY : CHORD_SLASH_GAP
+        cx += pdf.width_of("/", size: size, style: :bold) + trailing_gap
+      end
     end
   end
 
@@ -1940,6 +2059,16 @@ module Layout
       end
       max_x = step[:x]
     end
+
+    # Passe AVANT (gauche -> droite), même garantie RAA1 mais contre le voisin de GAUCHE
+    # cette fois — la passe précédente protège seulement "ne dépasse pas le suivant",
+    # jamais "ne chevauche pas le précédent" (bug constaté : accord slash large, ex.
+    # "Bb6/C", repoussé à gauche par le suivant jusqu'à recouvrir le précédent).
+    min_x = nil
+    chord_steps.each do |step|
+      step[:x] = min_x if min_x && step[:x] < min_x
+      min_x = step[:x] + chord_label_width(pdf, step[:chord], chord_size) + CHORD_GAP
+    end
   end
 
   # L'avancée horizontale ne doit JAMAIS être inférieure à la largeur du label d'accord
@@ -1950,11 +2079,11 @@ module Layout
   # du label d'accord) : garantie mathématique, jamais un réglage à ajuster à la main.
   # `width` : largeur de colonne disponible, sert au RAL2 (`nil` = jamais de RAL2, ex.
   # appelants qui ne connaissent pas encore leur largeur).
-  def self.draw_line(pdf, line, x, y, width, chord_size: CHORD_SIZE, text_size: TEXT_SIZE, reserve_chord_row: false)
+  def self.draw_line(pdf, line, x, y, width, chord_size: scaled_chord_size, text_size: font_size, reserve_chord_row: false)
     return draw_chords_only_line(pdf, line, x, y, chord_size: chord_size) if chords_only_line?(line)
 
     has_chord = line_has_chord?(line) || reserve_chord_row
-    text_y = has_chord ? y - chord_size - LINE_GAP : y
+    text_y = has_chord ? y - chord_to_text_drop(chord_size, text_size) : y
     text_descent = font_metric(pdf, text_size) { pdf.font.descender }
 
     # sinon RAL2.1 décide seul, par ligne, le minimum de resserrement nécessaire.
@@ -1993,7 +2122,7 @@ module Layout
 
     return unless overflow_text
 
-    text_y = has_chord ? y - chord_size - LINE_GAP : y
+    text_y = has_chord ? y - chord_to_text_drop(chord_size, text_size) : y
     overflow_y = text_y - text_size - LINE_GAP
     overflow_w = pdf.width_of(overflow_text, size: text_size)
     overflow_descent = font_metric(pdf, text_size) { pdf.font.descender }
@@ -2007,7 +2136,7 @@ module Layout
   # tout tenu sur la ligne d'accords elle-même (jamais de ligne de texte vide en dessous,
   # jamais le séparateur affiché sous l'accord — . Espacement RAA1
   # (`CHORD_GAP`) partout, y compris entre accord et séparateur.
-  def self.draw_chords_only_line(pdf, line, x, y, chord_size: CHORD_SIZE)
+  def self.draw_chords_only_line(pdf, line, x, y, chord_size: scaled_chord_size)
     descent = font_metric(pdf, chord_size) { pdf.font.descender }
     steps, = chords_only_steps(pdf, line.segments, chord_size)
     steps.each do |step|

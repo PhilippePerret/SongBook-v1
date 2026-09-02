@@ -1,5 +1,6 @@
 format: 21cm x 14.85cm
 title_band: true
+tdm_position: End
 score_title_size: 11pt
 score_title_style: bold
 diags_position: left
@@ -9,3 +10,21 @@ shrink_text: false
 shrink_diags: true
 shrink_tabla: false
 shrink_score: true
+front_matter:
+  title_page: true
+  half_title_page: false
+  pages_garde: true
+  table_of_contents:
+    per_song: true
+    per_performer: true
+    per_composer: false
+    per_author: false
+  forword: false
+  preface: false
+  acknowledgments: false
+copyright: © tous droits réservés
+credits:
+  book_designer: SongBook
+  typesetter: 
+  proofreader: 
+  programming: Claude-code

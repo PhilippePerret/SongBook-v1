@@ -36,4 +36,33 @@ RSpec.describe "construction d'un carnet" do
       File.delete(custom_cov)
     end
   end
+
+  describe "carnet hors des plages de pages KDP" do
+    let(:small_carnet) { File.join(FIXTURE_SONGBOOKS_DIR, "Carnet-Small") }
+    let(:small_export_dir) { File.join(small_carnet, "export") }
+
+    before do
+      FileUtils.mkdir_p(small_carnet)
+      File.write(File.join(small_carnet, "c.tdm"), "- Angie\n")
+    end
+
+    after { FileUtils.rm_rf(small_carnet) }
+
+    it "n'interrompt plus la construction (avertissement, pas une erreur)" do
+      File.write(File.join(small_carnet, "c.infos"), "title: Petit carnet\nprinter: KDP\n")
+      out_path = nil
+      expect { out_path = CarnetBuilder.build(small_carnet) }.to output(/Attention.*inférieur aux plages KDP \(24 à 828\)/).to_stdout
+      expect(File.exist?(out_path)).to be true
+    end
+
+    it "n'affiche rien si 'printer' n'est ni Amazon ni KDP" do
+      File.write(File.join(small_carnet, "c.infos"), "title: Petit carnet\n")
+      expect { CarnetBuilder.build(small_carnet) }.not_to output(/Attention/).to_stdout
+    end
+
+    it "'printer' insensible à la casse (amazon/kdp)" do
+      File.write(File.join(small_carnet, "c.infos"), "title: Petit carnet\nprinter: amazon\n")
+      expect { CarnetBuilder.build(small_carnet) }.to output(/Attention/).to_stdout
+    end
+  end
 end

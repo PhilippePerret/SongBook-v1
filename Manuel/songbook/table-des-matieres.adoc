@@ -34,8 +34,45 @@ Imaginons un carnet des tubes des années 1986 qui portera le nom `Carnets/Carne
  
  ----
  songbook build tdm[ --songbook "Mon nouveau carnet de chant"]
+ songbook edit tdm [ --songbook "Mon nouveau carnet de chant"]
  ----
  
- Cette commande afficher la liste des chansons et permet de les choisir pour former une table des matières.
+ Cette commande affiche la liste des chansons et permet de les choisir pour former une table des matières.
  
  Penser à filtrer la liste des chansons pour les retrouver plus vite, surtout si votre liste est longue.
+ 
+ [[songbook-repeat-song]]
+ ==== Répétition de la même chanson ====
+ 
+ On peut tout à fait mettre plusieurs fois la même chanson dans le carnet de chant, par exemple pour l'avoir dans différentes tonalité. Dans ce cas, on ajoute un index entre crochet dans l'idendifiant de la chanson. Si l'identifiant est : 
+ 
+ ----
+ - blackbird-the-beatles-1968
+ ----
+ 
+ … on pourra utiliser :
+ 
+ ----
+ # Par exemple dans mc.tdm
+ 
+ - blackbird-the-beatles-1968 [1]
+ - blackbird-the-beatles-1968 [2]
+ - blackbird-the-beatles-1968 [3]
+ ----
+ 
+On pourra alors préciser les informations précises de la chanson en utilisant ce nouvel identifiant :
+
+----
+Mon-Carnet/
+  |— mc.tdm
+  |— blackbird-the-beatles-1968 [1].infos
+  |— blackbird-the-beatles-1968 [2].infos
+----
+
+Et les fichiers des informations pourront contenir :
+
+----
+# Dans blackbird-the-beatles-1968 [1].infos
+font-size: 14pt
+font-family: Garamond
+----

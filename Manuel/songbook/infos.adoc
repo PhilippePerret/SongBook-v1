@@ -46,8 +46,8 @@ credits:
   
 # Options
 options:
-  shrink_diags: true # false pour ne pas redimensionner les diags
+  # Voir les options du carnet  
   
 ----
 
-Pour le `layout`, voir <<song-layout>>.
+Voir les <<songbook-options>>.

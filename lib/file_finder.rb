@@ -15,9 +15,17 @@ module FileFinder
     cov: %w[cover cov],
   }.freeze
 
+  # `<id[ index]>.infos` (override d'une entrée de .tdm répétée, `CarnetBuilder.
+  # resolve_infos_override`) — un `.infos`/`.inf` PARMI D'AUTRES dans le même dossier
+  # (carnet ou chanson) : jamais confondu avec le `.infos` de base cherché ici (root-name
+  # libre, mais UN SEUL fichier "normal" attendu par dossier).
+  REPEAT_OVERRIDE_RE = /\[[^\[\]]*\]\z/
+
   def self.find(dir, kind)
     EXTENSIONS.fetch(kind).each do |ext|
-      path = Dir.glob(File.join(dir, "*.#{ext}")).first
+      candidates = Dir.glob(File.join(dir, "*.#{ext}")).sort
+      candidates.reject! { |p| File.basename(p, ".*").match?(REPEAT_OVERRIDE_RE) } if kind == :inf
+      path = candidates.first
       path ||= File.join(dir, ".#{ext}") if File.exist?(File.join(dir, ".#{ext}"))
       return path if path
     end

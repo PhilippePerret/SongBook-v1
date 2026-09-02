@@ -74,7 +74,11 @@ build_choice_cancel: "renoncer"
 build_cancelled: "Construction annulée."
 song_pdf_generated: "Chanson %s générée en PDF."
 song_build_conflicts_count: "Des conflits ont été rencontrés en cours de construction (%s)."
+conflicts_encountered_one: "1 erreur a été rencontrée."
+conflicts_encountered_other: "%s erreurs ont été rencontrées."
 song_build_open_conflicts_question: "Dois-je ouvrir le fichier des conflits rencontrés ?"
+carnet_build_success: "Carnet « %s » construit avec succès."
+carnet_build_open_pdf_question: "Dois-je ouvrir le fichier du carnet « %s » ?"
 song_build_open_pdf_question: "Dois-je ouvrir le PDF généré ?"
 
 # tablator assistant
@@ -109,6 +113,7 @@ diag_conflict_schema: "Ce schéma (mêmes positions) existe déjà, sous le nom 
 diag_inserted: "Schéma %s inséré."
 diags_page_opened: "Page des diagrammes ouverte."
 diags_update_in_progress: "Actualisation de tous les diagrammes…"
+carnet_building_in_progress: "Construction du carnet…"
 diags_updated: "Diagrammes de l'application et page HTML actualisés (jouer la commande 'diags' pour les voir)."
 
 # assistant d'accords (songbook add chords)

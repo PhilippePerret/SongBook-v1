@@ -138,8 +138,8 @@ module TablatorAssistant
 
   # Cellule de la grille : case (fret) + doigté main droite (p/i/m/a/c, `rh`) + doigté
   # main gauche (chiffre, `lh`) — . `rh`/`lh` restent `nil` tant que non
-  # précisés (une cellule "0" seule reste valide, sans aucun doigté). `link` ("h"/"p",
-  # issue #39) : hammer-on/pull-off, posé sur la case QUI SUIT (`Tablator::LINK_RE`,
+  # précisés (une cellule "0" seule reste valide, sans aucun doigté). `link` ("h"/"p"/"g",
+  # issue #39) : hammer-on/pull-off/slide, posé sur la case QUI SUIT (`Tablator::LINK_RE`,
   # même préfixe que le fichier `.tab` — corde implicite ici, c'est celle du curseur).
   Cell = Struct.new(:kase, :rh, :lh, :link)
 
@@ -275,11 +275,11 @@ module TablatorAssistant
               (1..6).each { |s| matrix[s - 1][col] = nil }
               bars.delete(col)
               rests[col] = key
-            # Amorce une note LIÉE (hammer-on "h"/pull-off "p", issue #39) — la marque se
-            # pose sur la case qui SUIT, en PREMIER signe seulement (avant tout chiffre,
-            # même logique de démarrage que la branche chiffre juste en dessous ; sinon
-            # "h"/"p" ignorées, la marque doit être posée AVANT la case).
-            when ->(k) { %w[h p].include?(k) && !(composing && composing[:kind] == :note && composing[:stage] == :case && composing[:string] == string && composing[:col] == col) }
+            # Amorce une note LIÉE (hammer-on "h"/pull-off "p"/slide "g", issue #39) — la
+            # marque se pose sur la case qui SUIT, en PREMIER signe seulement (avant tout
+            # chiffre, même logique de démarrage que la branche chiffre juste en dessous ;
+            # sinon "h"/"p"/"g" ignorées, la marque doit être posée AVANT la case).
+            when ->(k) { %w[h p g].include?(k) && !(composing && composing[:kind] == :note && composing[:stage] == :case && composing[:string] == string && composing[:col] == col) }
               matrix[string - 1][col] = Cell.new(nil, nil, nil, key)
               rests.delete(col)
               composing = { kind: :note, stage: :case, string: string, col: col }

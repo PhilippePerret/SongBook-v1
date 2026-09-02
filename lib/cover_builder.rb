@@ -1,7 +1,7 @@
 require "prawn"
 require "shellwords"
 require_relative "layout"
-require_relative "kdp"
+require_relative "printer_profile"
 require_relative "cov_parser"
 require_relative "app_config"
 require_relative "locale"
@@ -25,7 +25,7 @@ require_relative "markdown_page"
 # - RATX3 : texte non-lyrics justifié, sauf `align:` explicite dans le `.cov`.
 # Sur la 4e de couverture, les BLOCS (pas le texte à l'intérieur) sont centrés
 # horizontalement — convention traditionnelle de 4e.
-# `code_barres` (dernier bloc de la 4e) ancré sur la vraie position de `kdp.barcode_zone`
+# `code_barres` (dernier bloc de la 4e) ancré sur la vraie position de `printer.barcode_zone`
 # — jamais un simple flux séquentiel comme le reste. Les autres blocs d'une section se
 # répartissent avec un espacement égal sur tout l'espace disponible (au-dessus de cette
 # ancre côté 4e) plutôt que de s'entasser en haut en laissant un vide en bas.
@@ -45,13 +45,13 @@ module CoverBuilder
 
   DEBUG_COLOR = "99CCEE"
 
-  def self.build(out_path, cov_path:, kdp:, conf:, entries:, carnet_folder:, debug_marks: false)
-    cw = Layout.in_pt(kdp.cover_width)
-    ch = Layout.in_pt(kdp.cover_height)
-    bleed = Layout.in_pt(KDP::BLEED_IN)
-    spine_w = Layout.in_pt(kdp.spine_width)
-    trim_w_pt = Layout.in_pt(kdp.trim_width)
-    safe = Layout.in_pt(kdp.cover_text_safe_margin)
+  def self.build(out_path, cov_path:, printer:, conf:, entries:, carnet_folder:, debug_marks: false)
+    cw = Layout.in_pt(printer.cover_width)
+    ch = Layout.in_pt(printer.cover_height)
+    bleed = Layout.in_pt(PrinterProfile::BLEED_IN)
+    spine_w = Layout.in_pt(printer.spine_width)
+    trim_w_pt = Layout.in_pt(printer.trim_width)
+    safe = Layout.in_pt(printer.cover_text_safe_margin)
     binding = conf.dig("cover", "binding") ? Layout.in_pt(BINDING_MARGIN_IN) : 0
 
     back_x0 = bleed
@@ -76,7 +76,7 @@ module CoverBuilder
           render_section(ctx1, sections[1], front_x0 + safe, front_x1 - safe, top_y, bottom_y, nil)
 
           ctx4 = Ctx.new(pdf, carnet_folder, conf, entries, center_blocks: true)
-          render_section(ctx4, sections[4], back_x0 + safe, spine_x0 - safe, top_y, bottom_y, kdp)
+          render_section(ctx4, sections[4], back_x0 + safe, spine_x0 - safe, top_y, bottom_y, printer)
         end
       end
 
@@ -85,7 +85,7 @@ module CoverBuilder
         pdf.line_width 0.4
         pdf.stroke_rectangle [front_x0 + safe, top_y], (front_x1 - safe) - (front_x0 + safe), top_y - bottom_y
         pdf.stroke_rectangle [back_x0 + safe, top_y], (spine_x0 - safe) - (back_x0 + safe), top_y - bottom_y
-        bz = kdp.barcode_zone
+        bz = printer.barcode_zone
         pdf.stroke_rectangle [Layout.in_pt(bz[:x0]), Layout.in_pt(bz[:y1])],
           Layout.in_pt(bz[:x1] - bz[:x0]), Layout.in_pt(bz[:y1] - bz[:y0])
         pdf.stroke_color "000000"
@@ -97,17 +97,17 @@ module CoverBuilder
   Ctx = Struct.new(:pdf, :carnet_folder, :conf, :entries, :center_blocks)
 
   # Un bloc contenant `code_barres` (4e seulement) est ancré sur la position RÉELLE de
-  # `kdp.barcode_zone`, jamais sur le flux séquentiel — les autres blocs de la section se
+  # `printer.barcode_zone`, jamais sur le flux séquentiel — les autres blocs de la section se
   # répartissent avec un espacement égal dans l'espace qui reste au-dessus (Phil :
   # "pourquoi les règles d'équilibrage ne sont-elles appliquées nulle part").
-  def self.render_section(ctx, blocks, x0, x1, top_y, bottom_y, kdp)
-    barcode_idx = kdp && blocks.index { |b| block_names(b).include?("code_barres") }
+  def self.render_section(ctx, blocks, x0, x1, top_y, bottom_y, printer)
+    barcode_idx = printer && blocks.index { |b| block_names(b).include?("code_barres") }
     anchor_block = barcode_idx ? blocks[barcode_idx] : nil
     flow_blocks = barcode_idx ? blocks.each_with_index.reject { |_, i| i == barcode_idx }.map(&:first) : blocks
 
     anchor_top = top_y
     if anchor_block
-      bz = kdp.barcode_zone
+      bz = printer.barcode_zone
       anchor_h = [render_block(ctx, anchor_block, x0, x1, 0, scale: 1.0, dry: true), Layout.in_pt(bz[:y1] - bz[:y0])].max
       anchor_top = Layout.in_pt(bz[:y1])
       render_block(ctx, anchor_block, x0, x1, anchor_top, scale: 1.0, dry: false, forced_h: anchor_h)

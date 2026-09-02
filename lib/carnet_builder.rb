@@ -3,7 +3,7 @@ require "combine_pdf"
 require "fileutils"
 require_relative "page_builder"
 require_relative "layout"
-require_relative "kdp"
+require_relative "printer_profile"
 require_relative "cover_builder"
 require_relative "markdown_page"
 require_relative "locale"
@@ -11,6 +11,7 @@ require_relative "song_cache"
 require_relative "app_config"
 require_relative "file_finder"
 require_relative "diags_sync"
+require_relative "ansi_colors"
 
 # Construit un carnet ENTIER : pages de garde/TOC/textes de front matter (selon le
 # `.infos`/`.inf` du carnet), une page par chanson réelle du `.tdm` (via `PageBuilder.build`),
@@ -21,6 +22,8 @@ require_relative "diags_sync"
 # PAS du YAML, parseur maison ci-dessous). Root-name libre pour les deux
 # (voir `FileFinder`), jamais un nom de fichier imposé.
 module CarnetBuilder
+  extend AnsiColors
+
   # Layouts nommés standards (Manuel/song/layout.adoc) — pas encore finalisés (Phil,
   # 2026-08-20 : "le but sera de fixer les caractéristiques"), axes pour l'instant :
   # bandeau ou pas (title_band), position des diagrammes (diags_position), enchaînement
@@ -42,6 +45,9 @@ module CarnetBuilder
   end
 
   DEFAULT_LAYOUT = load_layout_yaml(File.join(LAYOUTS_DIR, "_default.yaml")).freeze
+  # Sans `layout:` posé dans le `.infos` du carnet — jamais le `_default.yaml` brut
+  # (incomplet, pensé comme socle commun), un VRAI layout nommé.
+  DEFAULT_LAYOUT_NAME = "regular-B"
 
   LAYOUTS = Dir.glob(File.join(LAYOUTS_DIR, "*.yaml")).each_with_object({}) do |path, h|
     name = File.basename(path, ".yaml")
@@ -118,10 +124,38 @@ module CarnetBuilder
   ID_RE = /\A[a-z0-9]+(-[a-z0-9]+)*\z/
   YEAR_RE = /-((?:1[6-9]|20)\d{2})\z/
 
+  # Répétition de chanson dans un .tdm : "id [index]" — n'importe quel caractère
+  # valide dans un nom de fichier à l'intérieur des crochets, pas seulement des chiffres.
+  REPEAT_INDEX_RE = /\s*\[[^\[\]\/]*\]\s*\z/
+
+  def self.strip_repeat_index(name)
+    name.sub(REPEAT_INDEX_RE, "").strip
+  end
+
+  # Fichier "<id[ index]>.infos"/".inf" qui écrase le .infos de base pour CETTE entrée
+  # du .tdm — n'importe quelle clé. Cherché d'abord dans le dossier du carnet (précédence
+  # la plus haute), sinon dans le dossier de la chanson (réutilisable par d'autres carnets).
+  def self.resolve_infos_override(carnet_folder, song_folder, raw_name)
+    root = raw_name.strip
+    [carnet_folder, song_folder].each do |dir|
+      next unless dir
+
+      %w[infos inf].each do |ext|
+        path = File.join(dir, "#{root}.#{ext}")
+        return PageBuilder.parse_infos(path) if File.exist?(path)
+      end
+    end
+    {}
+  end
+
   # ASCII pur, aucun diacritique (NFKD sépare lettre + marque combinante, l'encodage
   # ASCII rejette ensuite tout ce qui n'est pas ASCII — marques combinantes comprises).
   def self.slugify(title)
-    ascii = title.unicode_normalize(:nfkd).encode("ASCII", invalid: :replace, undef: :replace, replace: "")
+    # Apostrophe COURBE (’) traitée comme l'apostrophe droite ('), déjà un séparateur de
+    # mot correct ici (`gsub(/[^a-z0-9]+/, "-")` la convertit en tiret) — sans ce
+    # remplacement, l'encodage ASCII qui suit la supprime SANS rien laisser à sa place,
+    # collant les deux mots ("d’Icare" -> "dicare" au lieu de "d-icare").
+    ascii = title.tr("’", "'").unicode_normalize(:nfkd).encode("ASCII", invalid: :replace, undef: :replace, replace: "")
     ascii.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-+|-+\z/, "")
   end
 
@@ -395,7 +429,8 @@ module CarnetBuilder
   # (alors ignorée, comme avant).
   def self.resolve_song_folders(chansons_dir, songs, build_unknown_song)
     songs.map do |name|
-      entry = SongCache.resolve(chansons_dir, name) do |missing_name|
+      base_id = strip_repeat_index(name)
+      entry = SongCache.resolve(chansons_dir, base_id) do |missing_name|
         create_song_folder(chansons_dir, missing_name) if build_unknown_song
       end
       [name, entry]
@@ -495,9 +530,25 @@ module CarnetBuilder
     DiagsSync.sync!(carnet_folder)
 
     conf = parse_nested_infos(infos_path)
+    # Même lecture À PLAT que `PageBuilder.parse_infos` (clés de PREMIER NIVEAU
+    # seulement) : sert de base à la cascade défaut < carnet < chanson < chanson
+    # indexée pour les entrées de TOC (même cascade que `PageBuilder.build`).
+    carnet_base_meta = PageBuilder.parse_infos(infos_path)
     Layout.sensitivity = conf.fetch("sensitivity", "log")
     Layout.reset_conflicts!
-    title = conf.fetch("title")
+    # Base du carnet (police/taille) : réglée ici pour le front-matter/colophon/TOC,
+    # réglée À NOUVEAU par `PageBuilder.build` pour chaque chanson (chanson > carnet >
+    # défaut) — sert aussi de référence pour `show_specs` et la page de copyright.
+    Layout.font_family = conf.fetch("font-family", "HelveticaNeue")
+    Layout.font_size = conf.fetch("font-size", Layout::TEXT_SIZE.to_s).to_s[/[\d.]+/].to_f
+    Layout.carnet_font_baseline = { "font-family" => Layout.font_family, "font-size" => Layout.font_size.to_s }
+    # Réglages imprimeur : physiques (carnet entier), résolus UNE SEULE FOIS ici.
+    printer_paper = conf.fetch("paper", PrinterProfile::DEFAULT_PAPER).to_s.to_sym
+    printer_bleed = conf.key?("bleed") ? conf["bleed"] == true : PrinterProfile::DEFAULT_BLEED
+    printer_facing_pages = PrinterProfile.facing_pages(conf)
+    printer_margins = PrinterProfile.margin_overrides(conf)
+    Layout.folio_position = Layout.resolve_folio_position(conf["folio_position"], printer_facing_pages)
+    title = conf["title"] || File.basename(carnet_folder)
     subtitle = conf["subtitle"]
     build_unknown_song = conf.fetch("build_unknown_song", AppConfig.get("build_unknown_song"))
     # `format` (trim size KDP) : convention historique en POUCES pour un nombre SANS unité
@@ -508,13 +559,29 @@ module CarnetBuilder
     # ("21cm x 15cm") reste convertie normalement.
     page_size_in = conf.fetch("format") { AppConfig.get("format") }.split(/\s*x\s*/i).map { |v| v =~ /[a-z]/i ? AppConfig.length_pt(v) / AppConfig::IN_TO_PT : v.to_f }
     page_size_pt = page_size_in.map { |v| v * AppConfig::IN_TO_PT }
-    layout_name = conf["layout"]
-    base_layout = layout_name ? LAYOUTS.fetch(layout_name) { raise "layout inconnu : #{layout_name} (voir CarnetBuilder::LAYOUTS)" } : DEFAULT_LAYOUT
+    layout_name = conf["layout"] || DEFAULT_LAYOUT_NAME
+    base_layout = LAYOUTS.fetch(layout_name) { raise "layout inconnu : #{layout_name} (voir CarnetBuilder::LAYOUTS)" }
     carnet_layout_path = find_layout_file(carnet_folder)
     carnet_layout = carnet_layout_path ? base_layout.merge(load_layout_override(carnet_layout_path)) : base_layout
-    fm = conf.fetch("front_matter", {})
+    # Sans AUCUNE option posée dans le `.infos` du carnet, `_default.yaml` doit à lui
+    # seul suffire à produire un carnet valable (page de titre, garde, copyright,
+    # bandeau, TOC, crédits) — fusion superficielle, la clé du carnet gagne SI présente.
+    default_fm = DEFAULT_LAYOUT.fetch(:front_matter, {})
+    fm = default_fm.merge(conf.fetch("front_matter", {}))
+    fm["table_of_contents"] = default_fm.fetch("table_of_contents", {}).merge(fm.fetch("table_of_contents", {}))
+    conf_credits = conf.fetch("credits", {}).select { |_, v| v.is_a?(String) && !v.strip.empty? }
+    credits = DEFAULT_LAYOUT.fetch(:credits, {}).merge(conf_credits)
+    # `copyright:` (valeur vide, sans rien d'indenté dessous) ouvre quand même un bloc
+    # enfant VIDE (`parse_nested_infos`, "clé seule -> Hash") — pas une chaîne, jamais
+    # confondu avec une vraie valeur posée.
+    raw_copyright = conf["copyright"]
+    copyright = raw_copyright.is_a?(String) && !raw_copyright.strip.empty? ? raw_copyright : DEFAULT_LAYOUT[:copyright]&.to_s
     toc_conf = fm.fetch("table_of_contents", {})
     tdm_position = toc_conf.fetch("position", AppConfig.get("tdm_position"))
+    # #54 : une chanson à 2 pages doit tomber en vis-à-vis (fausse-page/belle-page) —
+    # correction par réordonnancement (chanson 1 page avancée) SAUF si le carnet impose
+    # `song_order_mode: strict` ou `keep_order: true` (ordre du .tdm intouchable).
+    reorder_allowed = conf["song_order_mode"].to_s != "strict" && conf["keep_order"] != true
 
     chansons_dir = File.expand_path("../../Chansons", carnet_folder)
     export_dir = File.join(carnet_folder, "export")
@@ -554,11 +621,17 @@ module CarnetBuilder
     real_songs = song_entries.select { |_, entry| entry }
     provisional_page_count = [real_songs.size * 2 + 10, 24].max
 
+    # Override par entrée du .tdm ("<id[ index]>.infos") — calculé une fois, réutilisé
+    # partout où cette entrée est rendue/décrite (TOC, pages provisoires, page réelle).
+    overrides_by_name = real_songs.to_h do |name, entry|
+      [name, resolve_infos_override(carnet_folder, File.join(chansons_dir, entry[:folder]), name)]
+    end
+
     real_page_counts = {}
     real_songs.each do |name, entry|
       folder = File.join(chansons_dir, entry[:folder])
       tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
-      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: 1, layout: resolve_song_layout(folder, carnet_layout), carnet_folder: carnet_folder)
+      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: 1, layout: resolve_song_layout(folder, carnet_layout), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
       real_page_counts[name] = CombinePDF.load(tmp_out).pages.size
       File.delete(tmp_out)
     end
@@ -567,8 +640,8 @@ module CarnetBuilder
     # `tdm_position` (options.yaml, surchargeable par le `.infos`/`.inf` du carnet) décide si la TDM
     # rejoint le front matter ("front", avant tout texte) ou reste à la fin ("end", défaut
     # app, voir 4bis). Sections .md : EXACTEMENT une page pour l'instant (limitation connue).
-    kdp_probe = KDP.new(page_count: provisional_page_count, trim_width: page_size_in[0], trim_height: page_size_in[1], paper: :white, bleed: false)
-    content_h_pt = page_h_pt - Layout.in_pt(kdp_probe.top_margin) - Layout.in_pt(kdp_probe.bottom_margin)
+    printer_probe = PrinterProfile.new(page_count: provisional_page_count, trim_width: page_size_in[0], trim_height: page_size_in[1], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+    content_h_pt = page_h_pt - Layout.in_pt(printer_probe.top_margin) - Layout.in_pt(printer_probe.bot_margin)
     # Comptage des rows par TdM AVANT le rendu des chansons (les numéros de page ne sont
     # pas encore connus) — mais `performer:`/`composer:`/`lyrics:` viennent du `.infos`,
     # déjà chargés dans `real_songs`, donc le REGROUPEMENT (et donc le nombre de rows,
@@ -576,13 +649,13 @@ module CarnetBuilder
     # amont, avec les mêmes valeurs qu'au rendu final (page: nil, jamais utilisé pour
     # compter).
     prelim_entries = real_songs.map do |name, entry|
-      meta = entry[:infos]
+      meta = carnet_base_meta.merge(entry[:infos]).merge(overrides_by_name[name])
       { name: meta["title"] || name, performer: meta["performer"].to_s, performer_name: meta["performer_name"].to_s,
         composer: meta["composer"].to_s, lyrics: meta["lyrics"].to_s, first_page: nil, last_page: nil }
     end
     toc_page_list = toc_specs(toc_conf, prelim_entries, content_h_pt)
-    front_specs = front_matter_specs(fm, conf["copyright"], tdm_position == "front" ? toc_page_list : [],
-      editor_name: conf.dig("editor", "name"), author: conf["author"], book_designer: conf.dig("credits", "book_designer"))
+    front_specs = front_matter_specs(fm, copyright, tdm_position == "front" ? toc_page_list : [],
+      editor_name: conf.dig("editor", "name"), author: conf["author"], book_designer: credits["book_designer"])
     front_matter_page_count = front_specs.size
 
     # --- 3) Rendu final des chansons, dans l'ordre du TDM, page par page RÉELLE -------
@@ -592,7 +665,7 @@ module CarnetBuilder
 
     real_songs.each do |name, entry|
       folder = File.join(chansons_dir, entry[:folder])
-      meta = entry[:infos]
+      meta = carnet_base_meta.merge(entry[:infos]).merge(overrides_by_name[name])
       if only_song == name || only_song == entry[:folder]
         # `only_song` : ISOLE une seule chanson, rendue avec EXACTEMENT les mêmes
         # paramètres (page_count, first_page_no, layout résolu) que dans ce carnet réel —
@@ -605,12 +678,12 @@ module CarnetBuilder
         song_existing_versions = Dir.glob(File.join(songs_dir, "#{song_stem}-v*.pdf")).filter_map { |f| f[/-v(\d+)\.pdf\z/, 1]&.to_i }
         song_version = (song_existing_versions.max || 0) + 1
         song_out = File.join(songs_dir, "#{song_stem}-v#{song_version}.pdf")
-        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), debug_marks: debug_marks, carnet_folder: carnet_folder)
+        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), debug_marks: debug_marks, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
         return song_out
       end
 
       tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
-      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), carnet_folder: carnet_folder)
+      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
       n = real_page_counts[name]
       combined_songs << CombinePDF.load(tmp_out)
       File.delete(tmp_out)
@@ -637,16 +710,23 @@ module CarnetBuilder
     needs_blank_before_colophon = colophon_page_no.even?
     colophon_page_no += 1 if needs_blank_before_colophon
     total_page_count = colophon_page_no
+    if %w[amazon kdp].include?(conf["printer"].to_s.downcase)
+      min, max = PrinterProfile.page_count_range
+      unless total_page_count.between?(min, max)
+        sens = total_page_count < min ? "inférieur" : "supérieur"
+        puts orange("Attention : le carnet contient #{total_page_count} pages, ce qui est #{sens} aux plages KDP (#{min} à #{max})")
+      end
+    end
     # Le total EXACT est maintenant connu — les marges KDP ci-dessus (chansons, passe 1+2)
     # ont été calculées sur `provisional_page_count` : écart possible seulement si ça
     # change de palier de marge KDP (rare sur un carnet-test), pas re-rendu pour l'instant.
-    kdp_final = KDP.new(page_count: total_page_count, trim_width: page_size_in[0], trim_height: page_size_in[1], paper: :white, bleed: false)
+    printer_final = PrinterProfile.new(page_count: total_page_count, trim_width: page_size_in[0], trim_height: page_size_in[1], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
 
-    render_blank_page = lambda do |blank_page_no|
+    render_blank_page = lambda do |printer, blank_page_no|
       blank_out = File.join(export_dir, ".tmp-blank-#{blank_page_no}.pdf")
       Prawn::Document.generate(blank_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
         Layout.register_fonts(pdf)
-        Layout.apply_kdp_margins(pdf, kdp_final, blank_page_no, page_w_pt, page_h_pt)
+        Layout.apply_print_margins(pdf, printer, blank_page_no, page_w_pt, page_h_pt)
         Layout.current_song = "(carnet)"
         Layout.current_page = blank_page_no
         Layout.log_build("page blanche insérée (RATDM12)")
@@ -656,7 +736,7 @@ module CarnetBuilder
       loaded
     end
 
-    combined_songs << render_blank_page.call(last_song_page + 1) if needs_blank_before_toc
+    combined_songs << render_blank_page.call(printer_final, last_song_page + 1) if needs_blank_before_toc
 
     # --- 4) Front matter (garde/faux-titre/textes), avec les VRAIES pages connues ------
     front_out = File.join(export_dir, ".tmp-front.pdf")
@@ -665,7 +745,7 @@ module CarnetBuilder
       front_specs.each_with_index do |spec, i|
         page_no = i + 1
         pdf.start_new_page if i.positive?
-        Layout.apply_kdp_margins(pdf, kdp_final, page_no, page_w_pt, page_h_pt)
+        Layout.apply_print_margins(pdf, printer_final, page_no, page_w_pt, page_h_pt)
         Layout.current_song = "(carnet)"
         Layout.current_page = page_no
         Layout.log_build("front matter (#{spec[:kind]}) rendu (RATDM12)")
@@ -682,7 +762,7 @@ module CarnetBuilder
         end_toc_list.each_with_index do |spec, i|
           page_no = toc_start + i
           pdf.start_new_page if i.positive?
-          Layout.apply_kdp_margins(pdf, kdp_final, page_no, page_w_pt, page_h_pt)
+          Layout.apply_print_margins(pdf, printer_final, page_no, page_w_pt, page_h_pt)
           Layout.current_song = "(carnet)"
           Layout.current_page = page_no
           Layout.log_build("TdM #{spec[:sort]} (page #{spec[:page] + 1}/#{spec[:pages]}) rendue (RATDM10/RATDM12)")
@@ -693,18 +773,18 @@ module CarnetBuilder
       File.delete(toc_out)
     end
 
-    blank_before_colophon = render_blank_page.call(colophon_page_no - 1) if needs_blank_before_colophon
+    blank_before_colophon = render_blank_page.call(printer_final, colophon_page_no - 1) if needs_blank_before_colophon
 
     # --- 5) Colophon (dernière page) : crédits SEULEMENT — le copyright est en page
     # liminaire (voir 4), rien à voir avec les crédits .
     colophon_out = File.join(export_dir, ".tmp-colophon.pdf")
     Prawn::Document.generate(colophon_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
       Layout.register_fonts(pdf)
-      Layout.apply_kdp_margins(pdf, kdp_final, colophon_page_no, page_w_pt, page_h_pt)
+      Layout.apply_print_margins(pdf, printer_final, colophon_page_no, page_w_pt, page_h_pt)
       Layout.current_song = "(carnet)"
       Layout.current_page = colophon_page_no
       Layout.log_build("colophon rendu (RATDM12)")
-      draw_credits(pdf, conf.fetch("credits", {}))
+      draw_credits(pdf, credits)
     end
 
     # --- 6) Assemblage final ----------------------------------------------------------
@@ -716,14 +796,12 @@ module CarnetBuilder
     File.delete(colophon_out)
 
     SongCache.save(chansons_dir)
-    Layout.report_missing_chords!
-    Layout.report_conflicts!
     combined.save(out_path)
 
     if cover
       cover_out = File.join(cover_dir, "#{slug}-v#{version}-cover.pdf")
       cov_path = FileFinder.find(carnet_folder, :cov) || File.expand_path("../assets/cover/_default.cov", __dir__)
-      CoverBuilder.build(cover_out, cov_path: cov_path, kdp: kdp_final, conf: conf,
+      CoverBuilder.build(cover_out, cov_path: cov_path, printer: printer_final, conf: conf,
         entries: entries, carnet_folder: carnet_folder, debug_marks: debug_marks)
     end
 
@@ -734,8 +812,6 @@ module CarnetBuilder
     missing_chords_summary = Layout.missing_chords_summary
     File.open(Layout.conflict_log_path, "a") { |f| f.puts missing_chords_summary } if missing_chords_summary
 
-    puts "#{File.basename(out_path)} généré : #{total_page_count} pages"
-    puts "#{File.basename(cover_out)} généré" if cover
     out_path
   end
 
@@ -940,6 +1016,11 @@ module CarnetBuilder
       # "en bas de page"  — PAS centré verticalement comme le reste du
       # front matter, une simple mention en pied de fausse-page.
       draw_centered_text_box(pdf, spec[:text], y: 40, size: 9)
+      general = general_specs_text
+      if general
+        frame_bottom = draw_framed_label(pdf, "Impression test", y: pdf.bounds.height / 2 + 30, size: 10)
+        draw_centered_text_box(pdf, general, y: frame_bottom - 10, size: 11)
+      end
     when :toc
       # " (suite)" sur les pages 2+ d'une même TdM  — remplace la
       # décision précédente "jamais de (1/2)/(2/2)" par cette forme-là.
@@ -974,6 +1055,24 @@ module CarnetBuilder
     Layout.engrave(bottom: y - h, context: "texte \"#{text[0, 20]}\"") do
       pdf.text_box text, at: [0, y], align: :center, style: style, **opts
     end
+  end
+
+  # Étiquette encadrée, centrée horizontalement, ancrée en HAUT à `y` — renvoie le bas
+  # du cadre (pour enchaîner ce qui suit juste en dessous). Même garde-fou `Layout.engrave`.
+  def self.draw_framed_label(pdf, text, y:, size:)
+    opts = { size: size, style: :bold }
+    text_w = pdf.width_of(text, **opts)
+    text_h = pdf.height_of(text, width: pdf.bounds.width, **opts)
+    pad_x = 8
+    pad_y = 5
+    box_w = text_w + pad_x * 2
+    box_h = text_h + pad_y * 2
+    x0 = (pdf.bounds.width - box_w) / 2.0
+    Layout.engrave(bottom: y - box_h, context: "encadré \"#{text}\"") do
+      pdf.stroke_rectangle [x0, y], box_w, box_h
+      pdf.text_box text, at: [x0 + pad_x, y - pad_y], width: text_w, size: size, style: :bold
+    end
+    y - box_h
   end
 
   # Titre de section (TOC/Markdown) en haut de page, taille fixe — passe par `Layout.engrave`.
@@ -1038,10 +1137,18 @@ module CarnetBuilder
     text.sub(/\A@/, "©")
   end
 
+  # Règles générales du carnet, affichées sur la page de copyright — liste ouverte,
+  # à compléter plus tard (tablatures/partitions...) sans rien restructurer. `nil` si
+  # rien ne s'écarte du défaut de l'app (rien à signaler).
+  def self.general_specs_text
+    baseline = Layout.carnet_font_baseline
+    "#{baseline["font-family"]} #{baseline["font-size"]}pt"
+  end
+
   # Colophon (dernière page) : crédits SEULEMENT — qui a travaillé sur le livre, rôle
   # localisé via `Locale` (dossier `Locales/<lang>/loc.yaml`).
   def self.draw_credits(pdf, credits)
-    lines = credits.map { |role, name| "#{Loc.get(role)} : #{name}" }
+    lines = credits.select { |_, name| name.is_a?(String) && !name.strip.empty? }.map { |role, name| "#{Loc.get(role)} : #{name}" }
     y = 60 + (lines.size - 1) * 16
     lines.each do |line|
       draw_centered_text_box(pdf, line, y: y, size: 10)

@@ -49,7 +49,7 @@ Choisissez bien le nom pour qu'il « n'écrase » pas un accord existant déj�
 [[diags-position]]
 ==== Placement des diagrammes ====
 
-Pour placer les diagrammes dans la chanson ou le carnet, utiliser le <<gabarit>> de la chanson ou les règles du <<songbook-layout layout (mise en page)>> du carnet.
+Pour placer les diagrammes dans la chanson ou le carnet, utiliser le <<gabarit-file>> de la chanson ou les règles du <<songbook-layout layout (mise en page)>> du carnet.
 
 [[diags-missing]]
 ==== Diagrammes manquant ====

@@ -44,4 +44,4 @@ Les /am:Portes /c:du pé/d:niten/f:cier
 
 Notez que les accords sont précisés en minuscule, par commodité d'écriture, mais qu'ils seront toujours mis en majuscules ensuite dans le carnet de chant.
 
-La marque `{couplet-1}` par exemple sera reprise dans le <<gabarit>> du carnet ou de la chanson pour savoir où et comment placer les strophes en question.
+La marque `{couplet-1}` par exemple sera reprise dans le <<gabarit-file>> du carnet ou de la chanson pour savoir où et comment placer les strophes en question.

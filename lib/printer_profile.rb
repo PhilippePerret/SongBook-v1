@@ -1,8 +1,16 @@
-# Calculs de gabarit imprimeur KDP (marges, dos, couverture).
-# Sources : https://kdp.amazon.com/en_US/help/topic/GVBQ3CMEQW3W2VL6
-#           https://kdp.amazon.com/en_US/help/topic/G201953020
-#           https://kdp.amazon.com/en_US/help/topic/G5HDYGP4BXLX4RUW (barcode)
-class KDP
+require_relative "app_config"
+
+# Calculs de gabarit imprimeur (marges, dos, couverture). Marges intérieures
+# configurables (`.infos` du carnet), KDP = preset par défaut seulement.
+# `facing_pages:` choisit le vocabulaire des marges latérales : true -> `outside_margin:`/
+# `gutter_margin:` (alterne recto/verso) ; false -> `left_margin:`/`right_margin:` (fixes).
+# Sources KDP : https://kdp.amazon.com/en_US/help/topic/GVBQ3CMEQW3W2VL6
+#               https://kdp.amazon.com/en_US/help/topic/G201953020
+#               https://kdp.amazon.com/en_US/help/topic/G5HDYGP4BXLX4RUW (barcode)
+class PrinterProfile
+  DEFAULT_PAPER = :white
+  DEFAULT_BLEED = false
+
   BLEED_IN                    = 0.125
   OUTSIDE_MARGIN_NO_BLEED_MIN = 0.25
   OUTSIDE_MARGIN_BLEED_MIN    = 0.375
@@ -42,32 +50,81 @@ class KDP
     [701, 828, 0.875],
   ].freeze
 
-  attr_reader :page_count, :trim_width, :trim_height, :paper, :bleed
+  DEFAULT_FACING_PAGES = true
 
-  def initialize(page_count:, trim_width:, trim_height:, paper: :white, bleed: false)
+  attr_reader :page_count, :trim_width, :trim_height, :paper, :bleed, :facing_pages
+
+  # Overrides en pouces, `nil` = calcul du profil imprimeur (KDP pour l'instant).
+  def initialize(page_count:, trim_width:, trim_height:, paper: DEFAULT_PAPER, bleed: DEFAULT_BLEED,
+      facing_pages: DEFAULT_FACING_PAGES, outside_margin: nil, gutter_margin: nil, top_margin: nil, bot_margin: nil,
+      left_margin: nil, right_margin: nil)
     @page_count  = page_count
     @trim_width  = trim_width
     @trim_height = trim_height
     @paper       = paper
     @bleed       = bleed
+    @facing_pages = facing_pages
+    @outside_margin_override = outside_margin
+    @gutter_margin_override  = gutter_margin
+    @top_margin_override     = top_margin
+    @bot_margin_override     = bot_margin
+    @left_margin_override    = left_margin
+    @right_margin_override   = right_margin
   end
 
   # --- Marges des pages intérieures ---
 
   def outside_margin
-    (bleed ? OUTSIDE_MARGIN_BLEED_MIN : OUTSIDE_MARGIN_NO_BLEED_MIN) + SAFETY_BUFFER_IN
+    @outside_margin_override || ((bleed ? OUTSIDE_MARGIN_BLEED_MIN : OUTSIDE_MARGIN_NO_BLEED_MIN) + SAFETY_BUFFER_IN)
   end
-  alias_method :top_margin, :outside_margin
-  alias_method :bottom_margin, :outside_margin
 
+  def top_margin
+    @top_margin_override || outside_margin
+  end
+
+  def bot_margin
+    @bot_margin_override || outside_margin
+  end
+
+  # Hors plages connues (page_count < 24 ou > 828) : jamais bloquant — accroché à la
+  # plage la plus proche plutôt qu'une exception (avertissement laissé à l'appelant,
+  # `CarnetBuilder.build`, seul à savoir si l'imprimeur visé est concerné).
   def gutter_margin
-    range = GUTTER_RANGES.find { |min, max, _| page_count.between?(min, max) }
-    raise ArgumentError, "page_count #{page_count} hors des plages KDP connues" unless range
-    range[2] + SAFETY_BUFFER_IN
+    @gutter_margin_override || begin
+      range = GUTTER_RANGES.find { |min, max, _| page_count.between?(min, max) } ||
+        (page_count < GUTTER_RANGES.first[0] ? GUTTER_RANGES.first : GUTTER_RANGES.last)
+      range[2] + SAFETY_BUFFER_IN
+    end
+  end
+
+  def self.page_count_range
+    [GUTTER_RANGES.first[0], GUTTER_RANGES.last[1]]
+  end
+
+  # Marges fixes (facing_pages: false) : défaut = outside_margin (symétrique, pas de dos).
+  def left_margin_value
+    @left_margin_override || outside_margin
+  end
+
+  def right_margin_value
+    @right_margin_override || outside_margin
+  end
+
+  # Lit les `*_margin:` d'un `.infos` déjà parsé (clés premier niveau), convertit en
+  # pouces — `nil` par clé absente, à passer tel quel aux kwargs `.new` correspondants.
+  def self.margin_overrides(conf)
+    { outside_margin: conf["outside_margin"], gutter_margin: conf["gutter_margin"],
+      top_margin: conf["top_margin"], bot_margin: conf["bot_margin"],
+      left_margin: conf["left_margin"], right_margin: conf["right_margin"] }
+      .transform_values { |v| v.nil? ? nil : AppConfig.length_in(v) }
+  end
+
+  def self.facing_pages(conf)
+    conf.key?("facing_pages") ? conf["facing_pages"] == true : DEFAULT_FACING_PAGES
   end
 
   def margins
-    { outside: outside_margin, top: top_margin, bottom: bottom_margin, gutter: gutter_margin }
+    { outside: outside_margin, top: top_margin, bot: bot_margin, gutter: gutter_margin }
   end
 
   # Convention livre : page impaire = recto (page de droite), reliure à gauche.
@@ -81,10 +138,14 @@ class KDP
   end
 
   def left_margin(page_no)
+    return left_margin_value unless facing_pages
+
     recto?(page_no) ? gutter_margin : outside_margin
   end
 
   def right_margin(page_no)
+    return right_margin_value unless facing_pages
+
     recto?(page_no) ? outside_margin : gutter_margin
   end
 
@@ -130,7 +191,7 @@ class KDP
   # quel côté (gauche/droite) reçoit la marge de reliure (gutter).
   def inside_margins?(x, y, page_no:)
     x.between?(left_margin(page_no), trim_width - right_margin(page_no)) &&
-      y.between?(bottom_margin, trim_height - top_margin)
+      y.between?(bot_margin, trim_height - top_margin)
   end
 
   # Un point (x, y) en pouces sur le fichier de couverture COMPLET (origine bas

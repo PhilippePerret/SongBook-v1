@@ -470,12 +470,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#songbook-assistant">Assistant au carnet de chant</a></li>
 <li><a href="#songbook-creation">Création du carnet de chant</a></li>
 <li><a href="#songbook-infos">Fichier infos du carnet</a></li>
-<li><a href="#app-options">Options du carnet</a></li>
+<li><a href="#options">Options</a></li>
 <li><a href="#songbook-layout">Layout d&#8217;un carnet</a></li>
-<li><a href="#options">Options de fabrication</a></li>
-<li><a href="#universal-properties">Propriétés universelles</a></li>
-<li><a href="#_placement_des_diags">Placement des diags</a></li>
-<li><a href="#_tablatures_et_partitions_2">Tablatures et partitions</a></li>
 <li><a href="#songbook-tdm">Table des matières du carnet</a></li>
 <li><a href="#songbook-schemas">Diagrammes de carnet</a></li>
 <li><a href="#cover">La Couverture</a></li>
@@ -750,7 +746,7 @@ Une chanson pouvant appartenir à plusieurs carnets, il est bon de la créer <em
 <div class="ulist">
 <ul>
 <li>
-<p>le <a href="#infos-file">Fichier des informations de la chanson</a> (<code>.infos</code>) contient le titre et autres informations générales sur la chanson, ainsi que la définition des <a href="#options">Configuration</a>.</p>
+<p>le <a href="#infos-file">Fichier des informations de la chanson</a> (<code>.infos</code>) contient le titre et autres informations générales sur la chanson, ainsi que la définition des <a href="#options">options</a>.</p>
 </li>
 <li>
 <p>le <a href="#lyrics-file">fichier des paroles et accords</a> (<code>.lyr</code>) contient toutes les paroles, accompagnées des accords, ainsi que, éventuellement, les <a href="#riffs">riffs</a> et autres petits bouts de musique.</p>
@@ -828,7 +824,7 @@ layout: regular</pre>
 <p>Notez que si vous utilisez la commande <strong><code>songbook create song</code></strong> pour créer une nouvelle chanson, ce fichier sera rempli pour vous (ou prérempli en fonction des informations récoltées sur le web).</p>
 </div>
 <div class="paragraph">
-<p>Cet fichier contient aussi la définition des <a href="#options">Configuration</a> propres à la chanson (options partagées par le carnet si c&#8217;est lui qui est contruit).</p>
+<p>Cet fichier contient aussi la définition des <a href="#options">options</a> propres à la chanson (options partagées par le carnet si c&#8217;est lui qui est contruit).</p>
 </div>
 </div>
 <div class="sect2">
@@ -871,16 +867,19 @@ surgit un aigle noir</pre>
 <p>Peu importe le nom-racine du fichier des paroles, il suffit qu&#8217;il porte l&#8217;extension <code>.lyr</code> ou <code>.lyrics</code> pour que l&#8217;application le reconnaisse.</p>
 </div>
 <div class="paragraph">
-<p>Ce fichier contient évidemment les paroles. Mais aussi les accords.</p>
+<p>Ce fichier contient évidemment les paroles. Mais aussi <strong>les accords</strong>. Pour les accords, contrairement à ChordPro, qui utilise des crochets peut-être clairs visuellement mais pas du tout pratiques à taper au clavier, nous avons opté pour un système simple à taper : "/accord:Syllabe du texte".</p>
 </div>
-<div class="paragraph">
-<p>Le format est simple, il suffit de mettre entre crochet comment s&#8217;appelle la strophe, sans espaces, par exemple "{couplet-2}", "{refrain}". Ces marques serviront dans le <a href="#gabarit">le fichier Gabarit</a> des pages.</p>
-</div>
-<div class="paragraph">
-<p>Pour les accords, contrairement à ChordPro, qui utilise des crochets peut-être clairs visuellement mais pas pratiques à taper au clavier, nous avons opté pour un système simple à taper : "/accord:Syllabe du texte".</p>
-</div>
-<div class="paragraph">
-<p>Nous expliquons ci-dessous comment formater les accords par rapport aux paroles, mais vous n&#8217;en aurez pas besoin si vous utilisez <strong><a href="#song-chords-assistant">l&#8217;assistant de pose des accords</a></strong>.</p>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+Nous expliquons ci-dessous comment formater les accords par rapport aux paroles, mais vous n&#8217;en aurez pas besoin si vous utilisez <strong><a href="#song-chords-assistant">l&#8217;assistant de pose des accords</a></strong>, que nous vous recommandons vivement si vous voulez entrer les accords avec un confort et une efficacité maximals.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>L&#8217;accord doit être placé avant la syllabe sur laquelle il doit être joué, ou avant un « _ » (trait plat) s&#8217;il n&#8217;est pas joué sur une syllabe.</p>
@@ -1119,13 +1118,13 @@ In /em:this proud land</pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>songbook diags missing --song "titre approx"
+<pre>songbook missing diags --song "titre approx"
 # =&gt; Liste dans la chanson
 
-songbook diags missing --songbook "titre approx"
+songbook missing diags --songbook "titre approx"
 # =&gt; Liste dans le carnet de chant
 
-songbook diags missing --all
+songbook missing diags --all
 # =&gt; Liste dans toutes les chansons</pre>
 </div>
 </div>
@@ -1136,7 +1135,7 @@ songbook diags missing --all
 <div class="content">
 <pre>songbook -i
 🎸&gt; use song titre-approx
-🎸&gt; diags missing
+🎸&gt; missing diags
 # =&gt; Liste des diagrammes manquant dans la chanson.</pre>
 </div>
 </div>
@@ -1183,9 +1182,12 @@ songbook diags missing --all
 <p>produire une partition/tablature de l&#8217;accompagnement,</p>
 </li>
 <li>
-<p>produire une partition/tablature d&#8217;un riff, d&#8217;un petit bout de musique.</p>
+<p>produire une partition/tablature d&#8217;un riff, d&#8217;un petit bout de musique à insérer quelque part, souvent au début ou à la fin de la chanson.</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>Voir comment <a href="#gabarit-insert-tablas">insérer une tablature</a> dans la page de la chanson.</p>
 </div>
 <div class="sect3">
 <h4 id="tablature">Tablatures</h4>
@@ -1200,6 +1202,9 @@ songbook diags missing --all
 <h4 id="score">Partitions</h4>
 <div class="paragraph">
 <p>Pour le moment, on ne peut pas encore produire de partitions.</p>
+</div>
+<div class="paragraph">
+<p>Voir comment <a href="#gabarit-insert-score">insérer une partition</a> dans la page de la chanson.</p>
 </div>
 </div>
 </div>
@@ -1305,6 +1310,68 @@ Le troisième couplet
 ...</pre>
 </div>
 </div>
+<div class="sect4">
+<h5 id="_définitions_pour_les_diags">Définitions pour les diags</h5>
+<div class="paragraph">
+<p>On peut définir les propriétés des diagrammes d&#8217;accord au début du fichier gabarit.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>{diags; position:End; width:50px;}</pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="gabarit-insert-tablas">Insertion de tablatures</h5>
+<div class="paragraph">
+<p>Pour insérer une tablature à l&#8217;endroit voulu, on lui trouve un identifiant unique, on définit la tablature à prendre à l&#8217;aide de la propriété <code>tab</code> suivi du nom composé ou non de la tablature :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>{intro; tab:intro;}</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>On peut faire suivre bien sûr par toutes les propriétés qui peuvent s&#8217;appliquer aux images.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>{intro; tab:intro; height:50px;}</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Une des fonctionnalités formidable des tablatures est la faculté d&#8217;associer plusieurs tablatures juste avec le signe <code>+</code>, ce qui apporte beaucoup de granularité. Par exemple, si vous avez une tablature <code>riff-intro.tab</code>, une autre <code>couplet-normal.tab</code> et une troisième <code>fin.tab</code> vous pouvez les assembler de cette manière :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>{intro; tab:riff-intro+couplet-normal+fin;}</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Cela créera une <strong>unique</strong> tablature avec les trois éléments !</p>
+</div>
+<div class="paragraph">
+<p>Bien sûr, les tablatures fonctionnent exactement comme les autres éléments et vous pouvez donc utiliser des marques comme ci-dessous pour placer relativement les éléments :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>{intro; tab:intro;} // {couplet-1}</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Ci-dessus, la tablature <code>intro.tab</code> sera placée en vis à vis du premier couplet.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="gabarit-insert-score">Insertion de partitions</h5>
+<div class="paragraph">
+<p>Les partitions répondent aux mêmes fonctionnalités que <a href="#gabarit-insert-tablas">la tablatures dans le gabarit</a> donc vous pouvez consulter cette partie (ci-dessus) pour voir comment utiliser les partitions dans le fichier <code>.gabarit</code> de la chanson.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="gabarit-insert-image">Insertion d&#8217;image</h5>
+
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -1331,7 +1398,7 @@ Le troisième couplet
 
 {tabla: accompagnement;}
 
-{lyrics: refrain; align: center; text_align: left;}</pre>
+{refrain-1; align: center; text_align: left;}</pre>
 </div>
 </div>
 <div class="listingblock">
@@ -1560,17 +1627,521 @@ credits:
 
 # Options
 options:
-  shrink_diags: true # false pour ne pas redimensionner les diags</pre>
+  # Voir les options du carnet</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Pour le <code>layout</code>, voir <a href="#song-layout">règles de mises en forme des chansons</a>.</p>
+<p>Voir les <a href="#songbook-options">options du carnet</a>.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="app-options">Options du carnet</h3>
+<h3 id="options">Options</h3>
 <div class="paragraph">
-<p>Ces options sont à définir dans le fichier <code>infos</code> (ou <code>inf</code>).</p>
+<p>On peut définir dans le fichier <code>infos</code> (<code>inf</code>) toutes les options gérant la fabrication des carnets ou des chansons.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Noter que s&#8217;il y des options réglées pour le carnet en construction et des options réglées pour la chanson la précédence se fait en fonction de la nature de l&#8217;option, sauf dans le cas où l&#8217;option <code>todo: à déterminer</code> est à <code>true</code>.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_options_générales">Options générales</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15.3846%;">
+<col style="width: 46.1538%;">
+<col style="width: 23.0769%;">
+<col style="width: 7.6923%;">
+<col style="width: 7.6924%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Prop.</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+<th class="tableblock halign-left valign-top">Opt.</th>
+<th class="tableblock halign-left valign-top">Pr.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sensitivity</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sensibilité aux erreurs, la façon de les gérer.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>high</code>, [<code>mid</code>], <code>low</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>-v</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Propritété</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="3"><p class="tableblock"><code>sensitivity</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>high</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Le programme s&#8217;arrête à la première erreur et la signale.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mid</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Les erreurs rencontrées sont listées à la fin de l&#8217;opération</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>low</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aucune interruption, les erreurs sont logguées silencieusement.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="tdm-options">Options de la tables des matières</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15.3846%;">
+<col style="width: 46.1538%;">
+<col style="width: 23.0769%;">
+<col style="width: 7.6923%;">
+<col style="width: 7.6924%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Prop.</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+<th class="tableblock halign-left valign-top">Opt.</th>
+<th class="tableblock halign-left valign-top">Pr.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>song_order_mode</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mode de classement des chansons. Si le classement est strict, on ne peut pas changer l&#8217;agencement. S&#8217;il est <code>lazzy</code>, on peut bouger les chansons pour avoir un meilleur agencement des pages.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>strict</code>, [<code>lazy</code>]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keep_order</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peut remplacer le précédent, respect de l&#8217;ordre des chansons.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code>, [<code>false</code>]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Propritété</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock"><code>song_order_mode</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>strict</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;ordre de la tdm du carnet est respecté scrupuleusement.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lazy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;ordre peut être modifié pour des raisons d&#8217;organisation.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock"><code>keep_order</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;ordre des chansons ne doit pas bouger du tout.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;ordre des chansons peut être modifié.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="band-title-option">Options de la « bande de titre »</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15.3846%;">
+<col style="width: 46.1538%;">
+<col style="width: 23.0769%;">
+<col style="width: 7.6923%;">
+<col style="width: 7.6924%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Prop.</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+<th class="tableblock halign-left valign-top">Opt.</th>
+<th class="tableblock halign-left valign-top">Pr.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title_with_labels</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ajouter les labels aux infos de titre ("Paroles", "Musique", etc.)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>false</code>], <code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Propritété</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock"><code>title_with_labels</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Les labels « Paroles », « Musique » etc. sont ajoutés avant les noms</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Seuls les noms sont affichés dans le bandeau de titre.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="lyrics-options">Options des paroles</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15.3846%;">
+<col style="width: 46.1538%;">
+<col style="width: 23.0769%;">
+<col style="width: 7.6923%;">
+<col style="width: 7.6924%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Prop.</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+<th class="tableblock halign-left valign-top">Opt.</th>
+<th class="tableblock halign-left valign-top">Pr.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_lyrics</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permission de réduire les paroles (font-size).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code>, [<code>false</code>]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Propritété</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock"><code>shrink_lyrics</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On peut réduire les paroles pour qu&#8217;elles tiennent dans la place donnée.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On ne peut pas réduire la taille des paroles.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="diags-options">Options des diagrammes</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15.3846%;">
+<col style="width: 46.1538%;">
+<col style="width: 23.0769%;">
+<col style="width: 7.6923%;">
+<col style="width: 7.6924%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Prop.</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+<th class="tableblock halign-left valign-top">Opt.</th>
+<th class="tableblock halign-left valign-top">Pr.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_diags</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pour autoriser (<code>true</code>) ou non (<code>false</code>) le rétrécissement des diagrammes. Note : peut se faire chanson par chanson.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>true</code>], <code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Propritété</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock"><code>shrink_diags</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On peut réduire les diags pour qu&#8217;ils tiennent dans la place donnée.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On ne peut pas réduire la taille des diagrammes d&#8217;accord.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="tablatures-options">Options sur les tablatures</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15.3846%;">
+<col style="width: 46.1538%;">
+<col style="width: 23.0769%;">
+<col style="width: 7.6923%;">
+<col style="width: 7.6924%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Prop.</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+<th class="tableblock halign-left valign-top">Opt.</th>
+<th class="tableblock halign-left valign-top">Pr.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_tabla</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permission de réduire les tablatures.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>true</code>], <code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Propritété</th>
+<th class="tableblock halign-left valign-top">Valeur</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock"><code>shrink_tabla</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On peut réduire les tablatures pour qu&#8217;ils tiennent dans la place donnée.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On ne peut pas réduire la taille des tablatures.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="scores-options">Options sur les partitions</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15.3846%;">
+<col style="width: 46.1538%;">
+<col style="width: 23.0769%;">
+<col style="width: 7.6923%;">
+<col style="width: 7.6924%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Prop.</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+<th class="tableblock halign-left valign-top">Opt.</th>
+<th class="tableblock halign-left valign-top">Pr.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_score</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permission de réduire les partitions.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>true</code>], <code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="song-options">Options propres aux chansons</h4>
+<div class="paragraph">
+<p><em>(donc qu&#8217;on ne trouve que dans un fichier <code>.infos</code> d&#8217;une chanson)</em></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15.3846%;">
+<col style="width: 46.1538%;">
+<col style="width: 23.0769%;">
+<col style="width: 7.6923%;">
+<col style="width: 7.6924%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Prop.</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valeurs</th>
+<th class="tableblock halign-left valign-top">Opt.</th>
+<th class="tableblock halign-left valign-top">Pr.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Options pour les diagrammes d&#8217;accords.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#option-diags">voir</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect4">
+<h5 id="option-diags">Options pour les diags</h5>
+<div class="listingblock">
+<div class="content">
+<pre>diags:
+  # Pour limiter les diags à une liste d'accords, par exemple seulement
+  # les accords compliqués ou propres à la chanson
+  list: [Am7, C, Dd7M]
+  # Position dans les pages de chanson
+  # [Int] : à l'intérieur, donc côté reliure du carnet.
+  # Ext   : à l'extérieur, donc à l'opposé de la reliure.
+  # Left  : dans une colonne toujours à gauche des paroles.
+  # Right : dans une colonne toujours à droite des paroles.
+  # Top   : en haut de la page.
+  # Bot   : en bas de la page
+  # Front : tous les diagrammes avant les paroles en 1^re^ page.
+  # End   : tous les diagrammes après les paroles en dernière page.
+  position: Left
+
+  # Alignement des diags dans leur container (colonne ou rangée)
+  # Valeurs possibles en fonction du contenant :
+  # Ext/Int/Left/Right : [Center], Top, Bot, Justify
+  # Top/Bot/Front/End  : [Center], Left, Right, Justify
+  align: Center
+
+  # Échelle (zoom) des diagrammes par rapport à la valeur normale
+  # C'est une proportion par rapport à 1 (valeur normale).
+  # Cette valeur ne s'applique pas si `size` est défini.
+  scale: 1.5
+
+  # On peut aussi fixer explicitement la taille des diagrammes.
+  # Noter que si shrink_diags est true, cette taille pourra être
+  # modifiée pour des raisons esthétiques.
+  # La valeur a la forme largeur x hauteur. Si une valeur n'est pas
+  # définie, elle sera calculée automatiquement par rapport à l'autre
+  # "120 x" signifie : "largeur de 120 points et hauteur automatique"
+  size: 120 x</pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_placement_des_diags">Placement des diags</h4>
+<div class="paragraph">
+<p>Dans le <a href="#infos-file">Fichier des informations de la chanson</a>, c&#8217;est le paramètre principal <code>diags</code> qui peut contenir les propriétés suivantes :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>diags:
+  list: [liste des accords à traiter]
+  position: Top
+  scale: 100</pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_tablatures_et_partitions_2">Tablatures et partitions</h4>
+<div class="listingblock">
+<div class="content">
+<pre>tablas:
+  position: Under</pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="songbook-options">Options du carnet</h4>
+<div class="paragraph">
+<p>Ces options sont à définir (si changement par rapport au comportement par défaut) dans le fichier <code>infos</code> (ou <code>inf</code>) du carnet, donc à la racine de son dossier.</p>
+</div>
+<div class="paragraph">
+<p>Elles se mettent dans la section <strong><code>options:</code></strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre># Dans .infos/.inf
+
+options:
+  # Les options ici</pre>
+</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1587,13 +2158,23 @@ options:
 </thead>
 <tbody>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>show_specs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pour une version de test d&#8217;impression, on peut mettre cette option à <code>true</code>, elle affichera les polices, tailles, etc. pour tout le carnet et les chansons en particulier.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>false</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>printer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Imprimeur, le cas échéant.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Amazon</code>, <code>KDP</code>, <code>Lulu</code> etc.</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>tdm_position</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Position de la table des matières, en début (<code>front</code>) ou fin (<code>end</code>) du carnet.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>end</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>build_unknown_song</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Détermine si les dossiers des chansons doivent être créés lorsque le titre est trouvé dans le fichier <code>.tdm</code> mais que la chanson n&#8217;est pas trouvée.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Détermine si le dossier d&#8217;une chanson est créé si la chanson n&#8217;est pas trouvée (par son titre dans la table des matières).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Défaut : <code>true</code> (oui, le dossier est créé)</p></td>
 </tr>
 <tr>
@@ -1609,47 +2190,10 @@ options:
 </tbody>
 </table>
 </div>
-<div class="sect2">
-<h3 id="songbook-layout">Layout d&#8217;un carnet</h3>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Tip</div>
-</td>
-<td class="content">
-Pour ouvrir directement ce fichier, <code>songbook open layout --sb "titre carnet"</code>
-</td>
-</tr>
-</table>
-</div>
+<div class="sect3">
+<h4 id="songbook-layout-options">Options de mise en page</h4>
 <div class="paragraph">
-<p>C&#8217;est un fichier qui doit porter l&#8217;extension <code>.layout</code> ou <code>.lay</code> <a href="#app-extension-driven">peu importe son nom</a>.</p>
-</div>
-<div class="paragraph">
-<p>Dans <em>SongBook</em>, on peut le faire chanson par chanson mais il vaut mieux, pour la cohérence esthétique, le définir pour un carnet.</p>
-</div>
-<div class="paragraph">
-<p>À nouveau la même mise en garde : le <em>layout</em> de la chanson n&#8217;est pas à confondre avec le <em>gabarit</em> :</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Le <strong>gabarit</strong> (fichier <code>.gab</code>) définit OÙ les éléments des paroles vont se placer dans la page et l&#8217;un par rapport à l&#8217;autre.</p>
-</li>
-<li>
-<p>Le <strong>layout</strong> (fichier <code>.lay</code>) définit les métadonnées de la mise en page, comme la policier et la taille des caractères, les marges, les options de mise en page, etc.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>En général, dans les carnets, le layout est déterminé par la propriété <code>layout</code> qui définit une mise en page par défaut de l&#8217;application. La liste des <a href="#app-layouts">layouts de l&#8217;application</a> suffisent normalement amplement à trouver son compte.</p>
-</div>
-<div class="paragraph">
-<p>Cependant, si vous voulez modifer certains paramètres, vous pouvez le faire par le biais d&#8217;un layout propre au carnet.</p>
-</div>
-<div class="paragraph">
-<p>Chaque <em>layout</em> doit définir les caractéristiques suivantes :</p>
+<p><em>Note : ces options peuvent également être définies dans un fichier <code>.layout</code>/<code>.lay</code>.</em></p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1717,6 +2261,50 @@ Pour ouvrir directement ce fichier, <code>songbook open layout --sb "titre carne
 </tr>
 </tbody>
 </table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="songbook-layout">Layout d&#8217;un carnet</h3>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+Pour ouvrir directement ce fichier, <code>songbook open layout --sb "titre carnet"</code>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>C&#8217;est un fichier qui doit porter l&#8217;extension <code>.layout</code> ou <code>.lay</code> <a href="#app-extension-driven">peu importe son nom</a>.</p>
+</div>
+<div class="paragraph">
+<p>Dans <em>SongBook</em>, on peut le faire chanson par chanson mais il vaut mieux, pour la cohérence esthétique, le définir pour un carnet.</p>
+</div>
+<div class="paragraph">
+<p>À nouveau la même mise en garde : le <em>layout</em> de la chanson n&#8217;est pas à confondre avec le <em>gabarit</em> :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Le <strong>gabarit</strong> (fichier <code>.gab</code>) définit OÙ les éléments des paroles vont se placer dans la page et l&#8217;un par rapport à l&#8217;autre.</p>
+</li>
+<li>
+<p>Le <strong>layout</strong> (fichier <code>.lay</code>) définit les métadonnées de la mise en page, comme la policier et la taille des caractères, les marges, les options de mise en page, etc.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>En général, dans les carnets, le layout est déterminé par la propriété <code>layout</code> qui définit une mise en page par défaut de l&#8217;application. La liste des <a href="#app-layouts">layouts de l&#8217;application</a> suffisent normalement amplement à trouver son compte.</p>
+</div>
+<div class="paragraph">
+<p>Cependant, si vous voulez modifer certains paramètres, vous pouvez le faire par le biais d&#8217;un layout propre au carnet.</p>
+</div>
+<div class="paragraph">
+<p>Voir les <a href="#songbook-layout-options">options de mise en page</a>.</p>
+</div>
 <div class="sect3">
 <h4 id="common-layouts">Mises en page par défaut</h4>
 <div class="sect4">
@@ -1848,214 +2436,8 @@ Pour ouvrir directement ce fichier, <code>songbook open layout --sb "titre carne
 </div>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="options">Options de fabrication</h3>
-<div class="paragraph">
-<p>On peut définir dans le fichier <code>infos</code> (<code>inf</code>) toutes les options gérant la fabrication des carnets ou des chansons.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Note</div>
-</td>
-<td class="content">
-Noter que s&#8217;il y des options réglées pour le carnet en construction et des options réglées pour la chanson la précédence se fait en fonction de la nature de l&#8217;option, sauf dans le cas où l&#8217;option <code>todo: à déterminer</code> est à <code>true</code>.
-</td>
-</tr>
-</table>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 15.3846%;">
-<col style="width: 46.1538%;">
-<col style="width: 23.0769%;">
-<col style="width: 7.6923%;">
-<col style="width: 7.6924%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Prop.</th>
-<th class="tableblock halign-left valign-top">Description</th>
-<th class="tableblock halign-left valign-top">Valeurs</th>
-<th class="tableblock halign-left valign-top">Opt.</th>
-<th class="tableblock halign-left valign-top">Pr.</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sensitivity</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Sensibilité aux erreurs, la façon de les gérer.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>high</code>, [<code>mid</code>], <code>low</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>-v</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>song_order_mode</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Mode de classement des chansons</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>strict</code>, [<code>lazy</code>]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keep_order</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Peut remplacer le précédent, respect de l&#8217;ordre des chansons.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code>, [<code>false</code>]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>title_with_labels</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Ajouter les labels aux infos de titre ("Paroles", "Musique", etc.)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>false</code>], <code>true</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Carnet</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_diags</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Pour autoriser (<code>true</code>) ou non (<code>false</code>) le rétrécissement des diagrammes. Note : peut se faire chanson par chanson.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>true</code>], <code>false</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_tabla</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Permission de réduire les tablatures.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>true</code>], <code>false</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_score</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Permission de réduire les partitions.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>true</code>], <code>false</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_lyrics</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Permission de réduire les paroles (font-size).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code>, [<code>false</code>]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 14.2857%;">
-<col style="width: 14.2857%;">
-<col style="width: 71.4286%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Propritété</th>
-<th class="tableblock halign-left valign-top">Valeur</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top" rowspan="3"><p class="tableblock"><code>sensitivity</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>high</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Le programme s&#8217;arrête à la première erreur et la signale.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mid</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Les erreurs rencontrées sont listées à la fin de l&#8217;opération</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>low</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Aucune interruption, les erreurs sont logguées silencieusement.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top" rowspan="2"><p class="tableblock"><code>song_order_mode</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>strict</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;ordre de la tdm du carnet est respecté scrupuleusement.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lazy</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;ordre peut être modifié pour des raisons d&#8217;organisation.</p></td>
-</tr>
-</tbody>
-</table>
 <div class="sect3">
-<h4 id="song-options">Options propres aux chansons</h4>
-<div class="paragraph">
-<p><em>(donc qu&#8217;on ne trouve que dans un fichier <code>.infos</code> d&#8217;une chanson)</em></p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 15.3846%;">
-<col style="width: 46.1538%;">
-<col style="width: 23.0769%;">
-<col style="width: 7.6923%;">
-<col style="width: 7.6924%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Prop.</th>
-<th class="tableblock halign-left valign-top">Description</th>
-<th class="tableblock halign-left valign-top">Valeurs</th>
-<th class="tableblock halign-left valign-top">Opt.</th>
-<th class="tableblock halign-left valign-top">Pr.</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Options pour les diagrammes d&#8217;accords.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#option-diags">voir</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
-</tr>
-</tbody>
-</table>
-<div class="sect4">
-<h5 id="option-diags">Options pour les diags</h5>
-<div class="listingblock">
-<div class="content">
-<pre>diags:
-  # Pour limiter les diags à une liste d'accords, par exemple seulement
-  # les accords compliqués ou propres à la chanson
-  list: [Am7, C, Dd7M]
-  # Position dans les pages de chanson
-  # [Int] : à l'intérieur, donc côté reliure du carnet.
-  # Ext   : à l'extérieur, donc à l'opposé de la reliure.
-  # Left  : dans une colonne toujours à gauche des paroles.
-  # Right : dans une colonne toujours à droite des paroles.
-  # Top   : en haut de la page.
-  # Bot   : en bas de la page
-  # Front : tous les diagrammes avant les paroles en 1^re^ page.
-  # End   : tous les diagrammes après les paroles en dernière page.
-  position: Left
-
-  # Alignement des diags dans leur container (colonne ou rangée)
-  # Valeurs possibles en fonction du contenant :
-  # Ext/Int/Left/Right : [Center], Top, Bot, Justify
-  # Top/Bot/Front/End  : [Center], Left, Right, Justify
-  align: Center
-
-  # Échelle (zoom) des diagrammes par rapport à la valeur normale
-  # C'est une proportion par rapport à 1 (valeur normale).
-  # Cette valeur ne s'applique pas si `size` est défini.
-  scale: 1.5
-
-  # On peut aussi fixer explicitement la taille des diagrammes.
-  # Noter que si shrink_diags est true, cette taille pourra être
-  # modifiée pour des raisons esthétiques.
-  # La valeur a la forme largeur x hauteur. Si une valeur n'est pas
-  # définie, elle sera calculée automatiquement par rapport à l'autre
-  # "120 x" signifie : "largeur de 120 points et hauteur automatique"
-  size: 120 x</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="universal-properties">Propriétés universelles</h3>
+<h4 id="universal-properties">Propriétés universelles</h4>
 <div class="paragraph">
 <p>On appelle <em>propriétés universelles</em> les propriétés qui peuvent être attribuées à un grand nombre de paramètres de configuration.</p>
 </div>
@@ -2083,28 +2465,6 @@ Noter que s&#8217;il y des options réglées pour le carnet en construction et d
 </tr>
 </tbody>
 </table>
-</div>
-<div class="sect2">
-<h3 id="_placement_des_diags">Placement des diags</h3>
-<div class="paragraph">
-<p>Dans le <a href="#infos-file">Fichier des informations de la chanson</a>, c&#8217;est le paramètre principal <code>diags</code> qui peut contenir les propriétés suivantes :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>diags:
-  list: [liste des accords à traiter]
-  position: Top
-  scale: 100</pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_tablatures_et_partitions_2">Tablatures et partitions</h3>
-<div class="listingblock">
-<div class="content">
-<pre>tablas:
-  position: Under</pre>
-</div>
 </div>
 </div>
 <div class="sect2">
@@ -2160,12 +2520,13 @@ songbook edit tdm</pre>
 <div class="content">
 <pre>----
 songbook build tdm[ --songbook "Mon nouveau carnet de chant"]
+songbook edit tdm [ --songbook "Mon nouveau carnet de chant"]
 ----</pre>
 </div>
 </div>
 <div class="literalblock">
 <div class="content">
-<pre>Cette commande afficher la liste des chansons et permet de les choisir pour former une table des matières.</pre>
+<pre>Cette commande affiche la liste des chansons et permet de les choisir pour former une table des matières.</pre>
 </div>
 </div>
 <div class="literalblock">
@@ -2173,8 +2534,72 @@ songbook build tdm[ --songbook "Mon nouveau carnet de chant"]
 <pre>Penser à filtrer la liste des chansons pour les retrouver plus vite, surtout si votre liste est longue.</pre>
 </div>
 </div>
+<div class="literalblock">
+<div class="content">
+<pre>[[songbook-repeat-song]]
+==== Répétition de la même chanson ====</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>On peut tout à fait mettre plusieurs fois la même chanson dans le carnet de chant, par exemple pour l'avoir dans différentes tonalité. Dans ce cas, on ajoute un index entre crochet dans l'idendifiant de la chanson. Si l'identifiant est :</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>----
+- blackbird-the-beatles-1968
+----</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>… on pourra utiliser :</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>----
+# Par exemple dans mc.tdm</pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>blackbird-the-beatles-1968 [1]</p>
+</li>
+<li>
+<p>blackbird-the-beatles-1968 [2]</p>
+</li>
+<li>
+<p>blackbird-the-beatles-1968 [3]
+----</p>
 </li>
 </ul>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>On pourra alors préciser les informations précises de la chanson en utilisant ce nouvel identifiant :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Mon-Carnet/
+  |— mc.tdm
+  |— blackbird-the-beatles-1968 [1].infos
+  |— blackbird-the-beatles-1968 [2].infos</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Et les fichiers des informations pourront contenir :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre># Dans blackbird-the-beatles-1968 [1].infos
+font-size: 14pt
+font-family: Garamond</pre>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -3281,7 +3706,7 @@ Près d'un lac je m'étais endormie</pre>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RAG1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;erreur doit être signalée à l&#8217;user en fonction du <strong>degré de sensibilité</strong> défini par les <a href="#options">Configuration</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L&#8217;erreur doit être signalée à l&#8217;user en fonction du <strong>degré de sensibilité</strong> défini par les <a href="#options">options</a>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">cf. <code>sensitivity</code></p></td>
 </tr>
 <tr>

@@ -32,8 +32,15 @@ RSpec.describe "niveau de sensibilité aux erreurs (sensitivity)" do
     Layout.conflict!("problème caché", solution: "rien")
     Layout.conflict!("autre problème caché", solution: "rien")
 
-    expect { Layout.report_conflicts! }.to output(/Des erreurs sont produites \(2\)/).to_stderr
+    expect { Layout.report_conflicts! }.to output(/2 erreurs ont été rencontrées/).to_stderr
     expect(File.read(Layout.conflict_log_path)).to include("problème caché")
+  end
+
+  it "Gérer le singulier (1 seule erreur)" do
+    Layout.sensitivity = "log"
+    Layout.conflict!("problème caché", solution: "rien")
+
+    expect { Layout.report_conflicts! }.to output(/1 erreur a été rencontrée/).to_stderr
   end
 
   it "Ne rien dire du tout (low)" do

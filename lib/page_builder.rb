@@ -3,7 +3,7 @@ require_relative "dsl_parser"
 require_relative "layout"
 require_relative "chord_diagrams"
 require_relative "transpose"
-require_relative "kdp"
+require_relative "printer_profile"
 require_relative "locale"
 require_relative "file_finder"
 require_relative "diags_sync"
@@ -49,22 +49,27 @@ module PageBuilder
     default
   end
 
-  # `tabla_preset`  : nom d'un preset `Tablator::PRESETS`
-  # ("regular-tablatures"/"mini-tablatures"...) — chanson (`.infos`) prioritaire
-  # sur le carnet, même principe que `resolve_shrink_option`. `nil` si absent des
-  # deux (l'appelant retombe alors sur le défaut, "regular-tablatures").
-  def self.resolve_tabla_preset(meta, carnet_folder)
-    return meta["tabla_preset"] if meta.key?("tabla_preset")
+  # N'importe quelle clé `.infos` texte (pas juste les `shrink_*` booléens) — chanson
+  # prioritaire sur le carnet, `default` si absente des deux.
+  def self.resolve_infos_option(meta, carnet_folder, key, default: nil)
+    return meta[key] if meta.key?(key)
 
     if carnet_folder
       carnet_infos_path = FileFinder.find(carnet_folder, :inf)
       if carnet_infos_path
         carnet_meta = parse_infos(carnet_infos_path)
-        return carnet_meta["tabla_preset"] if carnet_meta.key?("tabla_preset")
+        return carnet_meta[key] if carnet_meta.key?(key)
       end
     end
 
-    nil
+    default
+  end
+
+  # `tabla_preset`  : nom d'un preset `Tablator::PRESETS`
+  # ("regular-tablatures"/"mini-tablatures"...) — `nil` si absent des deux (l'appelant
+  # retombe alors sur le défaut, "regular-tablatures").
+  def self.resolve_tabla_preset(meta, carnet_folder)
+    resolve_infos_option(meta, carnet_folder, "tabla_preset")
   end
 
 
@@ -74,7 +79,12 @@ module PageBuilder
       k, v = line.strip.split(":", 2)
       meta[k.strip] = v.strip if k && v && !k.strip.empty? && !v.strip.empty?
     end
-    infos_key_aliases.each { |alt, canon| meta[canon] ||= meta[alt] }
+    # `meta[canon] ||= meta[alt]` créerait la clé canonique à `nil` même quand NI la
+    # clé canonique NI son alias ne sont dans le fichier (`Hash#[]=` fixe TOUJOURS la
+    # clé) — un `.infos` indexé partiel (juste `font-size:`, par ex.) se retrouvait
+    # avec `title`/`performer`/... explicitement à `nil`, qui EFFAÇAIENT ceux de la
+    # chanson une fois fusionnés (`Hash#merge`, `nil` explicite gagne toujours).
+    infos_key_aliases.each { |alt, canon| meta[canon] = meta[alt] if !meta.key?(canon) && meta.key?(alt) }
     meta
   end
 
@@ -767,7 +777,9 @@ module PageBuilder
   # et Manuel/song/layout.adoc) : défauts du CARNET pour cette chanson — un `.gab` explicite
   # garde priorité (une chanson peut toujours s'écarter du layout général, Manuel : "on
   # peut le faire chanson par chanson ou de façon générale... ou les deux").
-  def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout: nil, debug_marks: false, carnet_folder: nil)
+  def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout: nil, debug_marks: false, carnet_folder: nil, infos_overrides: {},
+      paper: PrinterProfile::DEFAULT_PAPER, bleed: PrinterProfile::DEFAULT_BLEED, facing_pages: PrinterProfile::DEFAULT_FACING_PAGES,
+      outside_margin: nil, gutter_margin: nil, top_margin: nil, bot_margin: nil, left_margin: nil, right_margin: nil)
     DiagsSync.sync!(folder)
     gab_path = FileFinder.find(folder, :gab)
     # `.gab` vide (0 octet ou blanc) : traité comme absent, jamais une page blanche
@@ -777,7 +789,12 @@ module PageBuilder
     infos_path = FileFinder.find(folder, :inf)
     raise "fichiers .lyr/.lyrics ou .infos/.inf introuvables dans #{folder}" unless lyr_path && infos_path
 
-    meta = parse_infos(infos_path)
+    # Cascade complète, n'importe quelle clé : défaut app < .infos du carnet < .infos de
+    # la chanson < .infos indexé de cette entrée du .tdm (`infos_overrides`,
+    # `CarnetBuilder.resolve_infos_override`).
+    carnet_infos_path = carnet_folder && FileFinder.find(carnet_folder, :inf)
+    carnet_meta = carnet_infos_path ? parse_infos(carnet_infos_path) : {}
+    meta = carnet_meta.merge(parse_infos(infos_path)).merge(infos_overrides)
     # `Tablator.active_preset` est un état GLOBAL du module ,
     # config "regular-tablatures"/"mini-tablatures", `tools/tablator/presets.rb`) —
     # TOUJOURS fixé ici, explicitement, jamais laissé hériter d'une chanson précédente
@@ -793,6 +810,9 @@ module PageBuilder
     # taille des caractères ne doit JAMAIS changer (`build_row_or_split`, couplets côte
     # à côte trop larges) — comportement actuel avant ce correctif.
     Layout.shrink_text = resolve_shrink_option(meta, carnet_folder, "shrink_text", default: false)
+    Layout.font_family = resolve_infos_option(meta, carnet_folder, "font-family", default: "HelveticaNeue")
+    Layout.font_size = resolve_infos_option(meta, carnet_folder, "font-size", default: Layout::TEXT_SIZE.to_s).to_s[/[\d.]+/].to_f
+    Layout.show_specs = resolve_shrink_option(meta, carnet_folder, "show_specs", default: false)
     # `score_title_size`/`score_title_style` : clés de LAYOUT (`layout:`/`.lay`), pas
     # `.infos`  — comme `intro_align`, "pas encore stabilisé".
     if layout && layout[:score_title_size]
@@ -833,12 +853,14 @@ module PageBuilder
     end
     page_size = page_size_in.map { |v| v * 72 }
     page_w_pt, page_h_pt = page_size
-    kdp = KDP.new(page_count: page_count, trim_width: page_size_in[0], trim_height: page_size_in[1],
-      paper: Layout::KDP_PAPER, bleed: Layout::KDP_BLEED)
+    # Réglages imprimeur reçus de l'appelant (carnet entier), jamais relus depuis `meta`.
+    printer = PrinterProfile.new(page_count: page_count, trim_width: page_size_in[0], trim_height: page_size_in[1],
+      paper: paper, bleed: bleed, facing_pages: facing_pages, outside_margin: outside_margin, gutter_margin: gutter_margin,
+      top_margin: top_margin, bot_margin: bot_margin, left_margin: left_margin, right_margin: right_margin)
 
     Prawn::Document.generate(out_path, page_size: page_size, margin: 0) do |pdf|
       Layout.register_fonts(pdf)
-      Layout.apply_kdp_margins(pdf, kdp, first_page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
+      Layout.apply_print_margins(pdf, printer, first_page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
       title_item = items.find { |i| i.type == :title }
       # `.gab` explicite sans directive `{title: ...}` (ex. w.gab de "À bicyclette") :
       # retombe sur `title_band_default` (layout résolu du carnet), jamais un :inline
@@ -871,9 +893,9 @@ module PageBuilder
         [tx_r, sc_r]
       end
 
-      chord_ascent = Layout.font_metric(pdf, Layout::CHORD_SIZE) { pdf.font.ascender }
-      text_ascent = Layout.font_metric(pdf, Layout::TEXT_SIZE) { pdf.font.ascender }
-      text_descent = Layout.font_metric(pdf, Layout::TEXT_SIZE) { pdf.font.descender }
+      chord_ascent = Layout.font_metric(pdf, Layout.scaled_chord_size) { pdf.font.ascender }
+      text_ascent = Layout.font_metric(pdf, Layout.font_size) { pdf.font.ascender }
+      text_descent = Layout.font_metric(pdf, Layout.font_size) { pdf.font.descender }
 
       bare_kind_counters = Hash.new(0)
       rows = items.select { |i| i.type == :row }.map { |i| i.data[:names].map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: i.data[:directives]), name, layout) } }
@@ -918,7 +940,7 @@ module PageBuilder
         ) if dynamic_mode
       end
 
-      Layout.paginate_and_draw(pdf, elements, first_avail_h, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col, text_x: text_x, text_w: text_w, debug_marks: debug_marks,
+      Layout.paginate_and_draw(pdf, elements, first_avail_h, printer: printer, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col, text_x: text_x, text_w: text_w, debug_marks: debug_marks,
         dynamic_mode: dynamic_mode, elements_alt: elements_r, side_col_alt: side_col_r, text_x_alt: text_x_r, row_excess: row_excess, row_excess_w: row_excess_w)
     end
   end
@@ -927,19 +949,19 @@ module PageBuilder
   # `DSLParser`. page_size_in : [largeur, hauteur] en pouces. header_style: :inline (titre +
   # infos sur la ligne du titre, fond page) ou :band (bandeau foncé pleine page en haut,
   # texte clair). page_count: nombre de pages TOTAL du carnet (détermine la marge de
-  # reliure KDP, cf. `KDP#gutter_margin`) ; first_page_no: numéro de la première page de
+  # reliure, cf. `PrinterProfile#gutter_margin`) ; first_page_no: numéro de la première page de
   # cette chanson dans le carnet complet (recto/verso, numérotation).
   def self.build_from_dsl(dsl_path, out_path, page_size_in:, page_count:, header_style: :inline, first_page_no: 1, debug_marks: false)
     song = DSLParser.parse(File.read(dsl_path))
     chord_frets = ChordDiagrams.collect_chord_frets(song.blocks)
     page_size = page_size_in.map { |v| v * 72 }
     page_w_pt, page_h_pt = page_size
-    kdp = KDP.new(page_count: page_count, trim_width: page_size_in[0], trim_height: page_size_in[1],
-      paper: Layout::KDP_PAPER, bleed: Layout::KDP_BLEED)
+    printer = PrinterProfile.new(page_count: page_count, trim_width: page_size_in[0], trim_height: page_size_in[1],
+      paper: PrinterProfile::DEFAULT_PAPER, bleed: PrinterProfile::DEFAULT_BLEED)
 
     Prawn::Document.generate(out_path, page_size: page_size, margin: 0) do |pdf|
       Layout.register_fonts(pdf)
-      Layout.apply_kdp_margins(pdf, kdp, first_page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
+      Layout.apply_print_margins(pdf, printer, first_page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
       header_bottom = header_style == :band ? Layout.draw_header_band(pdf, song.meta) : Layout.draw_header_inline(pdf, song.meta)
 
       diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret) }
@@ -953,16 +975,16 @@ module PageBuilder
 
       Layout.draw_diags(pdf, diag_paths, diag_heights, x: 0, avail_h: header_bottom, width: diag_w)
 
-      chord_ascent = Layout.font_metric(pdf, Layout::CHORD_SIZE) { pdf.font.ascender }
-      text_ascent = Layout.font_metric(pdf, Layout::TEXT_SIZE) { pdf.font.ascender }
-      text_descent = Layout.font_metric(pdf, Layout::TEXT_SIZE) { pdf.font.descender }
+      chord_ascent = Layout.font_metric(pdf, Layout.scaled_chord_size) { pdf.font.ascender }
+      text_ascent = Layout.font_metric(pdf, Layout.font_size) { pdf.font.ascender }
+      text_descent = Layout.font_metric(pdf, Layout.font_size) { pdf.font.descender }
       cote_a_cote = song.meta.fetch("cote_a_cote", true)
 
       elements = Layout.build_row_elements(pdf, song.blocks, text_x, text_w, chord_ascent, text_ascent, text_descent, cote_a_cote)
       tabla_el = Layout.build_tabla_element(pdf, song.meta, dsl_path, text_x, text_w)
       elements << tabla_el if tabla_el
 
-      Layout.paginate_and_draw(pdf, elements, header_bottom, kdp: kdp, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, debug_marks: debug_marks)
+      Layout.paginate_and_draw(pdf, elements, header_bottom, printer: printer, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, debug_marks: debug_marks)
     end
   end
 end

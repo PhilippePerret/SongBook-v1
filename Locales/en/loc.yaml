@@ -66,7 +66,11 @@ build_choice_cancel: "cancel"
 build_cancelled: "Build cancelled."
 song_pdf_generated: "Song %s generated as PDF."
 song_build_conflicts_count: "Conflicts were encountered during the build (%s)."
+conflicts_encountered_one: "1 error was encountered."
+conflicts_encountered_other: "%s errors were encountered."
 song_build_open_conflicts_question: "Should I open the conflicts file?"
+carnet_build_success: "Songbook “%s” built successfully."
+carnet_build_open_pdf_question: "Should I open the songbook file “%s”?"
 song_build_open_pdf_question: "Should I open the generated PDF?"
 
 # tablator assistant
@@ -101,6 +105,7 @@ diag_conflict_schema: "This schema (same positions) already exists, under the na
 diag_inserted: "Schema %s inserted."
 diags_page_opened: "Diagrams page opened."
 diags_update_in_progress: "Updating all diagrams…"
+carnet_building_in_progress: "Building the songbook…"
 diags_updated: "Application diagrams and HTML page updated (run the 'diags' command to see them)."
 
 # chord assistant (songbook add chords)

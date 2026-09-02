@@ -12,14 +12,16 @@ include::creation.adoc[]
 
 // Fichier des informations
 include::infos.adoc[]
+
 // Options
 include::options.adoc[]
 
 // Layout d'un carnet
 include::layout.adoc[]
 
-// Options du carnet (commun avec song)
-include::song_book_options.adoc[]
+// Propriétés (universelles et autres)
+// todo: bien placé ?
+include::properties.adoc[]
 
 // Table des matières
 include::table-des-matieres.adoc[]

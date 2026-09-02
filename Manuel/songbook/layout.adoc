@@ -17,54 +17,7 @@ En général, dans les carnets, le layout est déterminé par la propriété `la
 
 Cependant, si vous voulez modifer certains paramètres, vous pouvez le faire par le biais d'un layout propre au carnet.
 
-Chaque __layout__ doit définir les caractéristiques suivantes :
-
-[cols="1,3,3", options="header"]
-|====
-| Caractéristique | Description | Valeurs
-
-| `title_band` 
-| Titre en bandeau ou pas.
-| `true` = titre mis en bandeau
-
-| `score_title_size`
-| Taille de la police pour les titres de partitions et de tablatures (avec unité)
-| `12pt`
-
-| `score_title_style`
-| Style à appliquer aux titres des partitions et tablatures.
-| p.e. `bold italic`
-
-| `tabla_measures_per_page`
-| Définit explicitement le nombre de mesures de tablature dans la page
-| `6` (priorité aux carnets)
-
-| `tabla_system_spacing`
-| Définit l'espace entre deux systèmes de tablature.
-| `12pt`
-
-| `lyrics_flux`
-| Définit le flux, l'enchainement des strophes, couplets, refrains et autres paroles.
-| `side` (pour "side by side", "côte à côte") ou `vertical` (pour "stacked vertically" ou "l'un au-dessous de l'autre") ou `free` (pour "free positioning", aucune contrainte).
-
-| `diags_position` 
-| Position des diagrammes d'accords, par défaut, dans la page
-| `Top`, `Bot`, `Int`, `Ext` ou combinaison : `Int+Ext`, `Bot+Int` etc.
-
-| `diags_size`
-| Dimensions des diags lorsque cette dimension doit être fixe et non touchée.
-| `auto`, `Nptx` (largeur de N points), `xNpt` (hauteur de N points), `NptxMpt` (largeur de N points et hauteur de M points) 
-
-| `music_position`
-| Position des partitions comme des tablatures, de façon générale.
-| `beginning` ou `front` (au début, avant les premières paroles), `end` (à la fin, après les premières paroles), `wherever` (pour "flexible", se placera là où il y a de la place libre).
-
-| `intro_align`
-| Alignement d'un bloc désigné par "intro"
-| Défaut : `left`
-
-
-|====
+Voir les <<songbook-layout-options>>.
 
 [[common-layouts, Mises en page]]
 ==== Mises en page par défaut ====

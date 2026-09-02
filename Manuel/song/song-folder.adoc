@@ -33,4 +33,4 @@ Ma-chanson/
 
 - le <<infos-file>> (`.infos`) contient le titre et autres informations générales sur la chanson, ainsi que la définition des <<options>>.
 - le <<lyrics-file, fichier des paroles et accords>> (`.lyr`) contient toutes les paroles, accompagnées des accords, ainsi que, éventuellement, les <<riffs>> et autres petits bouts de musique.
-- le <<gabarit>> optionnel de la chanson (`.gab`), s'il est particulier à cette chanson ou qu'elle ne s'insère pas dans un <<songbook, carnet>> définissant son propre gabarit. __Notez qu'utiliser ce fichier dans ce dossier n’est pas considéré comme une <<best-practices, bonne pratique>>__.
+- le <<gabarit-file>> optionnel de la chanson (`.gab`), s'il est particulier à cette chanson ou qu'elle ne s'insère pas dans un <<songbook, carnet>> définissant son propre gabarit. __Notez qu'utiliser ce fichier dans ce dossier n’est pas considéré comme une <<best-practices, bonne pratique>>__.

@@ -1,7 +1,325 @@
-[[app-options, options du carnet]]
-=== Options du carnet ===
+[[options, options]]
+=== Options ===
 
-Ces options sont à définir dans le fichier `infos` (ou `inf`).
+On peut définir dans le fichier `infos` (`inf`) toutes les options gérant la fabrication des carnets ou des chansons.
+
+NOTE: Noter que s'il y des options réglées pour le carnet en construction et des options réglées pour la chanson la précédence se fait en fonction de la nature de l'option, sauf dans le cas où l'option `todo: à déterminer` est à `true`.
+
+==== Options générales ====
+
+[cols="2,6,3,1,1", options="header"]
+|====
+| Prop. | Description 
+| Valeurs | Opt. | Pr.
+
+| `sensitivity` 
+| Sensibilité aux erreurs, la façon de les gérer.
+| `high`, [`mid`], `low` | `-v` | Carnet
+
+|====
+
+// Les valeurs explicitées
+[cols="1,1,5", options="header"]
+|====
+| Propritété | Valeur | Description
+.3+| `sensitivity`    | `high`  | Le programme s'arrête à la première erreur et la signale.
+                      | `mid`   | Les erreurs rencontrées sont listées à la fin de l'opération
+                      | `low`   | Aucune interruption, les erreurs sont logguées silencieusement.
+|====
+
+[[printer-options]]
+==== Options d'impression ====
+
+[cols="2,6,3,1,1", options="header"]
+|====
+| Prop. | Description 
+| Valeurs | Opt. | Pr.
+
+| `printer`
+| Une configuration prête à l'emploi.
+| [`kdp`], ...
+
+| `facing_pages`
+| Une page ou page en vis à vis, double page pour un livre
+| [`true`], `false`
+
+| `paper`
+| Si impression, le type de papier.
+| [`white`], `cream`, `color_standard`, `color_premium`
+
+| `bleed`
+| Fond perdu ou pas.
+| [`false`], `true`
+
+| `top_margin`
+| La Marge en haut de page, avec son unité.
+| `1.5cm`
+
+| `bot_margin`
+| La Marge en bas de page, avec son unité.
+| `1in`
+
+| `left_margin`
+| La Marge gauche,  quand `facing_pages` est `false`, avec son unité.
+| `10pt`
+
+| `right_margin`
+| La Marge gauche,  quand `facing_pages` est `false`, avec son unité.
+| `10pt`
+
+| `outside_margin`
+| La Marge extérieure,  quand `facing_pages` est `true`, avec son unité.
+| `20pt`
+
+| `gutter_margin`
+| La Marge intérieure (côté relieure),  quand `facing_pages` est `true`, avec son unité.
+| `25px`
+
+| `folio_position`
+| Position du numéro de page
+| Cf. les valeurs ci-dessous
+
+
+|====
+
+// Les valeurs explicitées
+[cols="1,1,5", options="header"]
+|====
+| Propritété | Valeur | Description
+.8+|`folio_position`| `Bot`         | En mode livre, le numéro est mis en bas (à l'extérieur)
+                    | `Top`         | En mode livre, le numéro est mis en haut (à l'extérieur)
+                    | `Top-Center`  |  En mode page simple, le numéro est mis au centre en haut.
+                    | `Bot-Center`  |  En mode page simple, le numéro est mis au centre en bas.
+                    | `Top-Left`    |  En mode page simple, le numéro est mis à gauche en haut.
+                    | `Top-Right`   |  En mode page simple, le numéro est mis à droite en haut.
+                    | `Bot-Left`    |  En mode page simple, le numéro est mis à gauche en bas.
+                    | `Bot-Right`   |  En mode page simple, le numéro est mis à droite en bas.
+|====
+
+
+
+[[tdm-options]]
+==== Options de la tables des matières ====
+
+[cols="2,6,3,1,1", options="header"]
+|====
+| Prop. | Description 
+| Valeurs | Opt. | Pr.
+
+| `song_order_mode`
+| Mode de classement des chansons. Si le classement est strict, on ne peut pas changer l'agencement. S'il est `lazzy`, on peut bouger les chansons pour avoir un meilleur agencement des pages.
+| `strict`, [`lazy`] | --- | Carnet
+
+| `keep_order`
+| Peut remplacer le précédent, respect de l'ordre des chansons.
+| `true`, [`false`] | --- | Carnet
+
+|====
+
+// Les valeurs explicitées
+[cols="1,1,5", options="header"]
+|====
+| Propritété | Valeur | Description
+.2+|`song_order_mode`| `strict`| L'ordre de la tdm du carnet est respecté scrupuleusement.
+                    | `lazy`  | L'ordre peut être modifié pour des raisons d'organisation.
+.2+| `keep_order`   | `true`  | L'ordre des chansons ne doit pas bouger du tout.
+                    | `false` | L'ordre des chansons peut être modifié.
+|====
+
+
+
+[[band-title-option]]
+==== Options de la « bande de titre » ====
+
+[cols="2,6,3,1,1", options="header"]
+|====
+| Prop. | Description 
+| Valeurs | Opt. | Pr.
+
+| `title_with_labels` | Ajouter les labels aux infos de titre ("Paroles", "Musique", etc.)
+| [`false`], `true` | --- | Carnet
+
+|====
+
+// Les valeurs explicitées
+[cols="1,1,5", options="header"]
+|====
+| Propritété | Valeur | Description
+.2+| `title_with_labels` | `true`  | Les labels « Paroles », « Musique » etc. sont ajoutés avant les noms
+                          | `false` | Seuls les noms sont affichés dans le bandeau de titre.
+|====
+
+
+
+[[lyrics-options]]
+==== Options des paroles ====
+
+[cols="2,6,3,1,1", options="header"]
+|====
+| Prop. | Description 
+| Valeurs | Opt. | Pr.
+
+| `shrink_lyrics` | Permission de réduire les paroles (font-size).
+| `true`, [`false`] | --- | Song
+
+|====
+
+// Les valeurs explicitées
+[cols="1,1,5", options="header"]
+|====
+| Propritété | Valeur | Description
+.2+| `shrink_lyrics` | `true`  | On peut réduire les paroles pour qu'elles tiennent dans la place donnée.
+                      | `false` | On ne peut pas réduire la taille des paroles.
+|====
+
+
+
+
+[[diags-options]]
+==== Options des diagrammes ====
+
+[cols="2,6,3,1,1", options="header"]
+|====
+| Prop. | Description 
+| Valeurs | Opt. | Pr.
+
+|`shrink_diags` | Pour autoriser (`true`) ou non (`false`) le rétrécissement des diagrammes. Note : peut se faire chanson par chanson.
+| [`true`], `false` | --- | Song
+
+|====
+
+// Les valeurs explicitées
+[cols="1,1,5", options="header"]
+|====
+| Propritété | Valeur | Description
+.2+| `shrink_diags`  | `true`  | On peut réduire les diags pour qu'ils tiennent dans la place donnée.
+                      | `false` | On ne peut pas réduire la taille des diagrammes d'accord.
+|====
+
+
+[[tablatures-options]]
+==== Options sur les tablatures ====
+
+[cols="2,6,3,1,1", options="header"]
+|====
+| Prop. | Description 
+| Valeurs | Opt. | Pr.
+
+| `shrink_tabla` | Permission de réduire les tablatures.
+| [`true`], `false` | --- | Song
+
+|====
+// Les valeurs explicitées
+[cols="1,1,5", options="header"]
+|====
+| Propritété | Valeur | Description
+.2+| `shrink_tabla`  | `true`  | On peut réduire les tablatures pour qu'ils tiennent dans la place donnée.
+                      | `false` | On ne peut pas réduire la taille des tablatures.
+|====
+
+
+
+
+[[scores-options]]
+==== Options sur les partitions ====
+
+[cols="2,6,3,1,1", options="header"]
+|====
+| Prop. | Description 
+| Valeurs | Opt. | Pr.
+
+| `shrink_score` | Permission de réduire les partitions.
+| [`true`], `false` | --- | Song
+
+|====
+
+
+
+[[song-options, options chanson]]
+==== Options propres aux chansons ====
+
+__(donc qu'on ne trouve que dans un fichier `.infos` d'une chanson)__
+
+[cols="2,6,3,1,1", options="header"]
+|====
+| Prop. | Description | Valeurs | Opt. | Pr.
+| `diags` | Options pour les diagrammes d'accords. | <<option-diags, voir>> | --- | Song
+|====
+
+[[option-diags]]
+===== Options pour les diags =====
+
+----
+diags:
+  # Pour limiter les diags à une liste d'accords, par exemple seulement
+  # les accords compliqués ou propres à la chanson
+  list: [Am7, C, Dd7M]
+  # Position dans les pages de chanson
+  # [Int] : à l'intérieur, donc côté reliure du carnet.
+  # Ext   : à l'extérieur, donc à l'opposé de la reliure.
+  # Left  : dans une colonne toujours à gauche des paroles.
+  # Right : dans une colonne toujours à droite des paroles.
+  # Top   : en haut de la page.
+  # Bot   : en bas de la page
+  # Front : tous les diagrammes avant les paroles en 1^re^ page.
+  # End   : tous les diagrammes après les paroles en dernière page.
+  position: Left
+  
+  # Alignement des diags dans leur container (colonne ou rangée)
+  # Valeurs possibles en fonction du contenant :
+  # Ext/Int/Left/Right : [Center], Top, Bot, Justify
+  # Top/Bot/Front/End  : [Center], Left, Right, Justify
+  align: Center
+  
+  # Échelle (zoom) des diagrammes par rapport à la valeur normale
+  # C'est une proportion par rapport à 1 (valeur normale).
+  # Cette valeur ne s'applique pas si `size` est défini.
+  scale: 1.5
+  
+  # On peut aussi fixer explicitement la taille des diagrammes.
+  # Noter que si shrink_diags est true, cette taille pourra être
+  # modifiée pour des raisons esthétiques.
+  # La valeur a la forme largeur x hauteur. Si une valeur n'est pas
+  # définie, elle sera calculée automatiquement par rapport à l'autre
+  # "120 x" signifie : "largeur de 120 points et hauteur automatique"
+  size: 120 x 
+  
+----
+
+
+
+==== Placement des diags ====
+
+Dans le <<infos-file>>, c'est le paramètre principal `diags` qui peut contenir les propriétés suivantes :
+
+----
+diags:
+  list: [liste des accords à traiter]
+  position: Top
+  scale: 100
+----
+
+==== Tablatures et partitions ====
+
+----
+tablas:
+  position: Under
+  
+----
+
+[[songbook-options, options du carnet]]
+==== Options du carnet ====
+
+Ces options sont à définir (si changement par rapport au comportement par défaut) dans le fichier `infos` (ou `inf`) du carnet, donc à la racine de son dossier.
+
+Elles se mettent dans la section **`options:`**
+
+----
+# Dans .infos/.inf
+
+options:
+  # Les options ici
+----
 
 [cols="1,3,3", options="header"]
 |====
@@ -9,12 +327,20 @@ Ces options sont à définir dans le fichier `infos` (ou `inf`).
 | Description 
 | Valeurs
 
+| `show_specs`
+| Pour une version de test d'impression, on peut mettre cette option à `true`, elle affichera les polices, tailles, etc. pour tout le carnet et les chansons en particulier.
+| Défaut : `false`
+
+| `printer`
+| Imprimeur, le cas échéant.
+| `Amazon`, `KDP`, `Lulu` etc.
+
 | `tdm_position` 
 | Position de la table des matières, en début (`front`) ou fin (`end`) du carnet.
 | Défaut : `end`
 
 | `build_unknown_song`
-| Détermine si les dossiers des chansons doivent être créés lorsque le titre est trouvé dans le fichier `.tdm` mais que la chanson n'est pas trouvée.
+| Détermine si le dossier d'une chanson est créé si la chanson n'est pas trouvée (par son titre dans la table des matières).
 | Défaut : `true` (oui, le dossier est créé)
 
 | `text_column_guter`
@@ -26,3 +352,55 @@ Ces options sont à définir dans le fichier `infos` (ou `inf`).
 | Défaut : `Times`
 
 |====
+
+[[songbook-layout-options, options de mise en page]]
+==== Options de mise en page ====
+
+__Note : ces options peuvent également être définies dans un fichier `.layout`/`.lay`.__
+
+[cols="1,3,3", options="header"]
+|====
+| Caractéristique | Description | Valeurs
+
+| `title_band` 
+| Titre en bandeau ou pas.
+| `true` = titre mis en bandeau
+
+| `score_title_size`
+| Taille de la police pour les titres de partitions et de tablatures (avec unité)
+| `12pt`
+
+| `score_title_style`
+| Style à appliquer aux titres des partitions et tablatures.
+| p.e. `bold italic`
+
+| `tabla_measures_per_page`
+| Définit explicitement le nombre de mesures de tablature dans la page
+| `6` (priorité aux carnets)
+
+| `tabla_system_spacing`
+| Définit l'espace entre deux systèmes de tablature.
+| `12pt`
+
+| `lyrics_flux`
+| Définit le flux, l'enchainement des strophes, couplets, refrains et autres paroles.
+| `side` (pour "side by side", "côte à côte") ou `vertical` (pour "stacked vertically" ou "l'un au-dessous de l'autre") ou `free` (pour "free positioning", aucune contrainte).
+
+| `diags_position` 
+| Position des diagrammes d'accords, par défaut, dans la page
+| `Top`, `Bot`, `Int`, `Ext` ou combinaison : `Int+Ext`, `Bot+Int` etc.
+
+| `diags_size`
+| Dimensions des diags lorsque cette dimension doit être fixe et non touchée.
+| `auto`, `Nptx` (largeur de N points), `xNpt` (hauteur de N points), `NptxMpt` (largeur de N points et hauteur de M points) 
+
+| `music_position`
+| Position des partitions comme des tablatures, de façon générale.
+| `beginning` ou `front` (au début, avant les premières paroles), `end` (à la fin, après les premières paroles), `wherever` (pour "flexible", se placera là où il y a de la place libre).
+
+| `intro_align`
+| Alignement d'un bloc désigné par "intro"
+| Défaut : `left`
+
+|====
+

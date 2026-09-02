@@ -24,6 +24,9 @@ RSpec.describe "mode interactif : chanson/carnet courant (use)" do
   # Bug constaté 2026-08-25 : `build` sans argument ignorait le carnet choisi avec
   # `use` et construisait le dossier courant à la place.
   it "Construire le bon carnet même sans rien taper après use" do
+    prompt = instance_double(TTY::Prompt, yes?: false)
+    allow(TTY::Prompt).to receive(:new).and_return(prompt)
+
     CLI.run(["use", "songbook", "Carnet-Test"], interactive: true)
     expect(Session.carnet).not_to be_nil
 
