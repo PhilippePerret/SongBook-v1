@@ -4,6 +4,7 @@ tdm_position: End
 score_title_size: 11pt
 score_title_style: bold
 diags_position: End
+diags_align: justify
 lyrics_flux: side
 intro_align: left
 shrink_text: false

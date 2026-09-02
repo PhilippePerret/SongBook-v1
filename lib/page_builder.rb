@@ -476,6 +476,7 @@ module PageBuilder
   # (`_default.yaml`), jamais réécrites en dur ici.
   DEFAULT_TITLE_BAND = DEFAULT_LAYOUT.fetch(:title_band)
   DEFAULT_DIAG_POSITION = DEFAULT_LAYOUT.fetch(:diags_position).to_s
+  DEFAULT_DIAG_ALIGN = DEFAULT_LAYOUT.fetch(:diags_align).to_s
 
   # `.gab` absent : couplets du `.lyr` pairés côte à côte 2 par 2, dans leur ordre
   # d'apparition RÉEL (`order`, répétitions incluses — un refrain qui revient 3 fois dans
@@ -493,8 +494,8 @@ module PageBuilder
   # il est fourni — voir `build`). `lyrics_flux: :side` (défaut, "côte à côte") pair les
   # blocs 2 par 2 comme avant ; `:vertical` ("l'une en dessous de l'autre", layouts Column/
   # Column-B) ne pair jamais, chaque bloc a sa propre row. `:free` pas encore implémenté.
-  def self.default_items(lyr_blocks, order, title_band: DEFAULT_TITLE_BAND, diag_position: DEFAULT_DIAG_POSITION, lyrics_flux: :side)
-    items = [GabItem.new(:title, { title: title_band ? "band" : "inline" }), GabItem.new(:diags, { position: diag_position })]
+  def self.default_items(lyr_blocks, order, title_band: DEFAULT_TITLE_BAND, diag_position: DEFAULT_DIAG_POSITION, diag_align: DEFAULT_DIAG_ALIGN, lyrics_flux: :side)
+    items = [GabItem.new(:title, { title: title_band ? "band" : "inline" }), GabItem.new(:diags, { position: diag_position, align: diag_align })]
     names = order.reject { |name| lyr_blocks.fetch(name).lines.empty? }
 
     raise "lyrics_flux :free (Manuel/song/layout.adoc) pas encore implémenté" if lyrics_flux == :free
@@ -859,6 +860,7 @@ module PageBuilder
     end
     title_band_default = layout&.key?(:title_band) ? layout[:title_band] : DEFAULT_TITLE_BAND
     diag_position_default = layout&.fetch(:diags_position, nil) || DEFAULT_DIAG_POSITION
+    diag_align_default = layout&.fetch(:diags_align, nil) || DEFAULT_DIAG_ALIGN
     lyrics_flux = layout&.fetch(:lyrics_flux, nil) || :side
     Layout.log_build("layout résolu : title_band=#{title_band_default} diag_position=#{diag_position_default} lyrics_flux=#{lyrics_flux} (source=#{layout ? "carnet" : "défauts app"})")
     if gab_path
@@ -876,7 +878,7 @@ module PageBuilder
       end
     else
       Layout.log_build("agencement auto (default_items, RAO5 pairage par type)")
-      items = default_items(lyr_blocks, lyr_order, title_band: title_band_default, diag_position: diag_position_default, lyrics_flux: lyrics_flux)
+      items = default_items(lyr_blocks, lyr_order, title_band: title_band_default, diag_position: diag_position_default, diag_align: diag_align_default, lyrics_flux: lyrics_flux)
     end
     page_size = page_size_in.map { |v| v * 72 }
     page_w_pt, page_h_pt = page_size
@@ -903,7 +905,9 @@ module PageBuilder
 
       chord_frets = ChordDiagrams.collect_chord_frets(lyr_blocks.values)
       diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret, carnet_dir: carnet_folder, song_dir: folder) }
-      diag_position = (items.find { |i| i.type == :diags }&.data&.dig(:position) || diag_position_default).to_s.downcase.to_sym
+      diag_item_data = items.find { |i| i.type == :diags }&.data
+      diag_position = (diag_item_data&.dig(:position) || diag_position_default).to_s.downcase.to_sym
+      diag_align = (diag_item_data&.dig(:align) || diag_align_default).to_s.downcase.to_sym
       # `int`/`ext` (Manuel/song/layout.adoc, "Int"/"Ext" — côté reliure/extérieur) : PAS
       # résolu à une seule valeur left/right ici — le côté reliure change de page en page
       # (recto/verso) DANS une même chanson (bug constaté 2026-08-24, "À bicyclette" p.4/
@@ -914,9 +918,9 @@ module PageBuilder
       dynamic_mode = %i[int ext].include?(diag_position) ? diag_position : nil
       Layout.log_build("#{diag_paths.size} diagramme(s) d'accord, position=#{dynamic_mode ? "#{dynamic_mode} (résolu page par page)" : diag_position}")
 
-      text_x, text_w, first_avail_h, side_col, row_excess, row_excess_w = Layout.layout_diags(pdf, diag_paths, dynamic_mode ? :left : diag_position, header_bottom)
+      text_x, text_w, first_avail_h, side_col, row_excess, row_excess_w = Layout.layout_diags(pdf, diag_paths, dynamic_mode ? :left : diag_position, header_bottom, align: diag_align)
       text_x_r, side_col_r = if dynamic_mode
-        tx_r, _, _, sc_r, = Layout.layout_diags(pdf, diag_paths, :right, header_bottom)
+        tx_r, _, _, sc_r, = Layout.layout_diags(pdf, diag_paths, :right, header_bottom, align: diag_align)
         [tx_r, sc_r]
       end
 

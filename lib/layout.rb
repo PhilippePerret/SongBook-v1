@@ -1066,6 +1066,23 @@ module Layout
     gutters
   end
 
+  # Hauteurs + gouttières verticales d'une page de colonne de diags — SEULE fonction qui
+  # calcule ça (mesure de trim, référence d'alignement, dessin réel en dépendent tous les
+  # 3, jamais recopié). `align` : :justify (défaut, étiré) / :top / :bot / :center.
+  def self.side_column_gutters(side_page, els, top_type:, align: :justify)
+    heights = els.map(&:height)
+    return [heights, []] if heights.empty?
+
+    if align == :justify
+      gutters = distribute_v_gutters(side_page[:avail_h], heights, type: :diags, top_type: top_type)
+    else
+      gutters = heights.each_index.map { |i| min_v_dist(i.zero? ? top_type : :diags) }
+      slack = [side_page[:avail_h] - gutters.sum - heights.sum, 0].max
+      gutters[0] += align == :bot ? slack : (align == :center ? slack / 2.0 : 0.0)
+    end
+    [heights, gutters]
+  end
+
   # Une ligne sans accord (aucun segment avec chord) n'a pas de ligne d'accord au-dessus :
   # son texte est sa seule ligne, pas la peine de réserver CHORD_SIZE+LINE_GAP pour rien.
   # `line` peut être nil (bloc sans corps, ex. `{riff intro}` sans ligne dessous, ou
@@ -1413,10 +1430,9 @@ module Layout
         last = side_pages.last
         loop do
           els = side_elements[last[:start]...last[:finish]]
-          heights = els.map(&:height)
+          heights, gutters = side_column_gutters(last, els, top_type: side_pages.size == 1 ? :band_diag : :diags, align: side_col[:align] || :justify)
           break if heights.empty?
 
-          gutters = distribute_v_gutters(last[:avail_h], heights, type: :diags, top_type: side_pages.size == 1 ? :band_diag : :diags)
           clearance = last[:avail_h] - gutters.sum - heights.sum
           break if clearance >= DIAG_COLUMN_BOTTOM_SAFETY_PT || last[:finish] <= last[:start]
 
@@ -1472,8 +1488,8 @@ module Layout
       if last_side_page
         last_page_no = first_page_no + pages.size - 1
         cur_side_els_for_last = want_left_for.call(last_page_no) ? side_elements : side_elements_alt
-        last_side_heights = cur_side_els_for_last[last_side_page[:start]...last_side_page[:finish]].map(&:height)
-        last_side_gutters = distribute_v_gutters(last_side_page[:avail_h], last_side_heights, type: :diags, top_type: (pages.size - 1).zero? ? :band_diag : :diags)
+        last_side_els = cur_side_els_for_last[last_side_page[:start]...last_side_page[:finish]]
+        last_side_heights, last_side_gutters = side_column_gutters(last_side_page, last_side_els, top_type: (pages.size - 1).zero? ? :band_diag : :diags, align: side_col[:align] || :justify)
         column_bottom_y = last_side_page[:avail_h] - last_side_gutters.sum - last_side_heights.sum
       end
       row_top_y = column_bottom_y ? column_bottom_y + block_h : gap_v + block_h
@@ -1638,8 +1654,7 @@ module Layout
       next unless side_page
 
       side_page_els = cur_side_elements[side_page[:start]...side_page[:finish]]
-      side_page_heights = side_page_els.map(&:height)
-      side_gutters = distribute_v_gutters(side_page[:avail_h], side_page_heights, type: :diags, top_type: i.zero? ? :band_diag : :diags)
+      side_page_heights, side_gutters = side_column_gutters(side_page, side_page_els, top_type: i.zero? ? :band_diag : :diags, align: side_col[:align] || :justify)
 
       y = side_page[:avail_h] - side_gutters[0]
       side_page_els.each_with_index do |el, j|
@@ -2189,15 +2204,20 @@ module Layout
     [w, capacity_at.call(w)]
   end
 
-  # Rangée CENTRÉE dans `avail_w` (Phil, point 7) : gouttière FIXE (`min_h_dist(:diags)`)
-  # entre les diags, jamais étirée pour remplir la largeur — `distribute_gutter`
-  # ("justifié", gouttières plafonnées) ne garantissait pas un bloc centré.
-  def self.draw_diags_row(pdf, diag_paths, x0, y_top, avail_w, w)
+  # Rangée horizontale — `align` : :center (défaut historique, "point 7", gouttière FIXE
+  # jamais étirée) / :left / :right (même gouttière fixe, ancrée à un bord) / :justify
+  # (gouttière étirée via `distribute_gutter`, avant/entre/après).
+  def self.draw_diags_row(pdf, diag_paths, x0, y_top, avail_w, w, align: :center)
     return if diag_paths.empty?
 
-    gap = min_h_dist(:diags)
+    gap = align == :justify ? distribute_gutter(avail_w, Array.new(diag_paths.size, w), type: :diags) : min_h_dist(:diags)
     block_w = diag_paths.size * w + [diag_paths.size - 1, 0].max * gap
-    x = x0 + [(avail_w - block_w) / 2.0, 0].max
+    x = case align
+        when :left then x0
+        when :right then x0 + (avail_w - block_w)
+        when :justify then x0 + gap
+        else x0 + [(avail_w - block_w) / 2.0, 0].max
+        end
     diag_paths.each do |path|
       svg_data = IO.read(path)
       h = svg_height_for(svg_data, w)
@@ -2309,7 +2329,7 @@ module Layout
   # toujours `[]` pour une colonne (Left/Right, débordement géré page par page, pas
   # ici). `excess_ref_w` : largeur de référence RAD10 pour cet excédent (voir
   # `paginate_and_draw`, `row_excess:`/`row_excess_w:`).
-  def self.layout_diags(pdf, diag_paths, position, header_bottom)
+  def self.layout_diags(pdf, diag_paths, position, header_bottom, align: :justify)
     case position
     when :both
       raise "position de diagrammes :both (layouts Column/Column-B, Manuel/song/layout.adoc) pas encore implémentée"
@@ -2317,29 +2337,30 @@ module Layout
       diag_w = diag_column_width(diag_paths, header_bottom, pdf.bounds.height)
       diag_heights = diag_paths.map { |p| svg_height_for(File.read(p), diag_w) }
       diag_col_w = diag_w + DIAG_TEXT_GAP
-      side_col = { x: pdf.bounds.width - diag_w, width: diag_w, paths: diag_paths, heights: diag_heights }
+      side_col = { x: pdf.bounds.width - diag_w, width: diag_w, paths: diag_paths, heights: diag_heights, align: align }
       [0, pdf.bounds.width - diag_col_w, header_bottom, side_col, [], DIAG_W]
     when :top
-      row_h, excess, w = draw_diag_row_position(pdf, diag_paths, header_bottom, at: :top)
+      row_h, excess, w = draw_diag_row_position(pdf, diag_paths, header_bottom, at: :top, align: align)
       [0, pdf.bounds.width, header_bottom - row_h, nil, excess, w]
     when :bottom
-      row_h, excess, w = draw_diag_row_position(pdf, diag_paths, header_bottom, at: :bottom)
+      row_h, excess, w = draw_diag_row_position(pdf, diag_paths, header_bottom, at: :bottom, align: align)
       [0, pdf.bounds.width, header_bottom - row_h, nil, excess, w]
     when :front
-      block_h, excess, w = draw_diag_front_block(pdf, diag_paths, header_bottom)
+      block_h, excess, w = draw_diag_front_block(pdf, diag_paths, header_bottom, align: align)
       [0, pdf.bounds.width, header_bottom - block_h, nil, excess, w]
     when :end
       # Rattachés à la VRAIE fin des paroles (dernière page réelle, pas juste la page 1
       # comme `bottom`) — RIEN réservé ici (Phil, point 5), tous les diags entrent
       # directement dans le mécanisme d'excédent (RAD5/6/7/10, `paginate_and_draw`),
       # exactement comme un excédent de colonne. `DIAG_W` : aucune rangée dessinée avant
-      # pour établir une largeur de référence déjà rétrécie.
+      # pour établir une largeur de référence déjà rétrécie. `align` PAS encore branché
+      # ici (mécanisme partagé avec les débordements RAD7-10, non touché).
       [0, pdf.bounds.width, header_bottom, nil, diag_paths, DIAG_W]
     else # :left, défaut
       diag_w = diag_column_width(diag_paths, header_bottom, pdf.bounds.height)
       diag_heights = diag_paths.map { |p| svg_height_for(File.read(p), diag_w) }
       diag_col_w = diag_w + DIAG_TEXT_GAP
-      side_col = { x: 0, width: diag_w, paths: diag_paths, heights: diag_heights }
+      side_col = { x: 0, width: diag_w, paths: diag_paths, heights: diag_heights, align: align }
       [diag_col_w, pdf.bounds.width - diag_col_w, header_bottom, side_col, [], DIAG_W]
     end
   end
@@ -2347,7 +2368,7 @@ module Layout
   # Une seule rangée (Top : sous le bandeau, Bottom : au-dessus des paroles) — `at:`
   # choisit seulement le `y` de dessin, même calcul de largeur/excédent sinon. Renvoie
   # [row_h, excess_paths, w].
-  def self.draw_diag_row_position(pdf, diag_paths, header_bottom, at:)
+  def self.draw_diag_row_position(pdf, diag_paths, header_bottom, at:, align: :center)
     return [0, [], DIAG_W] if diag_paths.empty?
 
     w, n_fit = diag_row_width(diag_paths, pdf.bounds.width)
@@ -2358,7 +2379,7 @@ module Layout
     h = fitting.map { |p| svg_height_for(File.read(p), w) }.max
     row_h = h + DIAG_TEXT_GAP
     y_top = at == :top ? header_bottom : row_h
-    draw_diags_row(pdf, fitting, 0, y_top, pdf.bounds.width, w)
+    draw_diags_row(pdf, fitting, 0, y_top, pdf.bounds.width, w, align: align)
     [row_h, excess, w]
   end
 
@@ -2369,7 +2390,7 @@ module Layout
   # `draw_diags_grid`) plutôt qu'une seule rangée. Ce qui dépasse la page 1 devient
   # l'excédent (même mécanisme que `draw_diag_row_position`). Renvoie
   # [block_h, excess_paths, w].
-  def self.draw_diag_front_block(pdf, diag_paths, avail_h)
+  def self.draw_diag_front_block(pdf, diag_paths, avail_h, align: :center)
     return [0, [], DIAG_W] if diag_paths.empty?
 
     avail_w = pdf.bounds.width
@@ -2393,7 +2414,7 @@ module Layout
     rows = fitting.each_slice(cols).to_a
     y = avail_h
     rows.each do |row|
-      draw_diags_row(pdf, row, 0, y, avail_w, w)
+      draw_diags_row(pdf, row, 0, y, avail_w, w, align: align)
       y -= row_h + gap_v
     end
     block_h = rows.size * row_h + [rows.size - 1, 0].max * gap_v
