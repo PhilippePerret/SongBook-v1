@@ -658,12 +658,32 @@ module CarnetBuilder
       editor_name: conf.dig("editor", "name"), author: conf["author"], book_designer: credits["book_designer"])
     front_matter_page_count = front_specs.size
 
-    # --- 3) Rendu final des chansons, dans l'ordre du TDM, page par page RÉELLE -------
+    # --- 3) Rendu final des chansons, dans l'ordre du TDM (déplacé/complété par #54 si
+    # besoin), page par page RÉELLE -------------------------------------------------
     entries = [] # {name:, interprete:, compositeur:, parolier:, first_page:, last_page:}
     combined_songs = CombinePDF.new
     page_no = front_matter_page_count + 1
+    real_songs_by_name = real_songs.to_h
+    song_order = plan_song_order(real_songs.map(&:first), real_page_counts, front_matter_page_count, reorder_allowed, printer_facing_pages)
 
-    real_songs.each do |name, entry|
+    song_order.each do |item|
+      if item == :blank
+        blank_out = File.join(export_dir, ".tmp-blank-#{page_no}.pdf")
+        Prawn::Document.generate(blank_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
+          Layout.register_fonts(pdf)
+          Layout.apply_print_margins(pdf, printer_probe, page_no, page_w_pt, page_h_pt)
+          Layout.current_song = "(carnet)"
+          Layout.current_page = page_no
+          Layout.log_build("page vide insérée avant chanson à nombre de pages pair (#54)")
+        end
+        combined_songs << CombinePDF.load(blank_out)
+        File.delete(blank_out)
+        page_no += 1
+        next
+      end
+
+      name = item
+      entry = real_songs_by_name[name]
       folder = File.join(chansons_dir, entry[:folder])
       meta = carnet_base_meta.merge(entry[:infos]).merge(overrides_by_name[name])
       if only_song == name || only_song == entry[:folder]
@@ -985,6 +1005,35 @@ module CarnetBuilder
     return page_no if want.nil? || (want == :odd) == page_no.odd?
 
     page_no + 1
+  end
+
+  # #54 : une chanson à nombre de pages PAIR doit toujours démarrer en fausse-page (sinon
+  # ses pages tombent sur deux doubles-pages différentes, pas en vis-à-vis). `names` :
+  # ordre du .tdm ; `page_counts` : nombre de pages RÉEL de chaque chanson (déjà mesuré).
+  # Renvoie la séquence finale (noms + `:blank` = page vide à insérer) à suivre pour le
+  # rendu — ne modifie ni `names` ni `page_counts` reçus.
+  def self.plan_song_order(names, page_counts, front_matter_page_count, reorder_allowed, facing_pages)
+    names = names.dup
+    order = []
+    page_no = front_matter_page_count + 1
+    i = 0
+    while i < names.size
+      n = page_counts[names[i]]
+      if facing_pages && n.even? && page_no.odd?
+        candidate_index = ((i + 1)...names.size).find { |k| page_counts[names[k]].odd? }
+        if reorder_allowed && candidate_index
+          names.insert(i, names.delete_at(candidate_index))
+          redo
+        end
+
+        order << :blank
+        page_no += 1
+      end
+      order << names[i]
+      page_no += n
+      i += 1
+    end
+    order
   end
 
   def self.draw_front_matter_page(pdf, spec, title, subtitle, entries, carnet_folder)
