@@ -33,6 +33,9 @@ include::gabarit.adoc[]
 // Layout
 include::layout.adoc[]
 
+// Produire le PDF
+include::pdf.adoc[]
+
 // Liste des chansons
 include::song_list.adoc[]
 

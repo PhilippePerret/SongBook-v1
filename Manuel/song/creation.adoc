@@ -9,5 +9,5 @@ Mais vous pouvez tout aussi bien créer cette chanson « à la main ».
 * éditez le fichier `.lyrics` pour y mettre les paroles et les accords (`> songbook edit lyrics --song "titre"`).
 * éditez le fichier `.infos` pour y mettre les informations (méta-données) (`> songbook edit infos --song "titre"`).
 * si besoin, éditez le fichier `.gabarit` pour <<gabarit-file, définir le gabarit de la chanson>>(`> songbook edit gabarit --song "titre"`).
-* lancer la construction du fichier PDF (`> songbook build "titre"`).
+* lancer la construction du fichier PDF (<<song-pdf, fabrication du PDF>>).
 * ajuster les paramètres du gabarit au besoin pour obtenir un affichage optimal (attention, cet affichage peut être différent selon le carnet choisi et si la chanson est gravée hors carnet).
