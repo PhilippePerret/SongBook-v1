@@ -5,6 +5,7 @@ require_relative "ansi_colors"
 require_relative "locale"
 require_relative "../tools/tablator/tablator"
 require_relative "transpose"
+require_relative "options"
 
 # Moteur de mise en page : primitives de dessin (police, en-tête, couplets/accords,
 # diagrammes, tabla) et pagination générique — indépendant du format source d'une
@@ -45,27 +46,6 @@ module Layout
   # Prawn n'expose pas Tw (word spacing PDF natif) publiquement, donc chaque mot est
   # dessiné séparément avec un espace ajusté (voir `draw_words_with_spacing`).
   @word_spacing = 0.0
-  # `shrink_diags`/`shrink_tabla`/`shrink_score` (`.infos` chanson prioritaire sur celui
-  # du carnet, voir `PageBuilder.resolve_shrink_option`) : `false` interdit tout
-  # rétrécissement sous la taille nominale. Portée DIFFÉRENTE selon la nature de l'image
-  #  :
-  # - diags : taille nominale FIXÉE PAR L'APP (`DIAG_W`) — `shrink_diags` s'applique
-  #   TOUJOURS, SVG compris (un tracé vectoriel n'a pas de "qualité" à perdre en changeant
-  #   de largeur), voir `diag_column_width`.
-  # - tabla/score : PAS de taille nominale propre (dépend de l'image source) —
-  #   `shrink_tabla`/`shrink_score` n'ont de sens QUE pour une image à taille FIXE
-  #   (PNG/JPEG, voir `raster_image?`) ; un SVG tabla/score n'est jamais concerné.
-  # Un élément qui ne tient pas à taille nominale suit le mécanisme de débordement de
-  # page existant — JAMAIS une violation des règles de marges/chevauchements. Défaut
-  # `true` (comportement actuel inchangé).
-  @shrink_diags = true
-  @shrink_tabla = true
-  @shrink_score = true
-  # `shrink_text` (`build_row_or_split`, couplets côte à côte trop larges pour tenir
-  # dans la colonne) : DÉFAUT FALSE , inverse des autres `shrink_*`
-  # ci-dessus) — par défaut, la taille des caractères ne change JAMAIS ; `true` autorise
-  # la réduire jusqu'à `MIN_TEXT_SIZE` avant d'abandonner le côte à côte (empilement).
-  @shrink_text = false
   # Taille du titre tab/score/image (`title:`/nom de déclaration) — configurable
   # (layout, clé `score_title_size`, `assets/layouts/_default.yaml`). Défaut = `TEXT_SIZE`
   #  : "ça ne devrait pas être plus gros qu'un INTRO dans le texte —
@@ -77,26 +57,15 @@ module Layout
   # Nombre de mesures par système de tablature — `nil` = calculé automatiquement
   # (`Tablator.render_tab_svg`), surclassable (layout, clé `tabla_measures_per_page`)
   @tabla_measures_per_page = nil
-  # `font-family`/`font-size` (`.infos`, résolus chanson > carnet > défaut) — remplacent
-  # respectivement le "HelveticaNeue" en dur et la constante `TEXT_SIZE` dans les
-  # fonctions de rendu, réinitialisés à chaque chanson (`PageBuilder.build`).
-  @font_family = "HelveticaNeue"
-  @font_size = 11 # = TEXT_SIZE (constante définie plus bas, pas encore chargée ici)
-  # Base du carnet (`CarnetBuilder.build`) : référence pour `show_specs` (ce qui diffère,
-  # chanson par chanson) et pour la page de copyright. Défaut = celui d'une chanson
-  # seule, hors carnet (`CarnetBuilder.build_song`, pas de carnet à consulter).
   @carnet_font_baseline = { "font-family" => "HelveticaNeue", "font-size" => "11" }
-  # "Carnet de test d'impression" : chanson > carnet > false — réglable pour TOUT le
-  # carnet d'un coup (`.infos` du carnet), ou chanson par chanson.
-  @show_specs = false
   # `{vertical: :top|:bot, horizontal: :left|:center|:right|nil}` — `horizontal` ignoré
   # si `facing_pages: true` (côté automatique, voir `Layout.draw_page_number`).
   @folio_position = { vertical: :bot, horizontal: nil }
   class << self
     attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing,
-      :sensitivity, :log_conflict_count, :shrink_diags, :shrink_tabla, :shrink_score, :shrink_text, :score_title_size,
-      :score_title_style, :tabla_measures_per_page, :rebalance_pages, :font_family, :font_size, :carnet_font_baseline,
-      :show_specs, :folio_position
+      :sensitivity, :log_conflict_count, :score_title_size,
+      :score_title_style, :tabla_measures_per_page, :carnet_font_baseline,
+      :folio_position
   end
 
   # Parse `folio_position:` du `.infos` ("Top"/"Bot" ou "Top-Left".."Bot-Right")
@@ -134,14 +103,14 @@ module Layout
   end
 
   def self.min_text_size
-    font_size - 2
+    Options.get(:font_size) - 2
   end
 
   # `CHORD_SIZE` fixe (9pt, calibré pour `TEXT_SIZE` = 11) ne suivait pas `font-size`
   # (`.infos`) sans ceci — accords minuscules sur une police à 39pt, énormes sur du 8pt
   # (bug constaté 2026-09-01). Mise à l'échelle proportionnelle, jamais sous 1pt.
   def self.scaled_chord_size
-    [(CHORD_SIZE * font_size / TEXT_SIZE.to_f).round, 1].max
+    [(CHORD_SIZE * Options.get(:font_size) / TEXT_SIZE.to_f).round, 1].max
   end
   CONFLICTS = []
 
@@ -212,16 +181,13 @@ module Layout
   # page, page pas encore déterminée).
   def self.conflict!(problem, solution:)
     line = "#{current_song || "?"} p.#{current_page || "?"} : #{problem} — #{solution}"
-    case sensitivity
-    when "high"
-      raise line
-    when "errors"
-      CONFLICTS << line
-    when "low"
-      nil
-    else # "log" (défaut) et toute valeur inconnue
+    unless sensitivity == "low"
       @log_conflict_count += 1
       File.open(conflict_log_path, "a") { |f| f.puts line }
+    end
+    case sensitivity
+    when "high" then raise line
+    when "errors" then CONFLICTS << line
     end
   end
 
@@ -756,6 +722,7 @@ module Layout
     text_font_name = AppConfig.get("text_font")
     pdf.font_families.update(text_font_name => resolve_font_files(text_font_name))
 
+    font_family = Options.get(:font_family)
     pdf.font_families.update(font_family => resolve_font_files(font_family)) unless font_family == "HelveticaNeue"
     pdf.font font_family
   end
@@ -858,7 +825,7 @@ module Layout
   SPECS_LINE_COLOR = "000000"
 
   def self.draw_specs_overlay(pdf, meta, top_y)
-    return unless show_specs
+    return unless Options.get(:show_specs)
 
     line = song_specs_line(meta)
     return if line.empty?
@@ -1120,7 +1087,7 @@ module Layout
     chord_size + LINE_GAP + [text_size - TEXT_SIZE, 0].max
   end
 
-  def self.line_step(pdf, line, width, chord_size: scaled_chord_size, text_size: font_size, reserve_chord_row: false)
+  def self.line_step(pdf, line, width, chord_size: scaled_chord_size, text_size: Options.get(:font_size), reserve_chord_row: false)
     return chord_size + LINE_GAP if chords_only_line?(line)
 
     step = line_has_chord?(line) || reserve_chord_row ? chord_to_text_drop(chord_size, text_size) + text_size + LINE_GAP : text_size + LINE_GAP
@@ -1139,7 +1106,7 @@ module Layout
   # posée à côté d'une strophe AVEC accord aligne sa 1re ligne sur celle de l'autre —
   # `force_chord_baseline` (posé par `row_to_element` selon le voisin de row) impose
   # l'ancrage "1re ligne avec accord" même si CE bloc-ci n'en a pas lui-même.
-  def self.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, lines, width, chord_size: scaled_chord_size, text_size: font_size, force_chord_baseline: false)
+  def self.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, lines, width, chord_size: scaled_chord_size, text_size: Options.get(:font_size), force_chord_baseline: false)
     return 0 if lines.empty?
 
     baseline = force_chord_baseline || line_has_chord?(lines.first) ? chord_ascent : text_ascent
@@ -1165,7 +1132,7 @@ module Layout
   # ligne où le label d'accord est plus large que le mot ("Dm7" vs "LOVE,"), et le rendu
   # RÉEL déborde de la colonne qui lui a été allouée, empiétant sur la colonne suivante
   # (chevauchement constaté 2026-08-21, "All You Need Is Love" p.6, intro/couplet pairés).
-  def self.block_width(pdf, block, chord_size: scaled_chord_size, text_size: font_size)
+  def self.block_width(pdf, block, chord_size: scaled_chord_size, text_size: Options.get(:font_size))
     block.lines.map { |l| line_width(pdf, l.segments, chord_size, text_size, label: l.label) }.max || 0
   end
 
@@ -1209,10 +1176,10 @@ module Layout
     # naturelle (col1_w global ne s'applique plus dès qu'on rétrécit ou empile).
     # `shrink_text: false` (défaut) : jamais de réduction de taille,
     # directement l'empilement ci-dessous.
-    if shrink_text
+    if Options.get(:shrink_text)
       natural_w = block_width(pdf, row[0]) + block_width(pdf, row[1])
       scale = avail / natural_w.to_f
-      text_size = (font_size * scale).floor
+      text_size = (Options.get(:font_size) * scale).floor
       return [shrunk_row_element(pdf, row, x0, h_gutter, text_size)] if text_size >= min_text_size
     end
 
@@ -1220,7 +1187,7 @@ module Layout
   end
 
   def self.shrunk_row_element(pdf, row, x0, h_gutter, text_size)
-    chord_size = [(scaled_chord_size * text_size / font_size.to_f).floor, 1].max
+    chord_size = [(scaled_chord_size * text_size / Options.get(:font_size).to_f).floor, 1].max
     chord_ascent = font_metric(pdf, chord_size) { pdf.font.ascender }
     text_ascent = font_metric(pdf, text_size) { pdf.font.ascender }
     text_descent = font_metric(pdf, text_size) { pdf.font.descender }
@@ -1325,7 +1292,7 @@ module Layout
       # une page d'un seul élément par ce mécanisme — bug trouvé (remarques.txt Carnet-1,
       # 2026-08-18) où 2 couplets pleins étaient repoussés à 1 seul pour "corriger" une
       # page suivante elle-même peu remplie, résultat pire que le problème visé.
-      while rebalance_pages != false && type != :diags && idx - start > 2 && idx < elements.length && !pinned.include?(idx - 1) &&
+      while Options.get(:rebalance_pages) != false && type != :diags && idx - start > 2 && idx < elements.length && !pinned.include?(idx - 1) &&
             heights[idx...elements.length].sum + trailing_extra < REBALANCE_MIN_FILL * page_height
         idx -= 1
         page_sum -= heights[idx]
@@ -1379,7 +1346,7 @@ module Layout
   # secours, voir plus bas). Jamais les deux en même temps que `side_col` (une chanson a
   # soit une colonne, soit une rangée, jamais les deux).
   def self.paginate_and_draw(pdf, elements, first_avail_h, printer:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, text_x: 0, text_w: nil, debug_marks: false,
-      dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil, row_excess: [], row_excess_w: DIAG_W)
+      dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil, row_excess: [], row_excess_w: Options.get(:diags_size))
     heights = elements.map(&:height)
     trailing_extra = row_excess.any? ? estimate_excess_grid_height(row_excess, text_w || pdf.bounds.width) : 0
     pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned, top_type: :band_strophe, trailing_extra: trailing_extra)
@@ -1670,7 +1637,7 @@ module Layout
     return if excess_paths.empty?
 
     draw_diags_grid(pdf, excess_paths, excess_heights, printer: printer, page_w_pt: page_w_pt, page_h_pt: page_h_pt,
-      first_page_no: first_page_no + page_count, debug_marks: debug_marks, diag_w: side_col ? side_col[:width] : DIAG_W)
+      first_page_no: first_page_no + page_count, debug_marks: debug_marks, diag_w: side_col ? side_col[:width] : Options.get(:diags_size))
   end
 
   # RAD6 : diags en excès — regroupés horizontalement, plusieurs par ligne, sur une ou
@@ -1679,7 +1646,7 @@ module Layout
   # la MÊME taille, donc CELLE de la colonne normale (`heights` est déjà à cette échelle,
   # voir `layout_diags`/`diag_column_width`), jamais `DIAG_W` nominal redessiné à part
   # (bug constaté : diags de page dédiée plus grands, tailles/proportions différentes).
-  def self.draw_diags_grid(pdf, paths, heights, printer:, page_w_pt:, page_h_pt:, first_page_no:, debug_marks: false, diag_w: DIAG_W)
+  def self.draw_diags_grid(pdf, paths, heights, printer:, page_w_pt:, page_h_pt:, first_page_no:, debug_marks: false, diag_w: Options.get(:diags_size))
     diag_h = heights.max
     gap_h = min_h_dist(:diags)
     gap_v = min_v_dist(:diags)
@@ -1715,7 +1682,7 @@ module Layout
   # au bord DROIT de SA colonne (pas de la page), le reste de la colonne (`width`)
   # inchangé — par LIGNE, pas par bloc entier (un bloc "+"-concaténé peut mélanger des
   # lignes alignées et des lignes normales, voir `PageBuilder.apply_extra_directives`).
-  def self.draw_block(pdf, block, x, y0, width, chord_ascent, text_ascent, chord_size: scaled_chord_size, text_size: font_size, force_chord_baseline: false)
+  def self.draw_block(pdf, block, x, y0, width, chord_ascent, text_ascent, chord_size: scaled_chord_size, text_size: Options.get(:font_size), force_chord_baseline: false)
     y = y0 - (force_chord_baseline || line_has_chord?(block.lines.first) ? chord_ascent : text_ascent)
     block.lines.each_with_index do |line, i|
       line_x = x
@@ -2018,50 +1985,66 @@ module Layout
     [ws, cs]
   end
 
-  # RAA1 : deux labels d'accord ne doivent JAMAIS se toucher — plus question de distordre
-  # l'avancée du TEXTE pour ça (RAL2.1 : le texte reste sa propre mesure, continue, intacte)
-  # ; c'est le LABEL d'accord qui est repoussé si besoin, jamais le texte déplacé. MAIS un
-  # accord `anchored:` (collé à un vrai mot, càd sa propre `seg.text` démarre par autre
-  # chose qu'une espace) ne bouge JAMAIS non plus (bug Blackbird refrain constaté :
-  # "les blancs entre les paroles, pour glisser des accords, doivent toujours être
-  # respectés" — un 2e "Black/F:" repoussé À DROITE par un large "Bb6/C:" voisin
-  # atterrissait décollé de son mot). Seuls les accords "filler" (posés dans du blanc, sans
-  # mot collé — ex. accord de passage entre 2 paroles) sont repoussés, et vers la GAUCHE (en
-  # partant de la fin) pour laisser sa vraie place à l'accord ancré qui suit.
-  # Deux basses SEULES ("[x]") consécutives ne doivent jamais être plus proches qu'une
-  # espace de texte , "Mélancolie" : "/do" collé à "/si") — repousse la
-  # 2e (ET son texte, une vraie espace insérée dans son segment, pas juste son étiquette
-  # qui flotterait décollée). Mesure une fois avec le texte D'ORIGINE puis mute `segs` ;
-  # `draw_line` retokenise ensuite normalement sur le résultat.
-  def self.enforce_bass_gap!(pdf, segs, chord_size, text_size, cs)
-    space_w = pdf.width_of(" ", size: text_size)
-    full_text = segs.map(&:text).join
-    tokens, = line_tokens_x(pdf, full_text, text_size, char_spacing: cs)
-    seg_offset = 0
-    prev_end = nil
-    prev_seg = nil
-    segs.each do |seg|
-      if seg.chord&.match?(ChordDiagrams::BASS_ONLY_RE)
-        x = chord_x_at_offset(pdf, tokens, seg_offset, text_size, char_spacing: cs)
-        # L'espace pousse le TEXTE PRÉCÉDENT (pas celui-ci) : décale l'offset du chiffon
-        # courant SANS lui donner un texte qui commence par une espace, sinon il ne
-        # serait plus `anchored` (voir plus haut) et `spread_chord_positions` le
-        # traiterait comme un accord "filler", repoussé vers la GAUCHE — l'inverse de
-        # ce qu'on veut ici.
-        shortfall = prev_end && (prev_end + space_w - x)
-        if shortfall && shortfall.positive?
-          extra = (shortfall / space_w).ceil
-          prev_seg.text = "#{prev_seg.text}#{" " * extra}"
-          seg_offset += extra
-          x += extra * space_w
+  # RAA1 : deux labels d'accord ne doivent JAMAIS se toucher — c'est le LABEL qui est
+  # repoussé si besoin, jamais le texte (RAL2.1 : le texte reste sa propre mesure, continue,
+  # intacte). MAIS un accord FIXE (`fixed_chord?` : ancré à un vrai mot, OU basse seule
+  # "[x]") ne doit JAMAIS finir détaché de son texte (bug Blackbird refrain : "Black/F:"
+  # repoussé par un large "Bb6/C:" voisin atterrissait décollé de son mot ; bug "Long Long
+  # Long" : `G` ancré sur "long" abandonné entre "a" et "long" par un `/do#` large) — si
+  # `spread_chord_positions` le pousse quand même à droite, c'est le TEXTE qui gagne
+  # l'espace manquant pour le suivre. Seuls les accords "filler" (posés dans du blanc, sans
+  # rien de fixe collé) sont repoussés sans conséquence sur le texte, et vers la GAUCHE (en
+  # partant de la fin) pour laisser sa vraie place à l'accord fixe qui suit.
+  def self.fixed_chord?(seg)
+    (!seg.text.empty? && seg.text[0] != " ") || seg.chord&.match?(ChordDiagrams::BASS_ONLY_RE)
+  end
+
+  # Mesure une fois avec le texte D'ORIGINE (essai `spread_chord_positions` à part, sur une
+  # copie) pour savoir de combien chaque accord fixe est repoussé, puis mute `segs` en
+  # conséquence ; `draw_line` retokenise et respread ensuite normalement sur le résultat.
+  # Padding par un mot repousse AUSSI la position naturelle de tout ce qui suit — un
+  # accord jusque-là bien placé peut donc se retrouver à nouveau trop serré contre son
+  # voisin d'après. Reboucle sur un texte FRAÎCHEMENT retokenisé jusqu'à ce qu'un passage
+  # ne change plus rien (converge : chaque tour ne fait qu'ajouter de l'espace, jamais en
+  # retirer).
+  def self.align_fixed_chords!(pdf, segs, chord_size, text_size, ws, cs)
+    space_w = pdf.width_of(" ", size: text_size) + ws
+    loop do
+      full_text = segs.map(&:text).join
+      tokens, = line_tokens_x(pdf, full_text, text_size, word_spacing: ws, char_spacing: cs)
+
+      seg_offset = 0
+      steps = []
+      segs.each do |seg|
+        if seg.chord
+          steps << { natural_x: chord_x_at_offset(pdf, tokens, seg_offset, text_size, char_spacing: cs),
+                     chord: seg.chord, fixed: fixed_chord?(seg) }
         end
-        prev_end = x + chord_label_width(pdf, seg.chord, chord_size)
-        prev_seg = seg
-      else
-        prev_end = nil
-        prev_seg = nil
+        seg_offset += seg.text.length
       end
-      seg_offset += seg.text.length
+      break if steps.empty?
+
+      targets = steps.map { |s| { x: s[:natural_x], chord: s[:chord], anchored: s[:fixed] } }
+      spread_chord_positions(pdf, targets, chord_size)
+
+      changed = false
+      prev_seg = nil
+      step_i = 0
+      segs.each do |seg|
+        if seg.chord
+          step = steps[step_i]
+          target_x = targets[step_i][:x]
+          step_i += 1
+          gap = step[:fixed] && prev_seg && target_x - step[:natural_x]
+          if gap && gap > 0.01
+            extra = (gap / space_w).ceil
+            prev_seg.text = "#{prev_seg.text}#{" " * extra}"
+            changed = true
+          end
+        end
+        prev_seg = seg
+      end
+      break unless changed
     end
   end
 
@@ -2094,7 +2077,7 @@ module Layout
   # du label d'accord) : garantie mathématique, jamais un réglage à ajuster à la main.
   # `width` : largeur de colonne disponible, sert au RAL2 (`nil` = jamais de RAL2, ex.
   # appelants qui ne connaissent pas encore leur largeur).
-  def self.draw_line(pdf, line, x, y, width, chord_size: scaled_chord_size, text_size: font_size, reserve_chord_row: false)
+  def self.draw_line(pdf, line, x, y, width, chord_size: scaled_chord_size, text_size: Options.get(:font_size), reserve_chord_row: false)
     return draw_chords_only_line(pdf, line, x, y, chord_size: chord_size) if chords_only_line?(line)
 
     has_chord = line_has_chord?(line) || reserve_chord_row
@@ -2111,7 +2094,7 @@ module Layout
     end
 
     segs, overflow_text = split_overflow(pdf, line.segments, width, text_size, ws, cs)
-    enforce_bass_gap!(pdf, segs, chord_size, text_size, cs)
+    align_fixed_chords!(pdf, segs, chord_size, text_size, ws, cs)
     full_text = segs.map(&:text).join
     tokens, = line_tokens_x(pdf, full_text, text_size, word_spacing: ws, char_spacing: cs)
 
@@ -2119,7 +2102,7 @@ module Layout
     chord_steps = segs.filter_map do |seg|
       if seg.chord
         step = { x: chord_x_at_offset(pdf, tokens, seg_offset, text_size, char_spacing: cs), chord: seg.chord,
-                 anchored: !seg.text.empty? && seg.text[0] != " " }
+                 anchored: fixed_chord?(seg) }
       end
       seg_offset += seg.text.length
       step
@@ -2195,7 +2178,7 @@ module Layout
   end
 
   def self.diag_row_width(paths, avail_w)
-    return [DIAG_W, 0] if paths.empty?
+    return [Options.get(:diags_size), 0] if paths.empty?
 
     gap = min_h_dist(:diags)
     capacity_at = ->(w) { (((avail_w + gap) / (w + gap)).floor).clamp(0, paths.size) }
@@ -2262,15 +2245,15 @@ module Layout
   end
 
   def self.tabla_shrinkable?(path)
-    raster_image?(path) && shrink_tabla
+    raster_image?(path) && Options.get(:shrink_tabla)
   end
 
   def self.score_shrinkable?(path)
-    raster_image?(path) && shrink_score
+    raster_image?(path) && Options.get(:shrink_score)
   end
 
   def self.diag_column_width(paths, first_avail_h, page_height)
-    return DIAG_W if paths.empty?
+    return Options.get(:diags_size) if paths.empty?
 
     # `DIAG_COLUMN_BOTTOM_SAFETY_PT` réservé DÈS le calcul de taille ,
     # "Angie" : 6 tenaient tout juste sans marge → le rognement séparé anti-numéro-de-page
@@ -2305,10 +2288,11 @@ module Layout
   # (page suivante pour la colonne, page dédiée pour la rangée/l'excédent) — jamais un
   # dépassement de marge pour compenser.
   def self.shrink_width_to_target(target, floor_w, capacity_at)
-    return DIAG_W if capacity_at.call(DIAG_W) >= target
-    return DIAG_W unless shrink_diags
+    nominal = Options.get(:diags_size)
+    return nominal if capacity_at.call(nominal) >= target
+    return nominal unless Options.get(:shrink_diags)
 
-    w = DIAG_W
+    w = nominal
     while w > floor_w
       w = [w - 0.1, floor_w].max
       return w if capacity_at.call(w) >= target
@@ -2338,7 +2322,7 @@ module Layout
       diag_heights = diag_paths.map { |p| svg_height_for(File.read(p), diag_w) }
       diag_col_w = diag_w + DIAG_TEXT_GAP
       side_col = { x: pdf.bounds.width - diag_w, width: diag_w, paths: diag_paths, heights: diag_heights, align: align }
-      [0, pdf.bounds.width - diag_col_w, header_bottom, side_col, [], DIAG_W]
+      [0, pdf.bounds.width - diag_col_w, header_bottom, side_col, [], Options.get(:diags_size)]
     when :top
       row_h, excess, w = draw_diag_row_position(pdf, diag_paths, header_bottom, at: :top, align: align)
       [0, pdf.bounds.width, header_bottom - row_h, nil, excess, w]
@@ -2355,13 +2339,13 @@ module Layout
       # exactement comme un excédent de colonne. `DIAG_W` : aucune rangée dessinée avant
       # pour établir une largeur de référence déjà rétrécie. `align` PAS encore branché
       # ici (mécanisme partagé avec les débordements RAD7-10, non touché).
-      [0, pdf.bounds.width, header_bottom, nil, diag_paths, DIAG_W]
+      [0, pdf.bounds.width, header_bottom, nil, diag_paths, Options.get(:diags_size)]
     else # :left, défaut
       diag_w = diag_column_width(diag_paths, header_bottom, pdf.bounds.height)
       diag_heights = diag_paths.map { |p| svg_height_for(File.read(p), diag_w) }
       diag_col_w = diag_w + DIAG_TEXT_GAP
       side_col = { x: 0, width: diag_w, paths: diag_paths, heights: diag_heights, align: align }
-      [diag_col_w, pdf.bounds.width - diag_col_w, header_bottom, side_col, [], DIAG_W]
+      [diag_col_w, pdf.bounds.width - diag_col_w, header_bottom, side_col, [], Options.get(:diags_size)]
     end
   end
 
@@ -2369,7 +2353,7 @@ module Layout
   # choisit seulement le `y` de dessin, même calcul de largeur/excédent sinon. Renvoie
   # [row_h, excess_paths, w].
   def self.draw_diag_row_position(pdf, diag_paths, header_bottom, at:, align: :center)
-    return [0, [], DIAG_W] if diag_paths.empty?
+    return [0, [], Options.get(:diags_size)] if diag_paths.empty?
 
     w, n_fit = diag_row_width(diag_paths, pdf.bounds.width)
     fitting = diag_paths.first(n_fit)
@@ -2391,7 +2375,7 @@ module Layout
   # l'excédent (même mécanisme que `draw_diag_row_position`). Renvoie
   # [block_h, excess_paths, w].
   def self.draw_diag_front_block(pdf, diag_paths, avail_h, align: :center)
-    return [0, [], DIAG_W] if diag_paths.empty?
+    return [0, [], Options.get(:diags_size)] if diag_paths.empty?
 
     avail_w = pdf.bounds.width
     gap_h = min_h_dist(:diags)

@@ -25,7 +25,7 @@ RSpec.describe "positions de diagrammes (top/front/end), situation critique (exc
     end
   end
 
-  after { Layout.shrink_diags = true }
+  after { Options.set!(:shrink_diags, true) }
 
   def write_song(chords)
     line = chords.map { |c| "/#{c}:#{c} " }.join
@@ -59,7 +59,7 @@ RSpec.describe "positions de diagrammes (top/front/end), situation critique (exc
   end
 
   it "position top, shrink_diags: false => reste à DIAG_W (jamais rétréci), excédent quand même traité" do
-    Layout.shrink_diags = false
+    Options.set!(:shrink_diags, false)
     write_song(CHORDS)
     out_path = build("top")
 

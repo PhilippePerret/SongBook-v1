@@ -523,14 +523,15 @@ module CarnetBuilder
     # seulement) : sert de base à la cascade défaut < carnet < chanson < chanson
     # indexée pour les entrées de TOC (même cascade que `PageBuilder.build`).
     carnet_base_meta = PageBuilder.parse_infos(infos_path)
-    Layout.sensitivity = conf.fetch("sensitivity", "log")
+    raw_sensitivity = conf.fetch("sensitivity", "log")
+    Layout.sensitivity = raw_sensitivity == "low" ? "log" : raw_sensitivity
     Layout.reset_conflicts!
     # Base du carnet (police/taille) : réglée ici pour le front-matter/colophon/TOC,
     # réglée À NOUVEAU par `PageBuilder.build` pour chaque chanson (chanson > carnet >
     # défaut) — sert aussi de référence pour `show_specs` et la page de copyright.
-    Layout.font_family = conf.fetch("font-family", "HelveticaNeue")
-    Layout.font_size = conf.fetch("font-size", Layout::TEXT_SIZE.to_s).to_s[/[\d.]+/].to_f
-    Layout.carnet_font_baseline = { "font-family" => Layout.font_family, "font-size" => Layout.font_size.to_s }
+    Options.set!(:font_family, conf.fetch("font-family", "HelveticaNeue"))
+    Options.set!(:font_size, conf.fetch("font-size", Layout::TEXT_SIZE.to_s).to_s[/[\d.]+/].to_f)
+    Layout.carnet_font_baseline = { "font-family" => Options.get(:font_family), "font-size" => Options.get(:font_size).to_s }
     # Réglages imprimeur : physiques (carnet entier), résolus UNE SEULE FOIS ici.
     printer_paper = conf.fetch("paper", PrinterProfile::DEFAULT_PAPER).to_s.to_sym
     printer_bleed = conf.key?("bleed") ? conf["bleed"] == true : PrinterProfile::DEFAULT_BLEED

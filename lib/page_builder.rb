@@ -830,17 +830,7 @@ module PageBuilder
     # 2026-08-25 : sans ce reset, une chanson sans `tabla_preset:` reprendrait par erreur
     # le preset de la précédente).
     Tablator.active_preset = resolve_tabla_preset(meta, carnet_folder) || "regular-tablatures"
-    Layout.rebalance_pages = resolve_shrink_option(meta, carnet_folder, "rebalance_pages")
-    Layout.shrink_diags = resolve_shrink_option(meta, carnet_folder, "shrink_diags")
-    Layout.shrink_tabla = resolve_shrink_option(meta, carnet_folder, "shrink_tabla")
-    Layout.shrink_score = resolve_shrink_option(meta, carnet_folder, "shrink_score")
-    # Défaut FALSE  — inverse des autres `shrink_*`) : par défaut, la
-    # taille des caractères ne doit JAMAIS changer (`build_row_or_split`, couplets côte
-    # à côte trop larges) — comportement actuel avant ce correctif.
-    Layout.shrink_text = resolve_shrink_option(meta, carnet_folder, "shrink_text", default: false)
-    Layout.font_family = resolve_infos_option(meta, carnet_folder, "font-family", default: "HelveticaNeue")
-    Layout.font_size = resolve_infos_option(meta, carnet_folder, "font-size", default: Layout::TEXT_SIZE.to_s).to_s[/[\d.]+/].to_f
-    Layout.show_specs = resolve_shrink_option(meta, carnet_folder, "show_specs", default: false)
+    Options.load!(meta: meta, infos_path: infos_path, carnet_folder: carnet_folder)
     # `score_title_size`/`score_title_style` : clés de LAYOUT (`layout:`/`.lay`), pas
     # `.infos`  — comme `intro_align`, "pas encore stabilisé".
     if layout && layout[:score_title_size]
@@ -925,8 +915,8 @@ module PageBuilder
       end
 
       chord_ascent = Layout.font_metric(pdf, Layout.scaled_chord_size) { pdf.font.ascender }
-      text_ascent = Layout.font_metric(pdf, Layout.font_size) { pdf.font.ascender }
-      text_descent = Layout.font_metric(pdf, Layout.font_size) { pdf.font.descender }
+      text_ascent = Layout.font_metric(pdf, Options.get(:font_size)) { pdf.font.ascender }
+      text_descent = Layout.font_metric(pdf, Options.get(:font_size)) { pdf.font.descender }
 
       bare_kind_counters = Hash.new(0)
       rows = items.select { |i| i.type == :row }.map { |i| i.data[:names].map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: i.data[:directives]), name, layout) } }
@@ -1007,8 +997,8 @@ module PageBuilder
       Layout.draw_diags(pdf, diag_paths, diag_heights, x: 0, avail_h: header_bottom, width: diag_w)
 
       chord_ascent = Layout.font_metric(pdf, Layout.scaled_chord_size) { pdf.font.ascender }
-      text_ascent = Layout.font_metric(pdf, Layout.font_size) { pdf.font.ascender }
-      text_descent = Layout.font_metric(pdf, Layout.font_size) { pdf.font.descender }
+      text_ascent = Layout.font_metric(pdf, Options.get(:font_size)) { pdf.font.ascender }
+      text_descent = Layout.font_metric(pdf, Options.get(:font_size)) { pdf.font.descender }
       cote_a_cote = song.meta.fetch("cote_a_cote", true)
 
       elements = Layout.build_row_elements(pdf, song.blocks, text_x, text_w, chord_ascent, text_ascent, text_descent, cote_a_cote)

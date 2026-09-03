@@ -131,18 +131,18 @@ RSpec.describe "répétition de chanson dans un .tdm" do
 
     it "la chanson hérite d'une clé définie SEULEMENT au niveau du carnet" do
       build(song_infos: "title: Chanson\n", carnet_infos: "title: Carnet\nfont-family: Georgia\n")
-      expect(Layout.font_family).to eq("Georgia")
+      expect(Options.get(:font_family)).to eq("Georgia")
     end
 
     it "la chanson écrase la valeur du carnet" do
       build(song_infos: "title: Chanson\nfont-family: Futura\n", carnet_infos: "title: Carnet\nfont-family: Georgia\n")
-      expect(Layout.font_family).to eq("Futura")
+      expect(Options.get(:font_family)).to eq("Futura")
     end
 
     it "le .infos indexé écrase la chanson ET le carnet" do
       build(song_infos: "title: Chanson\nfont-family: Futura\n", carnet_infos: "title: Carnet\nfont-family: Georgia\n",
         overrides: { "font-family" => "Bodoni" })
-      expect(Layout.font_family).to eq("Bodoni")
+      expect(Options.get(:font_family)).to eq("Bodoni")
     end
   end
 end
