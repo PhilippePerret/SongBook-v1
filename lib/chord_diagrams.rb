@@ -18,7 +18,7 @@ module ChordDiagrams
   # présent (bug constaté 2026-08-21, "À bicyclette" transposée Em->Am : Bb7/Bb7M/Eb7M
   # signalés manquants alors que leurs SVG existent).
   def self.file_chord(chord)
-    chord.tr("♭♯", "b#")
+    chord.tr("♭♯", "b#").sub(/\[([a-z])/) { "[#{$1.upcase}" }
   end
 
   # Précédence : carnet (`carnet_dir`) fait loi, puis chanson (`song_dir`), puis

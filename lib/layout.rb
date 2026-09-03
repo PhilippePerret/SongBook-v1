@@ -350,7 +350,7 @@ module Layout
   # couplets (`distribute_v_gutters` ne doit quasiment jamais les étirer).
   MIN_V_DIST = { default: 20.0, diags: 2.0, band_diag: 10.0, band_strophe: 10.0 }.freeze
   MIN_H_DIST = { default: 8.0, diags: 4.0, tdm_num: 20.0 }.freeze
-  MAX_V_DIST = { default: 40.0, diags: 2.0, band_diag: 20.0, band_strophe: 40.0 }.freeze
+  MAX_V_DIST = { default: 25.0, diags: 2.0, band_diag: 20.0, band_strophe: 40.0 }.freeze
 
   # Rééquilibrage vertical , "L'Aigle noir" p.9 : bloc de paroles collé
   # en haut, grand vide en bas) : DUP (haut du bloc -> bas du bandeau/marge haut) et DDO
@@ -1218,9 +1218,10 @@ module Layout
     draw = lambda do |pdf_, y|
       if row.size == 2
         block, nxt = row
-        draw_block(pdf_, block, x0 + h_gutter, y, col1_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
+        block_x0 = x0 + [(width - (col1_w + h_gutter + col2_w)) / 2.0, 0].max
+        draw_block(pdf_, block, block_x0, y, col1_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
         block1_w = block_width(pdf_, block)
-        col2_x = [x0 + h_gutter + col1_w + h_gutter, x0 + h_gutter + block1_w + max_h_dist].min
+        col2_x = [block_x0 + col1_w + h_gutter, block_x0 + block1_w + max_h_dist].min
         draw_block(pdf_, nxt, col2_x, y, col2_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
       else
         block = row[0]
@@ -1605,7 +1606,7 @@ module Layout
             row_start_x = if column_edge
               diag_on_left ? column_edge + gap_h : column_edge - gap_h - row_w
             else
-              diag_on_left ? cur_text_x : cur_text_x + text_w - row_w
+              cur_text_x + [(text_w - row_w) / 2.0, 0].max
             end
             row.each_with_index do |path, ci|
               cx = row_start_x + ci * (diag_w + gap_h)
@@ -1653,8 +1654,6 @@ module Layout
     cols = [((pdf.bounds.width + gap_h) / (diag_w + gap_h)).floor, 1].max
     rows_per_page = [((pdf.bounds.height + gap_v) / (diag_h + gap_v)).floor, 1].max
     per_page = cols * rows_per_page
-    row_w = cols * diag_w + (cols - 1) * gap_h
-    x0 = [(pdf.bounds.width - row_w) / 2.0, 0].max
 
     paths.each_slice(per_page).with_index do |slice, gi|
       pdf.start_new_page
@@ -1664,6 +1663,8 @@ module Layout
       draw_page_number(pdf, printer, page_no, page_w_pt, page_h_pt)
 
       slice.each_slice(cols).with_index do |row, ri|
+        row_w = row.size * diag_w + (row.size - 1) * gap_h
+        x0 = [(pdf.bounds.width - row_w) / 2.0, 0].max
         y = pdf.bounds.height - gap_v - ri * (diag_h + gap_v)
         row.each_with_index do |path, ci|
           x = x0 + ci * (diag_w + gap_h)
