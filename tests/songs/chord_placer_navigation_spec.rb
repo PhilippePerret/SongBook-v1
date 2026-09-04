@@ -329,11 +329,17 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       expect(File.readlines(path).first.chomp).to eq("/F7:bonjour tout")
     end
 
-    it "une touche-commande (n/p/x/X/J/L/T/V) interrompt aussi la saisie en cours, comme une flèche" do
+    it "une touche-commande MAJUSCULE (X/J/L/T/V) interrompt aussi la saisie en cours, comme une flèche" do
       path = write_lyr(["bonjour tout"])
-      # "Gm" tapé, puis "n" (touche-commande) : valide "Gm" ET avance d'une lettre.
-      simulate(path, "Gmn\r")
+      # "Gm" tapé, puis "L" (touche-commande) : valide "Gm" ET va en fin de vers.
+      simulate(path, "GmL\r")
       expect(File.readlines(path).first.chomp).to include("/Gm:")
+    end
+
+    it "\"n\"/\"p\"/\"x\" (minuscules) N'interrompent PLUS la saisie, s'ajoutent au nom (issue #62, \"Gsus4-3p\" tronqué à \"Gsus4-3\")" do
+      path = write_lyr(["bonjour tout"])
+      simulate(path, "Gsus4-3p\r\r")
+      expect(File.readlines(path).first.chomp).to eq("/Gsus4-3p:bonjour tout")
     end
   end
 end

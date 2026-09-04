@@ -21,11 +21,13 @@ require_relative "dsl_parser"
 # déjà connu de cette lettre => affiché/validé comme CET accord existant ; sinon =>
 # affiché/validé comme nouvel accord (texte tapé tel quel, capitalisé). MAJUSCULE
 # initiale : jamais un raccourci, toujours un nouvel accord, quoi qu'il arrive ensuite.
-# Une touche-commande (flèche, x/X/J/L/T/V/n/p, Entrée) interrompt/valide la saisie en
+# Une touche-commande (flèche, X/J/L/T/V/q/Q, Entrée) interrompt/valide la saisie en
 # cours avec l'état COURANT (accord existant si ça matchait à cet instant, sinon nouveau
 # accord tel que tapé) — Entrée EN PLUS termine la saisie SANS quitter l'éditeur (il en
 # faut une 2e pour ça), les autres touches-commandes valident ET s'exécutent dans la
-# foulée ("flèche valide aussi l'accord en cours, sans Entrée", généralisé).
+# foulée ("flèche valide aussi l'accord en cours, sans Entrée", généralisé). "n"/"p"/"x"
+# minuscules EXCLUES de cette liste (issue #62) : lettres plausibles dans un nom
+# d'accord, s'ajoutent simplement à la saisie comme n'importe quel autre caractère.
 # `-icanon -echo` (PAS `stty raw` — `raw` coupe aussi ISIG et OPOST : Ctrl+C ne
 # signalait plus rien, et `\n` n'effectuait plus de retour chariot, d'où le décalage en
 # escalier constaté) : lecture caractère par caractère, ISIG/OPOST intacts, Ctrl+C
@@ -128,8 +130,12 @@ module ChordPlacer
     # Touches-commande qui interrompent une saisie en cours ET s'exécutent ensuite
     # normalement (voir en-tête du fichier) — Entrée/Retour arrière traités À PART
     # (Entrée valide SANS s'exécuter comme "quitter", Retour arrière édite le buffer).
+    # "n"/"p"/"x" (minuscules) EXCLUES (issue #62) : lettres plausibles DANS un nom
+    # d'accord (ex. "Gsus4-3p"), tronquaient la saisie au lieu de s'y ajouter — seules
+    # les majuscules (jamais un caractère de nom, toujours minuscule après la 1re
+    # lettre) et les autres commandes gardent l'interruption.
     command_key = lambda do |k|
-      (k.is_a?(Hash) && k[:arrow]) || (k.is_a?(String) && %w[x X J L T V n p q Q].include?(k))
+      (k.is_a?(Hash) && k[:arrow]) || (k.is_a?(String) && %w[X J L T V q Q].include?(k))
     end
     # "q"/Ctrl+C : sortie AVEC confirmation par défaut "n" — Entrée (sortie normale, PAS
     # en cours de composition) : confirmation par défaut "y" (cohérent
