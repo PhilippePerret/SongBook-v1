@@ -145,6 +145,7 @@ Constructeur de diagramme
   -c/--cover      Produire la couverture en même temps que le carnet
   -b/--book PATH  Chemin d'accès au carnet
   --song TITRE    Chanson de contexte pour la commande (recherche intelligente, sans persistance)
+  --transpose "C:F"  Transposer la chanson pour CE build seulement (accepte aussi "C->F"/"C→F")
   -x              Faire apparaitre les repères (marges)
   -o/--open       Ouvrir le PDF produit sans demander confirmation
 

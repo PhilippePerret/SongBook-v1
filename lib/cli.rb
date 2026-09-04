@@ -135,6 +135,18 @@ module CLI
       end
     end
 
+    # `--transpose "C:F"` (ou "C->F"/"C→F") : transposition PONCTUELLE pour CE build
+    # seulement (issue #71), jamais écrite dans le `.infos` — `build song` uniquement,
+    # voir plus bas la question "autre fichier ou écraser".
+    transpose_opt = nil
+    %w[--transpose].each do |flag|
+      if (i = argv.index(flag))
+        transpose_opt = argv[i + 1]
+        argv.delete_at(i + 1)
+        argv.delete_at(i)
+      end
+    end
+
     # `-b/--book PATH` : sortir UNE chanson (arg1) EXACTEMENT comme elle sortirait dans CE
     # carnet-là (layout/page_count/marges résolus du carnet, voir `CarnetBuilder.build`,
     # `only_song:`) — sans reconstruire tout le carnet.
@@ -612,7 +624,19 @@ module CLI
 
           system("open", out_path) if open_pdf || colored_prompt.yes?(blue(format(Loc.get("carnet_build_open_pdf_question"), carnet_title)))
         else
-          pdf_path = CarnetBuilder.build_song(target[:folder])
+          # `--transpose "C:F"` (issue #71) : ponctuel pour CE build, jamais écrit dans le
+          # `.infos` (`infos_overrides`) — fichier séparé (suffixe "-CtoF", jamais
+          # sluggifié) ou PDF normal écrasé, TOUJOURS demandé (aucune valeur par défaut
+          # silencieuse, même esprit que les autres questions de `build`).
+          infos_overrides = {}
+          out_suffix = nil
+          if transpose_opt
+            depart, arrivee = Transpose.split_entete(transpose_opt)
+            infos_overrides = { "transpose" => transpose_opt }
+            separate = colored_prompt.yes?(blue(Loc.get("transpose_separate_file_question")), default: true)
+            out_suffix = "#{depart}to#{arrivee}" if separate
+          end
+          pdf_path = CarnetBuilder.build_song(target[:folder], infos_overrides: infos_overrides, out_suffix: out_suffix)
           puts success("👍 #{format(Loc.get("song_pdf_generated"), SongResolver.display_name(target[:folder]))}")
 
           Layout.report_missing_chords!

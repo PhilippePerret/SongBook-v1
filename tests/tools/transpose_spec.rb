@@ -36,7 +36,38 @@ RSpec.describe "transposition des accords" do
     expect { Transpose.parser_entete("n'importe quoi") }.to raise_error(ArgumentError)
   end
 
+  describe ".split_entete (build --transpose, issue #71)" do
+    it "accepte \":\" en plus de \"->\"/\"→\"" do
+      expect(Transpose.split_entete("C:F")).to eq(%w[C F])
+      expect(Transpose.split_entete("C->F")).to eq(%w[C F])
+      expect(Transpose.split_entete("C → F")).to eq(%w[C F])
+    end
+
+    it "même décalage, quel que soit le séparateur utilisé" do
+      expect(Transpose.parser_entete("C:F")).to eq(Transpose.parser_entete("C → F"))
+    end
+  end
+
   it "Refuser un accord illisible" do
     expect { Transpose.transpose_chord("Z9", 0, 0) }.to raise_error(ArgumentError)
+  end
+
+  describe "basse entre crochets (bug constaté : \"accord illisible : '[C]'\", build --transpose sur \"One More Try\")" do
+    let(:decalage) { Transpose.parser_entete("F → C") }
+
+    it "basse SEULE (\"[C]\", pas un accord complet) : transposée comme une note" do
+      dl, dt = decalage
+      expect(Transpose.transpose_chord("[C]", dl, dt)).to eq("[G]")
+    end
+
+    it "basse EMBARQUÉE (\"Dm7[C]\") : la fondamentale ET la basse transposées, indépendamment" do
+      dl, dt = decalage
+      expect(Transpose.transpose_chord("Dm7[C]", dl, dt)).to eq("Am7[G]")
+    end
+
+    it "2 accords de la même mesure (\"F/C\", issue DSLParser#parse_line) : chacun transposé" do
+      dl, dt = decalage
+      expect(Transpose.transpose_chord("F/C", dl, dt)).to eq("C/G")
+    end
   end
 end

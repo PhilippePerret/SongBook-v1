@@ -49,13 +49,20 @@ module Transpose
     [decalage_lettres, decalage_demitons]
   end
 
-  # "Em → Am" ou "Em -> Am" (fallback ASCII) -> [decalage_lettres, decalage_demitons].
-  # Le suffixe de qualité (m, 7, sus...) n'entre PAS dans le calcul de l'intervalle
-  # — seule la tonique (lettre+altération) compte.
-  def self.parser_entete(str)
-    depart, arrivee = str.split(/→|->/).map(&:strip)
+  # "Em → Am", "Em -> Am" (fallback ASCII) ou "Em:Am" (`build --transpose`, issue #71)
+  # -> [départ, arrivée] tels quels (espaces retirés).
+  def self.split_entete(str)
+    depart, arrivee = str.split(/→|->|:/).map(&:strip)
     raise ArgumentError, "entête transpose illisible : #{str.inspect}" unless depart && arrivee
 
+    [depart, arrivee]
+  end
+
+  # -> [decalage_lettres, decalage_demitons]. Le suffixe de qualité (m, 7, sus...)
+  # n'entre PAS dans le calcul de l'intervalle — seule la tonique (lettre+altération)
+  # compte.
+  def self.parser_entete(str)
+    depart, arrivee = split_entete(str)
     depart_lettre = depart[/\A[A-G](?:#|♯|b|♭)?/]
     arrivee_lettre = arrivee[/\A[A-G](?:#|♯|b|♭)?/]
     raise ArgumentError, "entête transpose illisible : #{str.inspect}" unless depart_lettre && arrivee_lettre
@@ -80,12 +87,24 @@ module Transpose
   end
 
   CHORD_RE = /\A([A-G](?:#|♯|b|♭)?)(.*)\z/
+  BASS_RE = /\[([A-G](?:#|♯|b|♭)?)\]/
 
   # Accord complet ("Bb7", "F#m", "C") : sépare tonique et qualité, transpose
-  # seulement la tonique, recolle la qualité telle quelle.
+  # seulement la tonique, recolle la qualité telle quelle. "F/C" (2 accords de la
+  # même mesure, issue DSLParser#parse_line) : chaque accord transposé indépendamment.
+  # Basse entre crochets (Manuel/song/chords.adoc) : SEULE ("[C]", pas un accord au sens
+  # `CHORD_RE`, juste une note tenue) ou EMBARQUÉE ("Dm7[C]") — transposée elle aussi
+  # comme une note à part entière, JAMAIS recopiée telle quelle (bug constaté : "accord
+  # illisible : '[C]'", `Transpose::CHORD_RE` exigeait une lettre en tête, ignorait
+  # totalement la syntaxe basse entre crochets).
   def self.transpose_chord(str, decalage_lettres, decalage_demitons)
+    return str.split("/").map { |part| transpose_chord(part, decalage_lettres, decalage_demitons) }.join("/") if str.include?("/")
+
+    transpose_bass = ->(s) { s.gsub(BASS_RE) { "[#{transpose_note($1, decalage_lettres, decalage_demitons)}]" } }
+    return transpose_bass.call(str) if str.start_with?("[")
+
     m = CHORD_RE.match(str) or raise ArgumentError, "accord illisible : #{str.inspect}"
-    tonique, qualite = m[1], m[2]
+    tonique, qualite = m[1], transpose_bass.call(m[2])
     "#{transpose_note(tonique, decalage_lettres, decalage_demitons)}#{qualite}"
   end
 

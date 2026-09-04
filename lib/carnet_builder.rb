@@ -428,10 +428,16 @@ module CarnetBuilder
   # Chanson seule, HORS carnet : format/layout de `_default.yaml` (pas de `.tdm`/`.infos`
   # de carnet à consulter). Passe 1 (mesure, page_count provisoire) -> passe 2 (page_count
   # réel), même principe que `build` pour la marge de reliure KDP.
-  def self.build_song(song_folder)
+  # `infos_overrides`/`out_suffix` (issue #71, `build --transpose`) : transposition
+  # PONCTUELLE pour CE build seulement, jamais écrite dans le `.infos` de la chanson
+  # (`infos_overrides` cascade déjà au-dessus du `.infos` réel, voir `PageBuilder.build`).
+  # `out_suffix` (ex. "CtoF") : fichier SÉPARÉ, jamais un `slug` normal écrasé, jamais
+  # sluggifié (voulu tel quel, casse comprise) — `nil`/vide = fichier normal, écrasé.
+  def self.build_song(song_folder, infos_overrides: {}, out_suffix: nil)
     layout = PageBuilder::DEFAULT_LAYOUT
     page_size_in = layout.fetch(:format).to_s.split(/\s*x\s*/i).map { |v| AppConfig.length_pt(v) / AppConfig::IN_TO_PT }
     slug = slugify(File.basename(song_folder))
+    pdf_slug = out_suffix.to_s.empty? ? slug : "#{slug}-#{out_suffix}"
     export_dir = File.join(song_folder, "export")
     FileUtils.mkdir_p(export_dir)
 
@@ -447,18 +453,18 @@ module CarnetBuilder
     Layout.sensitivity = "log" # chanson seule : pas de `.infos` de carnet à consulter
     Layout.reset_conflicts!
 
-    tmp_out = File.join(export_dir, ".tmp-#{slug}.pdf")
-    PageBuilder.build(song_folder, tmp_out, page_size_in: page_size_in, page_count: 24, first_page_no: 1, layout: layout)
+    tmp_out = File.join(export_dir, ".tmp-#{pdf_slug}.pdf")
+    PageBuilder.build(song_folder, tmp_out, page_size_in: page_size_in, page_count: 24, first_page_no: 1, layout: layout, infos_overrides: infos_overrides)
     page_count = [CombinePDF.load(tmp_out).pages.size, 24].max
     File.delete(tmp_out)
 
-    out_path = File.join(export_dir, "#{slug}.pdf")
-    PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout: layout)
+    out_path = File.join(export_dir, "#{pdf_slug}.pdf")
+    PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout: layout, infos_overrides: infos_overrides)
     # Aperçu (macOS) affiche TOUJOURS la page 1 d'un PDF seule, jamais en vis-à-vis avec
     # la 2 — page blanche ajoutée devant dès que la chanson a plus d'une page.
     if page_count > 1
       page_size_pt = page_size_in.map { |v| v * AppConfig::IN_TO_PT }
-      blank_out = File.join(export_dir, ".tmp-#{slug}-blank.pdf")
+      blank_out = File.join(export_dir, ".tmp-#{pdf_slug}-blank.pdf")
       Prawn::Document.generate(blank_out, page_size: page_size_pt, margin: 0)
       (CombinePDF.load(blank_out) << CombinePDF.load(out_path)).save(out_path)
       File.delete(blank_out)

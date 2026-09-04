@@ -20,6 +20,27 @@ RSpec.describe "construction d'une chanson seule" do
     expect(File.size(out_path)).to be > 0
   end
 
+  describe "build --transpose (issue #71, transposition ponctuelle pour CE build)" do
+    it "\"out_suffix\" : fichier SÉPARÉ (jamais le PDF normal touché), transposition appliquée" do
+      normal = CarnetBuilder.build_song(song_folder)
+      transposed = CarnetBuilder.build_song(song_folder, infos_overrides: { "transpose" => "Em:Am" }, out_suffix: "EmtoAm")
+
+      expect(transposed).not_to eq(normal)
+      expect(File.basename(transposed)).to eq("angie-EmtoAm.pdf")
+      expect(File.exist?(normal)).to be true
+    end
+
+    it "sans \"out_suffix\" : le PDF normal lui-même est transposé/écrasé" do
+      out_path = CarnetBuilder.build_song(song_folder, infos_overrides: { "transpose" => "Em:Am" })
+      expect(File.basename(out_path)).to eq("angie.pdf")
+    end
+
+    it "sans \"infos_overrides\" ni \"out_suffix\" : comportement inchangé (défauts)" do
+      out_path = CarnetBuilder.build_song(song_folder)
+      expect(File.basename(out_path)).to eq("angie.pdf")
+    end
+  end
+
   it "Refuser un dossier qui n'a pas de paroles" do
     Dir.mktmpdir do |dir|
       expect(CarnetBuilder.song_folder?(dir)).to be false

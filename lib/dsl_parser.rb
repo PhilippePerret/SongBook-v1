@@ -27,23 +27,51 @@ class DSLParser
   # Méthode de classe (toujours publique) : seule source de vérité pour le découpage
   # accord/texte d'une ligne — réutilisée telle quelle par `PageBuilder` pour le format
   # `.lyr` (plus de logique dupliquée entre les deux formats).
+  # Un "/" NU dans les paroles n'a rien à faire là — c'est TOUJOURS un séparateur
+  # d'accord/basse, jamais un caractère de parole réel (Phil : "un '/' n'a rien à faire
+  # dans des paroles"). `\/` (échappé) reste un "/" littéral voulu par l'user, seul
+  # moyen d'en écrire un vrai.
+  def self.strip_bare_slashes(text)
+    text.gsub(%r{\\/|/}) { |m| m == "\\/" ? "/" : "" }
+  end
+
   def self.parse_line(line)
     line = line.gsub("_", "   ")
     segments = []
     matches = line.to_enum(:scan, CHORD_RE).map { Regexp.last_match }
 
     if matches.empty?
-      segments << Segment.new(chord: nil, text: line) unless line.empty?
+      text = strip_bare_slashes(line)
+      segments << Segment.new(chord: nil, text: text) unless text.empty?
       return segments
     end
 
-    pre = line[0...matches.first.begin(0)]
+    pre = strip_bare_slashes(line[0...matches.first.begin(0)])
     segments << Segment.new(chord: nil, text: pre) unless pre.empty?
 
-    matches.each_with_index do |m, i|
+    i = 0
+    while i < matches.length
+      m = matches[i]
+      chord = normalize_chord(m[1])
+      fret = m[2]
+      # "/" SEUL entre deux marqueurs collés (ex. "/F://C:") : PAS un séparateur à
+      # effacer — un séparateur VISUEL entre deux accords de la MÊME mesure (jamais deux
+      # syllabes distinctes), fusionnés en UN SEUL segment "F/C" (`Layout.draw_chord_label`
+      # sait déjà afficher un nom d'accord avec "/", `ChordDiagrams.split_chord` déjà le
+      # rescinder pour les diagrammes) — jamais gravé dans les paroles, jamais non plus
+      # purement supprimé (bug constaté : perdait le lien visuel entre les deux accords,
+      # rendus comme deux accords disjoints avec juste un espace).
+      while i + 1 < matches.length && line[m.end(0)...matches[i + 1].begin(0)] == "/"
+        i += 1
+        nxt = matches[i]
+        chord = "#{chord}/#{normalize_chord(nxt[1])}"
+        fret ||= nxt[2]
+        m = nxt
+      end
       text_start = m.end(0)
       text_end = i + 1 < matches.length ? matches[i + 1].begin(0) : line.length
-      segments << Segment.new(chord: normalize_chord(m[1]), fret: m[2], text: line[text_start...text_end])
+      segments << Segment.new(chord: chord, fret: fret, text: strip_bare_slashes(line[text_start...text_end]))
+      i += 1
     end
 
     segments
