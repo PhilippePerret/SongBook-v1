@@ -303,6 +303,7 @@ module CLI
       when "chords"
         begin
           song_folder = resolve_song_folder(arg2 || Session.song)
+          Session.song = song_folder
           lyr_path = FileFinder.find(song_folder, :lyr)
           abort "aucun .lyr/.lyrics trouvé dans #{song_folder}" unless lyr_path
 
@@ -343,6 +344,7 @@ module CLI
       when "id"
         begin
           song_folder = resolve_song_folder(arg2 || Session.song)
+          Session.song = song_folder
           infos_path = FileFinder.find(song_folder, :inf)
           infos = infos_path ? CarnetBuilder.parse_nested_infos(infos_path) : {}
           value = infos["id"].to_s.strip.empty? ? (infos["title"] || File.basename(song_folder)) : infos["id"]
@@ -379,10 +381,12 @@ module CLI
         case arg1
         when "dims"
           carnet_folder = resolve_carnet_folder(arg2 || Session.carnet)
+          Session.carnet = carnet_folder
           printer = printer_for_carnet(carnet_folder)
           print_cover_dims(printer)
         when "idml", "modele"
           carnet_folder = resolve_carnet_folder(arg2 || Session.carnet)
+          Session.carnet = carnet_folder
           printer = printer_for_carnet(carnet_folder)
           infos_path = FileFinder.find(carnet_folder, :inf)
           conf = CarnetBuilder.parse_nested_infos(infos_path)
@@ -445,6 +449,7 @@ module CLI
       when "song", nil
         begin
           song_folder = resolve_song_folder(arg2 || Session.song)
+          Session.song = song_folder
           infos_path = FileFinder.find(song_folder, :inf)
           infos = infos_path ? CarnetBuilder.parse_nested_infos(infos_path) : {}
           title = infos["title"] || File.basename(song_folder)
@@ -562,6 +567,13 @@ module CLI
           kind = CarnetBuilder.carnet_folder?(dir) ? :carnet : (CarnetBuilder.song_folder?(dir) ? :song : nil)
           abort "ni carnet (.tdm/.toc) ni chanson (.lyr/.lyrics) reconnu dans #{dir}" unless kind
           target = { kind: kind, folder: dir }
+        end
+
+        # Cible d'un `build` -> contexte courant, comme `use`/`create` (issue #59).
+        if target[:kind] == :song
+          Session.song = target[:folder]
+        else
+          Session.carnet = target[:folder]
         end
 
         if book_path
@@ -718,6 +730,7 @@ module CLI
   # matières du CARNET (pas de la chanson), "toc" toléré comme synonyme anglais de "tdm".
   def self.open_tdm_file(carnet_arg)
     carnet_folder = resolve_carnet_folder(carnet_arg || Session.carnet)
+    Session.carnet = carnet_folder
     tdm_path = FileFinder.find(carnet_folder, :tdm)
     abort "aucun fichier .tdm/.toc trouvé dans #{carnet_folder}" unless tdm_path
 
