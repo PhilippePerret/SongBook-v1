@@ -93,13 +93,13 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
     end
   end
 
-  describe "ChordPlacer.capitalize_chord (basse entre crochets TOUJOURS minuscule)" do
-    it "basse seule : minuscule forcée, même tapée en majuscule" do
-      expect(ChordPlacer.capitalize_chord("[FD]")).to eq("[fd]")
+  describe "ChordPlacer.capitalize_chord (basse entre crochets : 1re lettre capitale, issue #60)" do
+    it "basse seule : capitale forcée, même tapée en minuscule" do
+      expect(ChordPlacer.capitalize_chord("[fd]")).to eq("[Fd]")
     end
 
     it "basse bémol, même règle" do
-      expect(ChordPlacer.capitalize_chord("[BB]")).to eq("[bb]") # "bb" = si BÉMOL (2e "b" = suffixe bémol)
+      expect(ChordPlacer.capitalize_chord("[bb]")).to eq("[Bb]") # "bb" = si BÉMOL (2e "b" = suffixe bémol)
     end
 
     it "accord normal (sans crochets) : comportement inchangé" do
@@ -239,10 +239,10 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       expect(File.readlines(path).first.chomp).to eq("bonjour tout/G:")
     end
 
-    it "\"[\" démarre la saisie d'une basse SEULE (\"[fd]\", TOUJOURS minuscule)" do
+    it "\"[\" démarre la saisie d'une basse SEULE (\"[Fd]\", 1re lettre capitale, issue #60)" do
       path = write_lyr(["bonjour tout"])
-      simulate(path, "L[FD]\r\r") # tapé en MAJUSCULE : doit quand même s'enregistrer en minuscule
-      expect(File.readlines(path).first.chomp).to eq("bonjour tout/[fd]:")
+      simulate(path, "L[FD]\r\r") # tapé en MAJUSCULE : reste capitale sur la 1re lettre, minuscule ensuite
+      expect(File.readlines(path).first.chomp).to eq("bonjour tout/[Fd]:")
     end
 
     it "une MAJUSCULE force un nouvel accord malgré la collision avec un raccourci connu" do

@@ -85,15 +85,32 @@ module ChordPlacer
     letters = seed_letters(raw_lines)
     load_cached_chords(song_dir).each { |chord| register_chord(letters, chord) }
 
+    # Rationalisation (issue #60) : TOUS les accords de la chanson, pas seulement ceux
+    # tapés pendant cette session — un accord chargé tel quel depuis le fichier
+    # (`ChordLine.parse` garde la casse d'origine, jamais normalisée) doit ressortir
+    # dans la forme correcte à la sauvegarde.
     save = lambda do
-      editable.each { |i| raw_lines[i] = chord_lines[i].serialize }
+      editable.each do |i|
+        chord_lines[i].chords.transform_values! do |v|
+          ChordLine.split_for_write(v).map { |c| capitalize_chord(c) }.join("/")
+        end
+        raw_lines[i] = chord_lines[i].serialize
+      end
       File.write(lyr_path, "#{raw_lines.join("\n")}\n")
     end
 
     pos = 0
     cursor = 0
     notice = nil
-    dirty = false
+    # `dirty` d'entrée si des accords CHARGÉS depuis le fichier ne sont pas déjà dans
+    # la forme rationalisée (issue #60) — sinon rien ne déclenchait jamais la question
+    # de sauvegarde tant qu'aucun autre accord n'était posé/supprimé pendant la
+    # session, alors que rationaliser EST le but de la ré-édition.
+    dirty = editable.any? do |i|
+      chord_lines[i].chords.values.any? do |v|
+        ChordLine.split_for_write(v).map { |c| capitalize_chord(c) }.join("/") != v
+      end
+    end
     # Caractères tapés tels quels (String), `nil` tant qu'aucune saisie n'est en cours
     # (voir en-tête du fichier — décision existant/nouveau refaite à chaque frappe).
     typing = nil
@@ -209,10 +226,8 @@ module ChordPlacer
 
   # 1re lettre en capitale, TOUJOURS — écrite comme ça, pas juste affichée comme
   # ça. Basse entre crochets (`[fd]` seule, ou embarquée dans un accord "A[c]m7") :
-  # "entre crochets, c'est toujours des basses et les basses doivent toujours
-  # s'écrire en minuscule" : règle INVERSE, tout le contenu d'un "[...]" est
-  # forcé en minuscule — même règle que `DSLParser.normalize_chord`, pas de
-  # ré-implémentation, une seule règle partout.
+  # même règle (1re lettre capitale, issue #60) — même règle que
+  # `DSLParser.normalize_chord`, pas de ré-implémentation, une seule règle partout.
   def self.capitalize_chord(name)
     DSLParser.normalize_chord(name)
   end
