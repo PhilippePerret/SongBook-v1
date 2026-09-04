@@ -167,7 +167,11 @@ class DiagSchem
   # (Phil : "trop dangereux"). Sinon insère (`SchemaLibrary`) et
   # produit tout de suite le SVG dans le dossier de la lettre (pas le dossier courant).
   def enregistrer_dans_application(prompt)
-    texte = prompt.ask(blue(Loc.get('diag_name_prompt')), default: "#{@nom}-#{@case_ref}").to_s.strip
+    # `@nom` normalisé (`DSLParser.normalize_chord`, même règle partout) DÈS LA
+    # PROPOSITION par défaut — 1re lettre de la fondamentale ET de la basse entre
+    # crochets capitalisées, RIEN d'autre (bug constaté : "c[e]-0B" enregistré tel
+    # quel un jour, en minuscule, invisible depuis de la page `diags`).
+    texte = prompt.ask(blue(Loc.get('diag_name_prompt')), default: "#{DSLParser.normalize_chord(@nom)}-#{@case_ref}").to_s.strip
     return if texte.empty?
 
     # Nom = tout ce qui précède le PREMIER "-" ; case = tout le reste, n'importe quoi,

@@ -39,6 +39,15 @@ RSpec.describe "SchemaLibrary (insertion de schémas)" do
     it "autorise un nom et un schéma tous les deux inédits" do
       expect(SchemaLibrary.conflict(entries, "B", 2, "12/1 24/4 34/3 44/2 52/1 62/1")).to be_nil
     end
+
+    it "même nom sous une autre casse (\"a\" pour \"A\") : même refus :nom, forme canonique (bug constaté : \"c[e]-0B\" minuscule invisible de la page diags mais toujours en conflit)" do
+      expect(SchemaLibrary.conflict(entries, "a", 0, "autre chose entièrement")).to eq(:nom)
+    end
+
+    it "basse entre crochets, casse différente (\"cd[e]\" vs \"Cd[E]\") : même nom canonique" do
+      with_basse = SchemaLibrary.parse_lines(["Cd[E]-5 : 10 22/3 32/2 42/1 50 60"])
+      expect(SchemaLibrary.conflict(with_basse, "cd[e]", 5, "autre chose entièrement")).to eq(:nom)
+    end
   end
 
   describe ".insert" do

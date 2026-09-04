@@ -57,16 +57,37 @@ module ChordDiagrams
   def self.find_svg(dir, fc, fret, recursive:)
     return nil unless Dir.exist?(dir)
 
-    pattern = File.join(dir, *(recursive ? ["**"] : []), "#{Regexp.escape(fc)}-*.svg")
-    entries = Dir.glob(pattern).filter_map do |f|
-      m = File.basename(f).match(/\A#{Regexp.escape(fc)}-(.+)\.svg\z/)
-      [f, m[1]] if m
-    end
-    entries.select! { |_, kase| kase == fret } if fret
-    return nil if entries.empty?
+    name_variants(fc).each do |variant|
+      pattern = File.join(dir, *(recursive ? ["**"] : []), "#{Regexp.escape(variant)}-*.svg")
+      entries = Dir.glob(pattern).filter_map do |f|
+        m = File.basename(f).match(/\A#{Regexp.escape(variant)}-(.+)\.svg\z/)
+        [f, m[1]] if m
+      end
+      entries.select! { |_, kase| kase == fret } if fret
+      next if entries.empty?
 
-    target_case = fret || entries.min_by { |_, kase| kase[/\d+/].to_i }.last
-    entries.find { |_, kase| kase == target_case }.first
+      target_case = fret || entries.min_by { |_, kase| kase[/\d+/].to_i }.last
+      found = entries.find { |_, kase| kase == target_case }
+      return found.first if found
+    end
+    nil
+  end
+
+  # Variantes de casse à essayer pour la 1re lettre de la fondamentale ET celle de la
+  # basse entre crochets SEULEMENT, jamais le reste (qualité/altération : "Am"/"AM" sont
+  # 2 accords musicalement différents, jamais confondus) — un fichier a pu être
+  # enregistré tel quel un jour, casse d'origine perdue (bug constaté, "c[e]-0B.svg" :
+  # invisible/introuvable via le nom canonique "C[E]-0B" alors qu'il existe bel et
+  # bien). Essai EXACT d'abord (immense majorité des cas), replis ensuite seulement.
+  def self.name_variants(fc)
+    flip = ->(s, i) { s.dup.tap { |v| v[i] = v[i] == v[i].upcase ? v[i].downcase : v[i].upcase } }
+    variants = [fc, flip.call(fc, 0)]
+
+    if (bi = fc.index("["))
+      li = bi + 1
+      variants += variants.map { |v| flip.call(v, li) }
+    end
+    variants.uniq
   end
 
   # Cases (frets) disponibles pour un accord, triées — sert à `transposed_fret` (jamais

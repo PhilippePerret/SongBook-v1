@@ -51,6 +51,21 @@ RSpec.describe "recherche des diagrammes d'accords" do
     end
   end
 
+  it "trouve un fichier enregistré dans une AUTRE casse (bug constaté : \"c[e]-0B.svg\" introuvable via le nom canonique \"C[E]\")" do
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "c[e]-0B.svg"), "")
+      found = ChordDiagrams.diag_path("C[E]", fret: "0B", carnet_dir: dir)
+      expect(found).to eq(File.join(dir, "c[e]-0B.svg"))
+    end
+  end
+
+  it "la qualité/altération GARDE sa casse exacte (\"Zm\"/\"ZM\" 2 accords différents, jamais confondus)" do
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "ZM-0.svg"), "")
+      expect(ChordDiagrams.diag_path("Zm", carnet_dir: dir)).to be_nil
+    end
+  end
+
   it "Ne pas planter quand aucun diagramme n'est trouvé nulle part" do
     Dir.mktmpdir do |dir|
       expect(ChordDiagrams.diag_path("Zzz9", carnet_dir: dir)).to be_nil

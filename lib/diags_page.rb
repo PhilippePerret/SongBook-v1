@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "chord_diagrams"
+require_relative "dsl_parser"
 
 # Page HTML unique regroupant tous les diagrammes d'accords disponibles
 # (assets/chords_diags), en deux groupes distincts (majeurs puis mineurs),
@@ -32,7 +33,10 @@ module DiagsPage
     ["B", nil, "B"],
   ].freeze
 
-  FILENAME_RE = /\A([A-G])(b|d)?(.*)-(\d+)([A-Za-z]*)\z/.freeze
+  # Lettre en tête acceptée en minuscule aussi (bug constaté : "c[e]-0B.svg" jamais
+  # reconnu, invisible de cette page, alors que le nom est valide — même règle partout
+  # ailleurs, un nom d'accord s'écrit comme l'user veut).
+  FILENAME_RE = /\A([A-Ga-g])(b|d)?(.*)-(\d+)([A-Za-z]*)\z/.freeze
 
   def self.build_and_open!
     build! if stale?
@@ -62,7 +66,7 @@ module DiagsPage
       m = FILENAME_RE.match(base)
       next unless m
 
-      letter, accidental, quality, kase = m[1], m[2], m[3], m[4].to_i
+      letter, accidental, quality, kase = m[1].upcase, m[2], m[3], m[4].to_i
       buckets[[letter, accidental]] << { file: f, quality: quality, case: kase }
     end
     buckets.each_value { |entries| entries.sort_by! { |e| [e[:quality], e[:case]] } }
@@ -175,8 +179,17 @@ module DiagsPage
   def self.grid(entries)
     imgs = entries.map do |e|
       rel = File.join(File.basename(File.dirname(e[:file])), File.basename(e[:file]))
+      # Presse-papier = syntaxe TAPÉE dans un `.lyr` (crochets, canonique, jamais
+      # renommée sur le disque) ; légende = la même chose AFFICHÉE (`Layout.display_chord`
+      # — basse en solfège italien, notation slash, jamais les crochets : "C/mi", jamais
+      # "C[E]", même règle que PARTOUT ailleurs dans l'app).
       fname = File.basename(e[:file], ".svg")
-      %(<figure><img src="chords_diags/#{rel}" alt="" data-copy="/#{fname}:"><figcaption>/#{fname}:</figcaption></figure>)
+      m = fname.match(/\A([^-]+)-(.+)\z/)
+      nom = m ? DSLParser.normalize_chord(m[1]) : fname
+      case_ref = m && m[2]
+      to_copy = case_ref ? "#{nom}-#{case_ref}" : nom
+      shown = case_ref ? "#{Layout.display_chord(nom)}-#{case_ref}" : Layout.display_chord(nom)
+      %(<figure><img src="chords_diags/#{rel}" alt="" data-copy="/#{to_copy}:"><figcaption>/#{shown}:</figcaption></figure>)
     end.join("\n")
 
     %(<div class="grid">\n#{imgs}\n</div>)

@@ -1140,8 +1140,19 @@ module Layout
   # ligne où le label d'accord est plus large que le mot ("Dm7" vs "LOVE,"), et le rendu
   # RÉEL déborde de la colonne qui lui a été allouée, empiétant sur la colonne suivante
   # (chevauchement constaté 2026-08-21, "All You Need Is Love" p.6, intro/couplet pairés).
+  # `label:` (issue #63) : fait partie de la largeur du bloc, comme n'importe quel autre
+  # contenu — un bloc étiqueté est juste plus large, aucune réserve séparée à calculer
+  # ailleurs (`row_column_widths`/`row_to_element`, un bloc de parole est un bloc de
+  # parole, avec ou sans label).
   def self.block_width(pdf, block, chord_size: scaled_chord_size, text_size: Options.get(:font_size))
-    block.lines.map { |l| line_width(pdf, l.segments, chord_size, text_size, label: l.label) }.max || 0
+    natural = block.lines.map { |l| line_width(pdf, l.segments, chord_size, text_size, label: l.label) }.max || 0
+    natural + label_reserve(pdf, block, text_size)
+  end
+
+  def self.label_reserve(pdf, block, text_size)
+    return 0 unless block.directives[:label]
+
+    pdf.width_of(block.directives[:label], size: text_size) + LABEL_MARGIN_GAP
   end
 
   # Texte TOUJOURS aligné à gauche (sauf demande expresse) : `block_align: center`
@@ -1157,20 +1168,12 @@ module Layout
 
   # Largeurs de colonnes calculées globalement (une seule fois) pour que tous les
   # couplets s'alignent entre eux, plutôt que chaque paire ne s'ajuste à son propre contenu.
-  # `label:` (issue #63) sur le bloc de la colonne 2 : dessiné À GAUCHE de cette colonne
-  # (`draw_block`), donc dans la gouttière — celle-ci doit réserver assez de place pour
-  # lui, sinon il empiète sur la colonne 1 (chevauchement constaté, "One More Try",
-  # "REFRAIN" mordant sur le couplet pairé à sa gauche alors qu'il y avait largement la
-  # place). `col1_w` grandit d'autant : c'est LUI qui fixe où démarre la colonne 2.
+  # `label:` (issue #63) : PAS de cas particulier ici — un bloc étiqueté a juste une
+  # largeur plus grande (`block_width`, l'étiquette en fait partie), comme n'importe quel
+  # contenu plus large. Aucune réserve séparée à calculer.
   def self.row_column_widths(pdf, rows, width)
     col1_w = rows.filter_map { |r| block_width(pdf, r[0]) if r.size == 2 }.max || 0
     col2_w = rows.filter_map { |r| block_width(pdf, r[1]) if r.size == 2 }.max || 0
-    label_reserve = rows.filter_map do |r|
-      next unless r.size == 2 && r[1].directives[:label]
-
-      pdf.width_of(r[1].directives[:label], size: Options.get(:font_size)) + LABEL_MARGIN_GAP
-    end.max || 0
-    col1_w += label_reserve
     [col1_w, col2_w, distribute_gutter(width, [col1_w, col2_w])]
   end
 
@@ -1240,13 +1243,7 @@ module Layout
         block_x0 = x0 + [(width - (col1_w + h_gutter + col2_w)) / 2.0, 0].max
         draw_block(pdf_, block, block_x0, y, col1_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
         block1_w = block_width(pdf_, block)
-        # `label:` (issue #63) sur `nxt` : dessiné À GAUCHE de sa colonne (`draw_block`) —
-        # le "hug" ci-dessous (RAL, rapproche col2 du contenu RÉEL de col1 plutôt que du
-        # `col1_w` global) doit lui aussi réserver cette largeur, sinon il ramène col2
-        # trop près et l'étiquette empiète sur col1 (chevauchement constaté, "One More
-        # Try").
-        label_reserve = nxt.directives[:label] ? pdf_.width_of(nxt.directives[:label], size: Options.get(:font_size)) + LABEL_MARGIN_GAP : 0
-        col2_x = [block_x0 + col1_w + h_gutter, block_x0 + block1_w + max_h_dist + label_reserve].min
+        col2_x = [block_x0 + col1_w + h_gutter, block_x0 + block1_w + max_h_dist].min
         draw_block(pdf_, nxt, col2_x, y, col2_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
       else
         block = row[0]
@@ -1714,10 +1711,11 @@ module Layout
   def self.draw_block(pdf, block, x, y0, width, chord_ascent, text_ascent, chord_size: scaled_chord_size, text_size: Options.get(:font_size), force_chord_baseline: false)
     y = y0 - (force_chord_baseline || line_has_chord?(block.lines.first) ? chord_ascent : text_ascent)
     # `label:` (issue #63, ex. `{refrain-1; label: REFRAIN}`) : PAS une ligne du corps —
-    # étiquette EN REGARD de la strophe, À GAUCHE (alignée sur la 1re ligne, jamais dans
-    # le flux des paroles) — texte aligné à DROITE juste avant `x`, quelle que soit la
-    # position du bloc (centré, colonne...), toujours au même niveau que la 1re ligne.
-    if block.directives[:label]
+    # fait partie de la largeur du bloc (`block_width`), dessiné à SA place normale (`x`,
+    # début de colonne) ; les paroles démarrent juste après (`reserve`), À L'INTÉRIEUR de
+    # la même colonne — jamais un empiètement calculé sur la colonne voisine.
+    reserve = label_reserve(pdf, block, text_size)
+    if reserve.positive?
       label = block.directives[:label]
       first_line = block.lines.first
       # Aligné sur le VERS (les mots), jamais la ligne d'accords au-dessus — sauf ligne
@@ -1725,17 +1723,16 @@ module Layout
       # (`force_chord_baseline`) : un bloc SANS accord sur sa 1re ligne, mais pairé à
       # un voisin QUI EN A, réserve quand même la ligne d'accords au-dessus (`y` déjà
       # descendu ci-dessus) — même condition ici, sinon le label reste au niveau de
-      # cette ligne d'accords fantôme au lieu du vers RÉELLEMENT dessiné en dessous
-      # (bug constaté, "One More Try" : "REFRAIN" au-dessus de "'Cause teacher" au
-      # lieu d'être en face).
+      # cette ligne d'accords fantôme au lieu du vers RÉELLEMENT dessiné en dessous.
       label_y = if !chords_only_line?(first_line) && (force_chord_baseline || line_has_chord?(first_line))
                   y - chord_to_text_drop(chord_size, text_size)
                 else
                   y
                 end
-      lw = pdf.width_of(label, size: text_size)
-      pdf.draw_text label, at: [x - LABEL_MARGIN_GAP - lw, label_y], size: text_size
+      pdf.draw_text label, at: [x, label_y], size: text_size
     end
+    x += reserve
+    width -= reserve if width
     block.lines.each_with_index do |line, i|
       line_x = x
       if width && line.align.to_s.downcase == "right"

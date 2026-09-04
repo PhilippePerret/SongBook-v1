@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require_relative "../../lib/dsl_parser"
 
 # Insertion d'un nouveau schéma dans `assets/chords_diags/<Lettre>/schemas.txt` —
 # logique PURE (pas d'I/O caché dans `insert`/`conflict`/`parse_lines`/`sort_key`,
@@ -63,9 +64,14 @@ module SchemaLibrary
   # Raison de refus (`:nom` ou `:schema`), `nil` si l'insertion est permise. Vérifie
   # 1) le nom (même nom ET même case) 2) SURTOUT le schéma (mêmes positions, sous
   # n'importe quel autre nom/case — un doublon visuel, plus dangereux qu'un doublon de
-  # nom).
+  # nom). Nom comparé sous sa forme CANONIQUE (`DSLParser.normalize_chord`) — l'user
+  # écrit comme il veut, majuscules ou minuscules, "cd[e]" et "Cd[E]" sont LE MÊME nom
+  # (bug constaté : "c[e]-0B" enregistré en minuscule un jour, invisible de la page
+  # `diags`  mais toujours trouvé en doublon par ce check — deux vérités
+  # différentes pour le même accord).
   def self.conflict(entries, nom, case_ref, tokens)
-    return :nom if entries.any? { |e| e.nom == nom && e.case_ref.to_s == case_ref.to_s }
+    canon = DSLParser.normalize_chord(nom)
+    return :nom if entries.any? { |e| DSLParser.normalize_chord(e.nom) == canon && e.case_ref.to_s == case_ref.to_s }
     return :schema if entries.any? { |e| e.tokens == tokens }
 
     nil
