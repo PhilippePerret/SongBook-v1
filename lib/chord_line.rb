@@ -43,13 +43,13 @@ class ChordLine
     new(text, chords)
   end
 
-  # Un accord composé ("Bb6/C") = accord-basse SANS case sur aucun des deux côtés,
-  # accord UNIQUE, un seul marqueur "/accord:" (bug déjà constaté par le passé, ne pas
-  # re-casser). Un "/" entre deux morceaux dont AU MOINS un porte sa propre case
-  # ("-chiffre", ex. "A2-0/A-0") = DEUX accords distincts, DEUX marqueurs "/accord:"
-  # collés .
+  # "/" = TOUJOURS un séparateur entre deux accords DISTINCTS, jamais un accord composé
+  # avec basse (issue #66 — "Bb6/C" n'a jamais été un accord unique, une basse s'écrit
+  # TOUJOURS entre crochets, `A[c]m7`/`[cd]`, jamais via un "/" direct — même règle déjà
+  # appliquée par `ChordDiagrams.split_chord`, jamais suivie ici). "G/C" (un seul
+  # marqueur, tapé d'une traite) -> DEUX accords "G" et "C".
   def self.split_for_write(name)
-    return [name] unless name.include?("/") && name.match?(/-\d/)
+    return [name] unless name.include?("/")
 
     name.split("/")
   end
@@ -64,10 +64,15 @@ class ChordLine
     out
   end
 
+  # Plusieurs accords à la même position -> plusieurs marqueurs "/accord:" séparés par un
+  # "/" isolé (ex. "/G://C:", issue #64/#66) : c'est CE "/" qui, dans le PDF final, se
+  # dessine comme séparateur entre les deux accords (`Layout.chords_only_steps`) — un
+  # simple accolement ("/G:/C:") ne laisserait AUCUN caractère entre les deux marqueurs,
+  # donc rien à reconnaître comme séparateur visible.
   def chord_tokens(idx)
     return "" unless chords[idx]
 
-    self.class.split_for_write(chords[idx]).map { |c| "/#{c}:" }.join
+    self.class.split_for_write(chords[idx]).map { |c| "/#{c}:" }.join("/")
   end
 
   # "ch"/"ph"/"th"/"gn"/"qu" = UN seul son consonantique — comptées séparément (2

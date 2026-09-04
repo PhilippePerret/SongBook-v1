@@ -341,5 +341,40 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       simulate(path, "Gsus4-3p\r\r")
       expect(File.readlines(path).first.chomp).to eq("/Gsus4-3p:bonjour tout")
     end
+
+    it "\"/\" en cours de saisie valide l'accord ET en démarre un 2e à la même position (issue #66, \"G/C\" ne doit JAMAIS être un seul accord nommé \"G/C\")" do
+      path = write_lyr(["bonjour tout"])
+      simulate(path, "G/C\r\r")
+      expect(File.readlines(path).first.chomp).to eq("/G://C:bonjour tout")
+    end
+  end
+
+  describe "ChordLine.split_for_write (\"/\" = TOUJOURS deux accords distincts, issue #66)" do
+    it "\"Bb6/C\" n'est plus un accord composé : 2 accords" do
+      expect(ChordLine.split_for_write("Bb6/C")).to eq(%w[Bb6 C])
+    end
+
+    it "accord simple, sans \"/\" : inchangé" do
+      expect(ChordLine.split_for_write("Am7")).to eq(["Am7"])
+    end
+  end
+
+  describe "ChordLine#chord_tokens (2 accords à la même position -> double slash, issue #64/#66)" do
+    it "\"/G://C:\" (double slash), jamais \"/G:/C:\" (le \"/\" simple ne laisse rien à reconnaître comme séparateur dans le PDF, Layout.chords_only_steps)" do
+      line = ChordLine.new("bonjour", { 0 => "G/C" })
+      expect(line.chord_tokens(0)).to eq("/G://C:")
+    end
+  end
+
+  describe "ChordPlacer.render_line (le \"/\" séparateur rejoint la ligne des accords, jamais celle des paroles, issue #64)" do
+    it "accords séparés par du texte réel (\"/G:_ //Bm:_\", \"Nikita\") : \"/\" sur la ligne accords" do
+      line = ChordLine.parse("/G:_ //Bm:_")
+      expect { ChordPlacer.render_line(line, nil) }.to output("G /Bm\n_  _\n").to_stdout
+    end
+
+    it "accords collés en tête d'un vers normal (\"/G://C:bonjour\", issue #66) : \"/\" jamais dans la parole" do
+      line = ChordLine.parse("/G://C:bonjour")
+      expect { ChordPlacer.render_line(line, nil) }.to output(/\n[^\n\/]*bonjour\n\z/).to_stdout
+    end
   end
 end

@@ -117,14 +117,24 @@ module ChordPlacer
     # (voir en-tête du fichier — décision existant/nouveau refaite à chaque frappe).
     typing = nil
 
+    # "/" (issue #66) : commit l'accord tapé, ET signale au commit SUIVANT (même
+    # curseur) de s'AJOUTER à celui-ci plutôt que de l'écraser — "G","/","C" tapé
+    # d'une traite donne deux accords "G" et "C" à la même position, jamais un seul
+    # accord nommé "G/C" (une basse s'écrit TOUJOURS entre crochets, jamais via un "/").
+    merge_next = false
+
     commit_typing = lambda do
       chord = typed_match(typing, letters, active_letters(letters, chord_lines)) || capitalize_chord(typing)
       register_chord(letters, chord)
       save_cached_chords(song_dir, letters.values.flatten)
-      chord_lines[editable[pos]].set_chord(cursor, chord)
+      current_line = chord_lines[editable[pos]]
+      existing = current_line.chord_at(cursor)
+      chord = "#{existing}/#{chord}" if merge_next && existing
+      current_line.set_chord(cursor, chord)
       notice = chord_notice(chord, song_dir)
       dirty = true
       typing = nil
+      merge_next = false
     end
 
     # Touches-commande qui interrompent une saisie en cours ET s'exécutent ensuite
@@ -133,9 +143,10 @@ module ChordPlacer
     # "n"/"p"/"x" (minuscules) EXCLUES (issue #62) : lettres plausibles DANS un nom
     # d'accord (ex. "Gsus4-3p"), tronquaient la saisie au lieu de s'y ajouter — seules
     # les majuscules (jamais un caractère de nom, toujours minuscule après la 1re
-    # lettre) et les autres commandes gardent l'interruption.
+    # lettre) et les autres commandes gardent l'interruption. "/" AJOUTÉE (issue #66) :
+    # sépare toujours deux accords distincts, jamais un caractère de nom.
     command_key = lambda do |k|
-      (k.is_a?(Hash) && k[:arrow]) || (k.is_a?(String) && %w[X J L T V q Q].include?(k))
+      (k.is_a?(Hash) && k[:arrow]) || (k.is_a?(String) && %w[X J L T V q Q /].include?(k))
     end
     # "q"/Ctrl+C : sortie AVEC confirmation par défaut "n" — Entrée (sortie normale, PAS
     # en cours de composition) : confirmation par défaut "y" (cohérent
@@ -161,8 +172,10 @@ module ChordPlacer
               next
             elsif command_key.call(key)
               commit_typing.call
+              merge_next = key == "/"
               # PAS de `next` : tombe dans le dispatch normal ci-dessous, MÊME touche
-              # (`typing` vient d'être remis à `nil`).
+              # (`typing` vient d'être remis à `nil`) — sans effet pour "/" (aucun `when`
+              # ne la reconnaît), seul `merge_next` compte pour la suite.
             elsif digit
               typing << digit
               next
@@ -522,10 +535,24 @@ module ChordPlacer
     chords.each do |offset, name|
       name.each_char.with_index { |c, k| row[offset + k] = c }
     end
+
+    # Issues #64/#66 : un "/" du texte SUIVI IMMÉDIATEMENT d'un accord (offset+1) est le
+    # séparateur entre deux accords collés (ex. "/G:_ //Bm:_", "/G://C:"), jamais une
+    # parole — il rejoint la ligne des accords, jamais celle du dessous. Condition LOCALE
+    # (ce "/" précis, pas "toute la ligne") : "G/C bonjour" (accords collés en tête d'un
+    # vers par ailleurs normal, issue #66) doit aussi être couvert.
+    text_row = chord_line.text.chars
+    text_row.each_index do |i|
+      next unless text_row[i] == "/" && chords[i + 1]
+
+      row[i] = "/" if row[i] == " "
+      text_row[i] = " "
+    end
+
     row[cursor] = "\e[7m#{row[cursor]}\e[0m" if cursor
 
     puts row.join
-    puts chord_line.text
+    puts text_row.join
   end
 
   # "X" (suppression de TOUS les accords de la chanson) : action destructive, jamais
