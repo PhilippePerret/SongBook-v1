@@ -459,6 +459,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_tablatures_et_partitions">Tablatures et Partitions</a></li>
 <li><a href="#gabarit-file">Gabarit de la chanson</a></li>
 <li><a href="#song-layout">Layout de la chanson</a></li>
+<li><a href="#song-pdf">Production du PDF</a></li>
 <li><a href="#song-list">Liste des chansons</a></li>
 <li><a href="#song-interactive-mode">Travailler les chansons en mode interactif</a></li>
 </ul>
@@ -663,24 +664,24 @@ Le plus simple pour créer une chanson est d&#8217;utiliser <a href="#create-son
 </table>
 </div>
 <div class="paragraph">
-<p>Mais vous pouvez tout aussi bien créer cette chanson « à la main ».</p>
+<p>Si vous ne voulez pas uiliser <a href="#create-song-tool">l&#8217;assistant de création de chanson</a>, vous pouvez créer vos chansons « à la main ». Voilà le processus le plus naturel.</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Créez d&#8217;abord un <a href="#song-folder">dossier conforme</a>, dans votre dossier principal contenant toutes vos chansons.</p>
+<p>Créez d&#8217;abord un <a href="#song-folder">dossier conforme</a>, dans votre dossier principal contenant toutes vos chansons,</p>
 </li>
 <li>
-<p>éditez le fichier <code>.lyrics</code> pour y mettre les paroles et les accords (<code>&gt; songbook edit lyrics --song "titre"</code>).</p>
+<p>éditez le fichier <code>.lyrics</code> pour y mettre les paroles et les accords (<code>&gt; songbook edit lyrics --song "titre"</code>),</p>
 </li>
 <li>
-<p>éditez le fichier <code>.infos</code> pour y mettre les informations (méta-données) (<code>&gt; songbook edit infos --song "titre"</code>).</p>
+<p>éditez le fichier <code>.infos</code> pour y mettre les informations (méta-données) (<code>&gt; songbook edit infos --song "titre"</code>),</p>
 </li>
 <li>
-<p>si besoin, éditez le fichier <code>.gabarit</code> pour <a href="#gabarit-file">définir le gabarit de la chanson</a>(<code>&gt; songbook edit gabarit --song "titre"</code>).</p>
+<p>éditez le fichier <code>.gabarit</code> pour <a href="#gabarit-file">disposer les paroles et les parties de la chanson</a>(<code>&gt; songbook edit gabarit --song "titre"</code>),</p>
 </li>
 <li>
-<p>lancer la construction du fichier PDF (<code>&gt; songbook build "titre"</code>).</p>
+<p>lancer la <a href="#song-pdf">construction du fichier PDF</a>,</p>
 </li>
 <li>
 <p>ajuster les paramètres du gabarit au besoin pour obtenir un affichage optimal (attention, cet affichage peut être différent selon le carnet choisi et si la chanson est gravée hors carnet).</p>
@@ -691,7 +692,7 @@ Le plus simple pour créer une chanson est d&#8217;utiliser <a href="#create-son
 <div class="sect2">
 <h3 id="song-folder">Dossier de la chanson</h3>
 <div class="paragraph">
-<p>Une chanson doit être contenue dans un dossier qui contient les éléments qui sont indispensables à la définir.</p>
+<p>Une chanson doit être définit dans un dossier qui contient les éléments qui sont indispensables à la définir.</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -723,7 +724,7 @@ Une chanson pouvant appartenir à plusieurs carnets, il est bon de la créer <em
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
-<p><em><strong>SongBook</strong></em> étant une <em>application basée sur les extensions</em>, seules sont importantes les extensions des fichiers. Peu importe leur racine (mais la racine sert à retrouver les fichiers).</p>
+<p><em><strong>SongBook</strong></em> étant une <em>application basée sur les extensions</em>, seules sont importantes les extensions des fichiers. Peu importe leur racine. Attention cependant à mettre quand même une racine car sur certains systèmes (comme macOs), les fichiers dont les noms commencent par un point sont <em>masqués</em> par défaut, vous ne lez verrez plus.</p>
 </div>
 </blockquote>
 </div>
@@ -734,9 +735,23 @@ Une chanson pouvant appartenir à plusieurs carnets, il est bon de la créer <em
 <div class="content">
 <pre>Ma-chanson/
   |— mc.lyr
-  |— mc.infos
+  |— mc.inf
   |— mc.gab</pre>
 </div>
+</div>
+<div class="paragraph">
+<p>Ou encore plus clair :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Ma-chanson/
+  |— mc.lyrics
+  |— mc.infos
+  |— mc.gabarit</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Car pour toute extension de fichier vous avez <a href="#extension-list">une version longue et une version courte</a>.</p>
 </div>
 <div class="paragraph">
 <p>À savoir :</p>
@@ -744,13 +759,13 @@ Une chanson pouvant appartenir à plusieurs carnets, il est bon de la créer <em
 <div class="ulist">
 <ul>
 <li>
-<p>le <a href="#infos-file">Fichier des informations de la chanson</a> (<code>.infos</code>) contient le titre et autres informations générales sur la chanson, ainsi que la définition des <a href="#options">options</a>.</p>
+<p>Le <a href="#infos-file">Fichier des informations de la chanson</a> (<code>.infos</code>) contient le titre et autres informations générales sur la chanson, ainsi que la définition des <a href="#options">options</a>.</p>
 </li>
 <li>
-<p>le <a href="#lyrics-file">fichier des paroles et accords</a> (<code>.lyr</code>) contient toutes les paroles, accompagnées des accords, ainsi que, éventuellement, les <a href="#riffs">riffs</a> et autres petits bouts de musique.</p>
+<p>Le <a href="#lyrics-file">fichier des paroles et accords</a> (<code>.lyr</code>) contient toutes les paroles, accompagnées des accords, ainsi que, éventuellement, les <a href="#riffs">riffs</a> et autres petits bouts de musique.</p>
 </li>
 <li>
-<p>le <a href="#gabarit-file">gabarit de la chanson</a> optionnel de la chanson (<code>.gab</code>), s&#8217;il est particulier à cette chanson ou qu&#8217;elle ne s&#8217;insère pas dans un <a href="#songbook">carnet</a> définissant son propre gabarit. <em>Notez qu&#8217;utiliser ce fichier dans ce dossier n’est pas considéré comme une <a href="#best-practices">bonne pratique</a></em>.</p>
+<p>Le <a href="#gabarit-file">gabarit de la chanson</a> de la chanson (<code>.gab</code>) qui permet de définir sa disposition. Car chaque chanson possède sa propre forme et nécessite une disposition particulière pour pouvoir <em>rentabiliser</em> l&#8217;espace (comprendre : pour parvenir à la faire tenir en deux pages maximum).</p>
 </li>
 </ul>
 </div>
@@ -1104,9 +1119,12 @@ In /em:this proud land</pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="diags-position">Placement des diagrammes</h4>
+<h4 id="diags-position">Position et taille des diagrammes</h4>
 <div class="paragraph">
 <p>Pour placer les diagrammes dans la chanson ou le carnet, utiliser le <a href="#gabarit-file">gabarit de la chanson</a> de la chanson ou les règles du <a href="#songbook-layout layout (mise en page)">[songbook-layout layout (mise en page)]</a> du carnet.</p>
+</div>
+<div class="paragraph">
+<p>Pour redimensionner les diags, vous pouvez jouer sur plusieurs <a href="#diags-options">options spécialisées</a>.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1367,6 +1385,25 @@ Pour ouvrir directement ce fichier, <code>songbook open layout --song "titre car
 </div>
 <div class="paragraph">
 <p>Aussi, si vous voulez en savoir  plus, pour vraiment créer un fichier <code>.layout</code> pour votre chanson, consultez la <a href="#songbook-layout">section consacrée</a> dans la partie sur les carnets de chant.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="song-pdf">Production du PDF</h3>
+<div class="paragraph">
+<p>Pour produire le fichier PDF de la chanson seule, on utilise la commande :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook build "titre approx"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>On peut demander l&#8217;ouverture immédiate du PDF avec l&#8217;option <code>-o/--open</code> :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook build "titre approx" -o</pre>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -1946,19 +1983,15 @@ Noter que s&#8217;il y des options réglées pour le carnet en construction et d
 <h4 id="diags-options">Options des diagrammes</h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 15.3846%;">
-<col style="width: 46.1538%;">
-<col style="width: 23.0769%;">
-<col style="width: 7.6923%;">
-<col style="width: 7.6924%;">
+<col style="width: 18.1818%;">
+<col style="width: 54.5454%;">
+<col style="width: 27.2728%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Prop.</th>
 <th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Valeurs</th>
-<th class="tableblock halign-left valign-top">Opt.</th>
-<th class="tableblock halign-left valign-top">Pr.</th>
 </tr>
 </thead>
 <tbody>
@@ -1966,8 +1999,11 @@ Noter que s&#8217;il y des options réglées pour le carnet en construction et d
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>shrink_diags</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Pour autoriser (<code>true</code>) ou non (<code>false</code>) le rétrécissement des diagrammes. Note : peut se faire chanson par chanson.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[<code>true</code>], <code>false</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Song</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags_size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Taille par défaut des diagrammes (minimum pour rester visible : <code>48pt</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[<code>60pt</code>], `xpt</p></td>
 </tr>
 </tbody>
 </table>
@@ -3544,7 +3580,7 @@ On entre en mode interactif avec :</p>
 <p><strong><em>SongBook</em></strong> est un outil <em>dirigé par ses extensions</em>. Cela signifie que l&#8217;extension de tout fichier détermine son contenu et comment il faut le traiter (l&#8217;extension est le « mot » après le dernier point dans le nom, par exemple le <code>odt</code> dans <code>mon-roman.odt</code>).</p>
 </div>
 <div class="sect3">
-<h4 id="_liste_des_extensions">Liste des extensions</h4>
+<h4 id="extension-list">Liste des extensions</h4>
 <div class="paragraph">
 <p>Trouvez ci-dessous la liste complète des extensions et leur utilité.</p>
 </div>

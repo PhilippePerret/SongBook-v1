@@ -1,0 +1,48 @@
+[[pseudo-yaml-format]]
+=== Fichiers au format pseudo YAML ===
+
+La plupart des fichiers de données ou d'information des carnets de chant sont au format __pseudo YAML__.
+
+----
+propriété: valeur
+----
+
+Par exemple, pour définir l'identifiant de la chanson (reprise dans les <<songbook-tdm, tables des matières des carnets>>) :
+
+----
+id: dont-give-up-gabriel-1986
+----
+
+Bien, il existe des propriétés fixes qu'il vous faut définir impérativement pour que la chanson et le carnet soient bien définis ; à commencer par le titre, dans la propriété `title` : 
+
+----
+title: Le titre de la chanson
+----
+
+Mais vous pouvez également définir les clés dont vous avez besoin pour parachever vos carnets. Ces clés doivent respecter chacun de ces points : 
+
+* être en minuscules,
+* n'être constituées que de lettres et a à z, sans accent ni diacritique, de tirets ou de traits plat (« _ »),
+* donc ne comporter aucune espace,
+* ne pas excéder les 32 caractères.
+
+Lorsque vous définissez une clés, vous pouvez y faire référence n'importe où à l'aide des crochets. Si vous avez une clé qui s'appelle `my-key`, vous pouvez y faire référence (c'est-à-dire écrire son contenu) n'importe où en écriant `{my-key}`.
+
+Imaginons par exemple que vous vouliez définir le niveau de difficulté de vos chansons. Vous pouvez alors définir une propriété `niveau` qui pourra être une valeur de « débutant » à « expert » en passant par « intermédiaire ». Ensuite, dans le <<infos-file, fichier infos de la chanson>> il vous suffira d'ajouter cette clé pour définir le niveau de la chanson :
+
+----
+id: ma-chanson
+title: Ma Chanson
+niveau: Débutant
+----
+
+Ensuite, dans <<songbook-gabari, le gabarit de votre carnet>>, vous pourrez ajouter `{niveau}` à l'endroit voulu pour poser la marque du niveau. Par exemple :
+
+----
+# Dans carnet.gab
+
+{title}
+{indication_niveau; float:Right; content: "Niveau : {niveau}"}
+{gabarit}
+{diags; position:End; align:Bot-Left;}
+----

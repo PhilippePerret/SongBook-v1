@@ -3,6 +3,7 @@
 
 **__SongBook__** est un outil __dirigé par ses extensions__. Cela signifie que l'extension de tout fichier détermine son contenu et comment il faut le traiter (l'extension est le « mot » après le dernier point dans le nom, par exemple le `odt` dans `mon-roman.odt`).
 
+[[extension-list]]
 ==== Liste des extensions ====
 
 Trouvez ci-dessous la liste complète des extensions et leur utilité.

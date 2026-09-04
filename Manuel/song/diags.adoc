@@ -47,9 +47,11 @@ Le schéma est obtenu grâce à la commande `diag` qui permet de définir ces di
 Choisissez bien le nom pour qu'il « n'écrase » pas un accord existant déjà (__rassurez-vous cependant, il ne sera pas vraiment « écrasé »__). C'est ce nom que vous devrez utiliser pour le fichier `.lyr`.
 
 [[diags-position]]
-==== Placement des diagrammes ====
+==== Position et taille des diagrammes ====
 
 Pour placer les diagrammes dans la chanson ou le carnet, utiliser le <<gabarit-file>> de la chanson ou les règles du <<songbook-layout layout (mise en page)>> du carnet.
+
+Pour redimensionner les diags, vous pouvez jouer sur plusieurs <<diags-options, options spécialisées>>.
 
 [[diags-missing]]
 ==== Diagrammes manquant ====

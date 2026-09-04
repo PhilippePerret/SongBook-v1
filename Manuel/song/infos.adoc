@@ -5,17 +5,7 @@ TIP: Pour ouvrir directement ce fichier, `songbook open infos --song "titre chan
 
 Les informations de la chanson sont consignés dans son <<song-folder, dossier>> dans une fichier portant l'extension `.infos` (ou `inf` en mode réduit) et un nom racine quelconque (p.e. `mc.inf`).
 
-Ce fichier est un pseudo fichier YAML (pour ceux qui connaissent le format) où chaque élément est défini de cette manière :
-
-----
-propriété: valeur
-----
-
-Par exemple, pour définir l'identifiant de la chanson (reprise dans les <<songbook-tdm, tables des matières des carnets>>) :
-
-----
-id: dont-give-up-gabriel-1986
-----
+Ce fichier est un <<pseudo-yaml-format, format pseudo YAML>> (liste superposée de `propriétés: valeurs`)
 
 On met dans ce fichier toutes les informations utiles, à savoir :
 

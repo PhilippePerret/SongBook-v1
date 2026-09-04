@@ -1,0 +1,46 @@
+[[song-folder]]
+=== Dossier de la chanson ===
+
+Une chanson doit être définit dans un dossier qui contient les éléments qui sont indispensables à la définir. 
+
+TIP: Une chanson pouvant appartenir à plusieurs carnets, il est bon de la créer __en dehors__ de tout dossier de carnet, même si c'est tout à fait possible.
+
+La structure classique d'un dossier de chanson est : 
+
+----
+Ma-chanson/
+  |— paroles-et-accords.lyr
+  |— titres-et-gens.infos
+  | [Optionel]
+  |— scores/      # Dossier des partitions et tablatures
+  |— images/      # Dossier des images
+  |— format.gab
+  |— configuration.config
+----
+
+> __**SongBook**__ étant une __application basée sur les extensions__, seules sont importantes les extensions des fichiers. Peu importe leur racine. Attention cependant à mettre quand même une racine car sur certains systèmes (comme macOs), les fichiers dont les noms commencent par un point sont __masqués__ par défaut, vous ne lez verrez plus.
+
+Si vous voulez concentrer l'attention juste sur le suffixe, vous pouvez utiliser :
+
+----
+Ma-chanson/
+  |— mc.lyr
+  |— mc.inf
+  |— mc.gab 
+----
+
+Ou encore plus clair :
+----
+Ma-chanson/
+  |— mc.lyrics
+  |— mc.infos
+  |— mc.gabarit
+----
+
+Car pour toute extension de fichier vous avez <<extension-list, une version longue et une version courte>>.
+
+À savoir :
+
+* Le <<infos-file>> (`.infos`) contient le titre et autres informations générales sur la chanson, ainsi que la définition des <<options>>.
+* Le <<lyrics-file, fichier des paroles et accords>> (`.lyr`) contient toutes les paroles, accompagnées des accords, ainsi que, éventuellement, les <<riffs>> et autres petits bouts de musique.
+* Le <<gabarit-file>> de la chanson (`.gab`) qui permet de définir sa disposition. Car chaque chanson possède sa propre forme et nécessite une disposition particulière pour pouvoir __rentabiliser__ l'espace (comprendre : pour parvenir à la faire tenir en deux pages maximum).

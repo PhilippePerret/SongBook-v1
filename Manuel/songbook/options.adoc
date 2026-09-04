@@ -176,13 +176,17 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 [[diags-options]]
 ==== Options des diagrammes ====
 
-[cols="2,6,3,1,1", options="header"]
+[cols="2,6,3", options="header"]
 |====
-| Prop. | Description 
-| Valeurs | Opt. | Pr.
+| Prop. | Description | Valeurs
 
-|`shrink_diags` | Pour autoriser (`true`) ou non (`false`) le rétrécissement des diagrammes. Note : peut se faire chanson par chanson.
-| [`true`], `false` | --- | Song
+|`shrink_diags` 
+| Pour autoriser (`true`) ou non (`false`) le rétrécissement des diagrammes. Note : peut se faire chanson par chanson.
+| [`true`], `false`
+
+| `diags_size` 
+| Taille par défaut des diagrammes (minimum pour rester visible : `48pt`)
+| [`60pt`], `xpt
 
 |====
 

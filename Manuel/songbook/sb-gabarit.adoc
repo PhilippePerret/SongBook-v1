@@ -1,0 +1,15 @@
+[[songbook-gabarit]]
+=== Gabarit du carnet ===
+
+Le **gabarit** du carnet permet de définir la disposition générale des éléments de chaque chanson en dehors de leurs éléments propres. La clé la plus importante ici est la clé **`{gabarit}`** qui permet d'indiquer où les éléments propres de la chanson devront être placés, à savoir : ses paroles, ses partitions, ses tablatures et ses images, et peut-être ses diagrammes, si leur position n'est pas définie dans ce gabarit.
+
+Donc un gabarit minimal contiendra :
+
+----
+# Gabarit du carnet, dans un fichier .gab[arit]
+
+{title}
+{gabarit}
+----
+
+Si le <<songbook-layout, fichier Layout>> définit comment le titre doit être affiché (dans un bandeau par exemple), il sera affiché de cette manière.

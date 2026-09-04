@@ -16,8 +16,11 @@ include::infos.adoc[]
 // Options
 include::options.adoc[]
 
-// Layout d'un carnet
-include::layout.adoc[]
+// Layout du carnet
+include::sb-layout.adoc[]
+
+// Gabarit du carnet
+include::sb-gabarit.adoc[]
 
 // Propriétés (universelles et autres)
 // todo: bien placé ?

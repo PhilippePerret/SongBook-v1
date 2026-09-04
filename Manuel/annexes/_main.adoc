@@ -10,7 +10,7 @@ include::terminology.adoc[]
 // Titre approximatif
 include:approximatif.adoc[]
 
-// Extensions drivent
+// Extensions driven
 include::extension-driven.adoc[]
 
 // Propriétés
@@ -18,6 +18,9 @@ include::properties.adoc[]
 
 // Outils
 include::outils.adoc[]
+
+// Fichiers pseudo YAML
+include::pseudo-yaml.adoc[]
 
 // Charger des chansons depuis le site
 include::load-from-site.adoc[]
