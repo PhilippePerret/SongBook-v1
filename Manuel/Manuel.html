@@ -472,6 +472,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#songbook-infos">Fichier infos du carnet</a></li>
 <li><a href="#options">Options</a></li>
 <li><a href="#songbook-layout">Layout d&#8217;un carnet</a></li>
+<li><a href="#songbook-gabarit">Gabarit du carnet</a></li>
 <li><a href="#songbook-tdm">Table des matières du carnet</a></li>
 <li><a href="#songbook-schemas">Diagrammes de carnet</a></li>
 <li><a href="#cover">Couverture</a></li>
@@ -500,6 +501,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#app-extension-driven">Dirigée par ses extensions</a></li>
 <li><a href="#properties">Les propriétés</a></li>
 <li><a href="#_outils">Outils</a></li>
+<li><a href="#pseudo-yaml-format">Fichiers au format pseudo YAML</a></li>
 <li><a href="#load-from-site.adoc">Chargement depuis le site</a></li>
 </ul>
 </li>
@@ -788,20 +790,7 @@ Pour ouvrir directement ce fichier, <code>songbook open infos --song "titre chan
 <p>Les informations de la chanson sont consignés dans son <a href="#song-folder">dossier</a> dans une fichier portant l&#8217;extension <code>.infos</code> (ou <code>inf</code> en mode réduit) et un nom racine quelconque (p.e. <code>mc.inf</code>).</p>
 </div>
 <div class="paragraph">
-<p>Ce fichier est un pseudo fichier YAML (pour ceux qui connaissent le format) où chaque élément est défini de cette manière :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>propriété: valeur</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Par exemple, pour définir l&#8217;identifiant de la chanson (reprise dans les <a href="#songbook-tdm">tables des matières des carnets</a>) :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>id: dont-give-up-gabriel-1986</pre>
-</div>
+<p>Ce fichier est un <a href="#pseudo-yaml-format">format pseudo YAML</a> (liste superposée de <code>propriétés: valeurs</code>)</p>
 </div>
 <div class="paragraph">
 <p>On met dans ce fichier toutes les informations utiles, à savoir :</p>
@@ -1078,6 +1067,14 @@ In /em:this proud land</pre>
 </div>
 <div class="paragraph">
 <p>Elle ouvre un fichier HTML où sont présentés tous les diagrammes, et il suffit de cliquer sur leur diagrammes pour mettre le nom dans le presse-papier et le coller dans la chanson.</p>
+</div>
+<div class="paragraph">
+<p>Bien que vous n&#8217;ayez normalement jamais à utiliser cette commande, nous l&#8217;indiquons dans le cas où vous touchiez les fichiers SVG par inadvertance. Elle actualise tous les fichiers SVG des accords.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook update diags</pre>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -2523,6 +2520,26 @@ Pour ouvrir directement ce fichier, <code>songbook open layout --sb "titre carne
 </div>
 </div>
 </div>
+</div>
+<div class="sect2">
+<h3 id="songbook-gabarit">Gabarit du carnet</h3>
+<div class="paragraph">
+<p>Le <strong>gabarit</strong> du carnet permet de définir la disposition générale des éléments de chaque chanson en dehors de leurs éléments propres. La clé la plus importante ici est la clé <strong><code>{gabarit}</code></strong> qui permet d&#8217;indiquer où les éléments propres de la chanson devront être placés, à savoir : ses paroles, ses partitions, ses tablatures et ses images, et peut-être ses diagrammes, si leur position n&#8217;est pas définie dans ce gabarit.</p>
+</div>
+<div class="paragraph">
+<p>Donc un gabarit minimal contiendra :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre># Gabarit du carnet, dans un fichier .gab[arit]
+
+{title}
+{gabarit}</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Si le <a href="#songbook-layout">fichier Layout</a> définit comment le titre doit être affiché (dans un bandeau par exemple), il sera affiché de cette manière.</p>
+</div>
 <div class="sect3">
 <h4 id="universal-properties">Propriétés universelles</h4>
 <div class="paragraph">
@@ -3865,6 +3882,78 @@ Près d'un lac je m'étais endormie</pre>
 <div class="listingblock">
 <div class="content">
 <pre>ln -s /Applications/SongBook.app/tools/ChordDiagram/build_diags.rb /usr/local/bin/build-diags</pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="pseudo-yaml-format">Fichiers au format pseudo YAML</h3>
+<div class="paragraph">
+<p>La plupart des fichiers de données ou d&#8217;information des carnets de chant sont au format <em>pseudo YAML</em>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>propriété: valeur</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Par exemple, pour définir l&#8217;identifiant de la chanson (reprise dans les <a href="#songbook-tdm">tables des matières des carnets</a>) :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>id: dont-give-up-gabriel-1986</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Bien, il existe des propriétés fixes qu&#8217;il vous faut définir impérativement pour que la chanson et le carnet soient bien définis ; à commencer par le titre, dans la propriété <code>title</code> :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>title: Le titre de la chanson</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Mais vous pouvez également définir les clés dont vous avez besoin pour parachever vos carnets. Ces clés doivent respecter chacun de ces points :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>être en minuscules,</p>
+</li>
+<li>
+<p>n&#8217;être constituées que de lettres et a à z, sans accent ni diacritique, de tirets ou de traits plat (« _ »),</p>
+</li>
+<li>
+<p>donc ne comporter aucune espace,</p>
+</li>
+<li>
+<p>ne pas excéder les 32 caractères.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Lorsque vous définissez une clés, vous pouvez y faire référence n&#8217;importe où à l&#8217;aide des crochets. Si vous avez une clé qui s&#8217;appelle <code>my-key</code>, vous pouvez y faire référence (c&#8217;est-à-dire écrire son contenu) n&#8217;importe où en écriant <code>{my-key}</code>.</p>
+</div>
+<div class="paragraph">
+<p>Imaginons par exemple que vous vouliez définir le niveau de difficulté de vos chansons. Vous pouvez alors définir une propriété <code>niveau</code> qui pourra être une valeur de « débutant » à « expert » en passant par « intermédiaire ». Ensuite, dans le <a href="#infos-file">fichier infos de la chanson</a> il vous suffira d&#8217;ajouter cette clé pour définir le niveau de la chanson :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>id: ma-chanson
+title: Ma Chanson
+niveau: Débutant</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Ensuite, dans <a href="#songbook-gabari">le gabarit de votre carnet</a>, vous pourrez ajouter <code>{niveau}</code> à l&#8217;endroit voulu pour poser la marque du niveau. Par exemple :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre># Dans carnet.gab
+
+{title}
+{indication_niveau; float:Right; content: "Niveau : {niveau}"}
+{gabarit}
+{diags; position:End; align:Bot-Left;}</pre>
 </div>
 </div>
 </div>
