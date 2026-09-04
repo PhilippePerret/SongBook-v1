@@ -215,11 +215,13 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
     def simulate(path, input, confirm: true)
       original_stdin = $stdin
       original_stdout = $stdout
+      captured = StringIO.new
       $stdin = StringIO.new(input)
-      $stdout = StringIO.new
+      $stdout = captured
       allow(ChordPlacer).to receive(:with_raw_terminal).and_yield
       allow_any_instance_of(TTY::Prompt).to receive(:yes?).and_return(confirm)
       ChordPlacer.run(path)
+      captured.string
     ensure
       $stdin = original_stdin
       $stdout = original_stdout
@@ -296,6 +298,31 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       expect(File.readlines(path).first.chomp).to eq("bonjour /C:tout")
     end
 
+    it "\"/\" à froid (aucune saisie en cours) sur un accord déjà posé : ajoute un 2e accord, ne l'écrase pas" do
+      path = write_lyr(["/G:bonjour tout"])
+      simulate(path, "J/C\r\r")
+      expect(File.readlines(path).first.chomp).to eq("/G://C:bonjour tout")
+    end
+
+    it "\"/\" à froid sans accord au curseur : commit normal, pas de fusion fantôme" do
+      path = write_lyr(["bonjour tout"])
+      simulate(path, "/C\r\r")
+      expect(File.readlines(path).first.chomp).to eq("/C:bonjour tout")
+    end
+
+    it "\"/\" tapé en tout premier (sans accord au curseur) : l'aperçu affiche \"/\" puis \"/F\" IMMÉDIATEMENT (bug constaté : rien ne s'affichait tant qu'aucun accord n'existait déjà au curseur)" do
+      path = write_lyr(["bonjour tout"])
+      output = simulate(path, "/F\r\r").gsub(/\e\[[0-9;]*m/, "")
+      expect(output).to match(%r{(?<![A-Za-z/])/(?![A-Za-z])})
+      expect(output).to match(%r{(?<![A-Za-z/])/F(?![A-Za-z])})
+    end
+
+    it "\"x\" pendant une saisie en cours ANNULE la saisie et supprime l'accord au curseur (jamais ajouté au nom, bug constaté : \"xx~xx\" écrit littéralement)" do
+      path = write_lyr(["/F:bonjour tout"])
+      simulate(path, "JFxxx\r")
+      expect(File.readlines(path).first.chomp).to eq("bonjour tout")
+    end
+
     it "X (majuscule), confirmée, supprime TOUS les accords de la chanson" do
       path = write_lyr(["/Am:bonjour /C:tout", "/G:le monde"])
       simulate(path, "X\r", confirm: true)
@@ -347,6 +374,34 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       simulate(path, "G/C\r\r")
       expect(File.readlines(path).first.chomp).to eq("/G://C:bonjour tout")
     end
+
+    it "\"/\" en cours de saisie : l'aperçu live affiche \"1er/\" puis \"1er/2e\", jamais le 1er accord remplacé/masqué par le 2e (bug constaté : le \"/\" ne s'affichait JAMAIS à l'écran)" do
+      path = write_lyr(["bonjour tout"])
+      output = simulate(path, "F/C\r\r").gsub(/\e\[[0-9;]*m/, "")
+      expect(output).to match(%r{(?<![A-Za-z/])F/(?![A-Za-z])})
+      expect(output).to include("F/C")
+    end
+
+    it "\"/\" à froid : abandonné dès qu'on navigue sans taper de 2e accord (bug constaté : le \"/\" en aperçu SUIVAIT le curseur partout, même sans intention de fusion)" do
+      path = write_lyr(["bonjour tout"])
+      output = simulate(path, "/\e[C\e[C\e[C\r").gsub(/\e\[[0-9;]*m/, "")
+      frames = output.split("\e[2J\e[H")
+      chord_row = frames.last.lines[3]
+      expect(chord_row).not_to include("/")
+    end
+
+    it "\"/\" tapé juste après un accord dont le nom finit pile à la position du curseur : s'écrit COLLÉ, pas 1 colonne plus loin (bug constaté : la marge de l'issue #67 poussait le \"/\" au-delà de la vraie position du curseur)" do
+      path = write_lyr(["/Bm7:bonjour tout"])
+      output = simulate(path, "J\e[C/\r\r").gsub(/\e\[[0-9;]*m/, "")
+      expect(output).to include("Bm7/")
+      expect(output).not_to include("Bm7 /")
+    end
+
+    it "\"/\" tapé en TOUT bout de ligne : le curseur en surbrillance reste visible, jamais une case vide hors du tableau affiché (bug constaté : le curseur disparaissait complètement à l'écran)" do
+      path = write_lyr(["bonjour"])
+      output = simulate(path, "L/\r\r")
+      expect(output).not_to match(/\e\[7m\e\[0m/)
+    end
   end
 
   describe "ChordLine.split_for_write (\"/\" = TOUJOURS deux accords distincts, issue #66)" do
@@ -375,6 +430,11 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
     it "accords collés en tête d'un vers normal (\"/G://C:bonjour\", issue #66) : \"/\" jamais dans la parole" do
       line = ChordLine.parse("/G://C:bonjour")
       expect { ChordPlacer.render_line(line, nil) }.to output(/\n[^\n\/]*bonjour\n\z/).to_stdout
+    end
+
+    it "ligne 100% accords, offsets collés (intro \"Mother Nature's Son\", issue #67) : chaque accord lisible, jamais écrasé par le suivant" do
+      line = ChordLine.parse("/D: /Dsus4: /D2://Dsus4://D: /D2://D: /D2://D:")
+      expect { ChordPlacer.render_line(line, nil) }.to output(/\AD Dsus4 D2\/Dsus4\/D D2\/D D2\/D\n/).to_stdout
     end
   end
 end

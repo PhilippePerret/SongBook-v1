@@ -159,7 +159,16 @@ module ChordPlacer
           current = chord_lines[editable[pos]]
           active = active_letters(letters, chord_lines)
           live = typing && (typed_match(typing, letters, active) || typing)
-          render_window(editable, chord_lines, pos, cursor, active, notice, live)
+          # "/" (`merge_next`) : l'aperçu affiche IMMÉDIATEMENT le "/" dès l'appui sur
+          # la touche, QU'IL Y AIT DÉJÀ UN ACCORD AU CURSEUR OU NON ("existant/en_cours",
+          # ou juste "/" tant que rien n'existe ni n'est encore tapé) — jamais "en_cours"
+          # seul, jamais rien du tout. Le curseur en vidéo inverse reste sur ce qui est
+          # RÉELLEMENT en train d'être tapé (`highlight_offset`), jamais sur le préfixe
+          # "existant/" — sinon le curseur semble figé avant le "/" pendant que tout le
+          # reste s'écrit après lui (bug constaté).
+          prefix = merge_next ? "#{current.chord_at(cursor)}/" : ""
+          live = "#{prefix}#{live}" if merge_next
+          render_window(editable, chord_lines, pos, cursor, active, notice, live, highlight_offset: prefix.length)
           key = read_key
 
           if typing
@@ -179,6 +188,13 @@ module ChordPlacer
             elsif digit
               typing << digit
               next
+            elsif key == "x"
+              # "x" ANNULE la saisie en cours (jamais ajoutée au nom, malgré l'exclusion
+              # issue #62) ET tombe dans le dispatch normal ci-dessous (`when "x"`,
+              # supprime l'accord au curseur) — sinon rester en mode saisie fait de "x"
+              # martelé pour supprimer un accord un nom d'accord littéral "xx...x" (bug
+              # constaté, réparation à la main du fichier nécessaire).
+              typing = nil
             elsif key.is_a?(String) && key.length == 1
               typing << key
               next
@@ -193,31 +209,52 @@ module ChordPlacer
           when "q", "Q"
             quit_early = true
             break
+          when "/"
+            # "/" à froid (aucune saisie en cours) : ajoute un 2e accord à celui déjà
+            # posé au curseur au lieu de le remplacer — même intention que "/" en cours
+            # de frappe (`merge_next`), juste déclenchée sans avoir eu à taper une
+            # 1re lettre avant. TOUJOURS déclenché, accord existant ou pas (l'aperçu doit
+            # afficher le "/" dès qu'il est tapé, même en tout premier caractère —
+            # `commit_typing` ignore `merge_next` de toute façon si rien n'existe au
+            # curseur, aucun risque de fusion fantôme).
+            merge_next = true
           when "x"
+            # Toute touche autre que "/" ou une lettre (donc TOUTE navigation/commande
+            # ici) abandonne une fusion en attente — sinon le "/" en aperçu SUIT le
+            # curseur partout où on se déplace ensuite (bug constaté).
+            merge_next = false
             if current.chord_at(cursor)
               current.delete_chord(cursor)
               dirty = true
             end
           when "X"
+            merge_next = false
             if editable.any? { |i| chord_lines[i].chords.any? } && confirm_delete_all
               editable.each { |i| chord_lines[i].chords.clear }
               dirty = true
             end
           when "J"
+            merge_next = false
             cursor = 0
           when "L"
+            merge_next = false
             cursor = current.text.length
           when "n"
+            merge_next = false
             cursor = current.move(cursor, :letter, 1)
           when "p"
+            merge_next = false
             cursor = current.move(cursor, :letter, -1)
           when "T"
+            merge_next = false
             pos = 0
             cursor = 0
           when "V"
+            merge_next = false
             pos = editable.length - 1
             cursor = 0
           when ->(k) { k.is_a?(Hash) && k[:arrow] }
+            merge_next = false
             pos, cursor = apply_arrow(key, pos, cursor, chord_lines, editable)
           else
             # "[" démarre aussi une saisie : basse SEULE, ex. "[fd]"
@@ -501,7 +538,7 @@ module ChordPlacer
   # Pages FIXES de WINDOW_SIZE vers (0-3, 4-7, ...) — jamais de glissement ligne par
   # ligne : ↓ dans la page ne touche qu'au curseur, seul le passage à la page suivante
   # change ce qui est affiché.
-  def self.render_window(editable, chord_lines, pos, cursor, letters, notice, typing = nil)
+  def self.render_window(editable, chord_lines, pos, cursor, letters, notice, typing = nil, highlight_offset: 0)
     total = editable.length
     window_start = (pos / WINDOW_SIZE) * WINDOW_SIZE
 
@@ -516,7 +553,8 @@ module ChordPlacer
 
     window_start.upto([window_start + WINDOW_SIZE, total].min - 1) do |i|
       line = chord_lines[editable[i]]
-      render_line(line, i == pos ? cursor : nil, live: i == pos ? typing : nil)
+      render_line(line, i == pos ? cursor : nil, live: i == pos ? typing : nil,
+                  highlight_offset: i == pos ? highlight_offset : 0)
       puts
     end
 
@@ -526,30 +564,70 @@ module ChordPlacer
   # Curseur AU-DESSUS des paroles (ligne des accords), jamais sur le texte lui-même —
   # c'est là qu'un accord se pose, sur une syllabe repérée depuis la ligne du dessus.
   # `live` : nom d'accord en cours de saisie au curseur, affiché SANS toucher aux
-  # accords réels de la ligne tant que la saisie n'est pas validée.
-  def self.render_line(chord_line, cursor, live: nil)
+  # accords réels de la ligne tant que la saisie n'est pas validée. `highlight_offset` :
+  # décalage du curseur en vidéo inverse À L'INTÉRIEUR de `live` — reste sur ce qui est
+  # RÉELLEMENT tapé, jamais sur un préfixe "existant/" ajouté devant (fusion "/").
+  def self.render_line(chord_line, cursor, live: nil, highlight_offset: 0)
     chords = live && cursor ? chord_line.chords.merge(cursor => live) : chord_line.chords
     width = [chord_line.text.length, cursor.to_i + 1].max
-    chords.each { |offset, name| width = [width, offset + name.length].max }
     row = Array.new(width, " ")
-    chords.each do |offset, name|
-      name.each_char.with_index { |c, k| row[offset + k] = c }
-    end
 
-    # Issues #64/#66 : un "/" du texte SUIVI IMMÉDIATEMENT d'un accord (offset+1) est le
-    # séparateur entre deux accords collés (ex. "/G:_ //Bm:_", "/G://C:"), jamais une
-    # parole — il rejoint la ligne des accords, jamais celle du dessous. Condition LOCALE
-    # (ce "/" précis, pas "toute la ligne") : "G/C bonjour" (accords collés en tête d'un
-    # vers par ailleurs normal, issue #66) doit aussi être couvert.
-    text_row = chord_line.text.chars
+    # Issue #67 : sur une ligne 100% accords (intro sans parole), les offsets sont
+    # collés (1 caractère de texte entre deux accords) alors que les NOMS d'accords
+    # font plusieurs caractères — écrire chaque nom brut à son offset texte le fait
+    # écraser par le suivant ("D2","Dsus4","D" tapés à offsets 2,3,4 -> tout devient
+    # "DDD..."). Chaque accord démarre donc au moins 1 colonne après la fin du
+    # précédent, jamais avant son offset texte non plus (ne doit pas remonter avant sa
+    # syllabe sur une ligne à paroles normales). Un "/" du texte JUSTE AVANT cet accord
+    # (offset-1, issues #64/#66) est reporté à la colonne RÉELLEMENT utilisée pour cet
+    # accord (`col`, pas `offset` — devenu faux dès qu'un accord est décalé pour ne pas
+    # en écraser un autre), jamais laissé à son ancienne position texte.
+    text = chord_line.text
+    next_col = 0 # limite AVEC la marge d'1 espace, entre deux VRAIS accords du fichier
+    tight_col = 0 # même limite SANS marge — juste ce qu'il faut pour ne pas écraser
+    cursor_col = nil
+    chords.sort.each do |offset, name|
+      # L'accord EN COURS DE SAISIE au curseur (`live`, jamais encore committé —
+      # distinct d'un vrai accord du fichier sur lequel le curseur se trouve juste en
+      # navigation) n'a PAS besoin de la marge d'1 espace réservée entre deux vrais
+      # accords (issue #67, utile seulement sur une ligne 100% accords pour ne pas les
+      # faire fusionner visuellement) : la lui appliquer pousse le curseur affiché plus
+      # loin que sa vraie position texte dès qu'un accord précédent finit pile à cet
+      # endroit (bug constaté : "/" tapé s'écrivait 1 colonne plus loin que là où était
+      # le curseur). Un vrai accord du fichier, lui, GARDE la marge (sinon régression
+      # #67 dès que le curseur navigue jusqu'à se poser sur un accord existant).
+      live_entry = live && cursor && offset == cursor
+      col = live_entry ? [offset, tight_col].max : [offset, next_col].max
+      cursor_col = col if offset == cursor
+      if offset.positive? && text[offset - 1] == "/" && col.positive? && [nil, " "].include?(row[col - 1])
+        row[col - 1] = "/"
+      end
+      name.each_char.with_index { |c, k| row[col + k] = c }
+      tight_col = col + name.length
+      next_col = tight_col + 1
+    end
+    row.map! { |c| c || " " }
+
+    # Un "/" du texte SUIVI IMMÉDIATEMENT d'un accord (offset+1) est un séparateur
+    # d'accords déjà reporté ci-dessus, jamais une parole — masqué de la ligne du
+    # dessous.
+    text_row = text.chars
     text_row.each_index do |i|
       next unless text_row[i] == "/" && chords[i + 1]
 
-      row[i] = "/" if row[i] == " "
       text_row[i] = " "
     end
 
-    row[cursor] = "\e[7m#{row[cursor]}\e[0m" if cursor
+    if cursor
+      hl = (cursor_col || cursor) + highlight_offset
+      # Curseur en bout de ligne + décalage (préfixe "existant/") : la colonne à
+      # surligner dépasse alors ce qui a été écrit. `row[hl]=` étendrait le tableau
+      # avec du `nil` (jamais " ") entre les deux, qui s'affiche comme RIEN au
+      # `join` — la case surlignée elle-même devient vide, invisible (bug constaté :
+      # "le curseur disparaît").
+      row.concat(Array.new(hl - row.length + 1, " ")) if hl >= row.length
+      row[hl] = "\e[7m#{row[hl]}\e[0m"
+    end
 
     puts row.join
     puts text_row.join
