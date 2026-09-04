@@ -238,8 +238,15 @@ module ChordPlacer
   # l'AFFICHAGE de la légende est filtré ici.
   def self.active_letters(letters, chord_lines)
     # Une valeur "A2-0/A-0" (2 accords collés, voir `ChordLine.parse`) doit compter pour
-    # SES DEUX morceaux ici, pas comme un seul accord composé introuvable.
-    used = chord_lines.values.flat_map { |cl| cl.chords.values }.flat_map { |v| ChordLine.split_for_write(v) }.uniq
+    # SES DEUX morceaux ici, pas comme un seul accord composé introuvable. `ChordLine.parse`
+    # garde la casse TELLE QU'ÉCRITE dans le fichier (jamais normalisée) alors que `letters`
+    # (rempli par `seed_letters`) l'est toujours — sans `capitalize_chord` ici, un accord
+    # écrit en minuscule dans le `.lyr` ("g2-0C", "/c:", "/d:"...) ne matchait plus rien et
+    # disparaissait de la légende (bug constaté, issue #58 : "En Rouge Et Noir").
+    used = chord_lines.values.flat_map { |cl| cl.chords.values }
+                              .flat_map { |v| ChordLine.split_for_write(v) }
+                              .map { |c| capitalize_chord(c) }
+                              .uniq
     letters.each_with_object({}) do |(letter, chords), h|
       kept = chords.select { |c| used.include?(c) }
       h[letter] = kept unless kept.empty?
