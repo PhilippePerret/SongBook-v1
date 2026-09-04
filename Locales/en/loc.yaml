@@ -72,6 +72,7 @@ song_build_open_conflicts_question: "Should I open the conflicts file?"
 carnet_build_success: "Songbook “%s” built successfully."
 carnet_build_open_pdf_question: "Should I open the songbook file “%s”?"
 song_build_open_pdf_question: "Should I open the generated PDF?"
+transpose_separate_file_question: "Create a separate PDF file (otherwise the normal PDF is overwritten)?"
 
 # tablator assistant
 tablator_assistant_question: "Do you want to:"

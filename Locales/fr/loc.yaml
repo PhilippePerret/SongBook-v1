@@ -80,6 +80,7 @@ song_build_open_conflicts_question: "Dois-je ouvrir le fichier des conflits renc
 carnet_build_success: "Carnet « %s » construit avec succès."
 carnet_build_open_pdf_question: "Dois-je ouvrir le fichier du carnet « %s » ?"
 song_build_open_pdf_question: "Dois-je ouvrir le PDF généré ?"
+transpose_separate_file_question: "Créer un fichier PDF séparé (sinon le PDF normal est écrasé) ?"
 
 # tablator assistant
 tablator_assistant_question: "Voulez-vous :"
