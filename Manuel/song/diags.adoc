@@ -16,6 +16,12 @@ songbook diags
 
 Elle ouvre un fichier HTML où sont présentés tous les diagrammes, et il suffit de cliquer sur leur diagrammes pour mettre le nom dans le presse-papier et le coller dans la chanson.
 
+Bien que vous n'ayez normalement jamais à utiliser cette commande, nous l'indiquons dans le cas où vous touchiez les fichiers SVG par inadvertance. Elle actualise tous les fichiers SVG des accords.
+
+----
+songbook update diags
+----
+
 
 ==== Produire ses propres diagrammes ====
 
