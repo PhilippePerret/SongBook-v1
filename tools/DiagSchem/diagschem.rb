@@ -154,10 +154,11 @@ class DiagSchem
     @svg_path = generer_svg if prompt.yes?(blue(Loc.get('diag_output_question')))
   end
 
-  # Nom demandé à l'user (texte libre, défaut = nom du schéma en cours
-  # 2026-08-30) : c'est LE NOM EXACT, tel quel (repris tel quel ou modifié), à la fois
+  # Nom demandé à l'user (texte libre, défaut = "Nom-case" du schéma en cours, ex.
+  # "C7-0" — issue #61, avant : la case n'était jamais proposée par défaut) : c'est LE
+  # NOM EXACT, tel quel (repris tel quel ou modifié), à la fois
   # du FICHIER SVG et de l'entrée dans `schemas.txt`  : rien n'est
-  # ajouté derrière, ni case ni autre). `Nom-case` reconnu si
+  # ajouté derrière). `Nom-case` reconnu si
   # déjà présent dans le texte tapé (case reprise telle quelle) ; sinon la case en cours
   # dans le tableau est utilisée pour reconstituer la ligne `schemas.txt` (`SchemaLibrary`
   # exige un `Nom-case`), mais le SVG s'appelle toujours EXACTEMENT le texte tapé.
@@ -166,7 +167,7 @@ class DiagSchem
   # (Phil : "trop dangereux"). Sinon insère (`SchemaLibrary`) et
   # produit tout de suite le SVG dans le dossier de la lettre (pas le dossier courant).
   def enregistrer_dans_application(prompt)
-    texte = prompt.ask(blue(Loc.get('diag_name_prompt')), default: @nom).to_s.strip
+    texte = prompt.ask(blue(Loc.get('diag_name_prompt')), default: "#{@nom}-#{@case_ref}").to_s.strip
     return if texte.empty?
 
     # Nom = tout ce qui précède le PREMIER "-" ; case = tout le reste, n'importe quoi,

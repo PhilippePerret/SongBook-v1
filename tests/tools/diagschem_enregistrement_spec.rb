@@ -24,6 +24,14 @@ RSpec.describe "DiagSchem#enregistrer_dans_application" do
     instance
   end
 
+  it "défaut proposé = \"Nom-case\", pas juste \"Nom\" (issue #61)" do
+    instance = build_instance("C7-0: 10 21/1 32/3 42/2 50 6x")
+    allow(SchemaLibrary).to receive(:schemas_path).and_return(schemas_txt)
+    expect(prompt).to receive(:ask).with(anything, default: "C7-0").and_return("C7-0")
+
+    instance.send(:enregistrer_dans_application, prompt)
+  end
+
   it "texte tapé avec case ('Am7-3') : ligne schemas.txt et nom du SVG identiques au texte tapé" do
     instance = build_instance("Am7-0: 10 21/1 32/3 42/2 50 6x")
     allow(SchemaLibrary).to receive(:schemas_path).and_return(schemas_txt)
