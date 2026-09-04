@@ -2,6 +2,7 @@
 
 require_relative "../spec_helper"
 require "carnet_builder"
+require "page_builder"
 require "fileutils"
 require "tmpdir"
 
@@ -42,6 +43,36 @@ RSpec.describe "construction d'une chanson seule" do
       # celui de cette même chanson ici, purement redondant (contrairement à un carnet,
       # où plusieurs chansons peuvent partager le même accord manquant).
       expect(lines.last).to eq("ACCORDS MANQUANTS : Zzz9")
+    end
+  end
+
+  describe "en-tête de bloc .lyr avec directives inline (issue #68, \"{intro; label: INTRO;}\")" do
+    def blocks_for(lyr_body)
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, "c.lyr")
+        File.write(path, lyr_body)
+        return PageBuilder.parse_lyr(path)
+      end
+    end
+
+    it "reconnu comme en-tête (jamais écrit en toutes lettres dans les paroles), avec \";\" final" do
+      blocks, = blocks_for("{intro; label: REFRAIN;}\n/G:bonjour\n")
+      texts = blocks["intro"].lines.map { |l| l.segments.map(&:text).join }
+      expect(texts).not_to include(a_string_including("label"))
+      expect(texts).not_to include(a_string_including(";"))
+    end
+
+    it "dernière propriété SANS \";\" final : reconnu quand même" do
+      blocks, = blocks_for("{intro; label: \"INTRO\"}\n/G:bonjour\n")
+      texts = blocks["intro"].lines.map { |l| l.segments.map(&:text).join }
+      expect(texts).not_to include(a_string_including("label"))
+    end
+
+    it "\"label:\" (issue #63) : gardé comme directive du bloc, jamais ajouté comme ligne du corps — dessiné à part, en regard de la 1re ligne (Layout.draw_block)" do
+      blocks, = blocks_for("{intro; label: \"INTRO\"}\n/G:bonjour\n")
+      block = blocks["intro"]
+      expect(block.directives[:label]).to eq("INTRO")
+      expect(block.lines.map { |l| l.segments.map(&:text).join }).to eq(["bonjour"])
     end
   end
 end

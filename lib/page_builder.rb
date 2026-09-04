@@ -151,8 +151,13 @@ module PageBuilder
         current = []
         next
       end
-      line.split(/(\{[^:;}]+\})/).reject(&:empty?).each do |seg|
-        if seg =~ /\A\{[^:;}]+\}\z/ && !current.empty?
+      # `{nom}` OU `{nom; clé: valeur; ...}` (ex. `{intro; label: "INTRO"}`, la
+      # dernière propriété peut ne pas avoir de ";" final) : mêmes directives inline
+      # que le `.gab` (`row_col_name`) — `[^:;}]+` seul ratait toute forme avec
+      # directives, laissée telle quelle comme parole (bug constaté, issue #68 :
+      # `{intro; label: INTRO;}` s'écrivait en toutes lettres dans le PDF).
+      line.split(/(\{[^{}]+\})/).reject(&:empty?).each do |seg|
+        if seg =~ /\A\{[^{}]+\}\z/ && !current.empty?
           paragraphs << current.join("\n")
           current = []
         end
@@ -171,11 +176,13 @@ module PageBuilder
     paragraphs.each_with_index do |para, i|
       lines = para.split("\n")
       header = lines.first
-      if header =~ /\A\{([^:;}]+)\}\z/
+      if header =~ /\A\{([^:;}]+)(?:;([^}]*))?\}\z/
         given_name = Regexp.last_match(1).strip
+        dirs = parse_header_directives(Regexp.last_match(2))
         body = lines[1..] || []
       else
         given_name = nil
+        dirs = {}
         body = lines
       end
 
@@ -211,9 +218,24 @@ module PageBuilder
       next if blocks.key?(name) # contenu déjà stocké (répétition par nom ou par contenu)
 
       raw_bodies[key] = name
-      blocks[name] = Block.new(lines: body.map { |l| build_lyr_line(l) }, directives: {}, paired_with_previous: false)
+      # `label:` (issue #63, ex. `{refrain-1; label: REFRAIN}`) : PAS une ligne du corps —
+      # étiquette dessinée EN REGARD, À GAUCHE de la 1re ligne de la strophe
+      # (`Layout.draw_block`), jamais dans le flux des paroles.
+      blocks[name] = Block.new(lines: body.map { |l| build_lyr_line(l) }, directives: dirs, paired_with_previous: false)
     end
     [blocks, order]
+  end
+
+  # `{nom; clé: valeur; clé2: valeur2}` : directives inline en tête de bloc `.lyr` — même
+  # syntaxe que `row_col_name` (`.gab`), dernière propriété SANS ";" final acceptée (`str`
+  # peut être `nil`, aucune directive).
+  def self.parse_header_directives(str)
+    str.to_s.split(";").each_with_object({}) do |pair, dirs|
+      k, v = pair.split(":", 2)
+      next unless k && v && !k.strip.empty?
+
+      dirs[k.strip.to_sym] = v.strip.gsub(/\A["']|["']\z/, "")
+    end
   end
 
   # Ligne ENTIÈREMENT entourée de crochets (ex. `[Intro : /Em://Em9:]`) : étiquette, pas
