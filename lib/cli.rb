@@ -326,8 +326,8 @@ module CLI
         puts Loc.get("edition_cancelled")
       when "tab"
         begin
-          tab_path = TablatorAssistant.resolve_tab_path(arg2)
-          TablatorAssistant.write_tablature(edit_path: tab_path)
+          tab_path = TablatorAssistant.resolve_tab_path(arg2, offer_create: true)
+          TablatorAssistant.write_tablature(edit_path: tab_path) if tab_path
         rescue Interrupt
           puts
         end

@@ -75,11 +75,16 @@ module TablatorAssistant
   # à l'étape 1 -> repli flou (distance de Levenshtein, même seuil que
   # `fuzzy_find_songs`). `name` `nil` : liste TOUTES les tablatures trouvées, à choisir
   # (`edit tab` sans argument).
-  def self.resolve_tab_path(name)
+  # `offer_create:` (défaut `false`, comportement historique — `--tab NOM` de
+  # `tablator assistant`, échec sec) : `edit tab NOM` (CLI) passe `true` — quand `name`
+  # ne correspond à AUCUNE tablature (ni directe, ni floue), propose de la créer au lieu
+  # d'échouer directement (rien ne doit être impossible).
+  def self.resolve_tab_path(name, offer_create: false)
     song_folder = Session.song
     abort "aucune chanson de contexte pour --tab (--song ou use song)" unless song_folder
 
     candidates = Dir.glob(File.join(song_folder, "**", "*.tab"))
+    return propose_create_tab(name, offer_create: offer_create) if candidates.empty? && name
     abort "aucune tablature (.tab) trouvée dans cette chanson" if candidates.empty?
 
     return select_tab(candidates, Loc.get("tablator_which_one")) if name.nil?
@@ -100,9 +105,25 @@ module TablatorAssistant
       .sort_by { |_, distance| distance }
       .first(5)
       .map(&:first)
-    abort "tablature introuvable : #{name}" if fuzzy.empty?
+    return propose_create_tab(name, offer_create: offer_create) if fuzzy.empty?
 
     select_tab(fuzzy, Loc.get("song_not_found_did_you_mean"))
+  end
+
+  # Oui -> crée et lance directement l'édition (`write_tablature(title:)`, même chemin
+  # que la commande `create tab`), renvoie `nil` — l'appelant (`edit tab`, cli.rb) ne doit
+  # PAS relancer `write_tablature(edit_path:)` par-dessus, la session d'édition a déjà eu
+  # lieu ICI. Non -> introuvable, comme avant. `offer_create: false` : échec sec immédiat,
+  # jamais de question (ancien comportement, `--tab NOM`).
+  def self.propose_create_tab(name, offer_create:)
+    abort "tablature introuvable : #{name}" unless offer_create
+
+    if colored_prompt.yes?(blue(format(Loc.get("create_missing_tab_question"), name)))
+      write_tablature(title: name.sub(/\.tab\z/i, ""))
+      return nil
+    end
+
+    abort format(Loc.get("tablature_not_found"), name)
   end
 
   def self.select_tab(paths, message)
@@ -279,10 +300,21 @@ module TablatorAssistant
             # marque se pose sur la case qui SUIT, en PREMIER signe seulement (avant tout
             # chiffre, même logique de démarrage que la branche chiffre juste en dessous ;
             # sinon "h"/"p"/"g" ignorées, la marque doit être posée AVANT la case).
+            # Case déjà posée sur cette cellule (note existante, ex. revenir marquer un
+            # slide après coup) : marque le lien SUR PLACE (`existing.link =`), la case
+            # (et le doigté) restent intacts — jamais `Cell.new(nil, ...)` qui écrasait la
+            # case existante (bug constaté : "g5"/"g7" posés sur une note déjà là
+            # devenaient "g1/8" — case perdue — puis silencieusement rejetés à la
+            # relecture, `CORDE_CASE_RE` exige un chiffre de case).
             when ->(k) { %w[h p g].include?(k) && !(composing && composing[:kind] == :note && composing[:stage] == :case && composing[:string] == string && composing[:col] == col) }
-              matrix[string - 1][col] = Cell.new(nil, nil, nil, key)
+              existing = matrix[string - 1][col]
+              if existing
+                existing.link = key
+              else
+                matrix[string - 1][col] = Cell.new(nil, nil, nil, key)
+                composing = { kind: :note, stage: :case, string: string, col: col }
+              end
               rests.delete(col)
-              composing = { kind: :note, stage: :case, string: string, col: col }
               next
             when "q", "Q"
               ask_before_save = true
@@ -297,7 +329,13 @@ module TablatorAssistant
                 candidate = "#{cell.kase}#{key}".to_i
                 cell.kase = candidate <= MAX_CASE ? candidate : key.to_i
               else
-                matrix[string - 1][col] = Cell.new(key.to_i, nil, nil)
+                # Retape un chiffre sur une case DÉJÀ posée (hors composition en cours,
+                # ex. revenir corriger la case après avoir mis "g"/"h"/"p") : le lien
+                # existant est conservé — même bug que ci-dessus, symétrique
+                # (`Cell.new(key.to_i, nil, nil)` sans le lien effaçait "g6" -> "6",
+                # silencieusement, à l'insu de l'utilisateur).
+                existing_link = matrix[string - 1][col]&.link
+                matrix[string - 1][col] = Cell.new(key.to_i, nil, nil, existing_link)
                 rests.delete(col)
                 composing = { kind: :note, stage: :case, string: string, col: col }
               end
@@ -537,7 +575,13 @@ module TablatorAssistant
             suffix = cell.rh || cell.lh ? "-#{cell.rh}#{cell.lh}" : ""
             "#{cell.link}#{string}#{cell.kase}/#{duree}#{suffix}"
           else
-            "<#{notes.map { |s, c| "#{s}#{c.kase}" }.join(' ')}>/#{duree}"
+            # Accord ENTIER lié (issue #39 suite, "tout l'accord est en slide") : le
+            # lien porté par N'IMPORTE LAQUELLE de ses notes (posé sur une seule cellule
+            # suffit, voir `h`/`p`/`g` dans la boucle de saisie) préfixe le TOKEN ENTIER
+            # — jamais par note (le format `.tab` n'a pas de syntaxe pour ça, et
+            # musicalement l'accord glisse EN BLOC, pas corde par corde).
+            link = notes.map { |_, c| c.link }.compact.first
+            "#{link}<#{notes.map { |s, c| "#{s}#{c.kase}" }.join(' ')}>/#{duree}"
           end
         else
           "#{rests[col]}#{duree}"
@@ -626,17 +670,27 @@ module TablatorAssistant
         next
       end
 
+      # `LINK_RE` testé AVANT `CHORD_RE` nu : `CHORD_RE` accepte n'importe quel préfixe
+      # `\w+` (réutilisé pour "Arp") — sans cet ordre, "g<36 47>/4" (accord ENTIER qui
+      # glisse, issue #39 suite) matchait `CHORD_RE` en premier, le "g" silencieusement
+      # ignoré (même bug que `parser.rb`, corrigé là aussi).
       duree =
-        if (m = Tablator::CHORD_RE.match(token))
+        if (link = Tablator::LINK_RE.match(token)) && (m = Tablator::CORDE_CASE_RE.match(link[2]))
+          _corde, kase, d, rh, lh = m.captures
+          matrix[m[1].to_i - 1][col] = Cell.new(kase.to_i, rh, lh, link[1])
+          d
+        elsif (link = Tablator::LINK_RE.match(token)) && (m = Tablator::CHORD_RE.match(link[2]))
+          m[2].split(/\s+/).each do |pair|
+            cm = Tablator::CORDE_CASE_RE.match(pair)
+            matrix[cm[1].to_i - 1][col] = Cell.new(cm[2].to_i, nil, nil, link[1]) if cm
+          end
+          m[3]
+        elsif (m = Tablator::CHORD_RE.match(token))
           m[2].split(/\s+/).each do |pair|
             cm = Tablator::CORDE_CASE_RE.match(pair)
             matrix[cm[1].to_i - 1][col] = Cell.new(cm[2].to_i, nil, nil) if cm
           end
           m[3]
-        elsif (link = Tablator::LINK_RE.match(token)) && (m = Tablator::CORDE_CASE_RE.match(link[2]))
-          _corde, kase, d, rh, lh = m.captures
-          matrix[m[1].to_i - 1][col] = Cell.new(kase.to_i, rh, lh, link[1])
-          d
         elsif (m = Tablator::CORDE_CASE_RE.match(token))
           _corde, kase, d, rh, lh = m.captures
           matrix[m[1].to_i - 1][col] = Cell.new(kase.to_i, rh, lh)

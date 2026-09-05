@@ -26,8 +26,30 @@ RSpec.describe "commande edit tab" do
       expect { TablatorAssistant.resolve_tab_path("intro") }.to raise_error(SystemExit)
     end
 
-    it "refuse si la chanson n'a aucune tablature" do
+    it "refuse si la chanson n'a aucune tablature (offer_create: false, comportement historique)" do
       expect { TablatorAssistant.resolve_tab_path("intro") }.to raise_error(SystemExit)
+    end
+
+    describe "offer_create: true (commande 'edit tab', issue tablature manquante)" do
+      it "aucune tablature du tout + confirme : crée et édite directement, renvoie nil" do
+        expect_any_instance_of(TTY::Prompt).to receive(:yes?).and_return(true)
+        expect(TablatorAssistant).to receive(:write_tablature).with(title: "intro")
+        expect(TablatorAssistant.resolve_tab_path("intro", offer_create: true)).to be_nil
+      end
+
+      it "aucune tablature du tout + refuse : introuvable" do
+        expect_any_instance_of(TTY::Prompt).to receive(:yes?).and_return(false)
+        expect(TablatorAssistant).not_to receive(:write_tablature)
+        expect { TablatorAssistant.resolve_tab_path("intro", offer_create: true) }.to raise_error(SystemExit)
+      end
+
+      it "aucune correspondance même floue + confirme : crée et édite directement" do
+        write_tab("solo-final")
+
+        expect_any_instance_of(TTY::Prompt).to receive(:yes?).and_return(true)
+        expect(TablatorAssistant).to receive(:write_tablature).with(title: "zzzzz")
+        expect(TablatorAssistant.resolve_tab_path("zzzzz", offer_create: true)).to be_nil
+      end
     end
 
     it "1 seule tablature qui correspond (préfixe) : reprise directement, sans question" do
@@ -75,6 +97,12 @@ RSpec.describe "commande edit tab" do
       tab_path = File.join(@song_dir, "intro-couplet.tab")
 
       expect(TablatorAssistant).to receive(:write_tablature).with(edit_path: tab_path)
+      CLI.run(%w[edit tab intro], interactive: true)
+    end
+
+    it "'edit tab NOM' sur tablature inexistante + confirme : crée sans relancer write_tablature une 2e fois" do
+      expect_any_instance_of(TTY::Prompt).to receive(:yes?).and_return(true)
+      expect(TablatorAssistant).to receive(:write_tablature).with(title: "intro").once
       CLI.run(%w[edit tab intro], interactive: true)
     end
 

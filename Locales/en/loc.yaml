@@ -114,3 +114,7 @@ confirm_delete_all_chords: "Delete all chords in the song?"
 
 # open (missing file)
 create_missing_file_question: "Create the .%s file?"
+
+# edit tab (missing tablature)
+create_missing_tab_question: "Create the tablature '%s'?"
+tablature_not_found: "Tablature not found: %s"

@@ -51,11 +51,12 @@ module Tablator
   # Nom d'accord explicite, ex: [Am7], qui prime sur le calcul auto.
   EXPLICIT_CHORD_RE = /\A\[(.+)\]\z/.freeze
   # Hammer-on/pull-off/slide (issue #39, slide ajouté ensuite — "g" pour "glisser",
-  # "s" déjà pris) : marque en PRÉFIXE sur la note qui sonne PAR hammer/pull/slide
-  # (Phil, "c'est elle qui crée le phénomène") — jamais un accord, la corde reste
-  # explicite comme toute note normale (ex. "h512" = hammer-on corde5/case12,
-  # "g510" = slide corde5/case10). `[hpg]` volontairement collé, pas de séparateur
-  # (même esprit que le reste des tokens `.tab`).
+  # "s" déjà pris) : marque en PRÉFIXE sur la note (ou l'ACCORD ENTIER, issue #39 suite
+  # — ex. "g<36 47>/4", chaque corde de l'accord glisse contre SA propre case
+  # précédente) qui sonne PAR hammer/pull/slide (Phil, "c'est elle qui crée le
+  # phénomène") — la corde reste explicite comme toute note normale (ex. "h512" =
+  # hammer-on corde5/case12, "g510" = slide corde5/case10). `[hpg]` volontairement
+  # collé, pas de séparateur (même esprit que le reste des tokens `.tab`).
   LINK_RE = /\A([hpg])(.+)\z/.freeze
 
   class ParseError < StandardError; end
@@ -145,7 +146,9 @@ module Tablator
   # Un "événement" de tablature : une note, un accord, ou un silence — jamais
   # une barre (consommée à part). `notes` : liste de {corde:, case:} (1 seul
   # élément pour une note simple, plusieurs pour un accord). `link` :
-  # `:hammer`/`:pull`/`:slide`/nil (issue #39) — seulement possible sur une note SEULE.
+  # `:hammer`/`:pull`/`:slide`/nil (issue #39, étendu aux accords ensuite) — s'applique
+  # à TOUTES les notes de `notes` (une seule pour une note simple, chacune sa propre
+  # validation/direction pour un accord entier lié).
   Event = Struct.new(:kind, :notes, :arpeggio, :denom, :beats, :rh, :lh, :link, keyword_init: true)
 
   # `last_case_by_corde` : dernière case jouée sur chaque corde (note seule OU
@@ -154,10 +157,50 @@ module Tablator
   # la corde marquée doit avoir sonné avant (pas forcément à l'événement
   # immédiatement précédent, des notes sur d'autres cordes peuvent s'intercaler),
   # et dans le bon sens (case supérieure pour `h`, inférieure pour `p`).
+  # Direction exigée par `link` entre la case précédente d'une corde (`last_kase`) et sa
+  # case ACTUELLE (`kase`) — factorisé : même règle pour une note seule ET chaque note
+  # d'un accord qui glisse/lie ENTIÈREMENT (issue suite #39, "tout l'accord est en
+  # slide" — Phil, ex. accord 4→6 + 5→7 ensemble, pas une note isolée dans l'accord).
+  def validate_link_direction!(token, link, corde, kase, last_kase)
+    raise ParseError, "#{token} : corde #{corde} non jouée avant ce hammer-on/pull-off/slide" unless last_kase
+
+    case link
+    when :hammer
+      raise ParseError, "#{token} : hammer-on exige une case supérieure à la précédente (#{last_kase})" unless kase > last_kase
+    when :pull
+      raise ParseError, "#{token} : pull-off exige une case inférieure à la précédente (#{last_kase})" unless kase < last_kase
+    when :slide
+      raise ParseError, "#{token} : slide exige une case différente de la précédente (#{last_kase})" if kase == last_kase
+    end
+  end
+
+  # `LINK_RE` testé AVANT `CHORD_RE` : `CHORD_RE` accepte n'importe quel préfixe `\w+`
+  # (réutilisé pour "Arp") — sans cet ordre, "g<36 47>/4" (accord qui glisse ENTIER)
+  # matchait `CHORD_RE` en premier avec `prefix: "g"` silencieusement IGNORÉ (bug
+  # constaté : le "g" disparaissait déjà ICI, avant même `tablator_assistant.rb`).
   def parse_event(token, last_duration, last_case_by_corde = {})
     if (m = REST_RE.match(token))
       dur = m[2]
       Event.new(kind: (m[1] == 'r' ? :rest : :skip), notes: [], denom: dur[/\A\d+/].to_i, beats: duration_str_to_beats(dur))
+    elsif (lm = LINK_RE.match(token)) && (cm = CORDE_CASE_RE.match(lm[2]))
+      link = { 'h' => :hammer, 'p' => :pull, 'g' => :slide }.fetch(lm[1])
+      corde, kase, duree, rh, lh = cm.captures
+      corde, kase = corde.to_i, kase.to_i
+      validate_link_direction!(token, link, corde, kase, last_case_by_corde[corde])
+
+      dur = duree || last_duration
+      Event.new(kind: :notes, notes: [{ corde: corde, case: kase }], denom: dur[/\A\d+/].to_i, beats: duration_str_to_beats(dur), rh: rh, lh: lh, link: link)
+    elsif (lm = LINK_RE.match(token)) && (cm = CHORD_RE.match(lm[2]))
+      link = { 'h' => :hammer, 'p' => :pull, 'g' => :slide }.fetch(lm[1])
+      _prefix, inner, duree = cm.captures
+      dur = duree || last_duration
+      notes = inner.split(/\s+/).map do |pair|
+        pm = CORDE_CASE_RE.match(pair) or raise ParseError, "note d'accord illisible : #{pair}"
+        corde, kase = pm[1].to_i, pm[2].to_i
+        validate_link_direction!(token, link, corde, kase, last_case_by_corde[corde])
+        { corde: corde, case: kase }
+      end
+      Event.new(kind: :notes, notes: notes, denom: dur[/\A\d+/].to_i, beats: duration_str_to_beats(dur), link: link)
     elsif (m = CHORD_RE.match(token))
       prefix, inner, duree = m.captures
       dur = duree || last_duration
@@ -166,23 +209,6 @@ module Tablator
         { corde: cm[1].to_i, case: cm[2].to_i }
       end
       Event.new(kind: :notes, notes: notes, arpeggio: prefix == 'Arp', denom: dur[/\A\d+/].to_i, beats: duration_str_to_beats(dur))
-    elsif (m = LINK_RE.match(token)) && (cm = CORDE_CASE_RE.match(m[2]))
-      link = { 'h' => :hammer, 'p' => :pull, 'g' => :slide }.fetch(m[1])
-      corde, kase, duree, rh, lh = cm.captures
-      corde, kase = corde.to_i, kase.to_i
-      last_kase = last_case_by_corde[corde]
-      raise ParseError, "#{token} : corde #{corde} non jouée avant ce hammer-on/pull-off/slide" unless last_kase
-      case link
-      when :hammer
-        raise ParseError, "#{token} : hammer-on exige une case supérieure à la précédente (#{last_kase})" unless kase > last_kase
-      when :pull
-        raise ParseError, "#{token} : pull-off exige une case inférieure à la précédente (#{last_kase})" unless kase < last_kase
-      when :slide
-        raise ParseError, "#{token} : slide exige une case différente de la précédente (#{last_kase})" if kase == last_kase
-      end
-
-      dur = duree || last_duration
-      Event.new(kind: :notes, notes: [{ corde: corde, case: kase }], denom: dur[/\A\d+/].to_i, beats: duration_str_to_beats(dur), rh: rh, lh: lh, link: link)
     elsif (m = CORDE_CASE_RE.match(token))
       corde, kase, duree, rh, lh = m.captures
       dur = duree || last_duration

@@ -36,7 +36,14 @@ module Tablator
 
     w = weight ? %( font-weight="#{weight}") : ''
     c = color ? %( fill="#{color}") : ''
-    %(<text x="#{x.round(2)}" y="#{y.round(2)}" font-family="Helvetica, Arial, sans-serif" font-size="#{size}" text-anchor="#{anchor}"#{w}#{c}>#{xml_escape(text)}</text>)
+    # `font-family="sans-serif"` SEUL (jamais "Helvetica"/"Arial" en tête de liste) :
+    # "Helvetica" matche la police AFM INTERNE de Prawn (toujours "disponible" même sans
+    # enregistrement explicite, Windows-1252 seul) AVANT d'atteindre "sans-serif" —
+    # celle-là bien enregistrée en TTF UTF-8 (`Layout.register_fonts`). Bug constaté :
+    # crash `Prawn::Errors::IncompatibleStringEncoding` dès qu'un texte non-Windows-1252
+    # apparaît ici (ex. "↗"/"↘" du slide, issue #39 suite) — latent avant (aucun texte de
+    # `svg_text` n'était encore non-ASCII).
+    %(<text x="#{x.round(2)}" y="#{y.round(2)}" font-family="sans-serif" font-size="#{size}" text-anchor="#{anchor}"#{w}#{c}>#{xml_escape(text)}</text>)
   end
 
   def svg_line(x1, y1, x2, y2, width: 0.6)
@@ -228,12 +235,45 @@ module Tablator
     "#{path}\n#{svg_text(mid_x, peak_y - letter_size * 0.3, link == :hammer ? 'H' : 'P', size: letter_size)}"
   end
 
-  # Slide (`g`, Phil) : PAS d'arc — juste ↗ (case montante) ou ↘ (case
-  # descendante) entre `x0` et `x1`, sur la ligne `y` de la corde.
+  # Slide (`g`, Phil) : PAS d'arc — une flèche VECTORIELLE (ligne + pointe), montante ou
+  # descendante, entre `x0` et `x1`, sur la ligne `y` de la corde. Jamais un glyphe de
+  # police ("↗"/"↘", bug constaté : rendu "un signe pourri" — aucune garantie qu'une
+  # police donnée porte ces caractères Unicode précis, contrairement à un tracé qui ne
+  # dépend d'aucune police).
   def slide_markup(x0, x1, y, ascending)
-    letter_size = param(:link_letter_size)
+    size = param(:link_letter_size)
+    # Rétrécie (toutes proportions gardées) si l'écart entre les 2 notes est plus petit
+    # que l'empreinte nominale de la flèche — sinon elle mord sur les chiffres voisins
+    # quand le rythme est serré (bug constaté, "les flèches touchent presque les
+    # nombres"). Jamais en dessous de 55% : jusque-là encore lisible, plus bas ça ne
+    # vaudrait plus la peine d'être dessiné.
+    gap = (x1 - x0).abs
+    scale = [1.0, gap / (size * 1.5), 0.55].sort[1]
+    size *= scale
     mid_x = (x0 + x1) / 2.0
-    svg_text(mid_x, y - letter_size * 0.3, ascending ? '↗' : '↘', size: letter_size)
+    half_x = size * 0.45
+    half_y = size * 0.4
+    # `y` (la ligne de corde) directement, jamais élevé dans la bande réservée : les
+    # chiffres eux-mêmes (`number_glyph`) sont centrés visuellement SUR `y` (leur
+    # décalage de baseline, `y + number_size*0.35`, compense juste l'ascendant du texte
+    # pour paraître centré sur la ligne) — la flèche doit être à la MÊME hauteur qu'eux,
+    # pas au-dessus (bug constaté, "largement au-dessus").
+    base_y = y
+    xa, xb = mid_x - half_x, mid_x + half_x
+    ya = ascending ? base_y + half_y : base_y - half_y
+    yb = ascending ? base_y - half_y : base_y + half_y
+
+    # Pointe en (xb, yb) : triangle PLEIN, jamais 2 traits fins ouverts (bug constaté :
+    # illisible/"un signe pourri" à la taille réelle de `link_letter_size`, ~5.5pt — un
+    # aplat se voit encore à cette échelle, 2 traits de 0.6pt de large non). 2 sommets
+    # fixes en arrière de la pointe (horizontal + vertical, jamais une rotation
+    # calculée — la ligne est toujours à 45°).
+    head = size * 0.3
+    back_y = ascending ? head : -head
+    points = [[xb, yb], [xb - head, yb], [xb, yb + back_y]].map { |px, py| "#{px.round(2)},#{py.round(2)}" }.join(" ")
+
+    line = %(<line x1="#{xa.round(2)}" y1="#{ya.round(2)}" x2="#{xb.round(2)}" y2="#{yb.round(2)}" stroke="black" stroke-width="0.7"/>)
+    "#{line}\n#{%(<polygon points="#{points}" fill="black"/>)}"
   end
 
   # Dessine les liaisons hammer-on/pull-off/slide d'un système déjà positionné
@@ -252,11 +292,17 @@ module Tablator
         ev = e[:ev]
         next unless ev.kind == :notes
 
-        if ev.link && ev.notes.size == 1
-          corde = ev.notes.first[:corde]
-          kase = ev.notes.first[:case]
-          prev_x = last_x_by_corde[corde]
-          if prev_x
+        # Accord ENTIER lié (issue #39 suite, "tout l'accord est en slide") : une marque
+        # PAR CORDE de l'accord, chacune contre SA propre case précédente — jamais une
+        # seule marque globale (les cordes d'un accord qui glisse ne montent pas
+        # forcément du même nombre de cases). `ev.notes.size == 1` gérait déjà le cas
+        # note seule, cette boucle le généralise SANS le dupliquer.
+        if ev.link
+          ev.notes.each do |n|
+            corde, kase = n[:corde], n[:case]
+            prev_x = last_x_by_corde[corde]
+            next unless prev_x
+
             y = string_y(corde, top_y)
             case ev.link
             when :hammer, :pull

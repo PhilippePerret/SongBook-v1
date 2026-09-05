@@ -833,14 +833,96 @@ module Layout
     draw_text_colored(pdf, "Impression test : #{line}", at: [HEADER_PAD_X, top_y], size: SPECS_LINE_SIZE, color: SPECS_LINE_COLOR)
   end
 
-  def self.draw_header_inline(pdf, meta)
+  # Issue #69 : capo indiqué en `.infos` (`meta["capo"]`) — affiché juste sous l'entête,
+  # jamais dans la colonne de diags (`capo_side`, résolu par l'appelant AVANT de dessiner
+  # l'entête — `PageBuilder.build`, seul endroit qui sait où ira la colonne).
+  CAPO_BOX_HEIGHT_PT = 16
+  CAPO_BOX_TOP_GAP_PT = 12
+  CAPO_BOX_GAP_PT = 4
+  CAPO_BOX_PAD_X = 6
+  CAPO_LABEL_SIZE = 10
+  # Gris moyen (encre) — PAS `BAND_COLOR` (bandeau) : les deux noirs/gris différents
+  # juraient l'un à côté de l'autre, bug constaté. `808080` = gris 50%.
+  CAPO_GRAY = "808080"
+  CAPO_LABEL_BASELINE_DROP_PT = 1.5
+  CAPO_ORDINAL_SUP_SIZE_RATIO = 0.6
+  CAPO_ORDINAL_SUP_RISE_RATIO = 0.35
+
+  # "1re"/"4e" (féminin, jamais "1er" masculin — `Tablator::Renderer#ordinal_fr`, sert un
+  # contexte différent, pas de mutualisation pertinente ici) — [chiffre, suffixe], le
+  # suffixe dessiné en exposant par l'appelant (`draw_capo_box`), jamais concaténé.
+  def self.ordinal_fr_fem_parts(n)
+    n.to_i == 1 ? ["1", "re"] : [n.to_s, "e"]
+  end
+
+  # 2 boîtes collées : fond gris/texte blanc "CAPO", puis fond blanc/texte gris "Ne"
+  # (suffixe ordinal en exposant, plus petit et remonté). `top_y` : haut de la boîte ;
+  # renvoie le nouveau bas disponible (`top_y` inchangé si `capo` vide, RIEN dessiné :
+  # un `.infos` sans `capo:` ne doit jamais laisser un blanc/décalage).
+  # Bord (gauche ou droit selon `side`) ALIGNÉ EXACTEMENT sur celui du bandeau — `0`/
+  # `pdf.bounds.width`, jamais `HEADER_PAD_X` (le bandeau va lui-même bord à bord, voir
+  # `draw_header_band`, `fill_rectangle [0, band_top], pdf.bounds.width, hb`).
+  def self.draw_capo_box(pdf, capo, top_y, side: :right)
+    return top_y if capo.to_s.strip.empty?
+
+    top_y -= CAPO_BOX_TOP_GAP_PT
+
+    label = "CAPO"
+    value_main, value_sup = ordinal_fr_fem_parts(capo)
+    h = CAPO_BOX_HEIGHT_PT
+    size = CAPO_LABEL_SIZE
+    sup_size = (size * CAPO_ORDINAL_SUP_SIZE_RATIO).round
+    label_w = pdf.width_of(label, size: size, style: :bold) + 2 * CAPO_BOX_PAD_X
+    main_w = pdf.width_of(value_main, size: size, style: :bold)
+    value_w = main_w + pdf.width_of(value_sup, size: sup_size, style: :bold) + 2 * CAPO_BOX_PAD_X
+    total_w = label_w + value_w
+    x0 = side == :right ? pdf.bounds.width - total_w : 0
+    box_bottom = top_y - h
+
+    # Centrage vertical sur l'ENCRE réelle du texte (`ink_extent`, comme la ligne de
+    # base du titre du bandeau, `draw_header_band`) — jamais l'ascender/descender
+    # génériques de la police (marge invisible en trop, texte visuellement décentré vers
+    # le haut, bug constaté). Le suffixe (exposant) ne compte pas dans ce centrage — sa
+    # position découle du chiffre (`main_baseline + rise`), pas l'inverse.
+    center_baseline = lambda do |text, sz|
+      top, bottom = ink_extent(pdf, text, sz, style: :bold)
+      box_bottom + (h - top + bottom) / 2.0
+    end
+
+    engrave(bottom: box_bottom, context: "capo") do
+      pdf.fill_color CAPO_GRAY
+      pdf.fill_rectangle [x0, top_y], label_w, h
+      pdf.fill_color "FFFFFF"
+      pdf.draw_text label, at: [x0 + CAPO_BOX_PAD_X, center_baseline.call(label, size) - CAPO_LABEL_BASELINE_DROP_PT], size: size, style: :bold
+
+      pdf.fill_color "FFFFFF"
+      pdf.fill_rectangle [x0 + label_w, top_y], value_w, h
+      # `stroke_rectangle` centre le trait SUR le tracé — la moitié de `line_width`
+      # déborde du rectangle nominal (bord droit dépassant celui du bandeau, bug
+      # constaté). Tracé rentré de `lw/2` de chaque côté pour que le bord VISIBLE du
+      # trait retombe exactement sur le rectangle nominal, jamais au-delà.
+      lw = pdf.line_width
+      pdf.stroke_color CAPO_GRAY
+      pdf.stroke_rectangle [x0 + label_w + lw / 2.0, top_y - lw / 2.0], value_w - lw, h - lw
+      pdf.fill_color CAPO_GRAY
+      main_baseline = center_baseline.call(value_main, size)
+      vx = x0 + label_w + CAPO_BOX_PAD_X
+      pdf.draw_text value_main, at: [vx, main_baseline], size: size, style: :bold
+      pdf.draw_text value_sup, at: [vx + main_w, main_baseline + size * CAPO_ORDINAL_SUP_RISE_RATIO], size: sup_size, style: :bold
+    end
+    pdf.fill_color "000000"
+
+    box_bottom - CAPO_BOX_GAP_PT
+  end
+
+  def self.draw_header_inline(pdf, meta, capo_side: :right)
     y = title_baseline_y(pdf)
     title_descent = font_metric(pdf, TITLE_SIZE) { pdf.font.descender }
 
     draw_header_row(pdf, meta, y, title_color: "000000", info_color: "666666")
     draw_specs_overlay(pdf, meta, y - title_descent - SPECS_LINE_SIZE)
 
-    y - title_descent
+    draw_capo_box(pdf, meta["capo"], y - title_descent, side: capo_side)
   end
 
   # Hauteur du bandeau FIXE À 30pt  — valeur EN DUR, AUCUN calcul ne
@@ -859,7 +941,7 @@ module Layout
   # Basée UNIQUEMENT sur la métrique du "A" (jamais l'encre réelle du titre affiché) :
   # aucun titre, quels que soient ses accents/jambages, ne peut faire bouger cette ligne.
   # Parolier/compositeur : ancré sur `band_bottom`.
-  def self.draw_header_band(pdf, meta)
+  def self.draw_header_band(pdf, meta, capo_side: :right)
     # `band_top` FIGÉ EN PREMIER, avant tout autre calcul — calé sur la limite haute du
     # profil imprimeur (`PrinterProfile#top_margin`, qui inclut déjà le point de sécurité
     # `SAFETY_BUFFER_IN`, voir `printer_profile.rb`), appliquée à `pdf.bounds` par
@@ -890,7 +972,7 @@ module Layout
     draw_header_band_rows(pdf, meta, y, y_pc, pc_size, title_color: "FFFFFF", info_color: "FFFFFF")
     draw_specs_overlay(pdf, meta, band_bottom - SPECS_LINE_SIZE - 2)
 
-    band_bottom
+    draw_capo_box(pdf, meta["capo"], band_bottom, side: capo_side)
   end
 
   # Parolier/compositeur : SEULE règle — posé en bas à droite du bandeau, taille NOMINALE

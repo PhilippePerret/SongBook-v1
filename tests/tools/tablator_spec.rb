@@ -160,4 +160,27 @@ RSpec.describe "outil tablator (rendu SVG direct)" do
       expect(result[:svg]).to include(">H<")
     end
   end
+
+  describe "hammer-on/pull-off/slide sur un ACCORD ENTIER (issue #39 suite, \"tout l'accord est en slide\")" do
+    it "\"g<36 47>/4\" : le lien porte sur TOUTES les notes de l'accord, jamais perdu au profit du prefixe générique de CHORD_RE (\"Arp\")" do
+      ev = Tablator.parse_event("g<36 47>/4", "4", { 3 => 4, 4 => 5 })
+      expect(ev.link).to eq(:slide)
+      expect(ev.notes).to eq([{ corde: 3, case: 6 }, { corde: 4, case: 7 }])
+    end
+
+    it "chaque corde de l'accord validée contre SA propre case précédente" do
+      expect { Tablator.parse_event("g<36 47>/4", "4", { 3 => 4 }) }.to raise_error(Tablator::ParseError, /corde 4 non jouée/)
+    end
+
+    it "refuse une corde de l'accord dont la case ne bouge pas (slide sur place)" do
+      expect { Tablator.parse_event("g<34 47>/4", "4", { 3 => 4, 4 => 5 }) }.to raise_error(Tablator::ParseError, /case différente/)
+    end
+
+    it "dessine une flèche de slide PAR corde de l'accord dans le SVG produit (tracé vectoriel, jamais un glyphe de police — bug constaté, \"un signe pourri\")" do
+      result = Tablator.render_tab_svg("<34 45>/4 g<36 47>/4\n", measures_per_line: 4).first
+      expect(result[:svg]).not_to include("↗")
+      expect(result[:svg]).not_to include("↘")
+      expect(result[:svg].scan("<polygon").size).to eq(2)
+    end
+  end
 end

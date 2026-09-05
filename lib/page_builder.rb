@@ -902,21 +902,10 @@ module PageBuilder
     Prawn::Document.generate(out_path, page_size: page_size, margin: 0) do |pdf|
       Layout.register_fonts(pdf)
       Layout.apply_print_margins(pdf, printer, first_page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
-      title_item = items.find { |i| i.type == :title }
-      # `.gab` explicite sans directive `{title: ...}` (ex. w.gab de "À bicyclette") :
-      # retombe sur `title_band_default` (layout résolu du carnet), jamais un :inline
-      # imposé en silence — bug constaté 2026-08-22 : chanson sans bandeau alors que le
-      # carnet le demande, simplement parce que son .gab ne redéfinit pas le titre.
-      header_style = if title_item
-        title_item.data[:title] == "band" ? :band : :inline
-      else
-        title_band_default ? :band : :inline
-      end
-      header_bottom = header_style == :band ? Layout.draw_header_band(pdf, meta) : Layout.draw_header_inline(pdf, meta)
-      Layout.log_build("titre en #{header_style == :band ? "bandeau" : "ligne simple"} (header_style)")
-
-      chord_frets = ChordDiagrams.collect_chord_frets(lyr_blocks.values)
-      diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret, carnet_dir: carnet_folder, song_dir: folder) }
+      # `diag_position`/`dynamic_mode` calculés ICI, AVANT l'entête (issue #69) : le
+      # numéro de capo se place naturellement en haut à gauche, SAUF si une colonne de
+      # diags y est déjà (alors à droite) — il faut donc savoir où vont les diags avant
+      # de dessiner l'entête, pas après.
       diag_item_data = items.find { |i| i.type == :diags }&.data
       diag_position = (diag_item_data&.dig(:position) || diag_position_default).to_s.downcase.to_sym
       diag_align = (diag_item_data&.dig(:align) || diag_align_default).to_s.downcase.to_sym
@@ -928,6 +917,35 @@ module PageBuilder
       # variantes gauche/droite sont construites ICI (`text_x`/`text_x_r`, `side_col`/
       # `side_col_r`), `Layout.paginate_and_draw` choisit la bonne PAGE PAR PAGE.
       dynamic_mode = %i[int ext].include?(diag_position) ? diag_position : nil
+      # Capo (issue #69) : par défaut à DROITE, alignée avec le bandeau — sauf si la
+      # colonne de diags occupe elle-même la droite de la PREMIÈRE page de la chanson
+      # (`first_page_no`, même résolution recto/verso que `want_left_for` dans
+      # `Layout.paginate_and_draw`), auquel cas la capo passe à gauche.
+      diag_col_side_p1 = if dynamic_mode
+        left_here = !printer.facing_pages || (dynamic_mode == :int) == printer.recto?(first_page_no)
+        left_here ? :left : :right
+      elsif diag_position == :left
+        :left
+      elsif diag_position == :right
+        :right
+      end
+      capo_side = diag_col_side_p1 == :right ? :left : :right
+
+      title_item = items.find { |i| i.type == :title }
+      # `.gab` explicite sans directive `{title: ...}` (ex. w.gab de "À bicyclette") :
+      # retombe sur `title_band_default` (layout résolu du carnet), jamais un :inline
+      # imposé en silence — bug constaté 2026-08-22 : chanson sans bandeau alors que le
+      # carnet le demande, simplement parce que son .gab ne redéfinit pas le titre.
+      header_style = if title_item
+        title_item.data[:title] == "band" ? :band : :inline
+      else
+        title_band_default ? :band : :inline
+      end
+      header_bottom = header_style == :band ? Layout.draw_header_band(pdf, meta, capo_side: capo_side) : Layout.draw_header_inline(pdf, meta, capo_side: capo_side)
+      Layout.log_build("titre en #{header_style == :band ? "bandeau" : "ligne simple"} (header_style)")
+
+      chord_frets = ChordDiagrams.collect_chord_frets(lyr_blocks.values)
+      diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret, carnet_dir: carnet_folder, song_dir: folder) }
       Layout.log_build("#{diag_paths.size} diagramme(s) d'accord, position=#{dynamic_mode ? "#{dynamic_mode} (résolu page par page)" : diag_position}")
 
       text_x, text_w, first_avail_h, side_col, row_excess, row_excess_w = Layout.layout_diags(pdf, diag_paths, dynamic_mode ? :left : diag_position, header_bottom, align: diag_align)

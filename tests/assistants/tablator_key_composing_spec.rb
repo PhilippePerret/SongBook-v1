@@ -77,4 +77,35 @@ RSpec.describe "TablatorAssistant.write_tablature : composition clavier" do
     TablatorAssistant.write_tablature(title: "Test partiel")
     expect(saved_body).to eq("10/8-p")
   end
+
+  describe "\"h\"/\"p\"/\"g\" (hammer-on/pull-off/slide, issue #39)" do
+    it "\"g\" puis un chiffre sur une case VIDE : amorce une nouvelle note liée" do
+      script_keys("g", "5", "\r")
+      TablatorAssistant.write_tablature(title: "Test slide neuf")
+      expect(saved_body).to eq("g15/8")
+    end
+
+    it "bug constaté : \"g\" posé sur une note DÉJÀ existante (revenir la marquer après coup) ne doit PAS effacer sa case" do
+      script_keys("7", :right, "3", :left, "g", "\r") # note 7 (col 0), note 3 (col 1), retour col 0, marquée "g" après coup
+      TablatorAssistant.write_tablature(title: "Test slide retroactif")
+      expect(saved_body).to eq("g17/8 13/8")
+    end
+
+    it "bug constaté : retaper un chiffre sur une note qui a DÉJÀ un lien ne doit PAS l'effacer" do
+      script_keys("g", "6", :right, "3", :left, "8", "\r") # "g6" (col 0), note 3 (col 1), retour col 0, retape "8" (correction de case)
+      TablatorAssistant.write_tablature(title: "Test slide corrige")
+      expect(saved_body).to eq("g18/8 13/8")
+    end
+
+    it "bug constaté (réel, \"Some Devil\"/acc.tab) : un ACCORD ENTIER qui glisse (\"g\" posé APRÈS COUP sur une seule de ses notes) ne doit pas perdre son lien à l'enregistrement" do
+      # col 0 : accord <34 45> (corde3 case4, corde4 case5). col 1 : accord <36 47>
+      # (corde3 case6, corde4 case7), marqué "g" sur la corde3 SEULEMENT — une fois la
+      # composition de cette cellule terminée (aller-retour col1<->col0), pas pendant
+      # (sinon "g" ne fait rien, voir tests ci-dessus : la garde exige de ne PAS être en
+      # train de composer CETTE cellule précise).
+      script_keys(:down, :down, "4", :down, "5", :right, "7", :up, "6", :left, :right, "g", "\r")
+      TablatorAssistant.write_tablature(title: "Test accord slide")
+      expect(saved_body).to eq("<34 45>/8 g<36 47>/8")
+    end
+  end
 end
