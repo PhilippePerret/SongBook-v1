@@ -30,9 +30,9 @@ composer: P. Gabriel
 lyrics: P. Gabriel
 year: 1986
 
-layout: regular
+layout: regular-B
 ----
 
 Notez que si vous utilisez la commande **`songbook create song`** pour créer une nouvelle chanson, ce fichier sera rempli pour vous (ou prérempli en fonction des informations récoltées sur le web).
 
-Cet fichier contient aussi la définition des <<options>> propres à la chanson (options partagées par le carnet si c'est lui qui est contruit).
+Ce fichier contient aussi la définition des <<options>> propres à la chanson (options partagées par le carnet si c'est lui qui est contruit).

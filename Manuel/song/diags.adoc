@@ -59,6 +59,10 @@ Pour placer les diagrammes dans la chanson ou le carnet, utiliser le <<gabarit-f
 
 Pour redimensionner les diags, vous pouvez jouer sur plusieurs <<diags-options, options spécialisées>>.
 
+==== Limiter la liste des diagrammes ====
+
+Vous pouvez, dans les carnets dont l'option `diag_list` est réglée à `list`, définir avec l'option `diag_list` aussi la liste des seuls diags à afficher. Cf. <<diags-options, les options en matière de diagrammes>>. 
+
 [[diags-missing]]
 ==== Diagrammes manquant ====
 

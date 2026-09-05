@@ -3,4 +3,4 @@
 
 Il n'est pas raisonnable de ne concevoir des diags juste pour un carnet, __**SongBook**__ ne permet donc pas de le faire. Les diags doivent être définis pour l'application elle-même ou, s'ils sont vraiment propres à une chanson, dans le dossier de cette chanson.
 
-Voir <<diags>>.
+Voir <<diags>>. Voir aussi les <<diags-options, options en matière de diagrammes d'accords>>.

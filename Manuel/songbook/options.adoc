@@ -186,7 +186,15 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 
 | `diags_size` 
 | Taille par défaut des diagrammes (minimum pour rester visible : `48pt`)
-| [`60pt`], `xpt
+| [`60pt`], `Xpt`
+
+| `diag_list`
+| Dans les **infos du carnet**, on doit indiquer quelle liste de diagrammes utiliser. Voir les différentes valeurs ci-dessous.
+| [`all`], `list`, `none`
+
+| `diag_list`
+| Dans les **infos de la chanson**, permet de lister les accords à gravé dans la chanson. Dépend de la valeur de la même option dans le carnet de chant.
+| `Cm7 D7M Ab§-4`
 
 |====
 
@@ -194,8 +202,12 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 [cols="1,1,5", options="header"]
 |====
 | Propritété | Valeur | Description
-.2+| `shrink_diags`  | `true`  | On peut réduire les diags pour qu'ils tiennent dans la place donnée.
+.2+| `shrink_diags`   | `true`  | On peut réduire les diags pour qu'ils tiennent dans la place donnée.
                       | `false` | On ne peut pas réduire la taille des diagrammes d'accord.
+.3+| `diag_list`      | `all`   | Tous les diagrammes des chansons seront gravés.
+                      | `list`  | Seuls les diagrammes définis par l'option `diag_list` de la chanson seront gravés.
+                      | `none`  | Aucun diagramme ne sera gravé dans le carnet.
+                      | `false` | Idem
 |====
 
 
