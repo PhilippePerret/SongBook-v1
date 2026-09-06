@@ -46,8 +46,12 @@ module Tablator
     %(<text x="#{x.round(2)}" y="#{y.round(2)}" font-family="sans-serif" font-size="#{size}" text-anchor="#{anchor}"#{w}#{c}>#{xml_escape(text)}</text>)
   end
 
+  # `stroke-linecap="butt"` explicite — sans lui, un moteur de rendu peut retomber sur
+  # un cap arrondi/carré qui dépasse l'extrémité EXACTE demandée de la moitié du trait
+  # (bug constaté : une ligature/hampe épaisse débordait visiblement de ses coordonnées
+  # réelles, jamais un souci sur les traits fins où ça passe inaperçu).
   def svg_line(x1, y1, x2, y2, width: 0.6)
-    %(<line x1="#{x1.round(2)}" y1="#{y1.round(2)}" x2="#{x2.round(2)}" y2="#{y2.round(2)}" stroke="black" stroke-width="#{width}"/>)
+    %(<line x1="#{x1.round(2)}" y1="#{y1.round(2)}" x2="#{x2.round(2)}" y2="#{y2.round(2)}" stroke="black" stroke-width="#{width}" stroke-linecap="butt"/>)
   end
 
   # Chiffre corde:case — fond TRANSPARENT  : un rectangle blanc
@@ -109,6 +113,23 @@ module Tablator
     parts << svg_text(x, finger_y, ev.lh, size: finger_size) if ev.lh
   end
 
+  # Point(s) d'augmentation (croche POINTÉE, etc.) — convention DÉLIBÉRÉMENT différente
+  # du solfège classique (Phil : "sympa mais différente"), toujours en haut des hampes,
+  # à la hauteur des ligatures de double-croche (`beam_top + beam_gap`, jamais
+  # `beam_top` lui-même — 1er essai, bug constaté : recouvert par la ligature de
+  # niveau 1 qui passe exactement à cette hauteur) : plus visible, hauteur cohérente
+  # quelle que soit la durée pointée (jamais à côté du chiffre, sur la ligne de corde).
+  def draw_dots(parts, x, y, count)
+    return if count.to_i <= 0
+
+    r = param(:dot_radius)
+    gap = param(:dot_gap)
+    count.times do |i|
+      cx = x + gap + r + (2 * r + gap) * i
+      parts << %(<circle cx="#{cx.round(2)}" cy="#{y.round(2)}" r="#{r.round(2)}" fill="black"/>)
+    end
+  end
+
   # Dessine hampe(s) + ligature(s) pour UN groupe d'événements déjà décidé
   # "attaché ensemble" (voir `draw_stems`) — 1 seul élément : hampe simple
   # (+ crochets individuels si croche ou moins) ; plusieurs : hampe par note,
@@ -133,7 +154,7 @@ module Tablator
       # "toujours désalignées" — un décalage, même proportionnel au chiffre, reste
       # visuellement détaché). Pas de risque de collision avec le chiffre lui-même :
       # la hampe reste toujours AU-DESSUS de la portée, le chiffre est SUR la ligne.
-      { x: g[:x], bottom: string_y(topmost_note[:corde], top_y) - stem_gap, denom: ev.denom }
+      { x: g[:x], bottom: string_y(topmost_note[:corde], top_y) - stem_gap, denom: ev.denom, dots: ev.dots.to_i }
     end
     beam_top = stems.map { |s| s[:bottom] - stem_height }.min
     stems.each { |s| parts << svg_line(s[:x], s[:bottom], s[:x], beam_top) }
@@ -143,28 +164,43 @@ module Tablator
         y = beam_top + i * beam_gap
         parts << svg_line(stems.first[:x], y, stems.first[:x] + flag_len, y + flag_len * 0.7, width: beam_width)
       end
-      return
-    end
-
-    max_level = stems.map { |s| flag_count(s[:denom]) }.max
-    (1..max_level).each do |level|
-      i = 0
-      while i < stems.size
-        if flag_count(stems[i][:denom]) >= level
-          j = i
-          j += 1 while j + 1 < stems.size && flag_count(stems[j + 1][:denom]) >= level
-          y = beam_top + (level - 1) * beam_gap
-          if j > i
-            parts << svg_line(stems[i][:x], y, stems[j][:x], y, width: beam_width)
+    else
+      max_level = stems.map { |s| flag_count(s[:denom]) }.max
+      (1..max_level).each do |level|
+        i = 0
+        while i < stems.size
+          if flag_count(stems[i][:denom]) >= level
+            j = i
+            j += 1 while j + 1 < stems.size && flag_count(stems[j + 1][:denom]) >= level
+            y = beam_top + (level - 1) * beam_gap
+            if j > i
+              # PILE sur les hampes d'extrémité, jamais au-delà (bug constaté : un essai
+              # précédent l'allongeait de 1pt de chaque côté sur un mauvais diagnostic —
+              # le débordement observé venait du cap de ligne, voir `svg_line`).
+              parts << svg_line(stems[i][:x], y, stems[j][:x], y, width: beam_width)
+            else
+              # Ligature PARTIELLE (talon court, une seule note à ce niveau) : HORIZONTALE,
+              # parallèle à la barre principale qui relie le groupe (jamais en biais façon
+              # crochet — bug constaté) — toujours vers sa VOISINE dans le groupe entier,
+              # jamais un sens fixe (autre bug constaté : partait toujours à droite, y
+              # compris en fin de groupe, dans le vide au lieu de pointer vers la note
+              # précédente).
+              dir = i.zero? ? 1 : -1
+              parts << svg_line(stems[i][:x], y, stems[i][:x] + dir * flag_len, y, width: beam_width)
+            end
+            i = j + 1
           else
-            parts << svg_line(stems[i][:x], y, stems[i][:x] + flag_len, y + flag_len * 0.7, width: beam_width)
+            i += 1
           end
-          i = j + 1
-        else
-          i += 1
         end
       end
     end
+
+    # Points d'augmentation dessinés EN DERNIER (après toute hampe/ligature/crochet
+    # ci-dessus) — jamais avant : peints par-dessus en SVG (ordre du document), un point
+    # dessiné trop tôt disparaît sous un trait qui passe à la même hauteur (bug déjà
+    # constaté une fois, `beam_top` — voir commentaire de `draw_dots`).
+    stems.each { |s| draw_dots(parts, s[:x], beam_top + beam_gap, s[:dots]) }
   end
 
   # Regroupe les événements POSITIONNÉS (`{ev:, x:, beat_idx:}`) d'une mesure
@@ -265,12 +301,28 @@ module Tablator
 
     # Pointe en (xb, yb) : triangle PLEIN, jamais 2 traits fins ouverts (bug constaté :
     # illisible/"un signe pourri" à la taille réelle de `link_letter_size`, ~5.5pt — un
-    # aplat se voit encore à cette échelle, 2 traits de 0.6pt de large non). 2 sommets
-    # fixes en arrière de la pointe (horizontal + vertical, jamais une rotation
-    # calculée — la ligne est toujours à 45°).
-    head = size * 0.3
-    back_y = ascending ? head : -head
-    points = [[xb, yb], [xb - head, yb], [xb, yb + back_y]].map { |px, py| "#{px.round(2)},#{py.round(2)}" }.join(" ")
+    # aplat se voit encore à cette échelle, 2 traits de 0.6pt de large non).
+    # 2 sommets arrière calculés par un VRAI vecteur perpendiculaire à la ligne (trigo),
+    # jamais 2 décalages horizontal/vertical fixes (essai précédent, bug constaté :
+    # "le bout est plat" — l'angle DROIT du triangle pointait dans le sens de la
+    # flèche au lieu de sa pointe AIGUË, l'axe horizontal/vertical ne correspondant à
+    # la vraie direction de la ligne que par coïncidence géométrique).
+    # Base ÉTROITE par rapport à la longueur (ratio 0.3) — un ratio proche de 0.5
+    # (essai précédent) donne un triangle trop TRAPU, qui se lit comme un bloc/carré une
+    # fois anti-aliasé à la taille réelle (~2-4pt), pas comme une pointe (bug constaté,
+    # "encore plus carrées").
+    head_len = size * 0.45
+    head_w = head_len * 0.3
+    dx, dy = xb - xa, yb - ya
+    len = Math.sqrt((dx * dx) + (dy * dy))
+    ux, uy = dx / len, dy / len
+    px, py = -uy, ux
+    base_x, base_y2 = xb - (ux * head_len), yb - (uy * head_len)
+    points = [
+      [xb, yb],
+      [base_x + (px * head_w), base_y2 + (py * head_w)],
+      [base_x - (px * head_w), base_y2 - (py * head_w)],
+    ].map { |px2, py2| "#{px2.round(2)},#{py2.round(2)}" }.join(" ")
 
     line = %(<line x1="#{xa.round(2)}" y1="#{ya.round(2)}" x2="#{xb.round(2)}" y2="#{yb.round(2)}" stroke="black" stroke-width="0.7"/>)
     "#{line}\n#{%(<polygon points="#{points}" fill="black"/>)}"

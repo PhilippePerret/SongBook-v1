@@ -149,7 +149,11 @@ module Tablator
   # `:hammer`/`:pull`/`:slide`/nil (issue #39, étendu aux accords ensuite) — s'applique
   # à TOUTES les notes de `notes` (une seule pour une note simple, chacune sa propre
   # validation/direction pour un accord entier lié).
-  Event = Struct.new(:kind, :notes, :arpeggio, :denom, :beats, :rh, :lh, :link, keyword_init: true)
+  # `dots` : nombre de points d'augmentation ("8." -> 1) — `denom` seul (`dur[/\A\d+/]`)
+  # les perdait déjà en amont, jamais dessinés (bug constaté : une croche pointée
+  # rendue comme une croche nue). `beats`/l'espacement en tenaient déjà compte
+  # (`duration_str_to_beats`), seul le DESSIN du point manquait.
+  Event = Struct.new(:kind, :notes, :arpeggio, :denom, :dots, :beats, :rh, :lh, :link, keyword_init: true)
 
   # `last_case_by_corde` : dernière case jouée sur chaque corde (note seule OU
   # note d'un accord, peu importe laquelle), tenue à jour par `parse_measures`
@@ -181,7 +185,7 @@ module Tablator
   def parse_event(token, last_duration, last_case_by_corde = {})
     if (m = REST_RE.match(token))
       dur = m[2]
-      Event.new(kind: (m[1] == 'r' ? :rest : :skip), notes: [], denom: dur[/\A\d+/].to_i, beats: duration_str_to_beats(dur))
+      Event.new(kind: (m[1] == 'r' ? :rest : :skip), notes: [], denom: dur[/\A\d+/].to_i, dots: dur.count('.'), beats: duration_str_to_beats(dur))
     elsif (lm = LINK_RE.match(token)) && (cm = CORDE_CASE_RE.match(lm[2]))
       link = { 'h' => :hammer, 'p' => :pull, 'g' => :slide }.fetch(lm[1])
       corde, kase, duree, rh, lh = cm.captures
@@ -189,7 +193,7 @@ module Tablator
       validate_link_direction!(token, link, corde, kase, last_case_by_corde[corde])
 
       dur = duree || last_duration
-      Event.new(kind: :notes, notes: [{ corde: corde, case: kase }], denom: dur[/\A\d+/].to_i, beats: duration_str_to_beats(dur), rh: rh, lh: lh, link: link)
+      Event.new(kind: :notes, notes: [{ corde: corde, case: kase }], denom: dur[/\A\d+/].to_i, dots: dur.count('.'), beats: duration_str_to_beats(dur), rh: rh, lh: lh, link: link)
     elsif (lm = LINK_RE.match(token)) && (cm = CHORD_RE.match(lm[2]))
       link = { 'h' => :hammer, 'p' => :pull, 'g' => :slide }.fetch(lm[1])
       _prefix, inner, duree = cm.captures
@@ -200,7 +204,7 @@ module Tablator
         validate_link_direction!(token, link, corde, kase, last_case_by_corde[corde])
         { corde: corde, case: kase }
       end
-      Event.new(kind: :notes, notes: notes, denom: dur[/\A\d+/].to_i, beats: duration_str_to_beats(dur), link: link)
+      Event.new(kind: :notes, notes: notes, denom: dur[/\A\d+/].to_i, dots: dur.count('.'), beats: duration_str_to_beats(dur), link: link)
     elsif (m = CHORD_RE.match(token))
       prefix, inner, duree = m.captures
       dur = duree || last_duration
@@ -208,11 +212,11 @@ module Tablator
         cm = CORDE_CASE_RE.match(pair) or raise ParseError, "note d'accord illisible : #{pair}"
         { corde: cm[1].to_i, case: cm[2].to_i }
       end
-      Event.new(kind: :notes, notes: notes, arpeggio: prefix == 'Arp', denom: dur[/\A\d+/].to_i, beats: duration_str_to_beats(dur))
+      Event.new(kind: :notes, notes: notes, arpeggio: prefix == 'Arp', denom: dur[/\A\d+/].to_i, dots: dur.count('.'), beats: duration_str_to_beats(dur))
     elsif (m = CORDE_CASE_RE.match(token))
       corde, kase, duree, rh, lh = m.captures
       dur = duree || last_duration
-      Event.new(kind: :notes, notes: [{ corde: corde.to_i, case: kase.to_i }], denom: dur[/\A\d+/].to_i, beats: duration_str_to_beats(dur), rh: rh, lh: lh)
+      Event.new(kind: :notes, notes: [{ corde: corde.to_i, case: kase.to_i }], denom: dur[/\A\d+/].to_i, dots: dur.count('.'), beats: duration_str_to_beats(dur), rh: rh, lh: lh)
     else
       raise ParseError, "token illisible : #{token}"
     end

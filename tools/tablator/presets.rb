@@ -50,6 +50,10 @@ module Tablator
     beam_width: 0.246,
     chord_name_size: 1.077,
     finger_size: 0.923,
+    # Point d'augmentation (croche POINTÉE, jamais dessiné avant — bug constaté) : rayon
+    # + écart à la hampe.
+    dot_radius: 0.15,
+    dot_gap: 0.31,
     time_sig_w: 2.31,
     time_sig_size: 1.15,
     note_inset: 1.54,
