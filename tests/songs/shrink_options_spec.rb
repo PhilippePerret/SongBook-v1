@@ -2,11 +2,12 @@
 
 require_relative "../spec_helper"
 require "page_builder"
+require "carnet_builder"
 require "tmpdir"
 
-# `diags_shrink`/`tabs_shrink`/`score_shrink` (`.infos` chanson prioritaire sur le
+# `diags_shrink`/`tabs_shrink`/`scores_shrink` (`.infos` chanson prioritaire sur le
 # carnet) — voir `Options`.
-RSpec.describe "options diags_shrink/tabs_shrink/score_shrink" do
+RSpec.describe "options diags_shrink/tabs_shrink/scores_shrink" do
   around do |example|
     Dir.mktmpdir do |dir|
       @carnet_folder = File.join(dir, "carnet")
@@ -53,12 +54,12 @@ RSpec.describe "options diags_shrink/tabs_shrink/score_shrink" do
     expect(resolve(:diags_shrink, song_infos: "title: Chanson\ndiags_shrink: false\n")).to eq(false)
   end
 
-  it "chaque propriété (diags_shrink/tabs_shrink/score_shrink) se résout indépendamment" do
+  it "chaque propriété (diags_shrink/tabs_shrink/scores_shrink) se résout indépendamment" do
     write_carnet_infos("title: Carnet\ntabs_shrink: false\n")
-    song_infos = "title: Chanson\nscore_shrink: false\n"
+    song_infos = "title: Chanson\nscores_shrink: false\n"
     expect(resolve(:diags_shrink, song_infos: song_infos)).to eq(true)
     expect(resolve(:tabs_shrink, song_infos: song_infos)).to eq(false)
-    expect(resolve(:score_shrink, song_infos: song_infos)).to eq(false)
+    expect(resolve(:scores_shrink, song_infos: song_infos)).to eq(false)
   end
 
   describe "shrink_text (défaut FALSE, inverse des autres)" do

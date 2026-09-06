@@ -95,6 +95,7 @@ RSpec.describe "répétition de chanson dans un .tdm" do
     def load_options(infos)
       path = File.join(@dir, "c.infos")
       File.write(path, infos)
+      Layout.current_ref_index = nil
       Options.load!(meta: {}, infos_path: path, carnet_folder: nil)
     end
 

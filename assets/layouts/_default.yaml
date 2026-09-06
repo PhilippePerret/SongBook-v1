@@ -1,8 +1,7 @@
 format: 21cm x 14.85cm
 title_band: true
 tdm_position: End
-score_title_size: 11pt
-score_title_style: bold
+scores_title_size: 11pt
 diags_position: End
 diags_align: justify
 lyrics_flux: side

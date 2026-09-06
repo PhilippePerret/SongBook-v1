@@ -52,13 +52,14 @@ module GenerateChordDiagrams
   # basse et la plus haute des cordes candidates) qui est elle-même frettée ailleurs
   # (note individuelle plus haute, cas F/Dm6-5) : un doigt à plat ne peut alors
   # physiquement tenir les deux cordes de part et d'autre du trou sans aussi couvrir
-  # celle du trou, donc le barré est forcément complet (span 1-6). Si le trou est une
-  # corde à vide (0) ou étouffée (x) — jamais frettée nulle part —, ou s'il n'y a
-  # simplement AUCUN trou (candidates déjà contiguës, même 2/3/4 cordes, ex. D7M-0 :
-  # cordes 1-2-3 barrées, 4/5/6 à vide/étouffées, hors du span, rien à couvrir), le
-  # span reste borné aux candidates — jamais promu (bug trouvé sur D7M-0, 2026-08-19 :
-  # le repli sur 6 cordes dessinait alors un barré traversant des cordes à vide,
-  # impossible aussi).
+  # celle du trou, donc le span est étendu jusqu'aux cordes extrêmes du groupe
+  # (min..max des `indices`, ex. E9b-7 : cordes 2 et 4 barrées séparées par la corde 3
+  # frettée ailleurs -> span 2-3-4, jamais 1-6). Si le trou est une corde à vide (0) ou
+  # étouffée (x) — jamais frettée nulle part —, ou s'il n'y a simplement AUCUN trou
+  # (candidates déjà contiguës, même 2/3/4 cordes, ex. D7M-0 : cordes 1-2-3 barrées,
+  # 4/5/6 à vide/étouffées, hors du span, rien à couvrir), le span reste borné aux
+  # candidates — jamais promu (bug trouvé sur D7M-0, 2026-08-19 : le repli sur 6 cordes
+  # dessinait alors un barré traversant des cordes à vide, impossible aussi).
   # Décode "<6 tokens>" en {positions:, fingers:, barre:, optionals:}, prêt pour
   # `ChordDiagram.build`.
   def self.decode(tokens_str)
@@ -77,7 +78,7 @@ module GenerateChordDiagrams
         indices = candidates.map { |t| 6 - t[:string] }
         gap_strings = ((min_s..max_s).to_a - strings)
         gap_fretted = gap_strings.any? { |s| fretted.any? { |t| t[:string] == s } }
-        span = gap_fretted ? (0..5).to_a : indices
+        span = gap_fretted ? (indices.min..indices.max).to_a : indices
         barre = { fret: min_fret, finger: key == :implicit ? "1" : key, indices: indices, span: span }
       end
     end

@@ -57,7 +57,7 @@ module IdmlCoverBuilder
   FRONT_FIELDS = [
     Field.new(name: "title", kind: :text, resolver: ->(conf, _e) { conf["title"] }),
     Field.new(name: "subtitle", kind: :text, resolver: ->(conf, _e) { conf["subtitle"] }),
-    Field.new(name: "author", kind: :text, resolver: ->(conf, _e) { conf["author"] || conf.dig("credits", "book_designer") }),
+    Field.new(name: "author", kind: :text, resolver: ->(conf, _e) { conf["author"] || (conf["credits"].is_a?(Hash) && conf["credits"]["book_designer"]) }),
     Field.new(name: "editor_logo", kind: :image, resolver: ->(conf, _e) { conf.dig("editor", "logo") }),
   ].freeze
 
@@ -211,7 +211,11 @@ module IdmlCoverBuilder
   def self.place_fields(ids, fields, conf, entries, carnet_folder, x0, x1, top_bound, bottom_bound)
     present = fields.filter_map do |field|
       value = field.resolver.call(conf, entries)
-      [field, value] if value && !value.to_s.strip.empty?
+      # `logo: ` (valeur vide) parsé comme bloc enfant VIDE (`{}`, `parse_nested_infos`,
+      # "clé seule -> Hash") par le parseur imbriqué — jamais une vraie valeur de champ,
+      # toujours absence (bug constaté : `{}` passait le filtre, `File.expand_path`
+      # plantait ensuite sur un Hash).
+      [field, value] if value && !value.is_a?(Hash) && !value.to_s.strip.empty?
     end
 
     w = x1 - x0
