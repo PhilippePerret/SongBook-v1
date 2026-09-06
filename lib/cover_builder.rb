@@ -246,7 +246,7 @@ module CoverBuilder
     when "title" then conf["title"]
     when "subtitle" then conf["subtitle"]
     when "author" then conf["author"]
-    when "book_designer" then conf.dig("credits", "book_designer")
+    when "book_designer" then conf["credits"].is_a?(Hash) && conf["credits"]["book_designer"]
     when "editor_name" then conf.dig("editor", "name")
     when "editor_logo" then conf.dig("editor", "logo")
     when "cover_image" then conf.dig("cover", "image")
@@ -269,7 +269,9 @@ module CoverBuilder
       next true if SPECIAL_NAMES.include?(n) && special_present?(n, entries)
 
       v = field_value(n, conf)
-      v && !v.to_s.strip.empty?
+      # `{}` (bloc enfant vide, valeur `.infos` laissée vide) : jamais une vraie valeur —
+      # même bug que `idml_cover_builder.rb` (`place_fields`).
+      v && !v.is_a?(Hash) && !v.to_s.strip.empty?
     end
   end
 

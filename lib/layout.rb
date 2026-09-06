@@ -50,22 +50,50 @@ module Layout
   # `{vertical: :top|:bot, horizontal: :left|:center|:right|nil}` — `horizontal` ignoré
   # si `facing_pages: true` (côté automatique, voir `Layout.draw_page_number`).
   @folio_position = { vertical: :bot, horizontal: nil }
+  # Index entre crochets de l'entrée `.tdm` en cours ("blackbird... [7]" -> "7"), `nil`
+  # si l'entrée n'en a pas (cas normal, immense majorité des chansons) — affiché sous le
+  # bandeau témoin pour repérer une page précise dans un carnet d'essai.
+  @current_ref_index = nil
   class << self
     attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing,
       :sensitivity, :log_conflict_count, :carnet_font_baseline,
-      :folio_position
+      :folio_position, :current_ref_index
   end
 
-  # Taille/style du titre tab/score/image (`title:`/nom de déclaration) — options
-  # `score_title_size`/`score_title_style` (`Options`). Défaut = `TEXT_SIZE` (
-  # : "ça ne devrait pas être plus gros qu'un INTRO dans le texte — ça devrait être
-  # pareil, en fait"), jamais en gras par défaut.
-  def self.score_title_size
-    Options.get(:score_title_size)
+  # Taille/style/gras du titre tab/score/image (`title:`/nom de déclaration) — options
+  # `images_title_size`/`scores_title_size`/`tabs_title_size` (idem `_style`/`_bold`) :
+  # la PREMIÈRE RÉSOLUE (préset de layout inclus, ex. `_default.yaml` : "bold") l'emporte,
+  # toujours dans cet ordre (images, scores, tabs), quel que soit le type d'élément
+  # dessiné — un seul réglage partagé, sous 3 noms possibles, souplesse voulue plutôt
+  # qu'un réglage par type. `_bold` : booléen à part, prioritaire sur le mot "bold" dans
+  # `_style` s'il est fixé explicitement (permet de forcer gras/non-gras sans toucher au
+  # style). Défaut taille = `TEXT_SIZE` (: "ça ne devrait pas être plus gros
+  # qu'un INTRO dans le texte — ça devrait être pareil, en fait").
+  TITLE_SIZE_KEYS = %i[images_title_size scores_title_size tabs_title_size].freeze
+  TITLE_STYLE_KEYS = %i[images_title_style scores_title_style tabs_title_style].freeze
+  TITLE_BOLD_KEYS = %i[images_title_bold scores_title_bold tabs_title_bold].freeze
+
+  # Priorité aux clés EXPLICITEMENT fixées (chanson/carnet/fichier indexé) — seule
+  # `scores_title_size`/`scores_title_style` a un préréglage de layout (`_default.yaml`,
+  # jamais "explicite"), donc jamais laissée bloquer `tabs_title_size`/`tabs_title_style`
+  # simplement parce qu'un préréglage la rend non-nil en permanence (bug constaté :
+  # `tabs_title_size` jamais atteinte, `scores_title_size` du préréglage gagnait toujours).
+  def self.title_size
+    key = TITLE_SIZE_KEYS.find { |k| Options.explicit?(k) }
+    return Options.get(key) if key
+
+    Options.get(:scores_title_size) || TEXT_SIZE.to_f
   end
 
-  def self.score_title_style
-    Options.get(:score_title_style)
+  def self.title_style
+    key = TITLE_STYLE_KEYS.find { |k| Options.explicit?(k) }
+    return Options.get(key) if key
+
+    Options.get(:scores_title_style)
+  end
+
+  def self.title_bold
+    TITLE_BOLD_KEYS.map { |k| Options.get(k) }.find { |v| !v.nil? }
   end
 
   # Parse `folio_position:` du `.infos` ("Top"/"Bot" ou "Top-Left".."Bot-Right")
@@ -92,6 +120,9 @@ module Layout
     { key: :font_family, prop: "font-family", label: ->(v) { v } },
     { key: :font_size, prop: "font-size", label: ->(v) { "#{SPECS_PT.call(v)}pt" } },
     { key: :diags_size, prop: "diags_size", label: ->(v) { "#{SPECS_PT.call(v)}pt" } },
+    { key: :tabs_measures_per_page, prop: "tabs_measures_per_page", label: ->(v) { SPECS_PT.call(v) } },
+    { key: :tabs_title_size, prop: "tabs_title_size", label: ->(v) { "#{SPECS_PT.call(v)}pt" } },
+    { key: :tabs_title_bold, prop: "tabs_title_bold", label: ->(v) { v.to_s } },
   ].freeze
 
   # Ligne `show_specs` d'UNE chanson : toute option EXPLICITEMENT présente quelque part
@@ -100,11 +131,14 @@ module Layout
   # donc affichée (Phil, bug constaté 2026-09-01 — masquée à tort sous prétexte "valeur
   # par défaut").
   def self.song_specs_line
-    SPECS_TRACKED.filter_map do |spec|
+    parts = []
+    parts << "(ref #{current_ref_index})" if current_ref_index
+    SPECS_TRACKED.each do |spec|
       next unless Options.explicit?(spec[:key])
 
-      "(#{spec[:prop]} #{spec[:label].call(Options.get(spec[:key]))})"
-    end.join(" ")
+      parts << "(#{spec[:prop]} #{spec[:label].call(Options.get(spec[:key]))})"
+    end
+    parts.join(" ")
   end
 
   def self.min_text_size
@@ -267,6 +301,11 @@ module Layout
   # Marge visée quand on remonte la grille (cas 1.1, place suffisante au-dessus) — au-delà
   # de la zone d'encre, pour un espace visuellement net, pas juste "qui ne touche pas".
   PAGE_NUMBER_TARGET_CLEARANCE_PT = PAGE_NUMBER_INK_ZONE_PT + 8.0
+  # Remontée forcée (cas 1.2, place insuffisante pour la cible ci-dessus) — RÉSERVÉE dès
+  # la passe virtuelle (`fits`, avant tout dessin), sinon cette remontée mord sur le texte
+  # sans que le calcul amont l'ait anticipée (chevauchement constaté, "The Man I Love" :
+  # 0.32pt de marge au calcul amont, remontée de 10pt appliquée ensuite sans revérifier).
+  PAGE_NUMBER_FORCED_SHIFT_PT = 10.0
 
   def self.in_pt(inches)
     inches * 72.0
@@ -827,6 +866,7 @@ module Layout
   # de gouttière réservée, dessinée DANS l'espace déjà prévu sous le bandeau/titre.
   # N'influence donc jamais la pagination.
   SPECS_LINE_SIZE = 9
+  SPECS_LINE_MIN_SIZE = 4
   SPECS_LINE_COLOR = "000000"
 
   def self.draw_specs_overlay(pdf, top_y)
@@ -835,7 +875,14 @@ module Layout
     line = song_specs_line
     return if line.empty?
 
-    draw_text_colored(pdf, "Impression test : #{line}", at: [HEADER_PAD_X, top_y], size: SPECS_LINE_SIZE, color: SPECS_LINE_COLOR)
+    text = "Impression test : #{line}"
+    # Autant de propriétés que le carnet en teste EN MÊME TEMPS sur une chanson —
+    # jamais borné à l'avance. Rétrécie plutôt que débordée dans la marge (bug constaté :
+    # ligne dessinée sans limite de largeur, sortait de la zone imprimable).
+    available_w = pdf.bounds.width - HEADER_PAD_X * 2
+    natural_w = pdf.width_of(text, size: SPECS_LINE_SIZE)
+    size = natural_w > available_w ? [SPECS_LINE_SIZE * available_w / natural_w, SPECS_LINE_MIN_SIZE].max : SPECS_LINE_SIZE
+    draw_text_colored(pdf, text, at: [HEADER_PAD_X, top_y], size: size, color: SPECS_LINE_COLOR)
   end
 
   # Issue #69 : capo indiqué en `.infos` (`meta["capo"]`) — affiché juste sous l'entête,
@@ -1201,9 +1248,16 @@ module Layout
   # posée à côté d'une strophe AVEC accord aligne sa 1re ligne sur celle de l'autre —
   # `force_chord_baseline` (posé par `row_to_element` selon le voisin de row) impose
   # l'ancrage "1re ligne avec accord" même si CE bloc-ci n'en a pas lui-même.
-  def self.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, lines, width, chord_size: scaled_chord_size, text_size: Options.get(:font_size), force_chord_baseline: false)
+  def self.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, block, width, chord_size: scaled_chord_size, text_size: Options.get(:font_size), force_chord_baseline: false)
+    lines = block.lines
     return 0 if lines.empty?
 
+    # Même largeur EFFECTIVE que `draw_block` (réserve de `label:` retirée AVANT tout
+    # calcul de retour à la ligne) — sinon une ligne mesurée ici comme tenant dans
+    # `width` déborde réellement une fois dessinée dans la largeur RÉDUITE par le label,
+    # la hauteur réservée par la pagination devient trop courte (bug constaté, "The Man
+    # I Love" : "PONT" chevauchant la grille de diagrammes fusionnée juste en dessous).
+    width -= label_reserve(pdf, block, text_size) if width
     baseline = force_chord_baseline || line_has_chord?(lines.first) ? chord_ascent : text_ascent
     last_text_offset = 0
     lines.each_with_index do |line, i|
@@ -1306,8 +1360,8 @@ module Layout
     force_chord = row.any? { |b| line_has_chord?(b.lines.first) }
 
     height = [
-      block_visual_height(pdf, chord_ascent, text_ascent, text_descent, row[0].lines, col1_w, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord),
-      block_visual_height(pdf, chord_ascent, text_ascent, text_descent, row[1].lines, col2_w, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord),
+      block_visual_height(pdf, chord_ascent, text_ascent, text_descent, row[0], col1_w, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord),
+      block_visual_height(pdf, chord_ascent, text_ascent, text_descent, row[1], col2_w, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord),
     ].max
     draw = lambda do |pdf_, y|
       draw_block(pdf_, row[0], x0 + h_gutter, y, col1_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord)
@@ -1323,7 +1377,7 @@ module Layout
     widths = row.size == 2 ? [col1_w, col2_w] : [width]
     force_chord = row.size == 2 && row.any? { |b| line_has_chord?(b.lines.first) }
     log_build("bloc sans accord aligné sur son voisin avec accord (RAL3)") if force_chord && row.any? { |b| !line_has_chord?(b.lines.first) }
-    height = row.each_with_index.map { |b, i| block_visual_height(pdf, chord_ascent, text_ascent, text_descent, b.lines, widths[i], force_chord_baseline: force_chord) }.max
+    height = row.each_with_index.map { |b, i| block_visual_height(pdf, chord_ascent, text_ascent, text_descent, b, widths[i], force_chord_baseline: force_chord) }.max
     draw = lambda do |pdf_, y|
       if row.size == 2
         block, nxt = row
@@ -1351,7 +1405,7 @@ module Layout
   # ées sur la grille globale) — utilisé pour composer une colonne à côté d'un élément
   # d'une autre nature (ex. tablature, voir `PageBuilder.build_side_by_side_element`).
   def self.build_text_column_element(pdf, block, x, width, chord_ascent, text_ascent, text_descent)
-    height = block_visual_height(pdf, chord_ascent, text_ascent, text_descent, block.lines, width)
+    height = block_visual_height(pdf, chord_ascent, text_ascent, text_descent, block, width)
     draw = lambda { |pdf_, y| draw_block(pdf_, block, x, y, width, chord_ascent, text_ascent) }
     PageElement.new(height, draw)
   end
@@ -1579,8 +1633,18 @@ module Layout
       # dernière ligne de texte et la grille — texte qui semble la toucher/chevaucher
       # (bug constaté, chanson avec plusieurs diagrammes en excédent fusionnés en bas de
       # page).
-      remaining_h = last_page[:avail_h] - row_top_y - min_v_dist(:default)
-      fits = remaining_h.positive? && (paginate(page_els, remaining_h, remaining_h).size == 1)
+      # Sans colonne sur cette page (`column_bottom_y` nil), le dessin réel peut encore
+      # remonter la grille de `PAGE_NUMBER_FORCED_SHIFT_PT` pour la dégager du numéro de
+      # page (voir plus bas) — réservé ICI aussi, sinon cette remontée mord sur le texte
+      # sans que "fits" l'ait anticipée.
+      page_number_reserve = column_bottom_y ? 0.0 : PAGE_NUMBER_FORCED_SHIFT_PT
+      remaining_h = last_page[:avail_h] - row_top_y - min_v_dist(:default) - page_number_reserve
+      # `paginate(...).size == 1` seul ne suffit pas : un SEUL élément (indivisible) plus
+      # haut que `remaining_h` reste malgré tout sur "1 page" (rien à répartir ailleurs),
+      # donnant un `fits` faussement vrai — vérification directe de hauteur en plus (bug
+      # constaté avec la réserve `page_number_reserve` ci-dessus : le total dépassait déjà
+      # `remaining_h`, jamais détecté).
+      fits = remaining_h.positive? && page_els.sum(&:height) <= remaining_h && (paginate(page_els, remaining_h, remaining_h).size == 1)
 
       if fits
         merged_last_page = { rows: rows, diag_w: grid_diag_w, diag_h: grid_diag_h, remaining_h: remaining_h, block_h: block_h, column_bottom_y: column_bottom_y }
@@ -1689,8 +1753,8 @@ module Layout
             elsif gap_v >= PAGE_NUMBER_INK_ZONE_PT
               0.0
             else
-              log_build("grille de diags en trop (bas de page) trop proche du numéro de page, place insuffisante pour la dégager pleinement — remontée de 10pt quand même")
-              10.0
+              log_build("grille de diags en trop (bas de page) trop proche du numéro de page, place insuffisante pour la dégager pleinement — remontée de #{PAGE_NUMBER_FORCED_SHIFT_PT.to_i}pt quand même")
+              PAGE_NUMBER_FORCED_SHIFT_PT
             end
             effective_gap_v = gap_v + shift
           end
@@ -2426,7 +2490,7 @@ module Layout
   end
 
   def self.score_shrinkable?(path)
-    raster_image?(path) && Options.get(:score_shrink)
+    raster_image?(path) && Options.get(:scores_shrink)
   end
 
   def self.diag_column_width(paths, first_avail_h, page_height)
@@ -2460,7 +2524,7 @@ module Layout
   # partout") : essaie `DIAG_W` nominal, sinon rétrécit par pas de 0.1pt jusqu'à ce que
   # `capacity_at.call(w) >= target`, jamais sous `floor_w`. `diags_shrink: false` :
   # jamais sous DIAG_W, même en SVG (un diag n'a pas de "qualité" à perdre en changeant
-  # sa largeur de tracé — contrairement à `tabs_shrink`/`score_shrink`, voir
+  # sa largeur de tracé — contrairement à `tabs_shrink`/`scores_shrink`, voir
   # `raster_image?`). Ce qui ne tient pas suit le mécanisme de débordement en place
   # (page suivante pour la colonne, page dédiée pour la rangée/l'excédent) — jamais un
   # dépassement de marge pour compenser.
@@ -2653,15 +2717,22 @@ module Layout
   end
 
   # Échelle COMMUNE à toute la chanson  : "on l'applique à TOUTES") —
-  # 1.0 (taille naturelle, donc écartement identique de facto) tant que la plus large
-  # des tabs/scores vectoriels tient dans `available_width_pt` ; sinon, un seul facteur
-  # de réduction, calculé sur la plus large, appliqué à TOUTES (jamais une réduction
-  # différente par tab, qui romprait l'uniformité).
+  # 1.0 (taille naturelle, donc écartement identique de facto) tant qu'AU MOINS UN
+  # système tient déjà dans `available_width_pt`. Un système isolément trop large (ex.
+  # `tabs_measures_per_page` forcé au-delà de ce que la colonne peut contenir, un seul
+  # système déborde alors que les autres tiennent) NE réduit PAS les autres — il déborde
+  # seul, les autres gardent leur taille naturelle (bug constaté : un seul système en
+  # trop écrasait à tort tous les systèmes normaux de la chanson). Réduction commune
+  # SEULEMENT si TOUS débordent (cas normal visé à l'origine par cette fonction) —
+  # calculée sur le plus large, jamais une réduction différente par tab.
   def self.uniform_tab_scale(svg_data_list, available_width_pt)
-    widest = svg_data_list.map { |svg_data| svg_natural_width_pt(svg_data) }.max
-    return 1.0 if widest.nil? || widest.zero? || widest <= available_width_pt
+    widths = svg_data_list.map { |svg_data| svg_natural_width_pt(svg_data) }.compact.reject(&:zero?)
+    return 1.0 if widths.empty?
 
-    available_width_pt / widest
+    fitting = widths.reject { |w| w > available_width_pt }
+    return 1.0 unless fitting.empty?
+
+    available_width_pt / widths.max
   end
 
   # Tabla (tablature/accompagnement, SVG rendu à part via Tablator). RÈGLE ABSOLUE (Phil,
@@ -2733,13 +2804,13 @@ module Layout
     end
   end
 
-  # `score_title_style` (layout) : liste combinable espacée, ex. "bold italic underline"
+  # `scores_title_style`/`images_title_style`/`tabs_title_style` (layout) : liste combinable espacée, ex. "bold italic underline"
   #  — "bold"/"italic" -> style de fonte Prawn (combinés en
   # `:bold_italic`), "underline" -> soulignement dessiné à part (Prawn ne le gère pas via
   # `style:`, seulement `pdf.text`/`inline_format`, pas utilisé ici).
   def self.score_title_font_style
-    tokens = score_title_style.to_s.split
-    bold = tokens.include?("bold")
+    tokens = title_style.to_s.split
+    bold = title_bold.nil? ? tokens.include?("bold") : title_bold
     italic = tokens.include?("italic")
     return :bold_italic if bold && italic
     return :bold if bold
@@ -2749,20 +2820,20 @@ module Layout
   end
 
   def self.score_title_underline?
-    score_title_style.to_s.split.include?("underline")
+    title_style.to_s.split.include?("underline")
   end
 
-  # Titre tab/score/image : majuscules + style/taille configurables (`score_title_size`/
-  # `score_title_style`) — factorisé, utilisé par `build_tabla_element_v2` ET
+  # Titre tab/score/image : majuscules + style/taille configurables (`title_size`/
+  # `title_style`) — factorisé, utilisé par `build_tabla_element_v2` ET
   # `build_image_element` (Phil : "ça devrait être pareil" pour les deux).
   def self.draw_score_title(pdf, text, x, y)
     label = text.upcase
     style = score_title_font_style
-    draw_text_colored(pdf, label, at: [x, y], size: score_title_size, style: style, color: TAB_TITLE_COLOR)
+    draw_text_colored(pdf, label, at: [x, y], size: title_size, style: style, color: TAB_TITLE_COLOR)
     return unless score_title_underline?
 
-    w = pdf.width_of(label, size: score_title_size, style: style)
-    descent = font_metric(pdf, score_title_size) { pdf.font.descender }
+    w = pdf.width_of(label, size: title_size, style: style)
+    descent = font_metric(pdf, title_size) { pdf.font.descender }
     underline_y = y + descent * 0.3
     pdf.stroke_color TAB_TITLE_COLOR
     pdf.line_width 0.5
@@ -2788,8 +2859,8 @@ module Layout
     embed_w = svg_embed_width(svg_data, width, scale: scale)
     svg_h = svg_height_for(svg_data, embed_w)
 
-    title_ascent = title ? font_metric(pdf, score_title_size) { pdf.font.ascender } : 0
-    title_h = title ? font_metric(pdf, score_title_size) { pdf.font.height } + TAB_TITLE_IMAGE_GAP : 0
+    title_ascent = title ? font_metric(pdf, title_size) { pdf.font.ascender } : 0
+    title_h = title ? font_metric(pdf, title_size) { pdf.font.height } + TAB_TITLE_IMAGE_GAP : 0
 
     if max_height && title_h + svg_h > max_height
       target_svg_h = [max_height - title_h, 0.0].max
@@ -2824,8 +2895,8 @@ module Layout
     embed_w = width
     embed_h = ih * embed_w / iw.to_f
 
-    title_ascent = title ? font_metric(pdf, score_title_size) { pdf.font.ascender } : 0
-    title_h = title ? font_metric(pdf, score_title_size) { pdf.font.height } + TAB_TITLE_IMAGE_GAP : 0
+    title_ascent = title ? font_metric(pdf, title_size) { pdf.font.ascender } : 0
+    title_h = title ? font_metric(pdf, title_size) { pdf.font.height } + TAB_TITLE_IMAGE_GAP : 0
 
     img_x = align == "center" ? x0 + [(width - embed_w) / 2.0, 0].max : x0
     count_extra_h, count_draw = build_count_mark(pdf, count, x0, width, img_x, embed_w, embed_h)

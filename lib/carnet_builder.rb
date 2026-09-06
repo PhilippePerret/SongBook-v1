@@ -95,6 +95,12 @@ module CarnetBuilder
     name.sub(REPEAT_INDEX_RE, "").strip
   end
 
+  # Contenu entre crochets ("blackbird... [7]" -> "7"), `nil` si `name` n'en a pas —
+  # affiché sous le bandeau témoin (`Layout.current_ref_index`).
+  def self.repeat_index_of(name)
+    name[/\[([^\[\]\/]*)\]\s*\z/, 1]
+  end
+
   # Fichier "<id[ index]>.infos"/".inf" qui écrase le .infos de base pour CETTE entrée
   # du .tdm — n'importe quelle clé. Cherché d'abord dans le dossier du carnet (précédence
   # la plus haute), sinon dans le dossier de la chanson (réutilisable par d'autres carnets).
@@ -495,7 +501,7 @@ module CarnetBuilder
     chansons_dir = File.expand_path("../../Chansons", carnet_folder)
     names = File.readlines(tdm_path).map { |l| l.sub(/\A-\s*/, "").strip }.reject(&:empty?)
     names.filter_map do |name|
-      entry = SongCache.resolve(chansons_dir, name)
+      entry = SongCache.resolve(chansons_dir, strip_repeat_index(name))
       next nil unless entry
 
       { name: entry[:infos]["title"] || name, performer: entry[:infos]["performer"].to_s }
@@ -554,7 +560,11 @@ module CarnetBuilder
     default_fm = PageBuilder::DEFAULT_LAYOUT.fetch(:front_matter, {})
     fm = default_fm.merge(conf.fetch("front_matter", {}))
     fm["table_of_contents"] = default_fm.fetch("table_of_contents", {}).merge(fm.fetch("table_of_contents", {}))
-    conf_credits = conf.fetch("credits", {}).select { |_, v| v.is_a?(String) && !v.strip.empty? }
+    # `credits: false` : pas de PAGE de crédits (colophon) — le Hash `credits` reste
+    # quand même calculé, réutilisé par la page de titre ("Conçu par <book_designer>",
+    # indépendante du colophon).
+    credits_page = conf["credits"] != false
+    conf_credits = (conf["credits"].is_a?(Hash) ? conf["credits"] : {}).select { |_, v| v.is_a?(String) && !v.strip.empty? }
     credits = PageBuilder::DEFAULT_LAYOUT.fetch(:credits, {}).merge(conf_credits)
     # `copyright:` (valeur vide, sans rien d'indenté dessous) ouvre quand même un bloc
     # enfant VIDE (`parse_nested_infos`, "clé seule -> Hash") — pas une chaîne, jamais
@@ -619,7 +629,7 @@ module CarnetBuilder
     real_songs.each do |name, entry|
       folder = File.join(chansons_dir, entry[:folder])
       tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
-      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: 1, layout_preset: layout_preset, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: 1, layout_preset: layout_preset, ref_index: CarnetBuilder.repeat_index_of(name), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
       real_page_counts[name] = CombinePDF.load(tmp_out).pages.size
       File.delete(tmp_out)
     end
@@ -686,12 +696,12 @@ module CarnetBuilder
         song_existing_versions = Dir.glob(File.join(songs_dir, "#{song_stem}-v*.pdf")).filter_map { |f| f[/-v(\d+)\.pdf\z/, 1]&.to_i }
         song_version = (song_existing_versions.max || 0) + 1
         song_out = File.join(songs_dir, "#{song_stem}-v#{song_version}.pdf")
-        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout_preset: layout_preset, debug_marks: debug_marks, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout_preset: layout_preset, ref_index: CarnetBuilder.repeat_index_of(name), debug_marks: debug_marks, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
         return song_out
       end
 
       tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
-      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout_preset: layout_preset, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout_preset: layout_preset, ref_index: CarnetBuilder.repeat_index_of(name), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
       n = real_page_counts[name]
       combined_songs << CombinePDF.load(tmp_out)
       File.delete(tmp_out)
@@ -712,12 +722,17 @@ module CarnetBuilder
     needs_blank_before_toc = toc_start != last_song_page + 1
     toc_end = toc_start + end_toc_list.size - 1
 
-    colophon_page_no = toc_end + 1
-    # La page de crédits est TOUJOURS une belle-page (recto, numéro IMPAIR)
-    # Une page blanche est insérée avant si elle tomberait sur une page paire.
-    needs_blank_before_colophon = colophon_page_no.even?
-    colophon_page_no += 1 if needs_blank_before_colophon
-    total_page_count = colophon_page_no
+    if credits_page
+      colophon_page_no = toc_end + 1
+      # La page de crédits est TOUJOURS une belle-page (recto, numéro IMPAIR)
+      # Une page blanche est insérée avant si elle tomberait sur une page paire.
+      needs_blank_before_colophon = colophon_page_no.even?
+      colophon_page_no += 1 if needs_blank_before_colophon
+      total_page_count = colophon_page_no
+    else
+      needs_blank_before_colophon = false
+      total_page_count = toc_end
+    end
     if %w[amazon kdp].include?(conf["printer"].to_s.downcase)
       min, max = PrinterProfile.page_count_range
       unless total_page_count.between?(min, max)
@@ -784,24 +799,27 @@ module CarnetBuilder
     blank_before_colophon = render_blank_page.call(printer_final, colophon_page_no - 1) if needs_blank_before_colophon
 
     # --- 5) Colophon (dernière page) : crédits SEULEMENT — le copyright est en page
-    # liminaire (voir 4), rien à voir avec les crédits .
-    colophon_out = File.join(export_dir, ".tmp-colophon.pdf")
-    Prawn::Document.generate(colophon_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
-      Layout.register_fonts(pdf)
-      Layout.apply_print_margins(pdf, printer_final, colophon_page_no, page_w_pt, page_h_pt)
-      Layout.current_song = "(carnet)"
-      Layout.current_page = colophon_page_no
-      Layout.log_build("colophon rendu (RATDM12)")
-      draw_credits(pdf, credits)
+    # liminaire (voir 4), rien à voir avec les crédits . Absente si
+    # `credits: false` (aucune page, pas juste une page vide).
+    if credits_page
+      colophon_out = File.join(export_dir, ".tmp-colophon.pdf")
+      Prawn::Document.generate(colophon_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
+        Layout.register_fonts(pdf)
+        Layout.apply_print_margins(pdf, printer_final, colophon_page_no, page_w_pt, page_h_pt)
+        Layout.current_song = "(carnet)"
+        Layout.current_page = colophon_page_no
+        Layout.log_build("colophon rendu (RATDM12)")
+        draw_credits(pdf, credits)
+      end
     end
 
     # --- 6) Assemblage final ----------------------------------------------------------
     combined = CombinePDF.load(front_out) << combined_songs
     combined << toc_combined if toc_combined
     combined << blank_before_colophon if blank_before_colophon
-    combined << CombinePDF.load(colophon_out)
+    combined << CombinePDF.load(colophon_out) if credits_page
     File.delete(front_out)
-    File.delete(colophon_out)
+    File.delete(colophon_out) if credits_page
 
     SongCache.save(chansons_dir)
     combined.save(out_path)

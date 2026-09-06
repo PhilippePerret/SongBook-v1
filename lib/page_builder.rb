@@ -128,6 +128,15 @@ module PageBuilder
     paragraphs.map(&:strip).reject(&:empty?)
   end
 
+  # Vrai si `body` (lignes brutes d'un paragraphe) ne porte AUCUNE parole — accords/
+  # marqueurs seulement (ex. ligne d'intro instrumentale). Retire les marqueurs `/Chord:`
+  # (`DSLParser::CHORD_RE`) ET tout fragment `/...` orphelin (accord mal formé, sans ":"
+  # final — reste sinon pris à tort pour une parole), puis les "_" (espaceur d'alignement,
+  # pas une syllabe).
+  def self.chords_only_body?(body)
+    body.all? { |line| line.gsub(DSLParser::CHORD_RE, "").gsub(%r{/\S*}, "").gsub("_", "").strip.empty? }
+  end
+
   def self.parse_lyr(path)
     blocks = {}
     order = []
@@ -148,6 +157,12 @@ module PageBuilder
 
       key = body.join("\n")
       existing_name = body.empty? ? nil : raw_bodies[key]
+      # Paragraphe SANS nom : "couplet-N" (position) sauf s'il ne contient AUCUNE parole
+      # (accords seuls, ex. une ligne d'intro instrumentale) — un tel paragraphe est
+      # FORCÉMENT une intro, jamais une strophe (bug constaté, "Rocky Raccoon" : la ligne
+      # d'accords d'ouverture, sans {nom}, devenait "couplet-1" par position et entrait en
+      # collision avec le VRAI {couplet-1} juste après).
+      auto_name = given_name || (chords_only_body?(body) ? "intro" : "couplet-#{i + 1}")
 
       if existing_name
         name = existing_name
@@ -164,14 +179,14 @@ module PageBuilder
           blocks[given_name] = blocks[name]
           Layout.log_build("bloc \"#{given_name}\" (contenu identique à \"#{name}\") : alias résolvable vers le même contenu")
         end
-      elsif given_name && blocks.key?(given_name) && !body.empty?
-        original = given_name
+      elsif blocks.key?(auto_name) && !body.empty?
+        original = auto_name
         n = 2
         n += 1 while blocks.key?("#{original}-#{n}")
         name = "#{original}-#{n}"
         Layout.conflict!("bloc \"#{original}\" redéfini", solution: "renommé en \"#{name}\" pour conserver les deux contenus")
       else
-        name = given_name || "couplet-#{i + 1}"
+        name = auto_name
       end
 
       order << name
@@ -764,6 +779,31 @@ module PageBuilder
     [elements, shrink_jobs]
   end
 
+  # `diag_list` (option) : quels diagrammes graver, indépendamment de ceux réellement
+  # utilisés dans la chanson (Manuel/songbook/options.adoc, "option-diags").
+  #   [all]  : tous les accords de la chanson (comportement historique, inchangé).
+  #   none/false : aucun diagramme.
+  #   list SEUL (rien de plus précisé, ex. juste posé au niveau du carnet) : rien à
+  #        graver tant que la chanson elle-même ne fournit pas sa propre liste.
+  #   toute autre valeur : liste d'accords espacés à graver (ex. "Cm7 D7M Ab6-4") — un
+  #        accord absent de la chanson est ignoré, une case explicite ("-4") remplace
+  #        celle choisie automatiquement pour cet accord précis.
+  def self.filter_chord_frets(chord_frets)
+    diag_list = Options.get(:diag_list).to_s.strip
+    case diag_list.downcase
+    when "", "all"
+      chord_frets
+    when "none", "false", "list"
+      []
+    else
+      wanted = diag_list.split(/\s+/).map { |token| token.split("-", 2) }
+      wanted.filter_map do |chord, fret|
+        pair = chord_frets.find { |c, _| c == chord }
+        [chord, fret || pair&.last] if pair
+      end
+    end
+  end
+
   # Paires [accord, case] d'une chanson SEULES (`ChordDiagrams.collect_chord_frets`),
   # transposition appliquée comme en production réelle (`build`) — scan LÉGER pour
   # `missing diags` (CLI) : aucun PDF généré, juste `.lyr`/`.infos` lus.
@@ -787,7 +827,7 @@ module PageBuilder
   # et Manuel/song/layout.adoc) : défauts du CARNET pour cette chanson — un `.gab` explicite
   # garde priorité (une chanson peut toujours s'écarter du layout général, Manuel : "on
   # peut le faire chanson par chanson ou de façon générale... ou les deux").
-  def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout_preset: {}, debug_marks: false, carnet_folder: nil, infos_overrides: {}, override_infos_path: nil,
+  def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout_preset: {}, debug_marks: false, carnet_folder: nil, infos_overrides: {}, override_infos_path: nil, ref_index: nil,
       paper: PrinterProfile::DEFAULT_PAPER, bleed: PrinterProfile::DEFAULT_BLEED, facing_pages: PrinterProfile::DEFAULT_FACING_PAGES,
       outside_margin: nil, gutter_margin: nil, top_margin: nil, bot_margin: nil, left_margin: nil, right_margin: nil)
     DiagsSync.sync!(folder)
@@ -811,6 +851,7 @@ module PageBuilder
     # bug constaté sur `diags_size` (Angie créditée d'un réglage venant de Blackbird).
     Layout.current_song = meta["title"] || File.basename(folder)
     Layout.current_page = first_page_no
+    Layout.current_ref_index = ref_index
     Options.load!(meta: meta, infos_path: infos_path, carnet_folder: carnet_folder, override_path: override_infos_path, layout_preset: layout_preset)
     # `Tablator.active_preset` est un état GLOBAL du module ,
     # config "regular-tablatures"/"mini-tablatures", `tools/tablator/presets.rb`) —
@@ -899,7 +940,7 @@ module PageBuilder
       header_bottom = header_style == :band ? Layout.draw_header_band(pdf, meta, capo_side: capo_side) : Layout.draw_header_inline(pdf, meta, capo_side: capo_side)
       Layout.log_build("titre en #{header_style == :band ? "bandeau" : "ligne simple"} (header_style)")
 
-      chord_frets = ChordDiagrams.collect_chord_frets(lyr_blocks.values)
+      chord_frets = filter_chord_frets(ChordDiagrams.collect_chord_frets(lyr_blocks.values))
       diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret, carnet_dir: carnet_folder, song_dir: folder) }
       Layout.log_build("#{diag_paths.size} diagramme(s) d'accord, position=#{dynamic_mode ? "#{dynamic_mode} (résolu page par page)" : diag_position}")
 

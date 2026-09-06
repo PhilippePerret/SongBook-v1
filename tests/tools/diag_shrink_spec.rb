@@ -47,12 +47,12 @@ RSpec.describe "rétrécissement des diagrammes (diags_shrink)" do
   end
 end
 
-# `tabs_shrink`/`score_shrink` : pas de taille nominale propre, donc pertinents
+# `tabs_shrink`/`scores_shrink` : pas de taille nominale propre, donc pertinents
 # SEULEMENT pour une image à taille fixe (PNG/JPEG) — jamais pour un SVG.
-RSpec.describe "rétrécissement tabla/score (tabs_shrink/score_shrink)" do
+RSpec.describe "rétrécissement tabla/score (tabs_shrink/scores_shrink)" do
   after do
     Options.set!(:tabs_shrink, true)
-    Options.set!(:score_shrink, true)
+    Options.set!(:scores_shrink, true)
   end
 
   it "raster_image? reconnaît PNG/JPEG (toute casse), pas SVG" do
@@ -66,7 +66,7 @@ RSpec.describe "rétrécissement tabla/score (tabs_shrink/score_shrink)" do
   it "SVG : jamais rétrécissable, quelle que soit la valeur de l'option (n'a pas de sens)" do
     Options.set!(:tabs_shrink, true)
     expect(Layout.tabla_shrinkable?("partition.svg")).to eq(false)
-    Options.set!(:score_shrink, true)
+    Options.set!(:scores_shrink, true)
     expect(Layout.score_shrinkable?("partition.svg")).to eq(false)
   end
 
@@ -76,15 +76,15 @@ RSpec.describe "rétrécissement tabla/score (tabs_shrink/score_shrink)" do
     Options.set!(:tabs_shrink, false)
     expect(Layout.tabla_shrinkable?("tabla.png")).to eq(false)
 
-    Options.set!(:score_shrink, true)
+    Options.set!(:scores_shrink, true)
     expect(Layout.score_shrinkable?("score.jpg")).to eq(true)
-    Options.set!(:score_shrink, false)
+    Options.set!(:scores_shrink, false)
     expect(Layout.score_shrinkable?("score.jpg")).to eq(false)
   end
 
-  it "tabs_shrink n'affecte pas score_shrink, et inversement (options indépendantes)" do
+  it "tabs_shrink n'affecte pas scores_shrink, et inversement (options indépendantes)" do
     Options.set!(:tabs_shrink, false)
-    Options.set!(:score_shrink, true)
+    Options.set!(:scores_shrink, true)
     expect(Layout.tabla_shrinkable?("t.png")).to eq(false)
     expect(Layout.score_shrinkable?("s.png")).to eq(true)
   end

@@ -16,7 +16,7 @@ module Options
   DEFINITIONS = {
     diags_shrink: { flat: "diags_shrink", nested: %w[diags shrink], default: true, bool: true },
     tabs_shrink: { flat: "tabs_shrink", nested: %w[tabs shrink], default: true, bool: true },
-    score_shrink: { flat: "score_shrink", nested: %w[score shrink], default: true, bool: true },
+    scores_shrink: { flat: "scores_shrink", nested: %w[scores shrink], default: true, bool: true },
     shrink_text: { flat: "shrink_text", nested: nil, default: false, bool: true },
     rebalance_pages: { flat: "rebalance_pages", nested: nil, default: true, bool: true },
     show_specs: { flat: "show_specs", nested: nil, default: false, bool: true },
@@ -30,8 +30,16 @@ module Options
     diags_align: { flat: "diags_align", nested: %w[diags align], default: "justify", layout_key: :diags_align },
     lyrics_flux: { flat: "lyrics_flux", nested: nil, default: "side", layout_key: :lyrics_flux },
     intro_align: { flat: "intro_align", nested: nil, default: "left", layout_key: :intro_align },
-    score_title_size: { flat: "score_title_size", nested: %w[score title_size], default: 11.0, numeric: true, layout_key: :score_title_size },
-    score_title_style: { flat: "score_title_style", nested: %w[score title_style], default: nil, layout_key: :score_title_style },
+    images_title_size: { flat: "images_title_size", nested: %w[images title_size], default: nil, numeric: true },
+    scores_title_size: { flat: "scores_title_size", nested: %w[scores title_size], default: nil, numeric: true, layout_key: :scores_title_size },
+    tabs_title_size: { flat: "tabs_title_size", nested: %w[tabs title_size], default: nil, numeric: true },
+    images_title_style: { flat: "images_title_style", nested: %w[images title_style], default: nil },
+    scores_title_style: { flat: "scores_title_style", nested: %w[scores title_style], default: nil, layout_key: :scores_title_style },
+    tabs_title_style: { flat: "tabs_title_style", nested: %w[tabs title_style], default: nil },
+    images_title_bold: { flat: "images_title_bold", nested: %w[images title_bold], default: nil, bool: true },
+    scores_title_bold: { flat: "scores_title_bold", nested: %w[scores title_bold], default: nil, bool: true },
+    tabs_title_bold: { flat: "tabs_title_bold", nested: %w[tabs title_bold], default: nil, bool: true },
+    diag_list: { flat: "diag_list", nested: nil, default: "all" },
   }.freeze
 
   # `meta` : hash déjà fusionné par l'appelant pour un override RUNTIME (`--transpose`,
@@ -42,9 +50,13 @@ module Options
   def self.load!(meta:, infos_path:, carnet_folder:, override_path: nil, layout_preset: {})
     carnet_infos_path = carnet_folder && FileFinder.find(carnet_folder, :inf)
 
-    # Priorité décroissante : override runtime (meta) > fichier indexé > carnet > chanson
-    # > preset du layout nommé > défaut app (dans `coerce`).
-    sources = [source_of(override_path), source_of(carnet_infos_path), source_of(infos_path)]
+    # Priorité décroissante : override runtime (meta) > fichier indexé > chanson > carnet
+    # > preset du layout nommé > défaut app (dans `coerce`). Bug corrigé : la chanson
+    # doit TOUJOURS gagner sur le carnet (comme le fait déjà la fusion plate en amont,
+    # `PageBuilder.build`/`meta`) — l'ordre ici était inversé (carnet avant chanson),
+    # invisible tant qu'une clé est écrite EN PLAT (couverte par `meta`), mais actif pour
+    # toute clé imbriquée (jamais dans `meta`, uniquement résolue ici).
+    sources = [source_of(override_path), source_of(infos_path), source_of(carnet_infos_path)]
     @resolved = {}
     @explicit = {}
     DEFINITIONS.each do |key, defn|
