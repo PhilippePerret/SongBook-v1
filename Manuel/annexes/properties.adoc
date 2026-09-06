@@ -69,15 +69,22 @@ Exemple :
 |====
 
 // Les valeurs explicitées
+[[position-values, valeurs de position]]
 [cols="1,1,5", options="header"]
 |====
 | Propritété | Valeur | Description
-.6+| `position`   | `Front` | Placement sous la bande de titre, avant les paroles.
+.12+| `position`   | `Front` | Placement sous la bande de titre, avant les paroles.
                   | `End`   | Placement à la fin de la chanson, après les paroles.
                   | `Left`  | Placement à gauche des paroles.
+                  | `Ext`   | Placement à l'extérieur, donc à l'opposé de la reliure.
                   | `Right` | Placement à droite des paroles.
+                  | `Int`   | Placement à l'intérieur, donc toujours côté reliure.
                   | `Top`   | Placement à haut de chaque page.
-                  | `Bot`   | Placement en bas de chaque page
+                  | `Bot`   | Placement en bas de chaque page.
+                  2+| Valeurs composées/composites
+                  | `Top-Left` | En haut à gauche.
+                  | `Top-Right` | En haut à droite.
+                  2+| etc.
 |====
 
 
@@ -88,9 +95,8 @@ Exemple :
 Exemple :
 
 ----
+# Dans un fichier .gab
 {conplet-1; font-size:14pt; align:right; }
-Un beau jour ou peut-être une nuit
-Près d'un lac je m'étais endormie
 ----
 
 En tant qu'__objet__, les strophes héritent de toutes les <<position-properties>>.

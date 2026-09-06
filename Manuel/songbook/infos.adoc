@@ -14,32 +14,40 @@ Ce fichier définit aussi bien les __métadonnées__ de la chanson (titre, compo
 ==== Liste complète des infos (hors options) ====
 
 Vous trouverez ci-dessous une liste complète des informations possibles, avec leur desccription.
+
+[cols="1,1,5,2", options="header"]
+|====
+| Propritété | Sous-prop | Description | Valeur
+
+| `id`          2+| Identifiant du carnet (pour usage interne)      | "a-z", "_", "-", "0-9"
+| `title`       2+| Titre du carnet de chant (imprimé)              | String quelconque
+| `format`      2+| Format générale de la page                      | "A4", "A5" ou "25 x 12 cm"
+| `layout`      2+| Le preset à utiliser                            | défaut : `regular-B`
+| `subtitle`    2+| Le sous-titre (apparait sur la page de titre)   | String quelconque
+.3+| `editor`   2+| Partie résersée à l'éditeur du carnet           |
+                  | `name`  | Nom de la maison d'édition            | String quelconque
+                  | `logo`  | Chemin relatif (préférable) au logo   | images/logo.png
+.3+| `cover`    2+| Informations sur la couverture                  |
+                  | `image`   | Chemin relatif (préférable) à l'image               | images/cover.png
+                  | `binding` | Indique s'il faut faire la reliure caractéristique  | `true`\|`false`
+.7+|`front_matter` 2+| Informations sur les pages liminaires |
+                  |`half_title_page`| Faut-il graver la page de faux titre ?  | `true`\|`false`
+                  |`title_page` | Faut-il graver la page de titre ?           | `true`\|`false`
+                  | `forword`   | Faut-il graver un avant-propos | `false` ou path/to/avant-propos.txt
+                  | `preface`   | Faut-il graver une préface | `false` ou path/to/avant-preface.txt
+                  | `acknowledgments`| Faut-il graver des remerciements | `false` ou path/to/merci.txt
+                  | `table_of_contents` | Les tables des matières à afficher | Cf. ci-dessous
+|====
+
 ----
-title: Le titre du carnet (couverture)
-id: Une identifiant éventuel
-format: Largeur et hauteur du carnet (A5 en paysage par défaut)
-layout: le format par défaut d'affichage des chansons (regular-B par défaut)
-subtitle: Le sous-titre
-editor: 
-  name: Nom de l'éditeur
-  logo: path du logo
-
-cover:
-  image: path/to/image
-  binding: true|false # pour dessin marqué de la reliure
-
 front_matter:
-  half_title_page: false # faux-titre
-  title_page: true
   # Définition des tables des matières
-  table_of_contents:
+  :
     per_song: true
     per_performer: true
     per_composer: false
     per_author: false
-  forword: false # Avant propos (false, ou le fichier)
-  preface: preface.md # préface
-  acknowledgments: false # (false ou le fichier remerciements)
+
 copyright: @2026 Icare éditions Tous droits réservés
 
 credits:

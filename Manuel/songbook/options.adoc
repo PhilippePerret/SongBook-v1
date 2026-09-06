@@ -180,6 +180,10 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 |====
 | Prop. | Description | Valeurs
 
+| `diags_position`
+| Position des diagrammes dans la page.
+| Voir les <<position-values>>.
+
 |`diags_shrink` 
 | Pour autoriser (`true`) ou non (`false`) le rétrécissement des diagrammes. Note : peut se faire chanson par chanson.
 | [`true`], `false`
@@ -196,15 +200,36 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 | Dans les **infos de la chanson**, permet de lister les accords à gravé dans la chanson. Dépend de la valeur de la même option dans le carnet de chant.
 | `Cm7 D7M Ab§-4`
 
+| `diags_title_size`
+| Taille des labels pour les diagrammes (les "INTRO" ajoutés avec `label: INTRO`)
+| `12` (toujours en points)
+
+| `diags_title_bold`
+| Détermine si le label doit être en gras.
+| [`false`]\|`true`
+
 |====
 
+[cols="1,1,5,2", options="header"]
+|====
+| Propriété | Sous-prop. | Description | Valeurs
+
+.4+| `diags`  2+| Tout ce qui concerne les diagrammes, en définition imbriquée |
+                | `size`    | Largeur des diagrammes en points | `45pt`
+                | `shrink`  | Permission de redimensionner les diags | [`true`]\|`false`
+                | `list`    | La liste des seuls accords à mettre | `Am7-0 D7-9`
+|====
+
+
 // Les valeurs explicitées
+**Valeurs possibles**
+
 [cols="1,1,5", options="header"]
 |====
 | Propritété | Valeur | Description
 .2+| `shrink_diags`   | `true`  | On peut réduire les diags pour qu'ils tiennent dans la place donnée.
                       | `false` | On ne peut pas réduire la taille des diagrammes d'accord.
-.3+| `diag_list`      | `all`   | Tous les diagrammes des chansons seront gravés.
+.4+| `diag_list`      | `all`   | Tous les diagrammes des chansons seront gravés.
                       | `list`  | Seuls les diagrammes définis par l'option `diag_list` de la chanson seront gravés.
                       | `none`  | Aucun diagramme ne sera gravé dans le carnet.
                       | `false` | Idem
@@ -214,13 +239,26 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 [[tablatures-options]]
 ==== Options sur les tablatures ====
 
-[cols="2,6,3,1,1", options="header"]
+[cols="2,6,3", options="header"]
 |====
-| Prop. | Description 
-| Valeurs | Opt. | Pr.
+| Prop. | Description | Valeurs
 
-| `tabs_shrinks` | Permission de réduire les tablatures.
-| [`true`], `false` | --- | Song
+| `tabs_shrinks` 
+| Permission de réduire les tablatures.
+| [`true`], `false`
+
+| `tabs_title_size`
+| Taille des labels pour les tablatures (les "INTRO" ajoutés avec `label: INTRO`)
+| `12` (toujours en points)
+
+| `tabs_title_bold`
+| Détermine si le label doit être en gras.
+| [`false`]\|`true`
+
+| `tabs_position`
+| Position des tablatures dans la chanson.
+| Cf. les <<position-values>>.
+
 
 |====
 // Les valeurs explicitées
@@ -237,13 +275,25 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 [[scores-options]]
 ==== Options sur les partitions ====
 
-[cols="2,6,3,1,1", options="header"]
+[cols="2,6,3", options="header"]
 |====
-| Prop. | Description 
-| Valeurs | Opt. | Pr.
+| Prop. | Description | Valeurs
 
-| `shrink_score` | Permission de réduire les partitions.
-| [`true`], `false` | --- | Song
+| `scores_shrink` 
+| Permission de réduire les partitions.
+| [`true`], `false`
+
+| `scores_title_size`
+| Taille des labels pour les partitions (les "INTRO" ajoutés avec `label: INTRO`)
+| `12` (toujours en points)
+
+| `scores_title_bold`
+| Détermine si le label doit être en gras.
+| [`false`]\|`true`
+
+| `scores_position`
+| Position des partitions dans la chanson si elles n'est pas spécifiée dans le <<gabarit-file>>.
+| Cf. les <<position-values>>.
 
 |====
 
@@ -254,10 +304,10 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 
 __(donc qu'on ne trouve que dans un fichier `.infos` d'une chanson)__
 
-[cols="2,6,3,1,1", options="header"]
+[cols="2,6,3", options="header"]
 |====
-| Prop. | Description | Valeurs | Opt. | Pr.
-| `diags` | Options pour les diagrammes d'accords. | <<option-diags, voir>> | --- | Song
+| Prop. | Description | Valeurs
+| `diags` | Options pour les diagrammes d'accords. | <<option-diags, voir>>
 |====
 
 [[option-diags]]
@@ -380,19 +430,19 @@ __Note : ces options peuvent également être définies dans un fichier `.layout
 | Titre en bandeau ou pas.
 | `true` = titre mis en bandeau
 
-| `score_title_size`
+| `scores_title_size`
 | Taille de la police pour les titres de partitions et de tablatures (avec unité)
 | `12pt`
 
-| `score_title_style`
-| Style à appliquer aux titres des partitions et tablatures.
-| p.e. `bold italic`
+| `scores_title_bold`
+| Les titres seront mis en gras si la propriété est `true`.
+| [`false`] `true`
 
-| `tabla_measures_per_page`
+| `tabs_measures_per_page`
 | Définit explicitement le nombre de mesures de tablature dans la page
 | `6` (priorité aux carnets)
 
-| `tabla_system_spacing`
+| `tabs_system_spacing`
 | Définit l'espace entre deux systèmes de tablature.
 | `12pt`
 
@@ -402,15 +452,11 @@ __Note : ces options peuvent également être définies dans un fichier `.layout
 
 | `diags_position` 
 | Position des diagrammes d'accords, par défaut, dans la page
-| `Top`, `Bot`, `Int`, `Ext` ou combinaison : `Int+Ext`, `Bot+Int` etc.
+| Cf. les <<position-values>>.
 
 | `diags_size`
 | Dimensions des diags lorsque cette dimension doit être fixe et non touchée.
 | `auto`, `Nptx` (largeur de N points), `xNpt` (hauteur de N points), `NptxMpt` (largeur de N points et hauteur de M points) 
-
-| `music_position`
-| Position des partitions comme des tablatures, de façon générale.
-| `beginning` ou `front` (au début, avant les premières paroles), `end` (à la fin, après les premières paroles), `wherever` (pour "flexible", se placera là où il y a de la place libre).
 
 | `intro_align`
 | Alignement d'un bloc désigné par "intro"

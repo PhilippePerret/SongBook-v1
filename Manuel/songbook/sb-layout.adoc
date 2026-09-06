@@ -28,9 +28,8 @@ Caractéristiques
 | Propriété         | Valeur  | Description
 | `title_band`      | true    | Titre dans le bandeau
 | `lyrics_flux`     | `size`  | couplets/refrain côte à côte
-| `diags_position`  | `Int`   | Diagrammes proches des reliures
-| `diags_size`      | `auto`  | Taille automatique (?possible)
-| `music_position`  | `end`   | La musique sera mise à la fin.
+| `diags_position`  | `Int`   | Diagrammes côté reliures
+| `diags_size`      | `auto`  | Taille automatique
 | `intro_align`     | `Left`  | Les parties « intro » sont mises à gauche.
 |====
 

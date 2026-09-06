@@ -11,6 +11,14 @@ Pour demander les dimensions à __**SongBook**--.
 songbook cover dims
 ----
 
+Pour demander à __**SongBook**-- un modèle IDML qu'il suffira d'ouvrir dans un logiciel comme Affinity Publisher ou InDesign.
+
+----
+songbook cover modele-idml
+----
+
+Cf. <<cover-idml-file, ci-dessous>> pour de plus amples précisions.
+
 Pour demander à __**SongBook**-- un modèle PDF qu'il suffira d'ouvrir dans un logiciel comme Affinity Publisher ou autres InDesign.
 
 ----
