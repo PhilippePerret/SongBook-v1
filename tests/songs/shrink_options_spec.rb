@@ -4,13 +4,15 @@ require_relative "../spec_helper"
 require "page_builder"
 require "tmpdir"
 
-# `shrink_diags`/`shrink_tabla`/`shrink_score` (`.infos` chanson prioritaire sur le
-# carnet) — voir `PageBuilder.resolve_shrink_option`.
-RSpec.describe "options shrink_diags/shrink_tabla/shrink_score" do
+# `diags_shrink`/`tabs_shrink`/`score_shrink` (`.infos` chanson prioritaire sur le
+# carnet) — voir `Options`.
+RSpec.describe "options diags_shrink/tabs_shrink/score_shrink" do
   around do |example|
     Dir.mktmpdir do |dir|
       @carnet_folder = File.join(dir, "carnet")
+      @song_folder = File.join(dir, "song")
       FileUtils.mkdir_p(@carnet_folder)
+      FileUtils.mkdir_p(@song_folder)
       example.run
     end
   end
@@ -19,53 +21,60 @@ RSpec.describe "options shrink_diags/shrink_tabla/shrink_score" do
     File.write(File.join(@carnet_folder, "c.infos"), content)
   end
 
+  def resolve(key, song_infos: "title: Chanson\n")
+    File.write(File.join(@song_folder, "c.infos"), song_infos)
+    Options.load!(meta: {}, infos_path: File.join(@song_folder, "c.infos"), carnet_folder: @carnet_folder)
+    Options.get(key)
+  end
+
   it "true par défaut, absente de la chanson et du carnet" do
     write_carnet_infos("title: Carnet\n")
-    expect(PageBuilder.resolve_shrink_option({}, @carnet_folder, "shrink_diags")).to eq(true)
+    expect(resolve(:diags_shrink)).to eq(true)
   end
 
   it "true par défaut, sans carnet du tout (chanson seule)" do
-    expect(PageBuilder.resolve_shrink_option({}, nil, "shrink_diags")).to eq(true)
+    File.write(File.join(@song_folder, "c.infos"), "title: Chanson\n")
+    Options.load!(meta: {}, infos_path: File.join(@song_folder, "c.infos"), carnet_folder: nil)
+    expect(Options.get(:diags_shrink)).to eq(true)
   end
 
   it "valeur du carnet reprise si absente de la chanson" do
-    write_carnet_infos("title: Carnet\nshrink_diags: false\n")
-    expect(PageBuilder.resolve_shrink_option({}, @carnet_folder, "shrink_diags")).to eq(false)
+    write_carnet_infos("title: Carnet\ndiags_shrink: false\n")
+    expect(resolve(:diags_shrink)).to eq(false)
   end
 
   it "la chanson est prioritaire sur le carnet" do
-    write_carnet_infos("title: Carnet\nshrink_diags: false\n")
-    expect(PageBuilder.resolve_shrink_option({ "shrink_diags" => "true" }, @carnet_folder, "shrink_diags")).to eq(true)
+    write_carnet_infos("title: Carnet\ndiags_shrink: false\n")
+    expect(resolve(:diags_shrink, song_infos: "title: Chanson\ndiags_shrink: true\n")).to eq(true)
   end
 
   it "la chanson peut aussi désactiver malgré un carnet à true" do
-    write_carnet_infos("title: Carnet\nshrink_diags: true\n")
-    expect(PageBuilder.resolve_shrink_option({ "shrink_diags" => "false" }, @carnet_folder, "shrink_diags")).to eq(false)
+    write_carnet_infos("title: Carnet\ndiags_shrink: true\n")
+    expect(resolve(:diags_shrink, song_infos: "title: Chanson\ndiags_shrink: false\n")).to eq(false)
   end
 
-  it "chaque propriété (shrink_diags/shrink_tabla/shrink_score) se résout indépendamment" do
-    write_carnet_infos("title: Carnet\nshrink_tabla: false\n")
-    meta = { "shrink_score" => "false" }
-    expect(PageBuilder.resolve_shrink_option(meta, @carnet_folder, "shrink_diags")).to eq(true)
-    expect(PageBuilder.resolve_shrink_option(meta, @carnet_folder, "shrink_tabla")).to eq(false)
-    expect(PageBuilder.resolve_shrink_option(meta, @carnet_folder, "shrink_score")).to eq(false)
+  it "chaque propriété (diags_shrink/tabs_shrink/score_shrink) se résout indépendamment" do
+    write_carnet_infos("title: Carnet\ntabs_shrink: false\n")
+    song_infos = "title: Chanson\nscore_shrink: false\n"
+    expect(resolve(:diags_shrink, song_infos: song_infos)).to eq(true)
+    expect(resolve(:tabs_shrink, song_infos: song_infos)).to eq(false)
+    expect(resolve(:score_shrink, song_infos: song_infos)).to eq(false)
   end
 
   describe "shrink_text (défaut FALSE, inverse des autres)" do
     it "false par défaut, absent de la chanson et du carnet" do
       write_carnet_infos("title: Carnet\n")
-      expect(PageBuilder.resolve_shrink_option({}, @carnet_folder, "shrink_text", default: false)).to eq(false)
+      expect(resolve(:shrink_text)).to eq(false)
     end
 
     it "le carnet peut l'activer explicitement" do
       write_carnet_infos("title: Carnet\nshrink_text: true\n")
-      expect(PageBuilder.resolve_shrink_option({}, @carnet_folder, "shrink_text", default: false)).to eq(true)
+      expect(resolve(:shrink_text)).to eq(true)
     end
 
     it "la chanson reste prioritaire sur le carnet, comme les autres" do
       write_carnet_infos("title: Carnet\nshrink_text: true\n")
-      meta = { "shrink_text" => "false" }
-      expect(PageBuilder.resolve_shrink_option(meta, @carnet_folder, "shrink_text", default: false)).to eq(false)
+      expect(resolve(:shrink_text, song_infos: "title: Chanson\nshrink_text: false\n")).to eq(false)
     end
   end
 end

@@ -25,26 +25,28 @@ RSpec.describe "positions de diagrammes (top/front/end), situation critique (exc
     end
   end
 
-  after { Options.set!(:shrink_diags, true) }
+  after { Options.set!(:diags_shrink, true) }
 
-  def write_song(chords)
+  def write_song(chords, diags_position: nil, diags_shrink: nil)
     line = chords.map { |c| "/#{c}:#{c} " }.join
     File.write(File.join(@song_dir, "c.lyr"), "{couplet-1}\n#{line.strip}\n")
-    File.write(File.join(@song_dir, "c.infos"), "title: Test Diags\n")
+    infos = "title: Test Diags\n"
+    infos += "diags_position: #{diags_position}\n" if diags_position
+    infos += "diags_shrink: #{diags_shrink}\n" unless diags_shrink.nil?
+    File.write(File.join(@song_dir, "c.infos"), infos)
     chords.each { |c| File.write(File.join(@song_dir, "#{c}-0.svg"), %(<svg viewBox="0 0 60 90"></svg>)) }
   end
 
-  def build(position)
+  def build
     out_path = File.join(@song_dir, "out.pdf")
-    PageBuilder.build(@song_dir, out_path, page_size_in: [3.5, 5], page_count: 24, first_page_no: 1,
-      layout: { diags_position: position })
+    PageBuilder.build(@song_dir, out_path, page_size_in: [3.5, 5], page_count: 24, first_page_no: 1)
     out_path
   end
 
   %w[top front end].each do |position|
     it "position #{position} : construit sans erreur, aucun diag perdu, jamais sous le plancher" do
-      write_song(CHORDS)
-      out_path = build(position)
+      write_song(CHORDS, diags_position: position)
+      out_path = build
 
       expect(File.exist?(out_path)).to be true
       pages = CombinePDF.load(out_path).pages
@@ -58,10 +60,9 @@ RSpec.describe "positions de diagrammes (top/front/end), situation critique (exc
     end
   end
 
-  it "position top, shrink_diags: false => reste à DIAG_W (jamais rétréci), excédent quand même traité" do
-    Options.set!(:shrink_diags, false)
-    write_song(CHORDS)
-    out_path = build("top")
+  it "position top, diags_shrink: false => reste à DIAG_W (jamais rétréci), excédent quand même traité" do
+    write_song(CHORDS, diags_position: "top", diags_shrink: false)
+    out_path = build
 
     expect(File.exist?(out_path)).to be true
     log = File.read(Layout.building_log_path)

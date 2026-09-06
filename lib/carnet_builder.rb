@@ -34,26 +34,9 @@ module CarnetBuilder
   # sur la parité recto/verso de la 1re page de la chanson .
   # `LAYOUTS_DIR`/`DEFAULT_LAYOUT`/`DEFAULT_LAYOUT_NAME`/`LAYOUTS` : définis dans
   # `PageBuilder` (seule source, `PageBuilder` défauts de rendu ET cascade carnet en
-  # dépendent tous les deux — jamais deux copies).
-
-  # Layout customisé (chanson ou carnet) : `.lay`/`.layout` (voir `FileFinder`), même
-  # parseur maison que le `.infos` du carnet (clé/valeur, PAS du YAML). Ne définit que les
-  # écarts au layout de base — fusionné PAR-DESSUS lui, jamais un remplacement complet.
-  def self.find_layout_file(dir)
-    FileFinder.find(dir, :lay)
-  end
-
-  def self.load_layout_override(path)
-    parse_nested_infos(path).each_with_object({}) { |(k, v), h| h[k.to_sym] = v.is_a?(String) ? v.to_sym : v }
-  end
-
-  # Cascade complète  : `_default.yaml` -> layout nommé du `.infos`/`.inf`
-  # du carnet (`layout:`, SI DÉFINI) -> `.lay`/`.layout` du carnet (SI DÉFINI) -> `.lay`/`.layout` de
-  # la chanson (SI DÉFINI). Chaque étage écrase seulement les clés qu'il définit.
-  def self.resolve_song_layout(song_folder, carnet_layout)
-    path = find_layout_file(song_folder)
-    path ? carnet_layout.merge(load_layout_override(path)) : carnet_layout
-  end
+  # dépendent tous les deux — jamais deux copies). Un layout nommé n'est qu'un PRESET de
+  # valeurs par défaut pour ces clés (`Options`, `layout_key:`) — plus de fichier
+  # `.lay`/`.layout` à part, ces réglages sont des options `.infos` normales.
 
   TOC_LABELS = { song: "par chanson", performer: "par interprète", composer: "par compositeur", author: "par parolier" }.freeze
 
@@ -462,12 +445,12 @@ module CarnetBuilder
     Layout.reset_conflicts!
 
     tmp_out = File.join(export_dir, ".tmp-#{pdf_slug}.pdf")
-    PageBuilder.build(song_folder, tmp_out, page_size_in: page_size_in, page_count: 24, first_page_no: 1, layout: layout, infos_overrides: infos_overrides)
+    PageBuilder.build(song_folder, tmp_out, page_size_in: page_size_in, page_count: 24, first_page_no: 1, layout_preset: layout, infos_overrides: infos_overrides)
     page_count = [CombinePDF.load(tmp_out).pages.size, 24].max
     File.delete(tmp_out)
 
     out_path = File.join(export_dir, "#{pdf_slug}.pdf")
-    PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout: layout, infos_overrides: infos_overrides)
+    PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout_preset: layout, infos_overrides: infos_overrides)
     # Aperçu (macOS) affiche TOUJOURS la page 1 d'un PDF seule, jamais en vis-à-vis avec
     # la 2 — page blanche ajoutée devant dès que la chanson a plus d'une page.
     if page_count > 1
@@ -564,9 +547,7 @@ module CarnetBuilder
     page_size_in = conf.fetch("format") { AppConfig.get("format") }.split(/\s*x\s*/i).map { |v| v =~ /[a-z]/i ? AppConfig.length_pt(v) / AppConfig::IN_TO_PT : v.to_f }
     page_size_pt = page_size_in.map { |v| v * AppConfig::IN_TO_PT }
     layout_name = conf["layout"] || PageBuilder::DEFAULT_LAYOUT_NAME
-    base_layout = PageBuilder::LAYOUTS.fetch(layout_name) { raise "layout inconnu : #{layout_name} (voir PageBuilder::LAYOUTS)" }
-    carnet_layout_path = find_layout_file(carnet_folder)
-    carnet_layout = carnet_layout_path ? base_layout.merge(load_layout_override(carnet_layout_path)) : base_layout
+    layout_preset = PageBuilder::LAYOUTS.fetch(layout_name) { raise "layout inconnu : #{layout_name} (voir PageBuilder::LAYOUTS)" }
     # Sans AUCUNE option posée dans le `.infos` du carnet, `_default.yaml` doit à lui
     # seul suffire à produire un carnet valable (page de titre, garde, copyright,
     # bandeau, TOC, crédits) — fusion superficielle, la clé du carnet gagne SI présente.
@@ -638,7 +619,7 @@ module CarnetBuilder
     real_songs.each do |name, entry|
       folder = File.join(chansons_dir, entry[:folder])
       tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
-      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: 1, layout: resolve_song_layout(folder, carnet_layout), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: 1, layout_preset: layout_preset, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
       real_page_counts[name] = CombinePDF.load(tmp_out).pages.size
       File.delete(tmp_out)
     end
@@ -705,12 +686,12 @@ module CarnetBuilder
         song_existing_versions = Dir.glob(File.join(songs_dir, "#{song_stem}-v*.pdf")).filter_map { |f| f[/-v(\d+)\.pdf\z/, 1]&.to_i }
         song_version = (song_existing_versions.max || 0) + 1
         song_out = File.join(songs_dir, "#{song_stem}-v#{song_version}.pdf")
-        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), debug_marks: debug_marks, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout_preset: layout_preset, debug_marks: debug_marks, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
         return song_out
       end
 
       tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
-      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout_preset: layout_preset, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
       n = real_page_counts[name]
       combined_songs << CombinePDF.load(tmp_out)
       File.delete(tmp_out)

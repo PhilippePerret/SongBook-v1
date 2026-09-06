@@ -59,46 +59,6 @@ module PageBuilder
   # tolérées  : "tu les prends comme possibles dans le code" — pas de
   # réécriture de fichier imposée) : n'écrasent JAMAIS la clé canonique si elle est déjà
   # présente.
-  # `shrink_diags`/`shrink_tabla`/`shrink_score` : clé de PREMIER NIVEAU (pas de forme
-  # imbriquée `options:`, volontairement simplifié), chanson prioritaire
-  # sur le carnet. `true` par défaut si absente des deux `.infos`.
-  def self.resolve_shrink_option(meta, carnet_folder, key, default: true)
-    return meta[key] != "false" if meta.key?(key)
-
-    if carnet_folder
-      carnet_infos_path = FileFinder.find(carnet_folder, :inf)
-      if carnet_infos_path
-        carnet_meta = parse_infos(carnet_infos_path)
-        return carnet_meta[key] != "false" if carnet_meta.key?(key)
-      end
-    end
-
-    default
-  end
-
-  # N'importe quelle clé `.infos` texte (pas juste les `shrink_*` booléens) — chanson
-  # prioritaire sur le carnet, `default` si absente des deux.
-  def self.resolve_infos_option(meta, carnet_folder, key, default: nil)
-    return meta[key] if meta.key?(key)
-
-    if carnet_folder
-      carnet_infos_path = FileFinder.find(carnet_folder, :inf)
-      if carnet_infos_path
-        carnet_meta = parse_infos(carnet_infos_path)
-        return carnet_meta[key] if carnet_meta.key?(key)
-      end
-    end
-
-    default
-  end
-
-  # `tabla_preset`  : nom d'un preset `Tablator::PRESETS`
-  # ("regular-tablatures"/"mini-tablatures"...) — `nil` si absent des deux (l'appelant
-  # retombe alors sur le défaut, "regular-tablatures").
-  def self.resolve_tabla_preset(meta, carnet_folder)
-    resolve_infos_option(meta, carnet_folder, "tabla_preset")
-  end
-
 
   def self.parse_infos(path)
     meta = {}
@@ -445,8 +405,8 @@ module PageBuilder
   # 2 systèmes peuvent tenir sur une page, le suivant passer sur la page d'après ;
   # `build_song_elements` pousse donc un `PageElement` par système). Cache : la
   # fraîcheur du 1er fichier (`.s1.svg`) sert de sentinelle pour tout le lot (écrits
-  # ensemble, dans le même appel). `measures_override` : `tabla_measures_per_page`
-  # (layout), prime sur le calcul automatique. Écrits dans `<chanson>/.export/`
+  # ensemble, dans le même appel). `measures_override` : option `tabs_measures_per_page`,
+  # prime sur le calcul automatique. Écrits dans `<chanson>/.export/`
   #  : jamais les fichiers générés dans le dossier de l'user,
   # `scores/` reste UNIQUEMENT ses `.tab`).
   EXPORT_DIRNAME = ".export"
@@ -609,18 +569,18 @@ module PageBuilder
     name.split("-").first
   end
 
-  # `intro_align` (layout du carnet, voir `CarnetBuilder::LAYOUTS`) : alignement par
-  # défaut du bloc "intro" — un `block_align` déjà posé explicitement (`.gab`/directive)
-  # garde TOUJOURS la priorité, jamais écrasé. Renvoie un bloc neuf (jamais de mutation en
-  # place : `resolve_block` peut partager le même Hash `directives` entre plusieurs blocs
-  # concaténés par "+").
-  def self.with_intro_align(block, name, layout)
-    return block unless layout && layout[:intro_align]
+  # `intro_align` (option, voir `Options`) : alignement par défaut du bloc "intro" — un
+  # `block_align` déjà posé explicitement (`.gab`/directive) garde TOUJOURS la priorité,
+  # jamais écrasé. Renvoie un bloc neuf (jamais de mutation en place : `resolve_block`
+  # peut partager le même Hash `directives` entre plusieurs blocs concaténés par "+").
+  def self.with_intro_align(block, name)
+    return block unless Options.explicit?(:intro_align)
     return block if block.directives.key?(:block_align)
     return block unless block_name_kind(name) == "intro"
 
-    Layout.log_build("bloc \"#{name}\" aligné #{layout[:intro_align]} (intro_align du layout)")
-    Block.new(lines: block.lines, directives: block.directives.merge(block_align: layout[:intro_align].to_s), paired_with_previous: block.paired_with_previous)
+    align = Options.get(:intro_align)
+    Layout.log_build("bloc \"#{name}\" aligné #{align} (intro_align)")
+    Block.new(lines: block.lines, directives: block.directives.merge(block_align: align.to_s), paired_with_previous: block.paired_with_previous)
   end
 
   # Construit `elements` (rows + tablas, dans l'ordre de `items`) pour UNE position
@@ -640,7 +600,7 @@ module PageBuilder
   def self.notation_asset_paths(item, folder, text_w)
     name = item.data[item.type]
     if item.type == :tabla
-      paths = ensure_tabla_svg(folder, name, text_w, measures_override: Layout.tabla_measures_per_page)
+      paths = ensure_tabla_svg(folder, name, text_w, measures_override: Options.get(:tabs_measures_per_page))
       paths.empty? ? nil : paths
     else
       path = find_resource_asset(folder, name, item.type)
@@ -649,7 +609,7 @@ module PageBuilder
       if Layout.raster_image?(path)
         path
       else
-        paths = ensure_tabla_svg(folder, name, text_w, measures_override: Layout.tabla_measures_per_page)
+        paths = ensure_tabla_svg(folder, name, text_w, measures_override: Options.get(:tabs_measures_per_page))
         paths.empty? ? nil : paths
       end
     end
@@ -827,7 +787,7 @@ module PageBuilder
   # et Manuel/song/layout.adoc) : défauts du CARNET pour cette chanson — un `.gab` explicite
   # garde priorité (une chanson peut toujours s'écarter du layout général, Manuel : "on
   # peut le faire chanson par chanson ou de façon générale... ou les deux").
-  def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout: nil, debug_marks: false, carnet_folder: nil, infos_overrides: {}, override_infos_path: nil,
+  def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout_preset: {}, debug_marks: false, carnet_folder: nil, infos_overrides: {}, override_infos_path: nil,
       paper: PrinterProfile::DEFAULT_PAPER, bleed: PrinterProfile::DEFAULT_BLEED, facing_pages: PrinterProfile::DEFAULT_FACING_PAGES,
       outside_margin: nil, gutter_margin: nil, top_margin: nil, bot_margin: nil, left_margin: nil, right_margin: nil)
     DiagsSync.sync!(folder)
@@ -845,40 +805,31 @@ module PageBuilder
     carnet_infos_path = carnet_folder && FileFinder.find(carnet_folder, :inf)
     carnet_meta = carnet_infos_path ? parse_infos(carnet_infos_path) : {}
     meta = carnet_meta.merge(parse_infos(infos_path)).merge(infos_overrides)
-    # Fixé ICI, AVANT tout ce qui peut lever un conflit (`Options.load!`,
-    # `resolve_tabla_preset`) — sinon ce conflit reste étiqueté avec l'identité de la
+    # Fixé ICI, AVANT tout ce qui peut lever un conflit (`Options.load!`) — sinon ce
+    # conflit reste étiqueté avec l'identité de la
     # chanson PRÉCÉDENTE (`Layout.current_song`/`current_page` pas encore mis à jour),
     # bug constaté sur `diags_size` (Angie créditée d'un réglage venant de Blackbird).
     Layout.current_song = meta["title"] || File.basename(folder)
     Layout.current_page = first_page_no
+    Options.load!(meta: meta, infos_path: infos_path, carnet_folder: carnet_folder, override_path: override_infos_path, layout_preset: layout_preset)
     # `Tablator.active_preset` est un état GLOBAL du module ,
     # config "regular-tablatures"/"mini-tablatures", `tools/tablator/presets.rb`) —
     # TOUJOURS fixé ici, explicitement, jamais laissé hériter d'une chanson précédente
     # construite dans le MÊME process (même bug de principe que `Layout.building_log_path`,
-    # 2026-08-25 : sans ce reset, une chanson sans `tabla_preset:` reprendrait par erreur
+    # 2026-08-25 : sans ce reset, une chanson sans `tabs_preset:` reprendrait par erreur
     # le preset de la précédente).
-    Tablator.active_preset = resolve_tabla_preset(meta, carnet_folder) || "regular-tablatures"
-    Options.load!(meta: meta, infos_path: infos_path, carnet_folder: carnet_folder, override_path: override_infos_path)
-    # `score_title_size`/`score_title_style` : clés de LAYOUT (`layout:`/`.lay`), pas
-    # `.infos`  — comme `intro_align`, "pas encore stabilisé".
-    if layout && layout[:score_title_size]
-      Layout.score_title_size = layout[:score_title_size].to_s[/[\d.]+/].to_f
-    end
-    Layout.score_title_style = layout[:score_title_style] if layout && layout[:score_title_style]
-    if layout && layout[:tabla_measures_per_page]
-      Layout.tabla_measures_per_page = layout[:tabla_measures_per_page].to_s[/\d+/].to_i
-    end
+    Tablator.active_preset = Options.get(:tabs_preset)
     lyr_blocks, lyr_order = parse_lyr(lyr_path)
     if meta["transpose"]
       decalage_lettres, decalage_demitons = Transpose.parser_entete(meta["transpose"])
       ChordDiagrams.transpose_blocks!(lyr_blocks, decalage_lettres, decalage_demitons)
       Layout.log_build("transposition \"#{meta["transpose"]}\" appliquée (#{decalage_lettres} lettre(s)/#{decalage_demitons} demi-ton(s))")
     end
-    title_band_default = layout&.key?(:title_band) ? layout[:title_band] : DEFAULT_TITLE_BAND
-    diag_position_default = layout&.fetch(:diags_position, nil) || DEFAULT_DIAG_POSITION
-    diag_align_default = layout&.fetch(:diags_align, nil) || DEFAULT_DIAG_ALIGN
-    lyrics_flux = layout&.fetch(:lyrics_flux, nil) || :side
-    Layout.log_build("layout résolu : title_band=#{title_band_default} diag_position=#{diag_position_default} lyrics_flux=#{lyrics_flux} (source=#{layout ? "carnet" : "défauts app"})")
+    title_band_default = Options.get(:title_band)
+    diag_position_default = Options.get(:diags_position)
+    diag_align_default = Options.get(:diags_align)
+    lyrics_flux = Options.get(:lyrics_flux).to_sym
+    Layout.log_build("layout résolu : title_band=#{title_band_default} diag_position=#{diag_position_default} lyrics_flux=#{lyrics_flux}")
     if gab_path
       Layout.log_build(".gab trouvé (#{gab_path}) : mise en page explicite, layout du carnet ignoré pour l'agencement")
       items = parse_gab(gab_path)
@@ -963,7 +914,7 @@ module PageBuilder
       text_descent = Layout.font_metric(pdf, Options.get(:font_size)) { pdf.font.descender }
 
       bare_kind_counters = Hash.new(0)
-      rows = items.select { |i| i.type == :row }.map { |i| i.data[:names].map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: i.data[:directives]), name, layout) } }
+      rows = items.select { |i| i.type == :row }.map { |i| i.data[:names].map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: i.data[:directives]), name) } }
       # `:side_by_side` (issue "Le Sud", `//` mêlant une marque tab/score/image et des
       # paroles) : chaque colonne `:lyrics` résolue en `Block` directement dans la
       # colonne (`c[:block]`) — pas besoin d'indexation parallèle comme `rows`, chaque
@@ -973,7 +924,7 @@ module PageBuilder
           next unless c[:kind] == :lyrics
 
           name = c[:names].first
-          c[:block] = name ? with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: c[:directives]), name, layout) : nil
+          c[:block] = name ? with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: c[:directives]), name) : nil
         end
       end
       col1_w, col2_w, h_gutter = Layout.row_column_widths(pdf, rows, text_w)

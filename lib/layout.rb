@@ -46,26 +46,26 @@ module Layout
   # Prawn n'expose pas Tw (word spacing PDF natif) publiquement, donc chaque mot est
   # dessiné séparément avec un espace ajusté (voir `draw_words_with_spacing`).
   @word_spacing = 0.0
-  # Taille du titre tab/score/image (`title:`/nom de déclaration) — configurable
-  # (layout, clé `score_title_size`, `assets/layouts/_default.yaml`). Défaut = `TEXT_SIZE`
-  #  : "ça ne devrait pas être plus gros qu'un INTRO dans le texte —
-  # ça devrait être pareil, en fait"), jamais en gras.
-  @score_title_size = 11
-  # Style du titre tab/score/image — configurable (layout, clé `score_title_style`).
-  # `nil` = normal (défaut), sinon `:bold`/`:italic`/`:bold_italic`.
-  @score_title_style = nil
-  # Nombre de mesures par système de tablature — `nil` = calculé automatiquement
-  # (`Tablator.render_tab_svg`), surclassable (layout, clé `tabla_measures_per_page`)
-  @tabla_measures_per_page = nil
   @carnet_font_baseline = { "font-family" => "HelveticaNeue", "font-size" => "11" }
   # `{vertical: :top|:bot, horizontal: :left|:center|:right|nil}` — `horizontal` ignoré
   # si `facing_pages: true` (côté automatique, voir `Layout.draw_page_number`).
   @folio_position = { vertical: :bot, horizontal: nil }
   class << self
     attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing,
-      :sensitivity, :log_conflict_count, :score_title_size,
-      :score_title_style, :tabla_measures_per_page, :carnet_font_baseline,
+      :sensitivity, :log_conflict_count, :carnet_font_baseline,
       :folio_position
+  end
+
+  # Taille/style du titre tab/score/image (`title:`/nom de déclaration) — options
+  # `score_title_size`/`score_title_style` (`Options`). Défaut = `TEXT_SIZE` (
+  # : "ça ne devrait pas être plus gros qu'un INTRO dans le texte — ça devrait être
+  # pareil, en fait"), jamais en gras par défaut.
+  def self.score_title_size
+    Options.get(:score_title_size)
+  end
+
+  def self.score_title_style
+    Options.get(:score_title_style)
   end
 
   # Parse `folio_position:` du `.infos` ("Top"/"Bot" ou "Top-Left".."Bot-Right")
@@ -2422,11 +2422,11 @@ module Layout
   end
 
   def self.tabla_shrinkable?(path)
-    raster_image?(path) && Options.get(:shrink_tabla)
+    raster_image?(path) && Options.get(:tabs_shrink)
   end
 
   def self.score_shrinkable?(path)
-    raster_image?(path) && Options.get(:shrink_score)
+    raster_image?(path) && Options.get(:score_shrink)
   end
 
   def self.diag_column_width(paths, first_avail_h, page_height)
@@ -2458,16 +2458,16 @@ module Layout
 
   # Boucle de rétrécissement commune colonne/rangée , "même mécanisme
   # partout") : essaie `DIAG_W` nominal, sinon rétrécit par pas de 0.1pt jusqu'à ce que
-  # `capacity_at.call(w) >= target`, jamais sous `floor_w`. `shrink_diags: false` :
+  # `capacity_at.call(w) >= target`, jamais sous `floor_w`. `diags_shrink: false` :
   # jamais sous DIAG_W, même en SVG (un diag n'a pas de "qualité" à perdre en changeant
-  # sa largeur de tracé — contrairement à `shrink_tabla`/`shrink_score`, voir
+  # sa largeur de tracé — contrairement à `tabs_shrink`/`score_shrink`, voir
   # `raster_image?`). Ce qui ne tient pas suit le mécanisme de débordement en place
   # (page suivante pour la colonne, page dédiée pour la rangée/l'excédent) — jamais un
   # dépassement de marge pour compenser.
   def self.shrink_width_to_target(target, floor_w, capacity_at)
     nominal = Options.get(:diags_size)
     return nominal if capacity_at.call(nominal) >= target
-    return nominal unless Options.get(:shrink_diags)
+    return nominal unless Options.get(:diags_shrink)
 
     w = nominal
     while w > floor_w

@@ -105,12 +105,15 @@ module ChordDiagram
   def self.name_label(name, bass)
     root, quality = split_name(name)
     # Le glyphe ♭ garde, même resserré sur la lettre, une avance naturelle plus large
-    # que le ♯ dans cette police — écarts calés visuellement par 
-    # (comparatif lettré, choix "G") : ♭ tiré davantage vers la lettre (-14 contre -6
-    # pour ♯), et ce qui suit (qualité) tiré vers le ♭ à son tour (-7), sinon ça flotte.
+    # que le ♯ dans cette police — resserrement mesuré au rendu réel (Prawn +
+    # HelveticaNeue-Bold, pas le rendu d'un simple viewer SVG) sur toutes les
+    # fondamentales (A/B/D/E/G) : -14 (valeur précédente, calée sur un seul cas non
+    # vérifié au rendu final) fait chevaucher lettre/♭/qualité sur "B" — -4 dégage
+    # proprement le ♭ sans le détacher, la qualité suit alors avec le même leading_dx
+    # que pour ♯ (2), sans resserrement supplémentaire.
     bemol = root.end_with?("♭")
-    main = name_tspans(root, size: 56, accidental_dx: bemol ? -14 : -6)
-    main += name_tspans(quality, size: 48, accidental_dx: 2, leading_dx: bemol ? -7 : 2) unless quality.empty?
+    main = name_tspans(root, size: 56, accidental_dx: bemol ? -4 : -6)
+    main += name_tspans(quality, size: 48, accidental_dx: 2, leading_dx: 2) unless quality.empty?
     if bass
       %(<text x="150" y="-60" dy="0.35em" text-anchor="middle">#{main}<tspan font-size="48" font-weight="bold" dx="6">/</tspan>#{name_tspans(bass, size: 48, accidental_dx: 2, leading_dx: 4)}</text>\n)
     else
