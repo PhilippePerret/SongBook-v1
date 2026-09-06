@@ -1,15 +1,19 @@
 [[songbook-infos]]
 === Fichier infos du carnet ===
 
-Toutes les informations concernant le carnet se rangent dans le fichier `.infos`, par exemple `carnet-gabriel.infos` à la racine du carent de chant. Par exemple :
+Toutes les informations concernant le carnet se rangent dans le fichier `.infos` à la racine du carnet de chant ou de la chanson, par exemple :
 
 ----
 Carnet-de-chant-Peter-Gabriel
   |— carnet.infos
 ----
 
-Ce fichier définit les éléments suivant :
+Ce fichier définit aussi bien les __métadonnées__ de la chanson (titre, compositeur ou compositrice, année, etc.) que les options qui font régirent la construction du fichier PDF. Les seules informations impératives sont l'identifiant (`id`) et le titre du carnet (`title`).
 
+[[infos-full-list]]
+==== Liste complète des infos (hors options) ====
+
+Vous trouverez ci-dessous une liste complète des informations possibles, avec leur desccription.
 ----
 title: Le titre du carnet (couverture)
 id: Une identifiant éventuel

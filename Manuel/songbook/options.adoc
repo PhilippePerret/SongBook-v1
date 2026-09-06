@@ -157,7 +157,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 | Prop. | Description 
 | Valeurs | Opt. | Pr.
 
-| `shrink_lyrics` | Permission de réduire les paroles (font-size).
+| `lyrics_shrink` | Permission de réduire les paroles (font-size).
 | `true`, [`false`] | --- | Song
 
 |====
@@ -166,7 +166,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 [cols="1,1,5", options="header"]
 |====
 | Propritété | Valeur | Description
-.2+| `shrink_lyrics` | `true`  | On peut réduire les paroles pour qu'elles tiennent dans la place donnée.
+.2+| `lyrics_shrink`  | `true`  | On peut réduire les paroles pour qu'elles tiennent dans la place donnée.
                       | `false` | On ne peut pas réduire la taille des paroles.
 |====
 
@@ -180,7 +180,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 |====
 | Prop. | Description | Valeurs
 
-|`shrink_diags` 
+|`diags_shrink` 
 | Pour autoriser (`true`) ou non (`false`) le rétrécissement des diagrammes. Note : peut se faire chanson par chanson.
 | [`true`], `false`
 
@@ -219,7 +219,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 | Prop. | Description 
 | Valeurs | Opt. | Pr.
 
-| `shrink_tabla` | Permission de réduire les tablatures.
+| `tabs_shrinks` | Permission de réduire les tablatures.
 | [`true`], `false` | --- | Song
 
 |====
@@ -227,7 +227,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 [cols="1,1,5", options="header"]
 |====
 | Propritété | Valeur | Description
-.2+| `shrink_tabla`  | `true`  | On peut réduire les tablatures pour qu'ils tiennent dans la place donnée.
+.2+| `tabs_shrinks`  | `true`  | On peut réduire les tablatures pour qu'ils tiennent dans la place donnée.
                       | `false` | On ne peut pas réduire la taille des tablatures.
 |====
 
@@ -291,7 +291,7 @@ diags:
   scale: 1.5
   
   # On peut aussi fixer explicitement la taille des diagrammes.
-  # Noter que si shrink_diags est true, cette taille pourra être
+  # Noter que si diags_shrink est true, cette taille pourra être
   # modifiée pour des raisons esthétiques.
   # La valeur a la forme largeur x hauteur. Si une valeur n'est pas
   # définie, elle sera calculée automatiquement par rapport à l'autre

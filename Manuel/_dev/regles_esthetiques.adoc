@@ -277,7 +277,7 @@ Solution proposée ?
 
 | RAD3 
 | Si la méthode précédente ne suffit pas, on peut RÉDUIRE LA TAILLE des diags 
-| Sauf si `shrink_diag: false` et sans dépasser `MIN_SIZE[:diags].width/heigh`
+| Sauf si `diags_shrink: false` et sans dépasser `MIN_SIZE[:diags].width/heigh`
 
 | RAD4 
 | On doit toujours mettre autant de diags qu'on peut sur la première page 

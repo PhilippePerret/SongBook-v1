@@ -1,21 +1,16 @@
 [[songbook-layout]]
 === Layout d'un carnet ===
 
-TIP: Pour ouvrir directement ce fichier, `songbook open layout --sb "titre carnet"`
+Le __layout__ d'un carnet, c'est-à-dire sa __mise en forme__ d'un point de vue général, se définit dans les <<options>> du carnet.
 
+Avant de poursuivre, il est important de comprendre que le __layout__ de la chanson n'est pas à confondre avec le __gabarit__ : 
 
-C'est un fichier qui doit porter l'extension `.layout` ou `.lay` <<app-extension-driven, peu importe son nom>>.
+- Le **gabarit** (fichier `.gab`) définit OÙ les éléments des paroles vont se placer dans la page et l'un par rapport à l'autre. Il se définit en général pour chaque chanson.
+- Le **layout** définit les métadonnées de la mise en page, comme la policie et la taille des caractères, les marges, les options de mise en page, etc.
 
-Dans __SongBook__, on peut le faire chanson par chanson mais il vaut mieux, pour la cohérence esthétique, le définir pour un carnet.
+En général, dans les carnets, le layout (c'est-à-dire le préset d'options utilisées) est déterminé par la propriété `layout` qui définit une mise en page par défaut (par exemple `layout: regular-B`). La liste des <<app-layouts, layouts de l'application>> suffisent normalement amplement à trouver une mise en forme satisfaisante.
 
-À nouveau la même mise en garde : le __layout__ de la chanson n'est pas à confondre avec le __gabarit__ : 
-
-- Le **gabarit** (fichier `.gab`) définit OÙ les éléments des paroles vont se placer dans la page et l'un par rapport à l'autre.
-- Le **layout** (fichier `.lay`) définit les métadonnées de la mise en page, comme la policier et la taille des caractères, les marges, les options de mise en page, etc.
-
-En général, dans les carnets, le layout est déterminé par la propriété `layout` qui définit une mise en page par défaut de l'application. La liste des <<app-layouts, layouts de l'application>> suffisent normalement amplement à trouver son compte.
-
-Cependant, si vous voulez modifer certains paramètres, vous pouvez le faire par le biais d'un layout propre au carnet.
+Cependant, si vous voulez modifer certains paramètres, vous pouvez le faire par le biais des infos du carnet (ou de la chanson).
 
 Voir les <<songbook-layout-options>>.
 
