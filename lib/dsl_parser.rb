@@ -43,6 +43,7 @@ class DSLParser
     if matches.empty?
       text = strip_bare_slashes(line)
       segments << Segment.new(chord: nil, text: text) unless text.empty?
+      glue_commas!(segments)
       return segments
     end
 
@@ -74,7 +75,18 @@ class DSLParser
       i += 1
     end
 
+    glue_commas!(segments)
     segments
+  end
+
+  # Une virgule reste TOUJOURS collée au mot précédent (issue #75), même si un
+  # accord ("/c:_,") ou le "_" d'alignement (-> 3 espaces, ligne 39) s'intercale entre
+  # les deux — sans ça, "France /c:_," rendait "France   ," (espaces visibles).
+  def self.glue_commas!(segments)
+    segments.each { |s| s.text.gsub!(/ +,/, ",") }
+    (1...segments.length).each do |i|
+      segments[i - 1].text.sub!(/ +\z/, "") if segments[i].text.start_with?(",")
+    end
   end
 
   # Écriture en minuscule tolérée pour la commodité de frappe ("/am:") — la
