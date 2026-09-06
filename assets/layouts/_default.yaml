@@ -7,10 +7,6 @@ diags_position: End
 diags_align: justify
 lyrics_flux: side
 intro_align: left
-shrink_text: false
-shrink_diags: true
-shrink_tabla: false
-shrink_score: true
 front_matter:
   title_page: true
   half_title_page: false
