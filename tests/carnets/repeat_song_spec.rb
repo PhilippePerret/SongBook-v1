@@ -90,18 +90,32 @@ RSpec.describe "répétition de chanson dans un .tdm" do
   end
 
   describe "Layout.song_specs_line" do
-    before { Layout.carnet_font_baseline = { "font-family" => "HelveticaNeue", "font-size" => "11" } }
+    around { |example| Dir.mktmpdir { |dir| @dir = dir; example.run } }
 
-    it "vide si rien ne diffère de la base du carnet" do
-      expect(Layout.song_specs_line({})).to eq("")
+    def load_options(infos)
+      path = File.join(@dir, "c.infos")
+      File.write(path, infos)
+      Options.load!(meta: {}, infos_path: path, carnet_folder: nil)
     end
 
-    it "ne montre que ce qui diffère" do
-      expect(Layout.song_specs_line({ "font-size" => "14" })).to eq("14pt")
+    it "vide si rien n'est fixé explicitement" do
+      load_options("title: Chanson\n")
+      expect(Layout.song_specs_line).to eq("")
     end
 
-    it "montre police + taille si les deux diffèrent" do
-      expect(Layout.song_specs_line({ "font-family" => "Garamond", "font-size" => "14" })).to eq("Garamond 14pt")
+    it "montre la taille de police si fixée" do
+      load_options("title: Chanson\nfont-size: 14\n")
+      expect(Layout.song_specs_line).to eq("(font-size 14pt)")
+    end
+
+    it "montre police + taille si les deux sont fixées" do
+      load_options("title: Chanson\nfont-family: Garamond\nfont-size: 14\n")
+      expect(Layout.song_specs_line).to eq("(font-family Garamond) (font-size 14pt)")
+    end
+
+    it "montre la taille des diags si fixée en imbriqué" do
+      load_options("title: Chanson\ndiags:\n  size: 32pt x\n")
+      expect(Layout.song_specs_line).to eq("(diags_size 32pt)")
     end
   end
 

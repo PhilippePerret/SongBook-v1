@@ -1,7 +1,12 @@
 require_relative "file_finder"
 
-# Table unique de résolution des options `.infos` (chanson > carnet > défaut), formes
-# plate (`shrink_diags:`) ET imbriquée (`diags: / shrink:`) acceptées à chaque étage.
+# Table unique de résolution des options `.infos` (chanson < carnet < fichier indexé du
+# `.tdm`, ex. "id [N].infos"), formes plate (`shrink_diags:`) ET imbriquée (`diags: /
+# shrink:`) acceptées à N'IMPORTE QUEL étage, pour les 3 sources.
+# Deux lectures par source : `PageBuilder.parse_infos` (plate, AVEUGLE à l'indentation —
+# reproduit la convention existante des regroupements cosmétiques comme `options:`,
+# `front_matter:`) et `CarnetBuilder.parse_nested_infos` (structurel, pour les seules
+# clés dont l'imbrication a un sens réel : `diags:/shrink:`, `tabla:/shrink:`, etc.).
 # `PageBuilder.parse_infos`/`CarnetBuilder.parse_nested_infos` appelés en LATE BINDING
 # (jamais `require_relative` vers eux) pour casser le cycle layout -> options -> page_builder -> layout.
 module Options
@@ -14,11 +19,24 @@ module Options
     show_specs: { flat: "show_specs", nested: nil, default: false, bool: true },
     font_family: { flat: "font-family", nested: nil, default: "HelveticaNeue" },
     font_size: { flat: "font-size", nested: nil, default: 11.0, numeric: true },
-    diags_size: { flat: "diags_size", nested: %w[diags size], default: 60.0, numeric: true, min: 48.0 },
+    diags_size: { flat: "diags_size", nested: %w[diags size], default: 60.0, numeric: true },
   }.freeze
 
-  def self.load!(meta:, infos_path:, carnet_folder:)
-    @resolved = DEFINITIONS.each_with_object({}) { |(key, defn), h| h[key] = resolve(defn, meta, infos_path, carnet_folder) }
+  # `meta` : hash déjà fusionné par l'appelant pour un override RUNTIME (`--transpose`,
+  # sans fichier derrière) — prioritaire sur tout. `override_path` : fichier indexé du
+  # `.tdm` pour cette entrée précise (souvent absent, `CarnetBuilder.resolve_infos_override_path`).
+  def self.load!(meta:, infos_path:, carnet_folder:, override_path: nil)
+    carnet_infos_path = carnet_folder && FileFinder.find(carnet_folder, :inf)
+
+    # Priorité décroissante : override runtime (meta) > fichier indexé > carnet > chanson.
+    sources = [source_of(override_path), source_of(carnet_infos_path), source_of(infos_path)]
+    @resolved = {}
+    @explicit = {}
+    DEFINITIONS.each do |key, defn|
+      raw = raw_value(defn, meta, sources)
+      @explicit[key] = !raw.nil?
+      @resolved[key] = coerce(defn, raw)
+    end
   end
 
   def self.get(key)
@@ -26,40 +44,37 @@ module Options
     resolved.key?(key) ? resolved[key] : DEFINITIONS[key][:default]
   end
 
+  # Vrai si `key` a été fixée explicitement (chanson, carnet ou fichier indexé) — jamais
+  # vrai pour une valeur simplement égale au défaut app (`show_specs` : n'affiche QUE ce
+  # que l'user a réellement écrit quelque part, pas les valeurs par défaut silencieuses).
+  def self.explicit?(key)
+    (@explicit || {}).fetch(key, false)
+  end
+
   def self.set!(key, value)
     (@resolved ||= {})[key] = value
   end
 
-  def self.resolve(defn, meta, infos_path, carnet_folder)
-    value = coerce(defn, raw_value(defn, meta, infos_path, carnet_folder))
-    return value unless defn[:min] && value < defn[:min]
+  def self.source_of(path)
+    return { flat: {}, tree: {} } unless path
 
-    Layout.conflict!("#{defn[:flat]} #{value}pt sous le minimum (#{defn[:min]}pt)", solution: "ramené à #{defn[:min]}pt")
-    defn[:min]
+    { flat: PageBuilder.parse_infos(path), tree: CarnetBuilder.parse_nested_infos(path) }
   end
 
-  def self.raw_value(defn, meta, infos_path, carnet_folder)
-    return meta[defn[:flat]] if meta.key?(defn[:flat])
-
-    v = nested(infos_path, defn[:nested])
-    return v unless v.nil?
-
-    carnet_infos_path = carnet_folder && FileFinder.find(carnet_folder, :inf)
-    return defn[:default] unless carnet_infos_path
-
-    carnet_flat = PageBuilder.parse_infos(carnet_infos_path)
-    return carnet_flat[defn[:flat]] if carnet_flat.key?(defn[:flat])
-
-    v = nested(carnet_infos_path, defn[:nested])
-    v.nil? ? defn[:default] : v
+  def self.raw_value(defn, meta, sources)
+    raw = meta[defn[:flat]]
+    raw = sources.map { |src| dig(src, defn) }.find { |v| !v.nil? } if raw.nil?
+    raw
   end
 
-  def self.nested(path, keys)
-    return nil unless path && keys
+  # Une seule clé peut être écrite plate OU imbriquée dans le même fichier — jamais les
+  # deux formes lues séparément (source du bug initial : la forme non attendue à cet
+  # étage était silencieusement ignorée).
+  def self.dig(src, defn)
+    return src[:flat][defn[:flat]] if src[:flat].key?(defn[:flat])
+    return nil unless defn[:nested]
 
-    node = CarnetBuilder.parse_nested_infos(path)
-    keys.each { |k| node = node.is_a?(Hash) ? node[k] : nil }
-    node
+    defn[:nested].reduce(src[:tree]) { |node, k| node.is_a?(Hash) ? node[k] : nil }
   end
 
   def self.coerce(defn, raw)

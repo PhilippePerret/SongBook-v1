@@ -82,23 +82,28 @@ module Layout
     { vertical: vertical, horizontal: horizontal }
   end
 
-  # Réglages `.infos` TRACKÉS pour `show_specs` — liste ouverte, à compléter (zoom
-  # tablas/score...) quand leurs effets réels seront stabilisés. `label:` formate la
-  # valeur RÉSOLUE de la chanson (pas la valeur brute du `.infos`).
+  # Options TRACKÉES pour `show_specs` — liste ouverte, à compléter (zoom tablas/score...)
+  # quand leurs effets réels seront stabilisés. `prop` : nom affiché (celui du `.infos`).
+  # `label:` formate la valeur RÉSOLUE (`Options.get`), pas la valeur brute du `.infos`.
+  # Présentation UNIFORME quel que soit le nombre d'entrées : "(prop value)", jamais un
+  # format ad hoc par propriété (Phil : "qu'est-ce que ce sera quand il y en aura 20").
+  SPECS_PT = ->(v) { v == v.to_i ? v.to_i.to_s : v.to_s }
   SPECS_TRACKED = [
-    { key: "font-family", label: ->(v) { v } },
-    { key: "font-size", label: ->(v) { "#{v.to_s[/[\d.]+/]}pt" } },
+    { key: :font_family, prop: "font-family", label: ->(v) { v } },
+    { key: :font_size, prop: "font-size", label: ->(v) { "#{SPECS_PT.call(v)}pt" } },
+    { key: :diags_size, prop: "diags_size", label: ->(v) { "#{SPECS_PT.call(v)}pt" } },
   ].freeze
 
-  # Ligne `show_specs` d'UNE chanson : toute clé EXPLICITEMENT présente dans le `.infos`
-  # de CETTE chanson (`meta.key?`) — même si sa valeur est identique à la base du carnet
-  # (`carnet_font_baseline`) : présente dans le fichier == l'user la verra, donc affichée
-  # (Phil, bug constaté 2026-09-01 — masquée à tort sous prétexte "valeur par défaut").
-  def self.song_specs_line(meta)
+  # Ligne `show_specs` d'UNE chanson : toute option EXPLICITEMENT présente quelque part
+  # (chanson, carnet ou fichier indexé — `Options.explicit?`, plate OU imbriquée) — même
+  # si sa valeur est identique au défaut : présente dans un fichier == l'user la verra,
+  # donc affichée (Phil, bug constaté 2026-09-01 — masquée à tort sous prétexte "valeur
+  # par défaut").
+  def self.song_specs_line
     SPECS_TRACKED.filter_map do |spec|
-      next unless meta.key?(spec[:key])
+      next unless Options.explicit?(spec[:key])
 
-      spec[:label].call(meta[spec[:key]])
+      "(#{spec[:prop]} #{spec[:label].call(Options.get(spec[:key]))})"
     end.join(" ")
   end
 
@@ -241,7 +246,7 @@ module Layout
   DIAG_TEXT_GAP = 26
   # RAD3 : largeur plancher sous laquelle un diag ne doit jamais être réduit (valeur
   # provisoire, à ajuster — .
-  MIN_SIZE = { diags: { width: 48.0 } }.freeze
+  MIN_SIZE = { diags: { width: 24.0 } }.freeze
 
   GEORGIA_DIR = File.expand_path("../assets/fonts/Georgia", __dir__)
   HELVETICA_NEUE_DIR = File.expand_path("../assets/fonts/HelveticaNeue", __dir__)
@@ -824,10 +829,10 @@ module Layout
   SPECS_LINE_SIZE = 9
   SPECS_LINE_COLOR = "000000"
 
-  def self.draw_specs_overlay(pdf, meta, top_y)
+  def self.draw_specs_overlay(pdf, top_y)
     return unless Options.get(:show_specs)
 
-    line = song_specs_line(meta)
+    line = song_specs_line
     return if line.empty?
 
     draw_text_colored(pdf, "Impression test : #{line}", at: [HEADER_PAD_X, top_y], size: SPECS_LINE_SIZE, color: SPECS_LINE_COLOR)
@@ -920,7 +925,7 @@ module Layout
     title_descent = font_metric(pdf, TITLE_SIZE) { pdf.font.descender }
 
     draw_header_row(pdf, meta, y, title_color: "000000", info_color: "666666")
-    draw_specs_overlay(pdf, meta, y - title_descent - SPECS_LINE_SIZE)
+    draw_specs_overlay(pdf, y - title_descent - SPECS_LINE_SIZE)
 
     draw_capo_box(pdf, meta["capo"], y - title_descent, side: capo_side)
   end
@@ -970,7 +975,7 @@ module Layout
     end
 
     draw_header_band_rows(pdf, meta, y, y_pc, pc_size, title_color: "FFFFFF", info_color: "FFFFFF")
-    draw_specs_overlay(pdf, meta, band_bottom - SPECS_LINE_SIZE - 2)
+    draw_specs_overlay(pdf, band_bottom - SPECS_LINE_SIZE - 2)
 
     draw_capo_box(pdf, meta["capo"], band_bottom, side: capo_side)
   end
@@ -2056,6 +2061,25 @@ module Layout
     text.scan(/[^ ]+| +/)
   end
 
+  # Issue #73 : une syllabe encadrée `[...]` doit être soulignée au rendu, crochets
+  # jamais affichés. Retire les crochets AVANT toute mesure (RAL2.1 ne doit jamais
+  # compter leur largeur) ; les offsets renvoyés sont ceux du texte nettoyé.
+  def self.extract_underline_ranges(text)
+    ranges = []
+    clean = +""
+    pos = 0
+    text.scan(/\[([^\]]*)\]/) do |inner,|
+      m = Regexp.last_match
+      clean << text[pos...m.begin(0)]
+      start = clean.length
+      clean << inner
+      ranges << [start, clean.length]
+      pos = m.end(0)
+    end
+    clean << text[pos..]
+    [clean, ranges]
+  end
+
   # Position x (et offset caractère dans `text`) de chaque token — sert à la fois à
   # dessiner les mots UNE SEULE FOIS pour tout le vers, et à replacer chaque accord à la
   # bonne position après coup (`chord_x_at_offset`), y compris un accord tombé EN PLEIN
@@ -2215,8 +2239,13 @@ module Layout
     text_y = has_chord ? y - chord_to_text_drop(chord_size, text_size) : y
     text_descent = font_metric(pdf, text_size) { pdf.font.descender }
 
+    base_segs = line.segments.map do |seg|
+      clean_text, ranges = extract_underline_ranges(seg.text)
+      seg.dup.tap { |s| s.text = clean_text; s.underline_ranges = ranges }
+    end
+
     # sinon RAL2.1 décide seul, par ligne, le minimum de resserrement nécessaire.
-    natural_text = line.segments.map(&:text).join
+    natural_text = base_segs.map(&:text).join
     if word_spacing.zero? && char_spacing.zero?
       ws, cs = resolve_line_spacing(pdf, natural_text, width, text_size)
       log_build("vers resserré pour tenir dans sa colonne : word_spacing=#{ws}, char_spacing=#{cs} (RAL2.1)") if ws.nonzero? || cs.nonzero?
@@ -2224,17 +2253,19 @@ module Layout
       ws, cs = word_spacing, char_spacing
     end
 
-    segs, overflow_text = split_overflow(pdf, line.segments, width, text_size, ws, cs)
+    segs, overflow_text = split_overflow(pdf, base_segs, width, text_size, ws, cs)
     align_fixed_chords!(pdf, segs, chord_size, text_size, ws, cs)
     full_text = segs.map(&:text).join
     tokens, = line_tokens_x(pdf, full_text, text_size, word_spacing: ws, char_spacing: cs)
 
     seg_offset = 0
+    underline_steps = []
     chord_steps = segs.filter_map do |seg|
       if seg.chord
         step = { x: chord_x_at_offset(pdf, tokens, seg_offset, text_size, char_spacing: cs), chord: seg.chord,
                  anchored: fixed_chord?(seg) }
       end
+      (seg.underline_ranges || []).each { |s, e| underline_steps << [seg_offset + s, seg_offset + e] }
       seg_offset += seg.text.length
       step
     end
@@ -2247,6 +2278,21 @@ module Layout
 
         engrave(bottom: text_y - text_descent, context: "texte \"#{tok[:text][0, 20]}\"") { pdf.draw_text tok[:text], at: [x + tok[:x], text_y], size: text_size }
       end
+    end
+
+    # Un mot marqué renvoyé dans l'excédent RAL2.2 sort de `full_text` : borne non
+    # dessinable, ignorée plutôt que de tracer un trait hors texte.
+    underline_y = text_y + text_descent * 0.3
+    underline_steps.each do |s, e|
+      next if e > full_text.length
+
+      x_start = chord_x_at_offset(pdf, tokens, s, text_size, char_spacing: cs)
+      x_end = chord_x_at_offset(pdf, tokens, e, text_size, char_spacing: cs)
+      next if x_end <= x_start
+
+      pdf.stroke_color "000000"
+      pdf.line_width 0.5
+      pdf.stroke_line [x + x_start, underline_y], [x + x_end, underline_y]
     end
 
     return unless overflow_text

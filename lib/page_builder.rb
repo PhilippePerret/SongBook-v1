@@ -827,7 +827,7 @@ module PageBuilder
   # et Manuel/song/layout.adoc) : défauts du CARNET pour cette chanson — un `.gab` explicite
   # garde priorité (une chanson peut toujours s'écarter du layout général, Manuel : "on
   # peut le faire chanson par chanson ou de façon générale... ou les deux").
-  def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout: nil, debug_marks: false, carnet_folder: nil, infos_overrides: {},
+  def self.build(folder, out_path, page_size_in:, page_count:, first_page_no: 1, layout: nil, debug_marks: false, carnet_folder: nil, infos_overrides: {}, override_infos_path: nil,
       paper: PrinterProfile::DEFAULT_PAPER, bleed: PrinterProfile::DEFAULT_BLEED, facing_pages: PrinterProfile::DEFAULT_FACING_PAGES,
       outside_margin: nil, gutter_margin: nil, top_margin: nil, bot_margin: nil, left_margin: nil, right_margin: nil)
     DiagsSync.sync!(folder)
@@ -845,6 +845,12 @@ module PageBuilder
     carnet_infos_path = carnet_folder && FileFinder.find(carnet_folder, :inf)
     carnet_meta = carnet_infos_path ? parse_infos(carnet_infos_path) : {}
     meta = carnet_meta.merge(parse_infos(infos_path)).merge(infos_overrides)
+    # Fixé ICI, AVANT tout ce qui peut lever un conflit (`Options.load!`,
+    # `resolve_tabla_preset`) — sinon ce conflit reste étiqueté avec l'identité de la
+    # chanson PRÉCÉDENTE (`Layout.current_song`/`current_page` pas encore mis à jour),
+    # bug constaté sur `diags_size` (Angie créditée d'un réglage venant de Blackbird).
+    Layout.current_song = meta["title"] || File.basename(folder)
+    Layout.current_page = first_page_no
     # `Tablator.active_preset` est un état GLOBAL du module ,
     # config "regular-tablatures"/"mini-tablatures", `tools/tablator/presets.rb`) —
     # TOUJOURS fixé ici, explicitement, jamais laissé hériter d'une chanson précédente
@@ -852,7 +858,7 @@ module PageBuilder
     # 2026-08-25 : sans ce reset, une chanson sans `tabla_preset:` reprendrait par erreur
     # le preset de la précédente).
     Tablator.active_preset = resolve_tabla_preset(meta, carnet_folder) || "regular-tablatures"
-    Options.load!(meta: meta, infos_path: infos_path, carnet_folder: carnet_folder)
+    Options.load!(meta: meta, infos_path: infos_path, carnet_folder: carnet_folder, override_path: override_infos_path)
     # `score_title_size`/`score_title_style` : clés de LAYOUT (`layout:`/`.lay`), pas
     # `.infos`  — comme `intro_align`, "pas encore stabilisé".
     if layout && layout[:score_title_size]
@@ -862,8 +868,6 @@ module PageBuilder
     if layout && layout[:tabla_measures_per_page]
       Layout.tabla_measures_per_page = layout[:tabla_measures_per_page].to_s[/\d+/].to_i
     end
-    Layout.current_song = meta["title"] || File.basename(folder)
-    Layout.current_page = first_page_no
     lyr_blocks, lyr_order = parse_lyr(lyr_path)
     if meta["transpose"]
       decalage_lettres, decalage_demitons = Transpose.parser_entete(meta["transpose"])

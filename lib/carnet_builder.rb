@@ -116,16 +116,24 @@ module CarnetBuilder
   # du .tdm — n'importe quelle clé. Cherché d'abord dans le dossier du carnet (précédence
   # la plus haute), sinon dans le dossier de la chanson (réutilisable par d'autres carnets).
   def self.resolve_infos_override(carnet_folder, song_folder, raw_name)
+    path = resolve_infos_override_path(carnet_folder, song_folder, raw_name)
+    path ? PageBuilder.parse_infos(path) : {}
+  end
+
+  # Chemin seul (jamais parsé plat ici) : `Options` en a besoin lu en imbriqué aussi
+  # (voir `options.rb`) — le "[N-...]" est OPTIONNEL, la plupart des chansons n'ont
+  # aucun fichier indexé (nil dans ce cas, pas une erreur).
+  def self.resolve_infos_override_path(carnet_folder, song_folder, raw_name)
     root = raw_name.strip
     [carnet_folder, song_folder].each do |dir|
       next unless dir
 
       %w[infos inf].each do |ext|
         path = File.join(dir, "#{root}.#{ext}")
-        return PageBuilder.parse_infos(path) if File.exist?(path)
+        return path if File.exist?(path)
       end
     end
-    {}
+    nil
   end
 
   # ASCII pur, aucun diacritique (NFKD sépare lettre + marque combinante, l'encodage
@@ -622,12 +630,15 @@ module CarnetBuilder
     overrides_by_name = real_songs.to_h do |name, entry|
       [name, resolve_infos_override(carnet_folder, File.join(chansons_dir, entry[:folder]), name)]
     end
+    override_paths_by_name = real_songs.to_h do |name, entry|
+      [name, resolve_infos_override_path(carnet_folder, File.join(chansons_dir, entry[:folder]), name)]
+    end
 
     real_page_counts = {}
     real_songs.each do |name, entry|
       folder = File.join(chansons_dir, entry[:folder])
       tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
-      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: 1, layout: resolve_song_layout(folder, carnet_layout), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: 1, layout: resolve_song_layout(folder, carnet_layout), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
       real_page_counts[name] = CombinePDF.load(tmp_out).pages.size
       File.delete(tmp_out)
     end
@@ -694,12 +705,12 @@ module CarnetBuilder
         song_existing_versions = Dir.glob(File.join(songs_dir, "#{song_stem}-v*.pdf")).filter_map { |f| f[/-v(\d+)\.pdf\z/, 1]&.to_i }
         song_version = (song_existing_versions.max || 0) + 1
         song_out = File.join(songs_dir, "#{song_stem}-v#{song_version}.pdf")
-        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), debug_marks: debug_marks, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), debug_marks: debug_marks, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
         return song_out
       end
 
       tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
-      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout: resolve_song_layout(folder, carnet_layout), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
       n = real_page_counts[name]
       combined_songs << CombinePDF.load(tmp_out)
       File.delete(tmp_out)
