@@ -894,9 +894,9 @@ module Layout
   CAPO_BOX_PAD_X = 6
   CAPO_LABEL_SIZE = 10
   # Gris moyen (encre) — PAS `BAND_COLOR` (bandeau) : les deux noirs/gris différents
-  # juraient l'un à côté de l'autre, bug constaté. `808080` = gris 50%.
-  CAPO_GRAY = "808080"
-  CAPO_LABEL_BASELINE_DROP_PT = 1.5
+  # juraient l'un à côté de l'autre, bug constaté. `999999` = gris clair (éclairci suite
+  # à demande — `808080` jugé trop foncé).
+  CAPO_GRAY = "999999"
   CAPO_ORDINAL_SUP_SIZE_RATIO = 0.6
   CAPO_ORDINAL_SUP_RISE_RATIO = 0.35
 
@@ -945,7 +945,7 @@ module Layout
       pdf.fill_color CAPO_GRAY
       pdf.fill_rectangle [x0, top_y], label_w, h
       pdf.fill_color "FFFFFF"
-      pdf.draw_text label, at: [x0 + CAPO_BOX_PAD_X, center_baseline.call(label, size) - CAPO_LABEL_BASELINE_DROP_PT], size: size, style: :bold
+      pdf.draw_text label, at: [x0 + CAPO_BOX_PAD_X, center_baseline.call(label, size)], size: size, style: :bold
 
       pdf.fill_color "FFFFFF"
       pdf.fill_rectangle [x0 + label_w, top_y], value_w, h
@@ -2125,19 +2125,24 @@ module Layout
     text.scan(/[^ ]+| +/)
   end
 
-  # Issue #73 : une syllabe encadrée `[...]` doit être soulignée au rendu, crochets
-  # jamais affichés. Retire les crochets AVANT toute mesure (RAL2.1 ne doit jamais
-  # compter leur largeur) ; les offsets renvoyés sont ceux du texte nettoyé.
-  def self.extract_underline_ranges(text)
-    ranges = []
+  # Issue #73 (souligné, `[...]`) + marqueurs asciidoctor `**...**` (gras) et `__...__`
+  # (italique) : syntaxe jamais affichée, retirée AVANT toute mesure (RAL2.1 ne doit
+  # jamais compter leur largeur) — les offsets renvoyés sont ceux du texte nettoyé.
+  # Un seul passage gauche->droite, marqueurs non imbriqués (le premier trouvé gagne).
+  STYLE_MARKERS_RE = /\[([^\]]*)\]|\*\*([^*]*)\*\*|__([^_]*)__/
+
+  def self.extract_style_ranges(text)
+    ranges = { underline: [], bold: [], italic: [] }
     clean = +""
     pos = 0
-    text.scan(/\[([^\]]*)\]/) do |inner,|
+    text.scan(STYLE_MARKERS_RE) do |underline, bold, italic|
       m = Regexp.last_match
       clean << text[pos...m.begin(0)]
       start = clean.length
+      inner = underline || bold || italic
       clean << inner
-      ranges << [start, clean.length]
+      key = underline ? :underline : (bold ? :bold : :italic)
+      ranges[key] << [start, clean.length]
       pos = m.end(0)
     end
     clean << text[pos..]
@@ -2148,7 +2153,7 @@ module Layout
   # dessiner les mots UNE SEULE FOIS pour tout le vers, et à replacer chaque accord à la
   # bonne position après coup (`chord_x_at_offset`), y compris un accord tombé EN PLEIN
   # MILIEU d'un mot (ex. "cre/c:ver").
-  def self.line_tokens_x(pdf, text, size, word_spacing: self.word_spacing, char_spacing: self.char_spacing)
+  def self.line_tokens_x(pdf, text, size, word_spacing: self.word_spacing, char_spacing: self.char_spacing, bold_steps: [], italic_steps: [])
     cx = 0
     co = 0
     tokens = word_tokens(text).map do |tok|
@@ -2159,7 +2164,9 @@ module Layout
       # famille que `word_spacing`, constaté 2026-08-21 : trous grandissants entre les
       # mots). Un token espace n'est JAMAIS dessiné (voir `draw_line`) donc jamais
       # concerné par `char_spacing`, seulement par `word_spacing` (mécanisme manuel, pas Tc).
-      cx += tok.start_with?(" ") ? pdf.width_of(tok, size: size) + word_spacing * tok.length : pdf.width_of(tok, size: size) + char_spacing * tok.length
+      # `styled_text_width` (jamais `pdf.width_of` nu) : un mot gras/italique est plus
+      # large que le même mot en romain, l'ignorer décale tous les tokens suivants.
+      cx += tok.start_with?(" ") ? pdf.width_of(tok, size: size) + word_spacing * tok.length : styled_text_width(pdf, tok, co, size, bold_steps, italic_steps) + char_spacing * tok.length
       co += tok.length
       token
     end
@@ -2296,6 +2303,47 @@ module Layout
   # du label d'accord) : garantie mathématique, jamais un réglage à ajuster à la main.
   # `width` : largeur de colonne disponible, sert au RAL2 (`nil` = jamais de RAL2, ex.
   # appelants qui ne connaissent pas encore leur largeur).
+  # Découpe `text` (un token mot, `co` = offset dans `full_text`) en runs `[sous_texte,
+  # style]` aux frontières gras/italique (`bold_steps`/`italic_steps`, offsets dans
+  # `full_text`) — un token peut chevaucher un début/fin de marqueur en plein milieu d'un
+  # mot (ex. "au**dessus**"). Fonction PURE (aucune mesure) : sert à la fois à dessiner
+  # (`draw_line`) et à mesurer (`styled_text_width`) — mêmes runs des deux côtés, sinon
+  # la largeur mesurée et la largeur dessinée divergent.
+  def self.style_runs(text, co, bold_steps, italic_steps)
+    len = text.length
+    return [[text, nil]] if bold_steps.empty? && italic_steps.empty?
+
+    overlapping = ->(steps) { steps.select { |s, e| s < co + len && e > co } }
+    bolds = overlapping.call(bold_steps)
+    italics = overlapping.call(italic_steps)
+    return [[text, nil]] if bolds.empty? && italics.empty?
+
+    bounds = [0, len]
+    (bolds + italics).each { |s, e| bounds << (s - co).clamp(0, len) << (e - co).clamp(0, len) }
+    bounds = bounds.uniq.sort
+
+    bounds.each_cons(2).filter_map do |a, b|
+      next if a == b
+
+      mid = co + a
+      is_bold = bolds.any? { |s, e| s <= mid && mid < e }
+      is_italic = italics.any? { |s, e| s <= mid && mid < e }
+      style = is_bold && is_italic ? :bold_italic : (is_bold ? :bold : (is_italic ? :italic : nil))
+      [text[a...b], style]
+    end
+  end
+
+  # Largeur RÉELLE d'un token, gras/italique compris — un mot en gras est PLUS LARGE que
+  # le même mot en romain (police différente, pas juste un trait plus épais), l'ignorer
+  # décale tous les tokens suivants et mange l'espace juste après (bug constaté).
+  def self.styled_text_width(pdf, text, co, size, bold_steps, italic_steps)
+    return pdf.width_of(text, size: size) if bold_steps.empty? && italic_steps.empty?
+
+    style_runs(text, co, bold_steps, italic_steps).sum do |sub_text, style|
+      style ? pdf.width_of(sub_text, size: size, style: style) : pdf.width_of(sub_text, size: size)
+    end
+  end
+
   def self.draw_line(pdf, line, x, y, width, chord_size: scaled_chord_size, text_size: Options.get(:font_size), reserve_chord_row: false)
     return draw_chords_only_line(pdf, line, x, y, chord_size: chord_size) if chords_only_line?(line)
 
@@ -2304,8 +2352,13 @@ module Layout
     text_descent = font_metric(pdf, text_size) { pdf.font.descender }
 
     base_segs = line.segments.map do |seg|
-      clean_text, ranges = extract_underline_ranges(seg.text)
-      seg.dup.tap { |s| s.text = clean_text; s.underline_ranges = ranges }
+      clean_text, ranges = extract_style_ranges(seg.text)
+      seg.dup.tap do |s|
+        s.text = clean_text
+        s.underline_ranges = ranges[:underline]
+        s.bold_ranges = ranges[:bold]
+        s.italic_ranges = ranges[:italic]
+      end
     end
 
     # sinon RAL2.1 décide seul, par ligne, le minimum de resserrement nécessaire.
@@ -2320,7 +2373,20 @@ module Layout
     segs, overflow_text = split_overflow(pdf, base_segs, width, text_size, ws, cs)
     align_fixed_chords!(pdf, segs, chord_size, text_size, ws, cs)
     full_text = segs.map(&:text).join
-    tokens, = line_tokens_x(pdf, full_text, text_size, word_spacing: ws, char_spacing: cs)
+
+    # Plages gras/italique calculées AVANT `line_tokens_x` (pas après, contrairement à
+    # `underline_steps`/`chord_steps` — voir plus bas) : la largeur RÉELLE d'un mot en
+    # gras diffère de sa largeur en romain (police différente), l'ignorer décalait tous
+    # les mots suivants et mangeait l'espace juste après (bug constaté, "Revenirquand").
+    seg_offset = 0
+    bold_steps = []
+    italic_steps = []
+    segs.each do |seg|
+      (seg.bold_ranges || []).each { |s, e| bold_steps << [seg_offset + s, seg_offset + e] }
+      (seg.italic_ranges || []).each { |s, e| italic_steps << [seg_offset + s, seg_offset + e] }
+      seg_offset += seg.text.length
+    end
+    tokens, = line_tokens_x(pdf, full_text, text_size, word_spacing: ws, char_spacing: cs, bold_steps: bold_steps, italic_steps: italic_steps)
 
     seg_offset = 0
     underline_steps = []
@@ -2340,7 +2406,14 @@ module Layout
       tokens.each do |tok|
         next if tok[:text].start_with?(" ")
 
-        engrave(bottom: text_y - text_descent, context: "texte \"#{tok[:text][0, 20]}\"") { pdf.draw_text tok[:text], at: [x + tok[:x], text_y], size: text_size }
+        dx = 0
+        style_runs(tok[:text], tok[:co], bold_steps, italic_steps).each do |sub_text, style|
+          opts = { size: text_size }
+          opts[:style] = style if style
+          engrave(bottom: text_y - text_descent, context: "texte \"#{sub_text[0, 20]}\"") { pdf.draw_text sub_text, at: [x + tok[:x] + dx, text_y], **opts }
+          run_w = style ? pdf.width_of(sub_text, size: text_size, style: style) : pdf.width_of(sub_text, size: text_size)
+          dx += run_w + cs * sub_text.length
+        end
       end
     end
 

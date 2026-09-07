@@ -3,7 +3,7 @@ require "yaml"
 Song    = Struct.new(:meta, :blocks, keyword_init: true)
 Block   = Struct.new(:lines, :directives, :paired_with_previous, keyword_init: true)
 Line    = Struct.new(:segments, :label, :align, keyword_init: true)
-Segment = Struct.new(:chord, :fret, :text, :underline_ranges, keyword_init: true)
+Segment = Struct.new(:chord, :fret, :text, :underline_ranges, :bold_ranges, :italic_ranges, keyword_init: true)
 
 class DSLParser
   # Groupe 2 optionnel : "-<case>" (ex. "/Bb-6:") = case (fret) explicite où jouer
@@ -23,7 +23,11 @@ class DSLParser
   end
 
   # "_" (accord seul en début de vers, sans mot dessous — ex. All You Need Is Love,
-  # -> 3 espaces, pour l'alignement plutôt qu'un underscore imprimé.
+  # -> 3 espaces, pour l'alignement plutôt qu'un underscore imprimé. Un "_" DOUBLÉ
+  # (`__...__`) est un marqueur de style (italique, `Layout.extract_style_ranges`) —
+  # jamais touché ici (lookaround : substitution seulement sur un "_" isolé, ni précédé
+  # ni suivi d'un autre "_"), sinon "__Chœurs...__" se retrouvait bouffé en 6 espaces
+  # avant même d'atteindre l'extraction de style (bug constaté).
   # Méthode de classe (toujours publique) : seule source de vérité pour le découpage
   # accord/texte d'une ligne — réutilisée telle quelle par `PageBuilder` pour le format
   # `.lyr` (plus de logique dupliquée entre les deux formats).
@@ -36,7 +40,7 @@ class DSLParser
   end
 
   def self.parse_line(line)
-    line = line.gsub("_", "   ")
+    line = line.gsub(/(?<!_)_(?!_)/, "   ")
     segments = []
     matches = line.to_enum(:scan, CHORD_RE).map { Regexp.last_match }
 
