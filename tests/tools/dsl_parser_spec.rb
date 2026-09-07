@@ -2,6 +2,7 @@
 
 require_relative "../spec_helper"
 require "dsl_parser"
+require "chord_diagrams"
 
 # Tests des outils
 RSpec.describe "lecture des paroles et accords (.lyr)" do
@@ -53,6 +54,17 @@ RSpec.describe "lecture des paroles et accords (.lyr)" do
       segments = DSLParser.parse_line("bone in /F://C:")
       expect(segments.map(&:text).join).not_to include("/")
       expect(segments.map(&:chord).compact).to eq(["F/C"])
+    end
+
+    it "2 accords collés, case sur le 2e SEULEMENT (\"/Bm://Am7-5:\", issue #81) : la case reste attachée à \"Am7\", jamais reportée sur \"Bm\"" do
+      segments = DSLParser.parse_line("/Bm://Am7-5: refrain")
+      expect(segments.first.chord).to eq("Bm/Am7")
+      expect(ChordDiagrams.split_chord_frets(segments.first.chord, segments.first.fret)).to eq([["Bm", nil], ["Am7", "5"]])
+    end
+
+    it "2 accords collés, case sur le 1er SEULEMENT (\"/Am7-5://Bm:\") : la case reste attachée à \"Am7\", jamais reportée sur \"Bm\"" do
+      segments = DSLParser.parse_line("/Am7-5://Bm: refrain")
+      expect(ChordDiagrams.split_chord_frets(segments.first.chord, segments.first.fret)).to eq([["Am7", "5"], ["Bm", nil]])
     end
 
     it "accord collé EN PLEIN MILIEU d'un mot (\"Ni//Bm:kita\") : le mot reste intact" do

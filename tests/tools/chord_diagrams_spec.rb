@@ -121,4 +121,38 @@ RSpec.describe "recherche des diagrammes d'accords" do
       expect(ChordDiagrams.split_chord("Am7")).to eq(["Am7"])
     end
   end
+
+  # Issue #81 : la case d'un accord composé ne doit JAMAIS être reportée sur l'AUTRE
+  # partie — chaque partie garde SA case, alignée par position (`DSLParser.parse_line`
+  # produit ce `fret` "/"-joint pour un accord fusionné).
+  describe ".split_chord_frets" do
+    it "accord simple : la case s'applique telle quelle, aucun \"/\" à interpréter" do
+      expect(ChordDiagrams.split_chord_frets("Am7", "5")).to eq([["Am7", "5"]])
+    end
+
+    it "accord composé, case sur la 2e partie SEULEMENT (\"Bm/Am7-5\") : jamais reportée sur \"Bm\"" do
+      expect(ChordDiagrams.split_chord_frets("Bm/Am7", "/5")).to eq([["Bm", nil], ["Am7", "5"]])
+    end
+
+    it "accord composé, case sur la 1re partie SEULEMENT" do
+      expect(ChordDiagrams.split_chord_frets("Am7/Bm", "5")).to eq([["Am7", "5"], ["Bm", nil]])
+    end
+
+    it "accord composé, aucune case sur aucune partie" do
+      expect(ChordDiagrams.split_chord_frets("Bb6/C", nil)).to eq([["Bb6", nil], ["C", nil]])
+    end
+  end
+
+  describe ".collect_chord_frets — accord composé, une seule partie précisée (issue #81)" do
+    def blocks_from(pairs)
+      segments = pairs.map { |chord, fret| Segment.new(chord: chord, fret: fret, text: "x") }
+      line = Line.new(segments: segments, label: nil, align: nil)
+      [Block.new(lines: [line], directives: {}, paired_with_previous: false)]
+    end
+
+    it "\"/Bm://Am7-5:\" fusionné (\"Bm/Am7\", fret \"/5\") : \"Bm\" reste sans case, \"Am7\" garde \"5\"" do
+      blocks = blocks_from([["Bm/Am7", "/5"]])
+      expect(ChordDiagrams.collect_chord_frets(blocks)).to eq([["Bm", nil], ["Am7", "5"]])
+    end
+  end
 end

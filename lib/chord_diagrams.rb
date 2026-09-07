@@ -126,10 +126,23 @@ module ChordDiagrams
     chord.include?("/") ? chord.split("/") : [chord]
   end
 
+  # Un accord composé ("Bm/Am7") porte SES cases alignées par position dans `fret`
+  # ("/5" = pas de case pour "Bm", case "5" pour "Am7" — `DSLParser.parse_line`, issue
+  # #81) : jamais la MÊME case réutilisée pour chaque partie (bug constaté, "Bm-5"
+  # signalé introuvable alors que seul "Am7-5" était visé). Élément manquant ou vide ->
+  # pas de case pour cette partie-là (accord générique, case la plus basse disponible).
+  def self.split_chord_frets(chord, fret)
+    chords = split_chord(chord)
+    return [[chord, fret]] if chords.size == 1
+
+    frets = fret.to_s.split("/", -1)
+    chords.each_with_index.map { |c, i| [c, frets[i].to_s.empty? ? nil : frets[i]] }
+  end
+
   def self.collect_chord_frets(blocks)
     precise_seen = {}
     pairs = blocks.flat_map { |b| b.lines.flat_map { |l| l.segments.select(&:chord).map { |s| [s.chord, s.fret] } } }
-    pairs = pairs.flat_map { |chord, fret| split_chord(chord).map { |c| [c, fret] } }
+    pairs = pairs.flat_map { |chord, fret| split_chord_frets(chord, fret) }
     pairs.map! do |chord, fret|
       if fret
         precise_seen[chord] = fret
@@ -163,6 +176,19 @@ module ChordDiagrams
     diag_cases(chord).max&.to_s
   end
 
+  # Case transposée d'un accord ÉVENTUELLEMENT composé ("Bm/Am7", `new_chord` déjà
+  # transposé) — chaque partie garde SA PROPRE case (`split_chord_frets`, issue #81),
+  # transposée indépendamment, rejointe dans le même format "/"  que `fret`
+  # en entrée (jamais la case d'une partie appliquée à l'autre).
+  def self.transposed_composite_fret(new_chord, fret, decalage_demitons)
+    parts = split_chord(new_chord)
+    return transposed_fret(new_chord, fret, decalage_demitons) if parts.size == 1
+
+    frets = fret.to_s.split("/", -1)
+    transposed = parts.each_with_index.map { |c, i| transposed_fret(c, frets[i].to_s.empty? ? nil : frets[i], decalage_demitons) }
+    transposed.any? { |f| f } ? transposed.map(&:to_s).join("/") : nil
+  end
+
   # Applique la transposition (accord + case) à tous les segments des blocs `.lyr`, en
   # place — appelé avant tout usage des blocs (diags, rendu) pour que le reste du
   # pipeline n'ait jamais à savoir qu'une transposition a eu lieu.
@@ -173,7 +199,7 @@ module ChordDiagrams
           next unless seg.chord
 
           new_chord = Transpose.transpose_chord(seg.chord, decalage_lettres, decalage_demitons)
-          seg.fret = transposed_fret(new_chord, seg.fret, decalage_demitons)
+          seg.fret = transposed_composite_fret(new_chord, seg.fret, decalage_demitons)
           seg.chord = new_chord
         end
       end

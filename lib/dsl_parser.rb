@@ -58,7 +58,7 @@ class DSLParser
     while i < matches.length
       m = matches[i]
       chord = normalize_chord(m[1])
-      fret = m[2]
+      frets = [m[2]]
       # "/" SEUL entre deux marqueurs collés (ex. "/F://C:") : PAS un séparateur à
       # effacer — un séparateur VISUEL entre deux accords de la MÊME mesure (jamais deux
       # syllabes distinctes), fusionnés en UN SEUL segment "F/C" (`Layout.draw_chord_label`
@@ -66,13 +66,21 @@ class DSLParser
       # rescinder pour les diagrammes) — jamais gravé dans les paroles, jamais non plus
       # purement supprimé (bug constaté : perdait le lien visuel entre les deux accords,
       # rendus comme deux accords disjoints avec juste un espace).
+      # Issue #81 : la case (`-N`) d'un marqueur fusionné se rapporte à CE marqueur-là,
+      # jamais aux autres de la fusion — "/Bm://Am7-5:" fusionnait en `fret ||= nxt[2]`
+      # (le premier trouvé "gagnait" pour tout le groupe), donc la case "5" d'"Am7"
+      # finissait appliquée à "Bm" aussi ("accord Bm-5 n'existe pas" au build, alors que
+      # seul "Am7-5" était visé). Chaque marqueur garde SA case, alignée par position sur
+      # `chord.split("/")` — jointes par "/" dans `fret` (case vide = aucune case pour ce
+      # marqueur), déchiffrées ensemble par `ChordDiagrams.split_chord_frets`.
       while i + 1 < matches.length && line[m.end(0)...matches[i + 1].begin(0)] == "/"
         i += 1
         nxt = matches[i]
         chord = "#{chord}/#{normalize_chord(nxt[1])}"
-        fret ||= nxt[2]
+        frets << nxt[2]
         m = nxt
       end
+      fret = frets.size > 1 ? frets.map(&:to_s).join("/") : frets.first
       text_start = m.end(0)
       text_end = i + 1 < matches.length ? matches[i + 1].begin(0) : line.length
       segments << Segment.new(chord: chord, fret: fret, text: strip_bare_slashes(line[text_start...text_end]))
