@@ -71,6 +71,66 @@ RSpec.describe "lecture du gabarit (.gab)" do
     expect(PageBuilder.block_kind("couplet-3")).to eq("couplet")
   end
 
+  # "Au fur et à mesure" : un "+" ne laisse AUCUNE gouttière entre les sous-blocs
+  # concaténés (contrairement à une row normale, `col1_w`/`col2_w`/`h_gutter`) —
+  # `top_margin:` comble ce manque, espace FIXE ajouté juste au-dessus du sous-bloc
+  # portant la directive (`Line#top_gap`, consommé par `Layout.block_visual_height`/
+  # `Layout.draw_block`).
+  describe "top_margin: sur un sous-bloc \"+\"-concaténé (Line#top_gap)" do
+    def lyr_blocks_for(*names_with_lines)
+      names_with_lines.to_h { |name, lines| [name, Block.new(lines: lines.map { |t| Line.new(segments: [Segment.new(chord: nil, text: t)]) }, directives: {}, paired_with_previous: false)] }
+    end
+
+    it "posé sur le 2e sous-bloc : top_gap SEULEMENT sur sa 1re ligne, en pt" do
+      lyr_blocks = lyr_blocks_for(["a", ["ligne a1", "ligne a2"]], ["b", ["ligne b1", "ligne b2"]])
+      row_directives = { "b" => { top_margin: "10pt" } }
+
+      block = PageBuilder.resolve_block(lyr_blocks, "a+b", [], Hash.new(0), row_directives: row_directives)
+
+      expect(block.lines.map(&:top_gap)).to eq([nil, nil, 10.0, nil])
+    end
+
+    it "unité différente (cm) : convertie en pt (`AppConfig.length_pt`)" do
+      lyr_blocks = lyr_blocks_for(["a", ["x"]], ["b", ["y"]])
+      row_directives = { "b" => { top_margin: "1cm" } }
+
+      block = PageBuilder.resolve_block(lyr_blocks, "a+b", [], Hash.new(0), row_directives: row_directives)
+
+      expect(block.lines.last.top_gap).to be_within(0.01).of(28.35)
+    end
+
+    it "Layout.block_visual_height/draw_block : la hauteur du bloc augmente EXACTEMENT du top_gap" do
+      lyr_blocks = lyr_blocks_for(["a", ["x"]], ["b", ["y"]])
+      with_margin = PageBuilder.resolve_block(lyr_blocks, "a+b", [], Hash.new(0), row_directives: { "b" => { top_margin: "10pt" } })
+      without_margin = PageBuilder.resolve_block(lyr_blocks, "a+b", [], Hash.new(0), row_directives: {})
+
+      pdf = Prawn::Document.new
+      chord_ascent = Layout.font_metric(pdf, Layout.scaled_chord_size) { pdf.font.ascender }
+      text_ascent = Layout.font_metric(pdf, Options.get(:font_size)) { pdf.font.ascender }
+      text_descent = Layout.font_metric(pdf, Options.get(:font_size)) { pdf.font.descender }
+      height_with = Layout.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, with_margin, nil)
+      height_without = Layout.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, without_margin, nil)
+
+      expect(height_with - height_without).to be_within(0.001).of(10.0)
+    end
+
+    it "posé sur le 1er sous-bloc (tout en haut du bloc final) : stocké sur sa 1re ligne, mais SANS EFFET (Layout.block_visual_height ignore le top_gap de la ligne 0, rien à ajouter au-dessus)" do
+      lyr_blocks = lyr_blocks_for(["a", ["x"]], ["b", ["y"]])
+      with_margin = PageBuilder.resolve_block(lyr_blocks, "a+b", [], Hash.new(0), row_directives: { "a" => { top_margin: "10pt" } })
+      without_margin = PageBuilder.resolve_block(lyr_blocks, "a+b", [], Hash.new(0), row_directives: {})
+
+      expect(with_margin.lines.first.top_gap).to eq(10.0)
+
+      pdf = Prawn::Document.new
+      chord_ascent = Layout.font_metric(pdf, Layout.scaled_chord_size) { pdf.font.ascender }
+      text_ascent = Layout.font_metric(pdf, Options.get(:font_size)) { pdf.font.ascender }
+      text_descent = Layout.font_metric(pdf, Options.get(:font_size)) { pdf.font.descender }
+      height_with = Layout.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, with_margin, nil)
+      height_without = Layout.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, without_margin, nil)
+      expect(height_with).to eq(height_without)
+    end
+  end
+
   describe "ranger les blocs de paroles tout seul (sans .gab)" do
     let(:blocks) do
       {

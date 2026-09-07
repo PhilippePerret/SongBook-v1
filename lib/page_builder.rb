@@ -8,6 +8,7 @@ require_relative "printer_profile"
 require_relative "locale"
 require_relative "file_finder"
 require_relative "diags_sync"
+require_relative "app_config"
 require_relative "../tools/tablator/tablator"
 
 # Construit les pages PDF d'UNE chanson — point d'entrée réutilisable (API : "je veux
@@ -569,12 +570,27 @@ module PageBuilder
     Block.new(lines: parts.flat_map(&:lines), directives: parts.first.directives, paired_with_previous: false)
   end
 
+  # `top_margin:<Npt/Ncm/Nin>` (Phil, "Au fur et à mesure" — un "+" ne laisse AUCUNE
+  # gouttière entre les sous-blocs concaténés, contrairement à une row normale) : espace
+  # FIXE ajouté juste au-dessus de la 1re ligne de CE sous-bloc-ci (`i.zero?` dans la
+  # boucle `lines.map`, jamais les autres) — consommé par `Layout.block_visual_height`/
+  # `Layout.draw_block` (`Line#top_gap`). Seulement un sens au POINT DE JONCTION d'un
+  # "+" (1re ligne du 1er sous-bloc = tout en haut du bloc final, rien à ajouter
+  # au-dessus, `top_gap` y reste sans effet — la vraie gouttière AU-DESSUS du bloc entier
+  # est déjà celle, normale, entre deux rows).
   def self.apply_extra_directives(block, name, row_directives)
     dirs = row_directives[name]
     return block if dirs.nil? || dirs.empty?
 
     align = dirs[:align]
-    lines = align ? block.lines.map { |l| Line.new(segments: l.segments, label: l.label, align: align) } : block.lines
+    top_gap = dirs[:top_margin] && AppConfig.length_pt(dirs[:top_margin])
+    lines = if align || top_gap
+      block.lines.each_with_index.map do |l, i|
+        Line.new(segments: l.segments, label: l.label, align: align || l.align, top_gap: i.zero? ? top_gap : l.top_gap)
+      end
+    else
+      block.lines
+    end
     Block.new(lines: lines, directives: block.directives.merge(dirs), paired_with_previous: block.paired_with_previous)
   end
 

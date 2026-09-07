@@ -1261,6 +1261,11 @@ module Layout
     baseline = force_chord_baseline || line_has_chord?(lines.first) ? chord_ascent : text_ascent
     last_text_offset = 0
     lines.each_with_index do |line, i|
+      # `top_gap` (`PageBuilder.apply_extra_directives`, directive `top_margin:` posée
+      # sur un sous-bloc "+"-concaténé, "Au fur et à mesure") : espace FIXE en plus,
+      # jamais sur la 1re ligne du bloc (rien au-dessus, c'est la gouttière normale
+      # entre rows qui joue déjà ce rôle-là).
+      baseline += line.top_gap if i.positive? && line.top_gap
       # `reserve_chord_row` (1re ligne seulement) : même réserve "ligne d'accords" que
       # `draw_block`/`draw_line`, sinon la hauteur mesurée ici (utilisée pour la row
       # entière) désaccorde de ce qui est réellement dessiné — RAL3.
@@ -1933,6 +1938,8 @@ module Layout
     x += reserve
     width -= reserve if width
     block.lines.each_with_index do |line, i|
+      # `top_gap` : voir `block_visual_height`, même règle (jamais sur la 1re ligne).
+      y -= line.top_gap if i.positive? && line.top_gap
       line_x = x
       if width && line.align.to_s.downcase == "right"
         lw = line_width(pdf, line.segments, chord_size, text_size, label: line.label)
