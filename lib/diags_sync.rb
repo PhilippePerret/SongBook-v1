@@ -6,12 +6,14 @@ require_relative "../tools/ChordDiagram/generate_chord_diagrams"
 # Avant toute construction (carnet ou chanson seule) : lit le `.schemas`/`.sch` de
 # `dir` s'il existe, régénère chaque SVG absent OU plus vieux que ce fichier (un seul
 # fichier pour tous les accords, comparaison de date au niveau du fichier entier, pas
-# accord par accord — . Toujours écrit dans `images/diags/` DANS `dir`,
+# accord par accord — . Toujours écrit dans `scores/` DANS `dir`  (Phil : "c'est
+# dans /scores, sans sous-dossier, qu'il faut mettre les diags produits pour la
+# chanson" — MÊME dossier ressource que tabs/images, `PageBuilder::RESOURCE_SUBDIRS`),
 # même si l'user a déjà placé des SVG ailleurs (bonnes habitudes) — `ChordDiagrams`
-# cherche ensuite dans TOUT `dir`, pas seulement `images/diags/` (l'user peut les avoir
-# mis n'importe où).
+# cherche ensuite dans TOUT `dir`, pas seulement `scores/` (l'user peut les avoir mis
+# n'importe où).
 module DiagsSync
-  OUT_SUBDIR = File.join("images", "diags")
+  OUT_SUBDIR = "scores"
 
   def self.sync!(dir)
     return unless dir

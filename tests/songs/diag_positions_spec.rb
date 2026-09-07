@@ -2,6 +2,7 @@
 
 require_relative "../spec_helper"
 require "page_builder"
+require "carnet_builder"
 require "combine_pdf"
 require "tmpdir"
 require "fileutils"
@@ -37,9 +38,9 @@ RSpec.describe "positions de diagrammes (top/front/end), situation critique (exc
     chords.each { |c| File.write(File.join(@song_dir, "#{c}-0.svg"), %(<svg viewBox="0 0 60 90"></svg>)) }
   end
 
-  def build
+  def build(carnet_folder: nil)
     out_path = File.join(@song_dir, "out.pdf")
-    PageBuilder.build(@song_dir, out_path, page_size_in: [3.5, 5], page_count: 24, first_page_no: 1)
+    PageBuilder.build(@song_dir, out_path, page_size_in: [3.5, 5], page_count: 24, first_page_no: 1, carnet_folder: carnet_folder)
     out_path
   end
 
@@ -70,11 +71,34 @@ RSpec.describe "positions de diagrammes (top/front/end), situation critique (exc
   end
 
   it "situation normale (peu de diags) : une seule page, pas de mécanisme d'excédent déclenché" do
-    write_song(CHORDS.first(2))
-    out_path = build("top")
+    write_song(CHORDS.first(2), diags_position: "top")
+    out_path = build
 
     log = File.read(Layout.building_log_path)
     expect(log).not_to match(/lignes? fixes|page dédiée/)
     expect(File.exist?(out_path)).to be true
+  end
+
+  # Issue Carnet-1 : `diags_align` (alignement DANS le bloc, indépendant de
+  # `diags_position`) doit s'appliquer aussi à la grille de fin de chanson (RAD7-10,
+  # `diags_position: end` + excédent) — avant ce fix, cette grille ignorait `align`,
+  # toujours centrée quel que soit le réglage. Vérifié via `carnet_folder` + la
+  # convention documentée `options: / diags: / align:` (Manuel/songbook/options.adoc).
+  it "diags_position: end + carnet avec options: / diags: / align: left — construit sans erreur (align appliqué à la grille d'excédent)" do
+    Dir.mktmpdir do |carnet_dir|
+      File.write(File.join(carnet_dir, "c.infos"), <<~INFOS)
+        title: Carnet Test Align
+        options:
+          diags:
+            align: Left
+      INFOS
+
+      write_song(CHORDS, diags_position: "end")
+      out_path = build(carnet_folder: carnet_dir)
+
+      expect(File.exist?(out_path)).to be true
+      log = File.read(Layout.building_log_path)
+      expect(log).to match(/lignes? fixes|page dédiée/)
+    end
   end
 end

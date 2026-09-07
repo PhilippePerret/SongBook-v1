@@ -69,5 +69,13 @@ RSpec.describe "transposition des accords" do
       dl, dt = decalage
       expect(Transpose.transpose_chord("F/C", dl, dt)).to eq("C/G")
     end
+
+    # 2026-09-07 : basse EXPLICITE ("/[C]", `DSLParser::BARE_BASS_RE`) — le "/" n'est
+    # PAS un séparateur d'accords composés ("F/C" ci-dessus) mais un préfixe SUR un
+    # token bracket unique, retiré puis réappliqué après transposition de son contenu.
+    it "basse EXPLICITE (\"/[C]\") : le \"/\" survit, jamais confondu avec \"F/C\"" do
+      dl, dt = decalage
+      expect(Transpose.transpose_chord("/[C]", dl, dt)).to eq("/[G]")
+    end
   end
 end

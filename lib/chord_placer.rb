@@ -129,7 +129,20 @@ module ChordPlacer
       save_cached_chords(song_dir, letters.values.flatten)
       current_line = chord_lines[editable[pos]]
       existing = current_line.chord_at(cursor)
-      chord = "#{existing}/#{chord}" if merge_next && existing
+      # "/" à froid sur un bracket seul (2026-09-07, Phil : "[B] n'est pas
+      # obligatoirement une basse") : NE S'IGNORE PLUS quand rien n'existe au curseur
+      # (contrairement à avant, issue #66 — "aucun risque de fusion fantôme") — préfixe
+      # désormais le nom lui-même (`"/[B]"`, `ChordLine#chord_tokens` sait l'écrire
+      # "//[B]:"), pour distinguer une VRAIE basse ("/si") d'une simple note aiguë
+      # ("[B]" seul, "si") — seulement pour un bracket seul, jamais pour un accord
+      # nommé (un "/" à froid devant un nom RESTE sans effet, rien à fusionner).
+      chord = if merge_next && existing
+        "#{existing}/#{chord}"
+      elsif merge_next && !existing && chord.match?(ChordDiagrams::BASS_ONLY_RE)
+        "/#{chord}"
+      else
+        chord
+      end
       current_line.set_chord(cursor, chord)
       notice = chord_notice(chord, song_dir)
       dirty = true
@@ -519,10 +532,11 @@ module ChordPlacer
   # constaté — cherchait "F7M-1-*.svg" en traitant tout le texte comme un nom
   # opaque, jamais "F7M-1.svg" lui-même, faux "sans diagramme" alors qu'il existait).
   def self.chord_known?(chord, song_dir)
-    # Basse seule (`[fd]`) : aucun diagramme dédié n'existe pour ce
-    # cas (convention absente de `GenerateChordDiagrams`), le signaler serait donc
-    # TOUJOURS un faux négatif — rien à signaler.
-    return true if chord.start_with?("[")
+    # Note seule (`[fd]`) OU basse EXPLICITE (`/[fd]`, 2026-09-07) : aucun diagramme
+    # dédié n'existe pour aucun des deux cas (convention absente de
+    # `GenerateChordDiagrams`), le signaler serait donc TOUJOURS un faux négatif — rien
+    # à signaler.
+    return true if chord.start_with?("[") || chord.start_with?("/[")
 
     name, fret = chord.split("-", 2)
     fc = ChordDiagrams.file_chord(name)

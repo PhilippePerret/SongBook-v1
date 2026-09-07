@@ -72,6 +72,16 @@ RSpec.describe "recherche des diagrammes d'accords" do
     end
   end
 
+  # 2026-09-07 : plantage constaté ("undefined method 'upcase' for nil") avant le
+  # garde-fou `ChordDiagrams.split_chord` — "/[B]" n'atteignait JAMAIS le early-return
+  # `BASS_ONLY_RE` de `diag_path` lui-même, `collect_chord_frets`/`split_chord_frets`
+  # le scindait en amont en `["", "[B]"]`.
+  it "basse explicite (\"/[B]\") : jamais de diagramme, jamais un plantage" do
+    Dir.mktmpdir do |dir|
+      expect(ChordDiagrams.diag_path("/[B]", carnet_dir: dir)).to be_nil
+    end
+  end
+
   # Générique (sans "-case") vs précis (avec) : un générique rencontré APRÈS un précis
   # du même nom hérite de SA case, plutôt que de chercher la case la plus basse (Phil,
   # 2026-08-28).
@@ -119,6 +129,28 @@ RSpec.describe "recherche des diagrammes d'accords" do
 
     it "laisse intact un accord sans \"/\"" do
       expect(ChordDiagrams.split_chord("Am7")).to eq(["Am7"])
+    end
+
+    # 2026-09-07 : "/[B]" (basse EXPLICITE, `DSLParser::BARE_BASS_RE`) contient un "/"
+    # mais n'est PAS un accord composé — un token UNIQUE, jamais scindé (bug constaté :
+    # `"/[B]".split("/")` -> `["", "[B]"]`, le "" vide plantait plus loin sur
+    # `diag_path`/`find_svg`, `chord[0].upcase` sur nil).
+    it "\"/[B]\" (basse explicite) : jamais scindé, reste un token unique" do
+      expect(ChordDiagrams.split_chord("/[B]")).to eq(["/[B]"])
+    end
+  end
+
+  describe "BASS_ONLY_RE (aucun diagramme dédié, ni note aiguë ni basse)" do
+    it "bracket seul (\"[B]\", note aiguë) : matche" do
+      expect(ChordDiagrams::BASS_ONLY_RE.match?("[B]")).to be true
+    end
+
+    it "bracket préfixé d'un \"/\" (\"/[B]\", basse explicite) : matche AUSSI" do
+      expect(ChordDiagrams::BASS_ONLY_RE.match?("/[B]")).to be true
+    end
+
+    it "un accord normal ne matche pas" do
+      expect(ChordDiagrams::BASS_ONLY_RE.match?("Am7")).to be false
     end
   end
 

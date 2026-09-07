@@ -25,11 +25,16 @@ module ChordDiagrams
   # `assets/chords_diags/` en dernier recours . Recherche RÉCURSIVE
   # dans `carnet_dir`/`song_dir` (SongBook écrit lui-même dans `images/diags/`, mais
   # l'user peut avoir placé un SVG n'importe où dans le dossier).
-  # Basse SEULE (ex. "[fd]", tout l'accord entre crochets — Manuel/song/chords.adoc,
-  # `chord_placer.rb`) : jamais de diagramme dédié, une seule note tenue, pas un accord
-  # signalé "manquant" (bug constaté — le build les listait comme diagrammes
-  # absents alors qu'aucun n'existera jamais pour une basse seule).
-  BASS_ONLY_RE = /\A\[[^\]]*\]\z/
+  # Note seule entre crochets (ex. "[fd]", tout l'accord entre crochets — Manuel/song/
+  # chords.adoc, `chord_placer.rb`) : jamais de diagramme dédié, une seule note tenue,
+  # pas un accord signalé "manquant" (bug constaté — le build les listait comme
+  # diagrammes absents alors qu'aucun n'existera jamais pour une note seule).
+  # "/" optionnel devant (Phil, 2026-09-07, "[B] n'est pas obligatoirement une basse") :
+  # "[B]:" seul = une NOTE AIGUË à jouer ("si", sans "/") ; "//[B]:" = une VRAIE basse
+  # ("/si", comme avant) — deux notations distinctes DANS LA SOURCE (voir
+  # `DSLParser::BARE_BASS_RE`), mais LE MÊME traitement ici (ni l'une ni l'autre n'a de
+  # diagramme dédié, aucune des deux n'est un "accord" au sens raccourci/diagramme).
+  BASS_ONLY_RE = %r{\A/?\[[^\]]*\]\z}
 
   def self.diag_path(chord, fret: nil, carnet_dir: nil, song_dir: nil)
     return nil if chord.match?(BASS_ONLY_RE)
@@ -123,6 +128,13 @@ module ChordDiagrams
   # possible (le "/" romprait le chemin) et était donc TOUJOURS signalé manquant à
   # tort (bug constaté, "Bb6/C", "Bb6/A7", "Am7/G").
   def self.split_chord(chord)
+    # "/[B]" (2026-09-07, basse EXPLICITE — voir `DSLParser::BARE_BASS_RE`) : jamais un
+    # accord composé au sens "Bb6/C" ci-dessus — son "/" est un PRÉFIXE sur un token
+    # UNIQUE, pas un séparateur entre deux accords. Sans ce garde-fou, `"/[B]".split
+    # ("/")` -> `["", "[B]"]` (bug constaté, plantage : le "" vide finit envoyé tel
+    # quel à `diag_path`/`find_svg`, bien après le garde-fou `BASS_ONLY_RE` du même nom).
+    return [chord] if chord.start_with?("/[")
+
     chord.include?("/") ? chord.split("/") : [chord]
   end
 

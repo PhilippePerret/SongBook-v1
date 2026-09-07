@@ -68,8 +68,10 @@ module MissingDiags
         # "/" = diviseur d'accord, uniquement ici pour `missing diags` (Phil,
         # 2026-08-30) — "Am9-5/Am" = accord "Am9-5" ET accord "Am", chacun vérifié
         # séparément. Ne touche PAS `ChordDiagrams.collect_chord_frets` (code partagé
-        # avec la production réelle).
-        raw.split("/").each do |token|
+        # avec la production réelle). "/[B]" (2026-09-07, basse EXPLICITE) : jamais
+        # rescindé (même garde-fou que `ChordDiagrams.split_chord`, sinon
+        # `["", "[B]"]`, "" plantant plus loin sur `chord[0].upcase`).
+        (raw.start_with?("/[") ? [raw] : raw.split("/")).each do |token|
           c, f = token.include?("-") ? token.split("-", 2) : [token, nil]
           next if ChordDiagrams.diag_path(c, fret: f, song_dir: folder)
 

@@ -48,6 +48,15 @@ USAGE = <<~TXT
 
         {{command: songbook create tab "nom"}}
 
+  - Créer un diagramme d'accord propre à la chanson en contexte (enregistré dans son
+    propre .schemas/.sch, jamais dans la bibliothèque partagée de l'application)
+
+        {{command: songbook create diag}}
+        {{command: songbook create diag "<schéma>"}} # pour modifier un schéma existant
+
+    Hors mode interactif (aucun contexte de chanson) : préciser la chanson visée
+        {{command: songbook create diag --song "titre approx"}}
+
   - Ouvrir le manuel
 
         {{command: songbook manual|manuel}}

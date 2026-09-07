@@ -109,8 +109,11 @@ module SchemaLibrary
 
   # --- I/O (frontière, hors logique pure ci-dessus) ---------------------
 
-  def self.entries(nom)
-    path = schemas_path(nom)
+  # `path:` (issue #79, "create diag") : cible alternative au fichier app-wide
+  # `assets/chords_diags/<Lettre>/schemas.txt` — un `.schemas`/`.sch` DANS le dossier
+  # d'une chanson, par exemple . Même logique pure d'insertion/tri des deux
+  # côtés, seule la FRONTIÈRE I/O (chemin du fichier) change.
+  def self.entries(nom, path: schemas_path(nom))
     return [] unless File.exist?(path)
 
     parse_lines(File.read(path).each_line.map(&:chomp))
@@ -118,8 +121,7 @@ module SchemaLibrary
 
   # Vérifie et insère en une fois — renvoie `nil` en cas de succès, ou la raison de
   # refus (`:nom`/`:schema`).
-  def self.save(nom, case_ref, tokens)
-    path = schemas_path(nom)
+  def self.save(nom, case_ref, tokens, path: schemas_path(nom))
     content = File.exist?(path) ? File.read(path) : ""
     existing = parse_lines(content.each_line.map(&:chomp))
 

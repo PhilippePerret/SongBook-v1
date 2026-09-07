@@ -36,11 +36,20 @@ RSpec.describe "Layout : affichage des accords (basse en solfège italien)" do
   end
 
   describe ".display_chord (basse embarquée ou seule)" do
-    it "basse seule entre crochets -> \"/<syllabe italienne>\"" do
-      expect(Layout.display_chord("[fd]")).to eq("/fa♯")
+    # 2026-09-07 (Phil : "[B] n'est pas obligatoirement une basse, ça évolue") : un
+    # bracket SEUL n'est PLUS automatiquement une basse — "[fd]:" seul (sans "/" NU
+    # devant, voir `DSLParser::BARE_BASS_RE`) est désormais une NOTE AIGUË à jouer,
+    # affichée SANS "/". Seul "//[fd]:" (le "/" posé par `DSLParser.parse_line`,
+    # préfixe interne "/[fd]") reste une VRAIE basse, affichée "/<syllabe>" comme avant.
+    it "bracket seul, SANS \"/\" devant (\"[fd]:\") : NOTE AIGUË -> syllabe italienne SANS \"/\"" do
+      expect(Layout.display_chord("[fd]")).to eq("fa♯")
     end
 
-    it "basse embarquée dans un accord : fondamentale en lettre, basse en italien" do
+    it "bracket préfixé d'un \"/\" (\"//[fd]:\", stocké \"/[fd]\") : VRAIE basse -> \"/<syllabe italienne>\"" do
+      expect(Layout.display_chord("/[fd]")).to eq("/fa♯")
+    end
+
+    it "basse embarquée dans un accord : fondamentale en lettre, basse en italien (inchangé, jamais ambigu)" do
       expect(Layout.display_chord("Am7[c]")).to eq("Am7/do")
     end
 

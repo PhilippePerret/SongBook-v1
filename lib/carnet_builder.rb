@@ -71,6 +71,16 @@ module CarnetBuilder
         parent[key] = value == "true" ? true : (value == "false" ? false : value)
       end
     end
+    # `options:` (Manuel/songbook/options.adoc, "Elles se mettent dans la section
+    # options:") : section purement COSMÉTIQUE pour les options du carnet — chaque clé
+    # imbriquée (`Options::DEFINITIONS[...][:nested]`, ex. `diags:/align:`) est cherchée
+    # À LA RACINE de cet arbre, jamais sous `options:` (bug constaté : un `.infos` de
+    # carnet suivant EXACTEMENT la doc, "options: / diags: / align: Left", ignoré en
+    # silence — `tree["diags"]` restait `nil`, seul `tree["options"]["diags"]` existait).
+    # Remontée à la racine, une clé DÉJÀ présente hors `options:` gagne (jamais écrasée).
+    if root["options"].is_a?(Hash)
+      root["options"].each { |k, v| root[k] = v unless root.key?(k) }
+    end
     root
   end
 

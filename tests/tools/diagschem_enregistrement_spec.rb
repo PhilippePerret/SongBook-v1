@@ -79,4 +79,54 @@ RSpec.describe "DiagSchem#enregistrer_dans_application" do
 
     expect(File.exist?(schemas_txt)).to be false
   end
+
+  # Issue #79 : `song_dir:` -> enregistre dans le `.schemas`/`.sch` DE LA CHANSON, jamais
+  # dans la bibliothèque partagée de l'application (`SchemaLibrary`/`assets/`).
+  describe "avec song_dir: (create diag)" do
+    def build_song_instance(schema, song_dir)
+      instance = DiagSchem.new(schema: schema, song_dir: song_dir)
+      instance.instance_variable_set(:@sortie, "#{schema.split(':').first.strip} : #{schema.split(':', 2).last.strip}")
+      instance
+    end
+
+    it "aucun .schemas existant : en crée un DANS le dossier de la chanson (jamais assets/chords_diags/)" do
+      instance = build_song_instance("Am7-0: 10 21/1 32/3 42/2 50 6x", @dir)
+      allow(prompt).to receive(:ask).and_return("Am7-0")
+      expect(SchemaLibrary).not_to receive(:schemas_path)
+
+      instance.send(:enregistrer_dans_application, prompt)
+
+      expect(File.read(File.join(@dir, ".schemas"))).to eq("Am7-0 : 10 21/1 32/3 42/2 50 6x\n")
+      # `scores/`, SANS sous-dossier — même dossier ressource que tabs/images
+      # (`PageBuilder::RESOURCE_SUBDIRS`), jamais un `images/diags/` inventé.
+      expect(File.exist?(File.join(@dir, "scores", "Am7-0.svg"))).to be true
+    end
+
+    # Seule l'EXTENSION compte (`.schemas`/`.sch`), jamais le root-name (Phil : "on
+    # s'en branle de son nom") — `.schemas` n'est créé QUE si RIEN de cette extension
+    # n'existe déjà, quel que soit son root-name.
+    it "un .schemas/.sch existe déjà sous UN AUTRE root-name (ex. \"c.schemas\") : complété, jamais un 2e fichier créé" do
+      File.write(File.join(@dir, "c.schemas"), "G-0 : 10 21/1 32/3 42/2 50 6x\n")
+      instance = build_song_instance("Am7-0: 15/1 251 36/2 47/4 57/3 65/1", @dir)
+      allow(prompt).to receive(:ask).and_return("Am7-0")
+
+      instance.send(:enregistrer_dans_application, prompt)
+
+      expect(File.exist?(File.join(@dir, ".schemas"))).to be false
+      expect(File.read(File.join(@dir, "c.schemas"))).to include("Am7-0 : 15/1 251 36/2 47/4 57/3 65/1")
+    end
+
+    # Issue #79 : contrairement au mode application (issue #80, question EXPLICITE
+    # conservée), l'intention est déjà explicite en mode chanson (l'user a lancé "create
+    # diag" POUR cette chanson) — aucune question posée, direct au nom.
+    it "AUCUNE question posée (contrairement au mode application) : \"ask\" appelé direct" do
+      instance = build_song_instance("Am7-0: 10 21/1 32/3 42/2 50 6x", @dir)
+      expect(prompt).not_to receive(:yes?)
+      expect(prompt).to receive(:ask).and_return("Am7-0")
+
+      instance.send(:enregistrer_dans_application, prompt)
+
+      expect(File.exist?(File.join(@dir, ".schemas"))).to be true
+    end
+  end
 end

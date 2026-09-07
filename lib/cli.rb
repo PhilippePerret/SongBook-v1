@@ -301,6 +301,23 @@ module CLI
         rescue Interrupt
           puts
         end
+      # Issue #79 : diagramme propre à LA CHANSON courante (`.schemas`/`.sch` DANS son
+      # dossier, créé s'il n'existe pas — `DiagSchem#schema_target_path`), jamais dans
+      # la bibliothèque partagée de l'application (`diag` autonome, `SchemaLibrary`).
+      when "diag"
+        # Seulement dans une chanson (Session.song), JAMAIS un carnet
+        # — `--song`/`use song` la fixent déjà avant d'arriver ici (`Session.with_song`).
+        abort "aucune chanson de contexte pour create diag (use song ou --song)" unless Session.song
+
+        begin
+          # `arg2` : schéma existant à modifier, optionnel (mêmes formats que l'outil
+          # `diag` autonome — voir `DiagSchem::HELP_TEXT`), table pré-remplie si donné.
+          DiagSchem.new(schema: arg2, song_dir: Session.song).run
+        rescue SchemaInvalide => e
+          abort e.message
+        rescue Interrupt
+          puts
+        end
       when "tdm", "toc"
         begin
           TdmCreator.run(carnet_opt: songs_carnet_opt, command: "create")

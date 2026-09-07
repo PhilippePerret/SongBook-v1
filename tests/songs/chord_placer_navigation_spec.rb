@@ -247,6 +247,15 @@ RSpec.describe "navigation et saisie d'accords (assistant d'accords)" do
       expect(File.readlines(path).first.chomp).to eq("bonjour tout/[Fd]:")
     end
 
+    # 2026-09-07 (Phil : "[B] n'est pas obligatoirement une basse, ça évolue") : "/" à
+    # froid (rien au curseur) ne s'ignore PLUS — préfixe désormais le bracket lui-même,
+    # écrit "//[B]:" (VRAIE basse, "/si"), distinct de "[B]:" seul (note aiguë, "si").
+    it "\"/\" à froid (rien au curseur) puis \"[b]\" : écrit \"//[B]:\", le \"/\" NE disparaît PLUS (issue Carnet-1)" do
+      path = write_lyr(["bonjour tout"])
+      simulate(path, "L/[b]\r\r")
+      expect(File.readlines(path).first.chomp).to eq("bonjour tout//[B]:")
+    end
+
     it "une MAJUSCULE force un nouvel accord malgré la collision avec un raccourci connu" do
       path = write_lyr(["/Am7:bonjour tout"])
       # "a" déjà enregistré (Am7, lu depuis le fichier) => pas de question initiale.

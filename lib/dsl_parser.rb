@@ -18,6 +18,13 @@ class DSLParser
   # accord jamais reconnu du tout (bug constaté).
   CHORD_RE = /\/((?:[A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)(?:\/[A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)?)(?:-([^: ]+))?:/
 
+  # Marqueur bracket SEUL (ex. "[B]", capturé par `CHORD_RE` en groupe 1) — DUPLIQUÉ de
+  # `ChordDiagrams::BASS_ONLY_RE` (jamais requis ici : `chord_diagrams.rb` requiert déjà
+  # `dsl_parser.rb`, un require inverse créerait un cycle). Sert UNIQUEMENT à repérer un
+  # marqueur bracket seul pour la distinction "//[B]:" vs "/[B]:" ci-dessous — RIEN à voir
+  # avec la présence/absence de diagramme (`BASS_ONLY_RE`, elle, garde le "/" optionnel).
+  BARE_BASS_RE = /\A\[[^\]]*\]\z/
+
   def self.parse(source)
     new(source).parse
   end
@@ -58,6 +65,17 @@ class DSLParser
     while i < matches.length
       m = matches[i]
       chord = normalize_chord(m[1])
+      # "//[B]:" (2026-09-07, Phil : "[B] n'est pas obligatoirement une basse") : un "/"
+      # NU immédiatement AVANT un marqueur bracket SEUL (`BARE_BASS_RE`) distingue
+      # désormais deux notations qui rendaient JUSQU'ICI identiquement "/si" — "[B]:"
+      # seul = une NOTE AIGUË à jouer (rendue "si", sans "/", `Layout.display_chord`),
+      # "//[B]:" = une VRAIE basse (rendue "/si", comme avant). Ce "/" en trop reste de
+      # toute façon retiré des paroles (`strip_bare_slashes`, inchangé plus bas) — seul
+      # son SENS change : préfixe désormais le champ `chord` lui-même (`"/[B]"`) plutôt
+      # que d'être purement ignoré. SEULEMENT pour un marqueur bracket seul — un "/" nu
+      # devant un accord NOMMÉ garde son sens D'ORIGINE (texte ignoré), jamais ambigu
+      # avec ceci.
+      chord = "/#{chord}" if m.begin(0).positive? && line[m.begin(0) - 1] == "/" && m[1].match?(BARE_BASS_RE)
       frets = [m[2]]
       # "/" SEUL entre deux marqueurs collés (ex. "/F://C:") : PAS un séparateur à
       # effacer — un séparateur VISUEL entre deux accords de la MÊME mesure (jamais deux

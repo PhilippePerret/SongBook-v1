@@ -10,6 +10,8 @@ require_relative '../ChordDiagram/chord_diagram'
 require_relative 'schema_library'
 require_relative '../../lib/locale'
 require_relative '../../lib/ansi_colors'
+require_relative '../../lib/file_finder'
+require_relative '../../lib/diags_sync'
 
 DOIGTS_VALIDES = %w[1 2 3 4 p].freeze
 CORDES_AUTORISEES_POUR_P = [5, 6].freeze
@@ -102,7 +104,13 @@ class DiagSchem
     Dir.chdir(out_dir) { instance.send(:generer_svg) }
   end
 
-  def initialize(output_svg: false, schema: nil)
+  # `song_dir:` (issue #79, `songbook create diag`) : enregistre dans le `.schemas`/
+  # `.sch` DE LA CHANSON courante (`FileFinder.find(song_dir, :sch)`, créé s'il
+  # n'existe pas encore — `.schemas` par défaut, 1re extension de `FileFinder::
+  # EXTENSIONS[:sch]`) plutôt que dans la bibliothèque de l'application
+  # (`SchemaLibrary`, `assets/chords_diags/`) — jamais les deux à la fois, un
+  # diagramme propre à UNE chanson n'a rien à faire dans la bibliothèque partagée.
+  def initialize(output_svg: false, schema: nil, song_dir: nil)
     @nom = ''
     @case_ref = nil
     @entries = Array.new(6) { Entry.new(nil, nil, false) } # index 0 = corde 1 ... index 5 = corde 6
@@ -115,6 +123,7 @@ class DiagSchem
     @sortie = nil
     @output_svg = output_svg
     @svg_path = nil
+    @song_dir = song_dir
     parser_schema(schema) if schema
     reinitialiser_buffer # synchronise @buffer avec la cellule courante (nom), sinon affiché "_"
   end
@@ -150,17 +159,46 @@ class DiagSchem
     @svg_path = generer_svg if prompt.yes?(blue(Loc.get('diag_output_question')))
   end
 
-  # Question localisée EXPLICITE demandée D'ABORD (issue #80 : avant, aucun moyen de
-  # refuser l'enregistrement sans forcer l'arrêt — Ctrl-C — un "Enregistrer ?" (Y/n)
-  # avait bien été tenté puis retiré, bug constaté : le nom de l'accord tapé PAR RÉFLEXE
-  # à cette question, ex. "B-7", loin d'être un booléen, faisait échouer
-  # `TTY::Prompt#yes?` avec son message anglais générique "Invalid input.". En
-  # contrepartie, "Entrée seule -> pas d'enregistrement" sur la question du nom, plus
-  # bas, restait la SEULE porte de sortie — sauf qu'un DÉFAUT y est proposé (`Nom-case`
-  # du schéma), donc Entrée seule VALIDAIT ce défaut, jamais un vrai refus). Cette
-  # question-ci, formulée sans ambiguïté ("Voulez-vous faire de ce diagramme un
-  # diagramme de l'application ?"), n'a plus ce risque de confusion avec un nom
-  # d'accord.
+  # Fichier `.schemas`/`.sch` CIBLE de l'enregistrement (issue #79) : celui DE LA
+  # CHANSON courante (`@song_dir`, `songbook create diag`) — repris s'il existe déjà,
+  # SEULE l'extension compte (`.schemas` ou `.sch`, `FileFinder`), jamais le root-name
+  # (Phil : "on s'en branle de son nom") ; sinon `.schemas` (1re extension de
+  # `FileFinder::EXTENSIONS[:sch]`) créé dans le dossier de la chanson — ou, à défaut de
+  # `@song_dir` (outil `diag` autonome), la bibliothèque PARTAGÉE de l'application
+  # (`SchemaLibrary.schemas_path`, `assets/chords_diags/<Lettre>/schemas.txt`).
+  def schema_target_path(nom)
+    return SchemaLibrary.schemas_path(nom) unless @song_dir
+
+    FileFinder.find(@song_dir, :sch) || File.join(@song_dir, '.schemas')
+  end
+
+  # Dossier où produire le SVG tout de suite après l'enregistrement : `scores/` DANS la
+  # chanson (Phil : "c'est dans /scores, sans sous-dossier, qu'il faut mettre les diags
+  # produits pour la chanson" — MÊME dossier ressource que tabs/images,
+  # `PageBuilder::RESOURCE_SUBDIRS`, et MÊME sous-dossier que `DiagsSync::OUT_SUBDIR`,
+  # qui y régénère ces mêmes SVG au build) en mode chanson, sinon le dossier de la
+  # lettre dans la bibliothèque de l'application (inchangé).
+  def svg_target_dir(nom)
+    return File.join(@song_dir, DiagsSync::OUT_SUBDIR) if @song_dir
+
+    File.dirname(SchemaLibrary.schemas_path(nom))
+  end
+
+  # Question localisée EXPLICITE demandée D'ABORD, mais SEULEMENT en mode application
+  # (issue #80 : avant, aucun moyen de refuser l'enregistrement sans forcer l'arrêt —
+  # Ctrl-C — un "Enregistrer ?" (Y/n) avait bien été tenté puis retiré, bug constaté :
+  # le nom de l'accord tapé PAR RÉFLEXE à cette question, ex. "B-7", loin d'être un
+  # booléen, faisait échouer `TTY::Prompt#yes?` avec son message anglais générique
+  # "Invalid input.". En contrepartie, "Entrée seule -> pas d'enregistrement" sur la
+  # question du nom, plus bas, restait la SEULE porte de sortie — sauf qu'un DÉFAUT y
+  # est proposé (`Nom-case` du schéma), donc Entrée seule VALIDAIT ce défaut, jamais un
+  # vrai refus). Cette question-ci, formulée sans ambiguïté ("Voulez-vous faire de ce
+  # diagramme un diagramme de l'application ?" — phrase EXACTE de l'issue, jamais
+  # reformulée), n'a plus ce risque de confusion avec un nom d'accord.
+  # En mode chanson (`@song_dir`, `songbook create diag`, issue #79) : PAS de question —
+  # l'intention est déjà explicite (l'user a lancé CETTE commande POUR cette chanson),
+  # la reposer serait redondant (Phil : "faut être débile pour ne pas avoir corrigé
+  # ça"). Va direct à la question du nom.
   #
   # Nom demandé à l'user (texte libre, défaut = "Nom-case" du schéma en cours, ex.
   # "C7-0" — issue #61, avant : la case n'était jamais proposée par défaut) : c'est LE
@@ -173,9 +211,13 @@ class DiagSchem
   # Vérifie 1) le nom (même nom+case) 2) SURTOUT le schéma (mêmes positions, sous
   # n'importe quel autre nom) — refuse l'enregistrement si l'un des deux existe déjà
   # (Phil : "trop dangereux"). Sinon insère (`SchemaLibrary`) et
-  # produit tout de suite le SVG dans le dossier de la lettre (pas le dossier courant).
+  # produit tout de suite le SVG (dossier de la lettre, ou de la chanson courante).
   def enregistrer_dans_application(prompt)
-    return unless prompt.yes?(blue(Loc.get('diag_save_in_app_question')), default: true)
+    # Mode chanson (`@song_dir`) : intention déjà explicite (commande "create diag"
+    # lancée POUR cette chanson, issue #79) — aucune question, direct au nom.
+    unless @song_dir
+      return unless prompt.yes?(blue(Loc.get('diag_save_in_app_question')), default: true)
+    end
 
     # `@nom` normalisé (`DSLParser.normalize_chord`, même règle partout) DÈS LA
     # PROPOSITION par défaut — 1re lettre de la fondamentale ET de la basse entre
@@ -190,17 +232,24 @@ class DiagSchem
     nom, case_ref = m ? [m[1], m[2]] : [texte, @case_ref]
 
     tokens = @sortie.split(':', 2).last.strip
-    case SchemaLibrary.save(nom, case_ref, tokens)
+    path = schema_target_path(nom)
+    case SchemaLibrary.save(nom, case_ref, tokens, path: path)
     when :nom
       puts "#{ROUGE}#{format(Loc.get('diag_conflict_nom'), texte)}#{RESET}"
     when :schema
-      doublon = SchemaLibrary.entries(nom).find { |e| e.tokens == tokens }
+      doublon = SchemaLibrary.entries(nom, path: path).find { |e| e.tokens == tokens }
       puts "#{ROUGE}#{format(Loc.get('diag_conflict_schema'), "#{doublon.nom}-#{doublon.case_ref}")}#{RESET}"
     else
       puts "#{VERT}👍 #{format(Loc.get('diag_inserted'), texte)}#{RESET}"
       @nom = nom
       @case_ref = case_ref
-      dossier = File.dirname(SchemaLibrary.schemas_path(nom))
+      dossier = svg_target_dir(nom)
+      # `svg_target_dir` peut renvoyer `images/diags/` DANS la chanson (mode
+      # `@song_dir`) — jamais créé par `SchemaLibrary.save` (qui ne crée QUE le dossier
+      # du fichier schéma, ici la racine de la chanson, déjà existante) — `mkdir_p`
+      # explicite, sinon `Dir.chdir` plante (dossier absent au 1er diagramme d'une
+      # chanson).
+      FileUtils.mkdir_p(dossier)
       @svg_path = Dir.chdir(dossier) { generer_svg("#{texte}.svg") }
     end
   end

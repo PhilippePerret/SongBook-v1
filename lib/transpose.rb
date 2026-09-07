@@ -98,6 +98,11 @@ module Transpose
   # illisible : '[C]'", `Transpose::CHORD_RE` exigeait une lettre en tête, ignorait
   # totalement la syntaxe basse entre crochets).
   def self.transpose_chord(str, decalage_lettres, decalage_demitons)
+    # "/[B]" (2026-09-07, basse EXPLICITE — voir `DSLParser::BARE_BASS_RE`) : jamais
+    # un accord composé au sens "F/C" (`str.include?("/")` ci-dessous) — le "/" ici
+    # préfixe UN SEUL token bracket, retiré puis réappliqué après transposition de son
+    # contenu (même branche `str.start_with?("[")` que la note aiguë "[B]", inchangée).
+    return "/#{transpose_chord(str[1..], decalage_lettres, decalage_demitons)}" if str.start_with?("/[")
     return str.split("/").map { |part| transpose_chord(part, decalage_lettres, decalage_demitons) }.join("/") if str.include?("/")
 
     transpose_bass = ->(s) { s.gsub(BASS_RE) { "[#{transpose_note($1, decalage_lettres, decalage_demitons)}]" } }

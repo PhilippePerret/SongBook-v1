@@ -113,5 +113,19 @@ RSpec.describe "SchemaLibrary (insertion de schémas)" do
       expect(SchemaLibrary.save("A", 0, "autre chose")).to eq(:nom)
       expect(File.read(SchemaLibrary.schemas_path("A"))).to eq(before)
     end
+
+    # Issue #79 (`create diag`) : `path:` cible un fichier `.schemas`/`.sch` QUELCONQUE
+    # (ex. dans une chanson), jamais la bibliothèque `ASSETS` par défaut.
+    it "path: — écrit/lit à l'emplacement donné, jamais dans ASSETS" do
+      other_dir = Dir.mktmpdir
+      custom_path = File.join(other_dir, ".schemas")
+
+      expect(SchemaLibrary.save("A", 0, "10 22/3 32/2 42/1 50 60", path: custom_path)).to be_nil
+      expect(File.read(custom_path)).to eq("A-0 : 10 22/3 32/2 42/1 50 60\n")
+      expect(File.exist?(SchemaLibrary.schemas_path("A"))).to be false
+      expect(SchemaLibrary.entries("A", path: custom_path).map(&:nom)).to eq(["A"])
+    ensure
+      FileUtils.rm_rf(other_dir)
+    end
   end
 end

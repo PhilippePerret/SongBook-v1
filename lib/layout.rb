@@ -1370,23 +1370,55 @@ module Layout
     PageElement.new(height, draw)
   end
 
+  # Row à 3 blocs ou plus (`//` chaîné dans le `.gab`, ex. "{a} // {b} // {c}") : PAS
+  # d'alignement global multi-row comme les rows à 2 (`col1_w`/`col2_w`, calculées une
+  # fois pour TOUS les couplets) — chaque row de ce type partage `width` en N largeurs
+  # égales, MÊME logique que `PageBuilder.build_side_by_side_element` (branche "plus de
+  # 2 colonnes"), calibrage fin par contenu hors sujet ici.
+  def self.n_col_widths(width, n, h_gutter)
+    col_w = (width - h_gutter * (n - 1)) / n.to_f
+    Array.new(n, col_w)
+  end
+
   # RAL3 (Manuel/regles_esthetiques.adoc, "aucune exception") : dans une row côte à côte,
   # si UN des deux blocs a un accord sur sa 1re ligne, les DEUX alignent leur 1re ligne de
   # texte sur cet ancrage — un bloc sans accord ne "remonte" jamais au-dessus de son voisin.
   def self.row_to_element(pdf, row, x0, width, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
-    widths = row.size == 2 ? [col1_w, col2_w] : [width]
+    widths = case row.size
+             when 1 then [width]
+             when 2 then [col1_w, col2_w]
+             else n_col_widths(width, row.size, h_gutter)
+             end
     force_chord = row.size == 2 && row.any? { |b| line_has_chord?(b.lines.first) }
     log_build("bloc sans accord aligné sur son voisin avec accord (RAL3)") if force_chord && row.any? { |b| !line_has_chord?(b.lines.first) }
     height = row.each_with_index.map { |b, i| block_visual_height(pdf, chord_ascent, text_ascent, text_descent, b, widths[i], force_chord_baseline: force_chord) }.max
+    # Offsets RESSERRÉS (`widths[i]` = plafond de largeur pour le texte, jamais la
+    # position de départ de la colonne suivante — MÊME règle que `col2_x` en row à 2,
+    # `max_h_dist` — sinon un bloc court, ex. "COUPLET 1", laisse un vide énorme avant
+    # son voisin, bug constaté) PUIS bloc de 3+ colonnes CENTRÉ dans `width` — jamais
+    # collé à gauche, même règle que `block_x0` en row à 2 (Phil : "ça devrait être
+    # équilibré au centre").
+    n_col_offsets, n_col_total_w = if row.size >= 3
+      offsets = [0.0]
+      cursor = 0.0
+      row.each_with_index do |b, i|
+        next if i == row.size - 1
+
+        cursor = [cursor + widths[i] + h_gutter, cursor + block_width(pdf, b) + max_h_dist].min
+        offsets << cursor
+      end
+      [offsets, offsets.last + block_width(pdf, row.last)]
+    end
     draw = lambda do |pdf_, y|
-      if row.size == 2
+      case row.size
+      when 2
         block, nxt = row
         block_x0 = x0 + [(width - (col1_w + h_gutter + col2_w)) / 2.0, 0].max
         draw_block(pdf_, block, block_x0, y, col1_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
         block1_w = block_width(pdf_, block)
         col2_x = [block_x0 + col1_w + h_gutter, block_x0 + block1_w + max_h_dist].min
         draw_block(pdf_, nxt, col2_x, y, col2_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
-      else
+      when 1
         block = row[0]
         centered = block.directives[:block_align] != "left"
         bx = if centered
@@ -1395,6 +1427,11 @@ module Layout
                x0 + h_gutter # même retrait que la colonne 1, pour rester aligné avec elle
              end
         draw_block(pdf_, block, bx, y, width, chord_ascent, text_ascent)
+      else
+        start_x = x0 + [(width - n_col_total_w) / 2.0, 0].max
+        row.each_with_index do |block, i|
+          draw_block(pdf_, block, start_x + n_col_offsets[i], y, widths[i], chord_ascent, text_ascent)
+        end
       end
     end
     PageElement.new(height, draw)
@@ -1510,7 +1547,7 @@ module Layout
   # secours, voir plus bas). Jamais les deux en même temps que `side_col` (une chanson a
   # soit une colonne, soit une rangée, jamais les deux).
   def self.paginate_and_draw(pdf, elements, first_avail_h, printer:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, text_x: 0, text_w: nil, debug_marks: false,
-      dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil, row_excess: [], row_excess_w: Options.get(:diags_size))
+      dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil, row_excess: [], row_excess_w: Options.get(:diags_size), row_excess_align: :center)
     heights = elements.map(&:height)
     trailing_extra = row_excess.any? ? estimate_excess_grid_height(row_excess, text_w || pdf.bounds.width) : 0
     pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned, top_type: :band_strophe, trailing_extra: trailing_extra)
@@ -1775,14 +1812,23 @@ module Layout
             # `y - diag_h`) — bug corrigé ici (2026-08-20) : `row_y` doit inclure `diag_h`,
             # sinon le bas de la dernière ligne tombe sous 0, dans la marge.
             row_y = effective_gap_v + diag_h + (rows.size - 1 - ri) * (diag_h + gap_v)
-            row_w = row.size * diag_w + [row.size - 1, 0].max * gap_h
-            row_start_x = if column_edge
-              diag_on_left ? column_edge + gap_h : column_edge - gap_h - row_w
+            if column_edge
+              row_w = row.size * diag_w + [row.size - 1, 0].max * gap_h
+              row_start_x = diag_on_left ? column_edge + gap_h : column_edge - gap_h - row_w
+              row_gap = gap_h
             else
-              cur_text_x + [(text_w - row_w) / 2.0, 0].max
+              # Pas de colonne latérale sur cette page (ex. `diags_position: End`, RIEN
+              # réservé) : RAD9 (reliure) ne s'applique pas ici, faute de colonne à
+              # laquelle s'ancrer — `diags_align` (indépendant de `diags_position`, voir
+              # `diag_row_gap`/`diag_row_x`) reprend la main dans la colonne TEXTE, comme
+              # pour toute autre rangée de diagrammes (bug constaté : centrage fixe ici,
+              # `align` jamais branché, alors que la colonne normale le respectait déjà).
+              row_gap = diag_row_gap(row_excess_align, text_w, row.size, diag_w)
+              row_w = row.size * diag_w + [row.size - 1, 0].max * row_gap
+              row_start_x = diag_row_x(row_excess_align, cur_text_x, text_w, row_w, row_gap)
             end
             row.each_with_index do |path, ci|
-              cx = row_start_x + ci * (diag_w + gap_h)
+              cx = row_start_x + ci * (diag_w + row_gap)
               engrave(bottom: row_y - diag_h, context: "diagramme fusionné") do
                 pdf.svg(IO.read(path), at: [cx, row_y], width: diag_w, position: :left, enable_web_requests: false)
               end
@@ -1811,7 +1857,8 @@ module Layout
     return if excess_paths.empty?
 
     draw_diags_grid(pdf, excess_paths, excess_heights, printer: printer, page_w_pt: page_w_pt, page_h_pt: page_h_pt,
-      first_page_no: first_page_no + page_count, debug_marks: debug_marks, diag_w: side_col ? side_col[:width] : Options.get(:diags_size))
+      first_page_no: first_page_no + page_count, debug_marks: debug_marks, diag_w: side_col ? side_col[:width] : Options.get(:diags_size),
+      align: side_col ? (side_col[:align] || :justify) : row_excess_align)
   end
 
   # RAD6 : diags en excès — regroupés horizontalement, plusieurs par ligne, sur une ou
@@ -1820,7 +1867,7 @@ module Layout
   # la MÊME taille, donc CELLE de la colonne normale (`heights` est déjà à cette échelle,
   # voir `layout_diags`/`diag_column_width`), jamais `DIAG_W` nominal redessiné à part
   # (bug constaté : diags de page dédiée plus grands, tailles/proportions différentes).
-  def self.draw_diags_grid(pdf, paths, heights, printer:, page_w_pt:, page_h_pt:, first_page_no:, debug_marks: false, diag_w: Options.get(:diags_size))
+  def self.draw_diags_grid(pdf, paths, heights, printer:, page_w_pt:, page_h_pt:, first_page_no:, debug_marks: false, diag_w: Options.get(:diags_size), align: :center)
     diag_h = heights.max
     gap_h = min_h_dist(:diags)
     gap_v = min_v_dist(:diags)
@@ -1836,11 +1883,12 @@ module Layout
       draw_page_number(pdf, printer, page_no, page_w_pt, page_h_pt)
 
       slice.each_slice(cols).with_index do |row, ri|
-        row_w = row.size * diag_w + (row.size - 1) * gap_h
-        x0 = [(pdf.bounds.width - row_w) / 2.0, 0].max
+        row_gap = diag_row_gap(align, pdf.bounds.width, row.size, diag_w)
+        row_w = row.size * diag_w + [row.size - 1, 0].max * row_gap
+        x0 = diag_row_x(align, 0, pdf.bounds.width, row_w, row_gap)
         y = pdf.bounds.height - gap_v - ri * (diag_h + gap_v)
         row.each_with_index do |path, ci|
-          x = x0 + ci * (diag_w + gap_h)
+          x = x0 + ci * (diag_w + row_gap)
           engrave(bottom: y - diag_h, context: "diagramme (page dédiée)") do
             pdf.svg(IO.read(path), at: [x, y], width: diag_w, position: :left, enable_web_requests: false)
           end
@@ -1909,7 +1957,18 @@ module Layout
   # pas une notation musicale reconnaissable). La basse suit une règle DIFFÉRENTE de la
   # fondamentale  : toujours en solfège ITALIEN (do/ré/mi/fa/sol/la/si),
   # toujours en minuscule — jamais les lettres A-G utilisées pour le reste de l'accord.
+  # DUPLIQUÉ de `ChordDiagrams::BASS_ONLY_RE` (jamais requis ici : `chord_diagrams.rb`
+  # requiert déjà `layout.rb`, un require inverse créerait un cycle).
+  BASS_ONLY_RE = %r{\A/?\[[^\]]*\]\z}
+
+  # "//[B]:" vs "[B]:" (2026-09-07, Phil : "[B] n'est pas obligatoirement une basse") :
+  # un bracket SEUL, JAMAIS ambigu avec la basse EMBARQUÉE (`Gm[fd]`, ci-dessous,
+  # inchangée) — "[B]" seul = une NOTE AIGUË ("si", sans "/"), "/[B]" (le "/" posé par
+  # `DSLParser.parse_line`) = une VRAIE basse ("/si", comme avant ce changement).
   def self.display_chord(chord)
+    return "/#{Transpose.italian_bass_symbol(chord[2..].chomp("]"))}" if chord.start_with?("/[")
+    return Transpose.italian_bass_symbol(chord[1..].chomp("]")) if chord.match?(BASS_ONLY_RE)
+
     chord.split("/").map do |part|
       root, bass = part.include?("[") ? part.split("[", 2) : [part, nil]
       out = convert_note_symbol(root)
@@ -1933,7 +1992,11 @@ module Layout
   # pas encore désambiguïsé, affiché en un seul bloc pleine taille pour l'instant.
   def self.chord_label_parts(chord)
     text = display_chord(chord)
-    return [text, ""] if text.include?("/")
+    # Note aiguë seule ("[B]", texte affiché "si" — SANS "/") : PAS de découpe
+    # racine/qualité, "si" n'est pas "s" + "i" (bug constaté sans ce garde-fou, "S" en
+    # gros puis "i" tout petit) — un seul bloc pleine taille, même traitement que la
+    # basse (`text.include?("/")`, déjà géré juste au-dessus).
+    return [text, ""] if text.include?("/") || chord.match?(BASS_ONLY_RE)
 
     root_end = text[1] == "♯" || text[1] == "♭" ? 2 : 1
     [text[0...root_end], text[root_end..] || ""]
@@ -2222,7 +2285,7 @@ module Layout
   # rien de fixe collé) sont repoussés sans conséquence sur le texte, et vers la GAUCHE (en
   # partant de la fin) pour laisser sa vraie place à l'accord fixe qui suit.
   def self.fixed_chord?(seg)
-    (!seg.text.empty? && seg.text[0] != " ") || seg.chord&.match?(ChordDiagrams::BASS_ONLY_RE)
+    (!seg.text.empty? && seg.text[0] != " ") || seg.chord&.match?(BASS_ONLY_RE)
   end
 
   # Mesure une fois avec le texte D'ORIGINE (essai `spread_chord_positions` à part, sur une
@@ -2501,20 +2564,40 @@ module Layout
     [w, capacity_at.call(w)]
   end
 
+  # `diags_align` : alignement des diagrammes DANS leur bloc (gauche/droite/centré/
+  # justifié) — INDÉPENDANT de `diags_position` (qui place le BLOC LUI-MÊME sur la page,
+  # ex. Top/End/Front). Les deux options n'ont AUCUN rapport, jamais confondues (bug
+  # constaté : `align` non branché du tout pour la grille de fin de chanson, RAD7-10,
+  # alors que la colonne normale le respectait déjà — voir `diag_row_gap`/`diag_row_x`,
+  # UNE SEULE formule pour toute rangée de diagrammes, où qu'elle se dessine).
+  # Gouttière entre deux diagrammes d'UNE rangée de `n` diagrammes de largeur `w` :
+  # FIXE (`min_h_dist(:diags)`), sauf `:justify` qui l'étire pour occuper `avail_w`
+  # (`distribute_gutter`, avant/entre/après).
+  def self.diag_row_gap(align, avail_w, n, w)
+    align == :justify ? distribute_gutter(avail_w, Array.new(n, w), type: :diags) : min_h_dist(:diags)
+  end
+
+  # Position x de départ d'une rangée de largeur `block_w` (gouttières déjà comprises,
+  # voir `diag_row_gap`) dans `avail_w` à partir de `x0`. :center = défaut historique
+  # ("point 7").
+  def self.diag_row_x(align, x0, avail_w, block_w, gap)
+    case align
+    when :left then x0
+    when :right then x0 + (avail_w - block_w)
+    when :justify then x0 + gap
+    else x0 + [(avail_w - block_w) / 2.0, 0].max
+    end
+  end
+
   # Rangée horizontale — `align` : :center (défaut historique, "point 7", gouttière FIXE
   # jamais étirée) / :left / :right (même gouttière fixe, ancrée à un bord) / :justify
   # (gouttière étirée via `distribute_gutter`, avant/entre/après).
   def self.draw_diags_row(pdf, diag_paths, x0, y_top, avail_w, w, align: :center)
     return if diag_paths.empty?
 
-    gap = align == :justify ? distribute_gutter(avail_w, Array.new(diag_paths.size, w), type: :diags) : min_h_dist(:diags)
+    gap = diag_row_gap(align, avail_w, diag_paths.size, w)
     block_w = diag_paths.size * w + [diag_paths.size - 1, 0].max * gap
-    x = case align
-        when :left then x0
-        when :right then x0 + (avail_w - block_w)
-        when :justify then x0 + gap
-        else x0 + [(avail_w - block_w) / 2.0, 0].max
-        end
+    x = diag_row_x(align, x0, avail_w, block_w, gap)
     diag_paths.each do |path|
       svg_data = IO.read(path)
       h = svg_height_for(svg_data, w)

@@ -83,6 +83,34 @@ RSpec.describe "lecture des paroles et accords (.lyr)" do
     end
   end
 
+  # 2026-09-07 (Phil : "[B] n'est pas obligatoirement une basse, ça évolue") : un
+  # marqueur bracket SEUL ("[B]:") n'est PLUS automatiquement une basse — distinction
+  # portée par un "/" NU collé devant CE marqueur précis, jamais par un accord nommé
+  # (le "/F://C:" ci-dessus garde tel quel son sens de fusion, inchangé).
+  describe "\"//[B]:\" vs \"/[B]:\" : note aiguë ou VRAIE basse (issue Carnet-1)" do
+    it "\"/[B]:\" (un seul \"/\") : NOTE AIGUË — chord = \"[B]\", SANS préfixe" do
+      segments = DSLParser.parse_line("/[B]:si")
+      expect(segments.first.chord).to eq("[B]")
+    end
+
+    it "\"//[B]:\" (\"/\" NU + marqueur) : VRAIE basse — chord = \"/[B]\", le \"/\" nu devient un préfixe SUR le champ chord" do
+      segments = DSLParser.parse_line("//[B]:si")
+      expect(segments.first.chord).to eq("/[B]")
+      expect(segments.first.text).to eq("si")
+    end
+
+    it "en tout début de ligne (aucun caractère avant) : même distinction, pas d'erreur d'index" do
+      expect(DSLParser.parse_line("/[B]:x").first.chord).to eq("[B]")
+      expect(DSLParser.parse_line("//[B]:x").first.chord).to eq("/[B]")
+    end
+
+    it "un \"/\" nu devant un accord NOMMÉ (pas un bracket) garde son sens D'ORIGINE : texte ignoré, jamais un préfixe" do
+      segments = DSLParser.parse_line("mot //Bm:reste")
+      expect(segments.map(&:chord).compact).to eq(["Bm"])
+      expect(segments.map(&:text).join).not_to include("/")
+    end
+  end
+
   describe "découper le fichier en morceaux" do
     it "Séparer les informations du début (frontmatter) du reste des paroles" do
       song = DSLParser.parse("---\ntitle: Test\n---\nBonjour\n")

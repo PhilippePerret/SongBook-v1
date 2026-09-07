@@ -998,7 +998,7 @@ module PageBuilder
       end
 
       Layout.paginate_and_draw(pdf, elements, first_avail_h, printer: printer, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col, text_x: text_x, text_w: text_w, debug_marks: debug_marks,
-        dynamic_mode: dynamic_mode, elements_alt: elements_r, side_col_alt: side_col_r, text_x_alt: text_x_r, row_excess: row_excess, row_excess_w: row_excess_w)
+        dynamic_mode: dynamic_mode, elements_alt: elements_r, side_col_alt: side_col_r, text_x_alt: text_x_r, row_excess: row_excess, row_excess_w: row_excess_w, row_excess_align: diag_align)
     end
   end
 

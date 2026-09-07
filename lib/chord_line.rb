@@ -26,12 +26,25 @@ class ChordLine
   # `offset` — fusionnés en une valeur composée "A2-0/A-0" plutôt que le 2e écrasant
   # le 1er (bug constaté sur "If You Don't Know Me By Now"). `serialize` (plus bas)
   # inverse cette fusion à l'écriture.
+  #
+  # "//[B]:" (2026-09-07, Phil : "[B] n'est pas obligatoirement une basse") : un "/" NU
+  # collé devant un marqueur bracket seul ("[...]") — testé EN PREMIER, avant le cas
+  # général ci-dessous, sinon ce "/" NU (rien après lui avant le "/" du marqueur suivant)
+  # ne matcherait aucune des deux branches et se retrouverait, à tort, gravé comme un
+  # caractère littéral dans `text`. Valeur interne préfixée d'un "/" (`"/[B]"`) pour
+  # distinguer cette VRAIE basse ("/si" à l'affichage) d'une note aiguë seule ("[B]",
+  # "si" sans "/") — `chord_tokens` sait réécrire ce préfixe en "//[B]:".
   def self.parse(raw)
     text = +""
     chords = {}
     i = 0
     while i < raw.length
-      if raw[i] == "/" && (m = raw[i..].match(/\A\/([^:\/\s]+):/))
+      if raw[i] == "/" && raw[i + 1] == "/" && (m = raw[(i + 1)..].match(%r{\A(/\[[^\]]*\]):}))
+        offset = text.length
+        value = m[1]
+        chords[offset] = chords[offset] ? "#{chords[offset]}/#{value[1..]}" : value
+        i += 1 + m[0].length
+      elsif raw[i] == "/" && (m = raw[i..].match(/\A\/([^:\/\s]+):/))
         offset = text.length
         chords[offset] = chords[offset] ? "#{chords[offset]}/#{m[1]}" : m[1]
         i += m[0].length
@@ -72,7 +85,13 @@ class ChordLine
   def chord_tokens(idx)
     return "" unless chords[idx]
 
-    self.class.split_for_write(chords[idx]).map { |c| "/#{c}:" }.join("/")
+    value = chords[idx]
+    # Basse EXPLICITE ("/[B]" en interne, voir `parse`) : réécrite "//[B]:" — jamais
+    # passée à `split_for_write` (qui la scinderait à tort en un accord vide + "[B]",
+    # `"/[B]".split("/")` -> `["", "[B]"]`).
+    return "/#{value}:" if value.start_with?("/[")
+
+    self.class.split_for_write(value).map { |c| "/#{c}:" }.join("/")
   end
 
   # "ch"/"ph"/"th"/"gn"/"qu" = UN seul son consonantique — comptées séparément (2
