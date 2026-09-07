@@ -18,19 +18,19 @@ require_relative "file_finder"
 module SongCreator
   extend AnsiColors
 
-  def self.run(title = nil, performer = nil)
+  def self.run(title = nil, performer = nil, interactive: false)
     prompt = colored_prompt
 
     title ||= prompt.ask(blue("Titre de la chanson :")) { |q| q.required true }
 
     songs_dir = AppConfig.songs_dir
     existing = CarnetBuilder.find_song_by_folder_name(songs_dir, title)
-    return handle_existing_song(prompt, existing) if existing
+    return handle_existing_song(prompt, existing, interactive: interactive) if existing
 
     performer ||= prompt.ask(blue("Interprète :")) { |q| q.required true }
 
     existing = CarnetBuilder.find_song(songs_dir, title, performer)
-    return handle_existing_song(prompt, existing) if existing
+    return handle_existing_song(prompt, existing, interactive: interactive) if existing
 
     folder_title = CarnetBuilder.move_article_to_end(title)
 
@@ -60,21 +60,20 @@ module SongCreator
     system("open", "-a", editor, result[:infos_path], result[:lyr_path])
 
     print_success(Loc.get("song_created"))
-    offer_open_folder(prompt, result[:folder])
+    print_next_steps_hint(interactive: interactive)
     result[:folder]
   end
 
   # Chanson déjà trouvée (`CarnetBuilder.find_song`) : poursuivre (compléter les champs
-  # vides de la fiche existante) ou juste demander à ouvrir son dossier (même question/
-  # mécanisme que `offer_open_folder`, appelée en fin de création normale).
-  def self.handle_existing_song(prompt, folder)
+  # vides de la fiche existante) ou ouvrir son dossier.
+  def self.handle_existing_song(prompt, folder, interactive: false)
     choice = prompt.select(blue(format(Loc.get("song_exists"), File.basename(folder))), [
       { name: Loc.get("continue_creation"), value: :continue },
       { name: Loc.get("open_folder_question"), value: :open },
       { name: Loc.get("stop_here"), value: :stop },
     ], show_help: false)
     case choice
-    when :continue then resume_existing_song(prompt, folder)
+    when :continue then resume_existing_song(prompt, folder, interactive: interactive)
     when :open
       open_in_file_manager(folder)
       nil
@@ -85,7 +84,7 @@ module SongCreator
   # Ne complète QUE les champs vides de la fiche existante (year/composer/lyrics) — ne
   # touche jamais un champ déjà renseigné. Paroles : remplacées seulement si `c.lyr` est
   # encore le gabarit vide (`SONG_TEMPLATE`) tel quel.
-  def self.resume_existing_song(prompt, folder)
+  def self.resume_existing_song(prompt, folder, interactive: false)
     infos_path = FileFinder.find(folder, :inf) || File.join(folder, "c.infos")
     lyr_path = FileFinder.find(folder, :lyr) || File.join(folder, "c.lyr")
     infos = File.exist?(infos_path) ? CarnetBuilder.parse_nested_infos(infos_path) : {}
@@ -115,14 +114,24 @@ module SongCreator
     system("open", "-a", editor, infos_path, lyr_path)
 
     print_success(Loc.get("song_updated"))
-    offer_open_folder(prompt, folder)
+    print_next_steps_hint(interactive: interactive)
     folder
   end
 
-  def self.offer_open_folder(prompt, folder)
-    return unless prompt.yes?(blue(Loc.get("open_folder_question")))
-
-    open_in_file_manager(folder)
+  # Affiché SANS jamais rien demander (Phil : fin de création/complétion de chanson) —
+  # syntaxe des commandes adaptée au mode (`songbook ` en préfixe hors REPL, rien dedans).
+  def self.print_next_steps_hint(interactive:)
+    prefix = interactive ? "" : "songbook "
+    lines = [
+      ["#{prefix}edit lyrics", Loc.get("hint_edit_lyrics")],
+      ["#{prefix}edit chords", Loc.get("hint_edit_chords")],
+      ["#{prefix}edit gab", Loc.get("hint_edit_gab")],
+      ["#{prefix}build -o", Loc.get("hint_build_open")],
+      ["#{prefix}song id", Loc.get("hint_song_id")],
+      ["#{prefix}open tdm", Loc.get("hint_open_tdm")],
+    ]
+    width = lines.map { |cmd, _| cmd.length }.max
+    lines.each { |cmd, desc| puts gray("#{cmd.ljust(width)} → #{desc}") }
   end
 
   def self.open_in_file_manager(folder)

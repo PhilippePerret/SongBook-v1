@@ -275,7 +275,7 @@ module CLI
         begin
           # Nouvelle chanson créée -> devient le contexte courant  :
           # bug constaté, l'ancien contexte `use song` restait en place).
-          folder = SongCreator.run(arg2, arg3)
+          folder = SongCreator.run(arg2, arg3, interactive: interactive)
           Session.song = folder if folder.is_a?(String)
         rescue Interrupt
           puts
