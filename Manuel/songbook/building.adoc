@@ -10,7 +10,8 @@ __Construire le carnet__ consiste à produire le fichier `.pdf` qui sera transmi
 Ou :
 
 ----
-🎸> build
+(🎸> use sb "titre approx")
+🎸> build -o
 ----
 
-… si le carnet est le <<current-songbook, carnet courant>>.
+L'option `-o` ouvre le carnet une fois construit.
