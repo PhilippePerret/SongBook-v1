@@ -138,14 +138,10 @@ class DiagSchem
   private
 
   # Après production du schéma + copie presse-papier  : propose
-  # d'enregistrer dans la bibliothèque de l'application (`schemas.txt`). PAS de
-  # question oui/non préalable (bug constaté : un "Enregistrer ?" (Y/n) placé
-  # AVANT la saisie du nom — un nom tapé directement à cette question, ex. "B-7",
-  # loin d'être un booléen, faisait échouer `TTY::Prompt#yes?` avec son message
-  # anglais générique "Invalid input.") — `enregistrer_dans_application` gère déjà
-  # "rien tapé -> pas d'enregistrement" (Entrée seule), la question était pure
-  # redondance. Si rien enregistré ET que `-o`/`--output` n'a pas déjà produit le
-  # SVG, propose (à défaut) de le produire quand même dans le dossier courant.
+  # d'enregistrer dans la bibliothèque de l'application (`schemas.txt`). Si rien
+  # enregistré (refus, issue #80, voir `enregistrer_dans_application`) ET que
+  # `-o`/`--output` n'a pas déjà produit le SVG, propose (à défaut) de le produire quand
+  # même dans le dossier courant.
   def proposer_enregistrement
     prompt = colored_prompt
     enregistrer_dans_application(prompt)
@@ -154,6 +150,18 @@ class DiagSchem
     @svg_path = generer_svg if prompt.yes?(blue(Loc.get('diag_output_question')))
   end
 
+  # Question localisée EXPLICITE demandée D'ABORD (issue #80 : avant, aucun moyen de
+  # refuser l'enregistrement sans forcer l'arrêt — Ctrl-C — un "Enregistrer ?" (Y/n)
+  # avait bien été tenté puis retiré, bug constaté : le nom de l'accord tapé PAR RÉFLEXE
+  # à cette question, ex. "B-7", loin d'être un booléen, faisait échouer
+  # `TTY::Prompt#yes?` avec son message anglais générique "Invalid input.". En
+  # contrepartie, "Entrée seule -> pas d'enregistrement" sur la question du nom, plus
+  # bas, restait la SEULE porte de sortie — sauf qu'un DÉFAUT y est proposé (`Nom-case`
+  # du schéma), donc Entrée seule VALIDAIT ce défaut, jamais un vrai refus). Cette
+  # question-ci, formulée sans ambiguïté ("Voulez-vous faire de ce diagramme un
+  # diagramme de l'application ?"), n'a plus ce risque de confusion avec un nom
+  # d'accord.
+  #
   # Nom demandé à l'user (texte libre, défaut = "Nom-case" du schéma en cours, ex.
   # "C7-0" — issue #61, avant : la case n'était jamais proposée par défaut) : c'est LE
   # NOM EXACT, tel quel (repris tel quel ou modifié), à la fois
@@ -167,6 +175,8 @@ class DiagSchem
   # (Phil : "trop dangereux"). Sinon insère (`SchemaLibrary`) et
   # produit tout de suite le SVG dans le dossier de la lettre (pas le dossier courant).
   def enregistrer_dans_application(prompt)
+    return unless prompt.yes?(blue(Loc.get('diag_save_in_app_question')), default: true)
+
     # `@nom` normalisé (`DSLParser.normalize_chord`, même règle partout) DÈS LA
     # PROPOSITION par défaut — 1re lettre de la fondamentale ET de la basse entre
     # crochets capitalisées, RIEN d'autre (bug constaté : "c[e]-0B" enregistré tel
