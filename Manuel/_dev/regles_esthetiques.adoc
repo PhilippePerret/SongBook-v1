@@ -311,6 +311,10 @@ Solution proposée ?
 | Lorsque plusieurs (>1) colonnes de diags doivent être affichées verticalement les unes à côté des autres, l'écartement entre chaque colonnes doit rester fixe, ne pas être équilibré.
 |
 
+| RAD12
+| Lorsque tous les diags occupent moins de la moitié de la page, on les aligne au centre.
+| 
+
 |====
 
 

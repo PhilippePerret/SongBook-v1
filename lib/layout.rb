@@ -1860,9 +1860,10 @@ module Layout
               # `diag_row_gap`/`diag_row_x`) reprend la main dans la colonne TEXTE, comme
               # pour toute autre rangée de diagrammes (bug constaté : centrage fixe ici,
               # `align` jamais branché, alors que la colonne normale le respectait déjà).
-              row_gap = diag_row_gap(row_excess_align, text_w, row.size, diag_w)
+              row_align = rad12_align(row_excess_align, text_w, row.size, diag_w)
+              row_gap = diag_row_gap(row_align, text_w, row.size, diag_w)
               row_w = row.size * diag_w + [row.size - 1, 0].max * row_gap
-              row_start_x = diag_row_x(row_excess_align, cur_text_x, text_w, row_w, row_gap)
+              row_start_x = diag_row_x(row_align, cur_text_x, text_w, row_w, row_gap)
             end
             row.each_with_index do |path, ci|
               cx = row_start_x + ci * (diag_w + row_gap)
@@ -1920,9 +1921,10 @@ module Layout
       draw_page_number(pdf, printer, page_no, page_w_pt, page_h_pt)
 
       slice.each_slice(cols).with_index do |row, ri|
-        row_gap = diag_row_gap(align, pdf.bounds.width, row.size, diag_w)
+        row_align = rad12_align(align, pdf.bounds.width, row.size, diag_w)
+        row_gap = diag_row_gap(row_align, pdf.bounds.width, row.size, diag_w)
         row_w = row.size * diag_w + [row.size - 1, 0].max * row_gap
-        x0 = diag_row_x(align, 0, pdf.bounds.width, row_w, row_gap)
+        x0 = diag_row_x(row_align, 0, pdf.bounds.width, row_w, row_gap)
         y = pdf.bounds.height - gap_v - ri * (diag_h + gap_v)
         row.each_with_index do |path, ci|
           x = x0 + ci * (diag_w + row_gap)
@@ -2609,6 +2611,18 @@ module Layout
   # Gouttière entre deux diagrammes d'UNE rangée de `n` diagrammes de largeur `w` :
   # FIXE (`min_h_dist(:diags)`), sauf `:justify` qui l'étire pour occuper `avail_w`
   # (`distribute_gutter`, avant/entre/après).
+  # RAD12 : quand l'ensemble d'une rangée (gouttière FIXE comprise, PAS `avail_w` entier)
+  # occupe MOINS de la moitié de la largeur disponible, centrage systématique — même si
+  # un autre alignement (`diags_align`, souvent `justify`) était demandé, sinon un nombre
+  # trop faible de diagrammes se retrouve étiré sur toute la largeur, avec des vides
+  # énormes entre eux (bug constaté, "C'est un parc", 4 diags en `justify`).
+  def self.rad12_align(align, avail_w, n, w)
+    return align if n <= 1
+
+    natural_w = n * w + [n - 1, 0].max * min_h_dist(:diags)
+    natural_w < avail_w / 2.0 ? :center : align
+  end
+
   def self.diag_row_gap(align, avail_w, n, w)
     align == :justify ? distribute_gutter(avail_w, Array.new(n, w), type: :diags) : min_h_dist(:diags)
   end
@@ -2631,6 +2645,7 @@ module Layout
   def self.draw_diags_row(pdf, diag_paths, x0, y_top, avail_w, w, align: :center)
     return if diag_paths.empty?
 
+    align = rad12_align(align, avail_w, diag_paths.size, w)
     gap = diag_row_gap(align, avail_w, diag_paths.size, w)
     block_w = diag_paths.size * w + [diag_paths.size - 1, 0].max * gap
     x = diag_row_x(align, x0, avail_w, block_w, gap)
