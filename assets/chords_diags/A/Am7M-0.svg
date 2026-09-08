@@ -16,9 +16,7 @@
 <circle cx="-25" cy="204" r="14" fill="none" stroke="black" stroke-width="3"/>
 <circle cx="112.5" cy="153" r="22" fill="#000000"/>
 <text x="112.5" y="153" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">2</text>
-<circle cx="37.5" cy="102" r="22" fill="#000000"/>
-<text x="37.5" y="102" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">1</text>
-<circle cx="37.5" cy="51" r="22" fill="#000000"/>
-<text x="37.5" y="51" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">1</text>
 <circle cx="-25" cy="0" r="14" fill="none" stroke="black" stroke-width="3"/>
+<line x1="37.5" y1="51" x2="37.5" y2="102" stroke="black" stroke-width="36" stroke-linecap="round"/>
+<text x="37.5" y="76.5" dy="0.35em" fill="white" font-size="34" font-weight="bold" text-anchor="middle">1</text>
 </svg>
