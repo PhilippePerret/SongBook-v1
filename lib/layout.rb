@@ -393,7 +393,7 @@ module Layout
   # d'une même tablature sont un contenu continu, jamais espacés comme des
   # couplets (`distribute_v_gutters` ne doit quasiment jamais les étirer).
   MIN_V_DIST = { default: 20.0, diags: 2.0, band_diag: 10.0, band_strophe: 10.0 }.freeze
-  MIN_H_DIST = { default: 8.0, diags: 4.0, tdm_num: 20.0 }.freeze
+  MIN_H_DIST = { default: 8.0, diags: 4.0, tdm_num: 20.0, label: 12.0 }.freeze
   MAX_V_DIST = { default: 25.0, diags: 2.0, band_diag: 20.0, band_strophe: 40.0 }.freeze
 
   # Rééquilibrage vertical , "L'Aigle noir" p.9 : bloc de paroles collé
@@ -404,7 +404,8 @@ module Layout
   # termine une page (texte, image, partition, tabla) — jamais quand une grille de diags
   # en trop (RAD7) est calée en dessous : elle EST déjà la référence "bas", pas la marge.
   VERTICAL_BALANCE_THRESHOLD_PT = 80.0
-  MAX_H_DIST = { default: 40.0 }.freeze
+  MAX_H_DIST = { default: 40.0, label: 30.0 }.freeze
+  DEFAULT_H_DIST = { label: 20.0 }.freeze
 
   # RATDM4 : filet de conduite entre titre et numéro de page — caractère et espacement
   # réglables (Manuel).
@@ -428,6 +429,10 @@ module Layout
 
   def self.max_h_dist(type = :default)
     MAX_H_DIST.fetch(type, MAX_H_DIST[:default])
+  end
+
+  def self.default_h_dist(type)
+    DEFAULT_H_DIST.fetch(type).clamp(min_h_dist(type), max_h_dist(type))
   end
 
   # Anti-page-clairsemée : si tout ce qui reste après la page courante ne remplirait
@@ -1298,7 +1303,7 @@ module Layout
   def self.label_reserve(pdf, block, text_size)
     return 0 unless block.directives[:label]
 
-    pdf.width_of(block.directives[:label], size: text_size) + LABEL_MARGIN_GAP
+    pdf.width_of(block.directives[:label], size: text_size) + default_h_dist(:label)
   end
 
   # Texte TOUJOURS aligné à gauche (sauf demande expresse) : `block_align: center`
@@ -1640,11 +1645,6 @@ module Layout
     unless excess_paths.empty? || text_w.nil? || pages.empty?
       gap_h = min_h_dist(:diags)
       gap_v = min_v_dist(:diags)
-      grid_diag_w = side_col ? side_col[:width] : row_excess_w
-      grid_diag_h = svg_height_for(File.read(excess_paths.first), grid_diag_w)
-      cols = [((text_w + gap_h) / (grid_diag_w + gap_h)).floor, 1].max
-      rows = excess_paths.each_slice(cols).to_a
-      block_h = rows.size * grid_diag_h + [rows.size - 1, 0].max * gap_v
 
       last_page = pages.last
 
@@ -1665,32 +1665,64 @@ module Layout
         last_side_heights, last_side_gutters = side_column_gutters(last_side_page, last_side_els, top_type: (pages.size - 1).zero? ? :band_diag : :diags, align: side_col[:align] || :justify)
         column_bottom_y = last_side_page[:avail_h] - last_side_gutters.sum - last_side_heights.sum
       end
-      row_top_y = column_bottom_y ? column_bottom_y + block_h : gap_v + block_h
 
       page_els = elements[last_page[:start]...last_page[:finish]]
-      # `min_v_dist(:default)` de MARGE en plus (pas seulement `row_top_y`, déjà le haut
-      # de la grille, et surtout pas `gap_v` = `min_v_dist(:diags)`, 2pt à peine, pensé
-      # pour l'écart diag-diag, pas texte-diag) : sans cette marge, un ajustement EXACT
-      # (gutters qui remplissent `remaining_h` pile) laisse zéro respiration entre la
-      # dernière ligne de texte et la grille — texte qui semble la toucher/chevaucher
-      # (bug constaté, chanson avec plusieurs diagrammes en excédent fusionnés en bas de
-      # page).
       # Sans colonne sur cette page (`column_bottom_y` nil), le dessin réel peut encore
       # remonter la grille de `PAGE_NUMBER_FORCED_SHIFT_PT` pour la dégager du numéro de
       # page (voir plus bas) — réservé ICI aussi, sinon cette remontée mord sur le texte
       # sans que "fits" l'ait anticipée.
       page_number_reserve = column_bottom_y ? 0.0 : PAGE_NUMBER_FORCED_SHIFT_PT
-      remaining_h = last_page[:avail_h] - row_top_y - min_v_dist(:default) - page_number_reserve
+
+      # Essaie une largeur donnée, renvoie le résultat complet si la grille tient au bas
+      # de la dernière page, sinon `nil`. `min_v_dist(:default)` de MARGE en plus (pas
+      # seulement `row_top_y`, déjà le haut de la grille, et surtout pas `gap_v` =
+      # `min_v_dist(:diags)`, 2pt à peine, pensé pour l'écart diag-diag, pas texte-diag) :
+      # sans cette marge, un ajustement EXACT (gutters qui remplissent `remaining_h` pile)
+      # laisse zéro respiration entre la dernière ligne de texte et la grille — texte qui
+      # semble la toucher/chevaucher (bug constaté, chanson avec plusieurs diagrammes en
+      # excédent fusionnés en bas de page).
       # `paginate(...).size == 1` seul ne suffit pas : un SEUL élément (indivisible) plus
       # haut que `remaining_h` reste malgré tout sur "1 page" (rien à répartir ailleurs),
       # donnant un `fits` faussement vrai — vérification directe de hauteur en plus (bug
       # constaté avec la réserve `page_number_reserve` ci-dessus : le total dépassait déjà
       # `remaining_h`, jamais détecté).
-      fits = remaining_h.positive? && page_els.sum(&:height) <= remaining_h && (paginate(page_els, remaining_h, remaining_h).size == 1)
+      try_width = lambda do |w|
+        grid_diag_h = svg_height_for(File.read(excess_paths.first), w)
+        cols = [((text_w + gap_h) / (w + gap_h)).floor, 1].max
+        rows = excess_paths.each_slice(cols).to_a
+        block_h = rows.size * grid_diag_h + [rows.size - 1, 0].max * gap_v
+        row_top_y = column_bottom_y ? column_bottom_y + block_h : gap_v + block_h
+        remaining_h = last_page[:avail_h] - row_top_y - min_v_dist(:default) - page_number_reserve
+        fits = remaining_h.positive? && page_els.sum(&:height) <= remaining_h && (paginate(page_els, remaining_h, remaining_h).size == 1)
+        next nil unless fits
 
-      if fits
-        merged_last_page = { rows: rows, diag_w: grid_diag_w, diag_h: grid_diag_h, remaining_h: remaining_h, block_h: block_h, column_bottom_y: column_bottom_y }
-        log_build("#{excess_paths.size} diags en trop réagencés en #{rows.size} ligne(s) fixes, calés en bas de la dernière page (RAD7/8/9/10)")
+        { rows: rows, diag_w: w, diag_h: grid_diag_h, remaining_h: remaining_h, block_h: block_h, column_bottom_y: column_bottom_y }
+      end
+
+      # `side_col` présent (positions Left/Right) : largeur figée à `side_col[:width]`
+      # (RAD10, jamais recalculée à part — sinon le dernier diagramme sort visiblement
+      # plus grand/petit que les autres de la colonne). Sans colonne (`diags_position:
+      # End`/Top/Bot/Front, TOUS les diags sont "en trop", aucune référence à respecter) :
+      # rétrécissable par pas de 0.1pt jusqu'au plancher, MÊME mécanisme que
+      # `shrink_width_to_target` ailleurs — sinon un écart de quelques points suffisait à
+      # exiler toute la grille sur une page dédiée alors qu'elle tiendrait, à peine
+      # rétrécie, en bas de la dernière page (bug constaté, "L'Aziza").
+      if side_col
+        merged_last_page = try_width.call(side_col[:width])
+      else
+        w = row_excess_w
+        merged_last_page = try_width.call(w)
+        if merged_last_page.nil? && Options.get(:diags_shrink)
+          floor_w = MIN_SIZE[:diags][:width]
+          while merged_last_page.nil? && w > floor_w
+            w = [w - 0.1, floor_w].max
+            merged_last_page = try_width.call(w)
+          end
+        end
+      end
+
+      if merged_last_page
+        log_build("#{excess_paths.size} diags en trop réagencés en #{merged_last_page[:rows].size} ligne(s) fixes, calés en bas de la dernière page (RAD7/8/9/10)")
         excess_paths = []
         excess_heights = []
       else
@@ -1909,9 +1941,6 @@ module Layout
   # au bord DROIT de SA colonne (pas de la page), le reste de la colonne (`width`)
   # inchangé — par LIGNE, pas par bloc entier (un bloc "+"-concaténé peut mélanger des
   # lignes alignées et des lignes normales, voir `PageBuilder.apply_extra_directives`).
-  # Espace entre l'étiquette de strophe (`label:`, issue #63) et le début du texte.
-  LABEL_MARGIN_GAP = 6
-
   def self.draw_block(pdf, block, x, y0, width, chord_ascent, text_ascent, chord_size: scaled_chord_size, text_size: Options.get(:font_size), force_chord_baseline: false)
     y = y0 - (force_chord_baseline || line_has_chord?(block.lines.first) ? chord_ascent : text_ascent)
     # `label:` (issue #63, ex. `{refrain-1; label: REFRAIN}`) : PAS une ligne du corps —

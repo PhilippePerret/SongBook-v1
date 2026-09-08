@@ -7,6 +7,7 @@
 require 'io/console'
 require 'tty-prompt'
 require_relative '../ChordDiagram/chord_diagram'
+require_relative '../ChordDiagram/generate_chord_diagrams'
 require_relative 'schema_library'
 require_relative '../../lib/locale'
 require_relative '../../lib/ansi_colors'
@@ -693,9 +694,9 @@ class DiagSchem
 
   def generer_svg(chemin = nil)
     positions, doigts, optionnels = positions_et_doigts
-    nom, basse = @nom.include?('/') ? @nom.split('/', 2) : [@nom, nil]
-    svg = ChordDiagram.build(name: nom, positions: positions, fingers: doigts, bass: basse, optionals: optionnels)
-    chemin ||= "#{nom}-#{@case_ref}.svg"
+    racine, basse = GenerateChordDiagrams.parse_name(@nom)
+    svg = ChordDiagram.build(name: GenerateChordDiagrams.display_name(racine), positions: positions, fingers: doigts, bass: basse && Transpose.italian_bass_symbol(basse), optionals: optionnels)
+    chemin ||= "#{@nom}-#{@case_ref}.svg"
     File.write(chemin, svg)
     chemin
   end

@@ -441,7 +441,7 @@ module CarnetBuilder
   # `out_suffix` (ex. "CtoF") : fichier SÉPARÉ, jamais un `slug` normal écrasé, jamais
   # sluggifié (voulu tel quel, casse comprise) — `nil`/vide = fichier normal, écrasé.
   def self.build_song(song_folder, infos_overrides: {}, out_suffix: nil)
-    layout = PageBuilder::DEFAULT_LAYOUT
+    layout = PageBuilder::DEFAULT_LAYOUT.merge(diags_align: "left")
     page_size_in = layout.fetch(:format).to_s.split(/\s*x\s*/i).map { |v| AppConfig.length_pt(v) / AppConfig::IN_TO_PT }
     slug = slugify(File.basename(song_folder))
     pdf_slug = out_suffix.to_s.empty? ? slug : "#{slug}-#{out_suffix}"
