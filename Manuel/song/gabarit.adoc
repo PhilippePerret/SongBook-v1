@@ -11,6 +11,7 @@ On trouve principalement ce fichier dans le <<song-folder>>, sa place naturelle,
 
 Exceptionnellement, on peut trouver le gabarit d'une chanson dans le <<songbook-folder>> pour définir exceptionnellement le gabarit de telle chanson dans ce carnet-là, s'il a une forme particulière. Dans ce cas, le nom du fichier doit être impérativement `<id chanson> [<...>].gab<arit>`. Par exemple : `id-de-ma-chanson [2 réduit].gabarit`.
 
+[[define-gabarit]]
 ==== Définir le gabarit ====
 
 La fonction principale de ce fichier est de définir la position et l'aspect des différents éléments de la chanson, que ce soit les paroles, les partitions ou les images.

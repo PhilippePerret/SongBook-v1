@@ -9,15 +9,102 @@ songbook create song
 
 Ou simplement `create song` en <<interactive-mode, version interactive>>.
 
+Nous allons d'ailleurs passer en mode interactif à partir de maintenant, car cela facilite grandement le travail sur une chanson.
+ 
+Donc reprenons :
+ 
+ ----
+ > songbook -i
+ 🎸> 
+ ----
+ 
+ Et créons la chanson "La Chanson" d'un certain John Doe.
+ 
+ ----
+ 🎸> create song "La Chanson" "John Doe"
+ ----
+ 
+__(ne pas oublier les guillemets autour du titre et du nom de l'interprète)__.
 
-Si vous connaissez déjà le titre et l'interprète : 
-
-----
-songbook create song "Le titre de la chanson"
-
-songbook create song "le titre de la chanson" "la chanteuse"
-----
-
-Sinon, ils vous seront demandés au fur et à mesure, comme toutes les informations suivantes.
+NOTE: Si vous ne fournissez pas les titres et interprètes, ils vous seront demandés au fur et à mesure, comme toutes les informations suivantes.
 
 NOTE: Si c'est votre première chanson, **__SongBook__** vous demandera aussi de définir le dossier où devront être créées toutes les chansons. Choisis son emplacement avec soin.
+
+__**SongBook**__ se met alors à rechercher le maximum d'information sur la chanson sur le web, et même les paroles. S'ils ne les trouvent pas, l'app vous aidera à les trouver.
+
+La première chose que vous pouvez faire ensuite, c'est indiquer les parties dans les paroles et les répartir/agencer dans le gabarit. Pour cela il vous suffit de jouer :
+
+----
+🎸> open
+----
+
+NOTE: Dès que vous utilisez `create song` en mode interactif, la chanson crée devient la chanson ciblée par toutes les commandes. Donc sans autre indication, toute commande s'appliquera à cette chanson.
+
+L'app vous propose alors d'ouvrir les fichier <<lyrics-file, `.lyrics`>> (paroles) et <<gabarit-file, `.gabarit`>> (gabarit). Confirmez que oui.
+
+Indiquez les couplets, refrains, etc. dans les paroles et <<define-gabarit, disposez-les>> dans le gabarit.
+
+L'étape suivant peut consister à placer les accords dans les paroles. Vous pourriez bien sûr <<chordsn les ajouter directement dans le fichier des paroles>>, mais il y a beaucoup mieux à faire : utiliser l'éditeur d'accords (`edit chords`).
+
+----
+🎸> edit chords
+----
+
+Cf. l'<<song-chords-assistant>>
+
+Nous avons maintenant tous les éléments pour produire le premier PDF de notre chanson et l'ouvrir. Il suffit de jouer :
+
+----
+🎸> build -o
+----
+
+// not-english
+NOTE: « build » signifie « construire » en anglais.
+// /not-english
+
+NOTE: L'option `-o` permet d'ouvrir le fichier PDF automatiquement après sa construction.
+
+Si tout se passe bien, le fichier PDF s'ouvrira tout de suite. Sinon, l'app prévient qu'elle a rencontré des problèmes et vous propose d'ouvrir le fichier des conflits pour en être informés.
+
+Elle vous indiquera également les accords qu'elle ne connait pas (ce qui arrive parfois).
+
+Vous pouvez maintenant faire les ajustements nécessaire pour que la chanson se présente telle que vous l'espérez. La plupart des changements se font dans les paroles ou la disposition des parties.
+
+Par exemple, il arrive souvent de découper les vers pour qu'ils ne soient pas trop longs et puissent être affichés l'un en face de l'autre :
+
+----
+# Dans .lyrics
+{couplet-4}
+You're here, there's nothing I fear,
+And I know that my heart will go on
+We'll stay forever this way
+You are safe in my heart and
+My heart will go on and on
+----
+
+----
+# Dans .gabarit
+{couplet-4}
+----
+
+----
+# dans .lyrics
+{couplet-4-part-1}
+You're here
+There's nothing I fear
+And I know that my heart
+Will go on
+
+{couplet-4-part-2}
+We'll stay
+Forever this way
+You are safe 
+In my heart and
+My heart will go
+On and on
+----
+
+----
+# Dans .gabarit
+{couplet-4-part-1} // {couplet-4-part-2}
+----

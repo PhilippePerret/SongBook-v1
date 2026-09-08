@@ -674,13 +674,19 @@ Le plus simple pour créer une chanson est d&#8217;utiliser <a href="#create-son
 <p>Créez d&#8217;abord un <a href="#song-folder">dossier conforme</a>, dans votre dossier principal contenant toutes vos chansons,</p>
 </li>
 <li>
-<p>éditez le fichier <code>.lyrics</code> pour y mettre les paroles et les accords (<code>&gt; songbook edit lyrics --song "titre"</code>),</p>
-</li>
-<li>
 <p>éditez le fichier <code>.infos</code> pour y mettre les informations (méta-données) (<code>&gt; songbook edit infos --song "titre"</code>),</p>
 </li>
 <li>
-<p>éditez le fichier <code>.gabarit</code> pour <a href="#gabarit-file">disposer les paroles et les parties de la chanson</a>(<code>&gt; songbook edit gabarit --song "titre"</code>),</p>
+<p>mettez également dans ce fichier <code>.infos</code> les <a href="#options">options de mise en page</a> que vous désirez,</p>
+</li>
+<li>
+<p>éditez le fichier <code>.lyrics</code> pour y mettre les paroles et les accords (<code>&gt; songbook edit lyrics --song "titre"</code>),</p>
+</li>
+<li>
+<p>indiquez dans ce fichier <a href="#strophe-definition">les parties</a>,</p>
+</li>
+<li>
+<p>éditez le fichier <code>.gabarit</code> pour <a href="#gabarit-file">disposer les strophes et les parties de la chanson</a>(<code>&gt; songbook edit gabarit --song "titre"</code>),</p>
 </li>
 <li>
 <p>lancer la <a href="#song-pdf">construction du fichier PDF</a>,</p>
@@ -1257,7 +1263,7 @@ Pour ouvrir directement ce fichier, <code>songbook open gabarit --song "titre ch
 <p>Exceptionnellement, on peut trouver le gabarit d&#8217;une chanson dans le <a href="#songbook-folder">dossier du carnet</a> pour définir exceptionnellement le gabarit de telle chanson dans ce carnet-là, s&#8217;il a une forme particulière. Dans ce cas, le nom du fichier doit être impérativement <code>&lt;id chanson&gt; [&lt;&#8230;&#8203;&gt;].gab&lt;arit&gt;</code>. Par exemple : <code>id-de-ma-chanson [2 réduit].gabarit</code>.</p>
 </div>
 <div class="sect3">
-<h4 id="_définir_le_gabarit">Définir le gabarit</h4>
+<h4 id="define-gabarit">Définir le gabarit</h4>
 <div class="paragraph">
 <p>La fonction principale de ce fichier est de définir la position et l&#8217;aspect des différents éléments de la chanson, que ce soit les paroles, les partitions ou les images.</p>
 </div>
@@ -2999,11 +3005,12 @@ font-family: Garamond</pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>🎸&gt; build</pre>
+<pre>(🎸&gt; use sb "titre approx")
+🎸&gt; build -o</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>… si le carnet est le <a href="#current-songbook">carnet courant</a>.</p>
+<p>L&#8217;option <code>-o</code> ouvre le carnet une fois construit.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3217,17 +3224,45 @@ Utilisez l'<a href="#songbook-tdm-assistant">assistant table des matières</a> p
 <p>Ou simplement <code>create song</code> en <a href="#interactive-mode">version interactive</a>.</p>
 </div>
 <div class="paragraph">
-<p>Si vous connaissez déjà le titre et l&#8217;interprète :</p>
+<p>Nous allons d&#8217;ailleurs passer en mode interactif à partir de maintenant, car cela facilite grandement le travail sur une chanson.</p>
 </div>
-<div class="listingblock">
+<div class="paragraph">
+<p>Donc reprenons :</p>
+</div>
+<div class="literalblock">
 <div class="content">
-<pre>songbook create song "Le titre de la chanson"
-
-songbook create song "le titre de la chanson" "la chanteuse"</pre>
+<pre>----
+&gt; songbook -i
+🎸&gt;
+----</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>Et créons la chanson "La Chanson" d'un certain John Doe.</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>----
+🎸&gt; create song "La Chanson" "John Doe"
+----</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Sinon, ils vous seront demandés au fur et à mesure, comme toutes les informations suivantes.</p>
+<p><em>(ne pas oublier les guillemets autour du titre et du nom de l&#8217;interprète)</em>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Si vous ne fournissez pas les titres et interprètes, ils vous seront demandés au fur et à mesure, comme toutes les informations suivantes.
+</td>
+</tr>
+</table>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -3240,6 +3275,131 @@ Si c&#8217;est votre première chanson, <strong><em>SongBook</em></strong> vous 
 </td>
 </tr>
 </table>
+</div>
+<div class="paragraph">
+<p><em><strong>SongBook</strong></em> se met alors à rechercher le maximum d&#8217;information sur la chanson sur le web, et même les paroles. S&#8217;ils ne les trouvent pas, l&#8217;app vous aidera à les trouver.</p>
+</div>
+<div class="paragraph">
+<p>La première chose que vous pouvez faire ensuite, c&#8217;est indiquer les parties dans les paroles et les répartir/agencer dans le gabarit. Pour cela il vous suffit de jouer :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; open</pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Dès que vous utilisez <code>create song</code> en mode interactif, la chanson crée devient la chanson ciblée par toutes les commandes. Donc sans autre indication, toute commande s&#8217;appliquera à cette chanson.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>L&#8217;app vous propose alors d&#8217;ouvrir les fichier <a href="#lyrics-file"><code>.lyrics</code></a> (paroles) et <a href="#gabarit-file"><code>.gabarit</code></a> (gabarit). Confirmez que oui.</p>
+</div>
+<div class="paragraph">
+<p>Indiquez les couplets, refrains, etc. dans les paroles et <a href="#define-gabarit">disposez-les</a> dans le gabarit.</p>
+</div>
+<div class="paragraph">
+<p>L&#8217;étape suivant peut consister à placer les accords dans les paroles. Vous pourriez bien sûr <a href="#chordsn les ajouter directement dans le fichier des paroles">[chordsn les ajouter directement dans le fichier des paroles]</a>, mais il y a beaucoup mieux à faire : utiliser l&#8217;éditeur d&#8217;accords (<code>edit chords</code>).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; edit chords</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Cf. l'<a href="#song-chords-assistant">Assistant pour l&#8217;entrée des accords de la chanson</a></p>
+</div>
+<div class="paragraph">
+<p>Nous avons maintenant tous les éléments pour produire le premier PDF de notre chanson et l&#8217;ouvrir. Il suffit de jouer :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; build -o</pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+« build » signifie « construire » en anglais.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+L&#8217;option <code>-o</code> permet d&#8217;ouvrir le fichier PDF automatiquement après sa construction.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Si tout se passe bien, le fichier PDF s&#8217;ouvrira tout de suite. Sinon, l&#8217;app prévient qu&#8217;elle a rencontré des problèmes et vous propose d&#8217;ouvrir le fichier des conflits pour en être informés.</p>
+</div>
+<div class="paragraph">
+<p>Elle vous indiquera également les accords qu&#8217;elle ne connait pas (ce qui arrive parfois).</p>
+</div>
+<div class="paragraph">
+<p>Vous pouvez maintenant faire les ajustements nécessaire pour que la chanson se présente telle que vous l&#8217;espérez. La plupart des changements se font dans les paroles ou la disposition des parties.</p>
+</div>
+<div class="paragraph">
+<p>Par exemple, il arrive souvent de découper les vers pour qu&#8217;ils ne soient pas trop longs et puissent être affichés l&#8217;un en face de l&#8217;autre :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre># Dans .lyrics
+{couplet-4}
+You're here, there's nothing I fear,
+And I know that my heart will go on
+We'll stay forever this way
+You are safe in my heart and
+My heart will go on and on</pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre># Dans .gabarit
+{couplet-4}</pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre># dans .lyrics
+{couplet-4-part-1}
+You're here
+There's nothing I fear
+And I know that my heart
+Will go on
+
+{couplet-4-part-2}
+We'll stay
+Forever this way
+You are safe
+In my heart and
+My heart will go
+On and on</pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre># Dans .gabarit
+{couplet-4-part-1} // {couplet-4-part-2}</pre>
+</div>
 </div>
 </div>
 <div class="sect2">
