@@ -357,6 +357,8 @@ module CLI
         open_infos_file
       when "gabarit", "gab"
         open_gabarit_file(confirm_create: false)
+      when "schemas", "sch"
+        open_schemas_file(confirm_create: false)
       when "tdm", "toc"
         begin
           TdmCreator.run(carnet_opt: songs_carnet_opt, command: "edit")
@@ -523,6 +525,8 @@ module CLI
         open_infos_file
       when "gabarit", "gab"
         open_gabarit_file
+      when "schemas", "sch"
+        open_schemas_file
       when "pdf"
         context = resolve_open_context
         pdf_path = latest_pdf_path(context)
@@ -552,6 +556,39 @@ module CLI
           abort e.message
         rescue Interrupt
           puts
+        end
+        return
+      end
+
+      if command == "build" && arg1 == "diags"
+        # `sensitivity: "errors"` (RAG3, `Layout.conflict!`) : chaque ligne de schéma
+        # illisible (`GenerateChordDiagrams::LINE_RE`) DOIT remonter à la console — sinon
+        # silencieusement engloutie dans `_dev/conflicts.log` (défaut, jamais lu ici), bug
+        # constaté : 4 schémas définis, 2 diagrammes produits, aucun signalement. Restauré
+        # dans tous les cas (`ensure`), y compris `abort` : ne fuite jamais sur les
+        # commandes suivantes du REPL.
+        previous_sensitivity = Layout.sensitivity
+        previous_log_path = Layout.conflict_log_path
+        begin
+          song_folder = arg2 ? resolve_song_target(arg2)[:folder] : Session.song
+          abort "aucune chanson sélectionnée (use song) — nom requis sinon" unless song_folder
+
+          schema_path = FileFinder.find(song_folder, :sch)
+          abort "aucun fichier .schemas/.sch trouvé dans #{song_folder}" unless schema_path
+
+          Layout.sensitivity = "errors"
+          Layout.conflict_log_path = File.join(song_folder, "export", "diags-conflicts.log")
+          FileUtils.mkdir_p(File.dirname(Layout.conflict_log_path))
+          Layout.reset_conflicts!
+
+          count = DiagsSync.sync!(song_folder)
+          puts success(count.positive? ? "👍 #{count} diagramme(s) produit(s)." : "Rien à produire, tout est déjà à jour.")
+          Layout.report_conflicts!
+        rescue Interrupt
+          puts
+        ensure
+          Layout.sensitivity = previous_sensitivity
+          Layout.conflict_log_path = previous_log_path
         end
         return
       end
@@ -765,6 +802,17 @@ module CLI
     abort "aucun fichier .gabarit/.gab trouvé dans #{context[:folder]}" unless gab_path
 
     system("open", "-a", AppConfig.user_song_editor, gab_path)
+  end
+
+  # `open schemas/sch` ET `edit schemas/sch` (alias) — même schéma que `open_gabarit_file`.
+  # Fichier `.schemas`/`.sch` : liste de schémas de diagrammes d'accord propres à cette
+  # chanson (`DiagsSync.sync!`), root-name libre.
+  def self.open_schemas_file(confirm_create: true)
+    context = resolve_open_context
+    sch_path = FileFinder.find(context[:folder], :sch) || propose_create_file(context[:folder], "sch", confirm: confirm_create)
+    abort "aucun fichier .schemas/.sch trouvé dans #{context[:folder]}" unless sch_path
+
+    system("open", "-a", AppConfig.user_song_editor, sch_path)
   end
 
   # `tdm`, `open tdm/toc` ET `edit tdm/toc` partagent ce code — table des
