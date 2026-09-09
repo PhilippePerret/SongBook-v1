@@ -3,18 +3,33 @@
 
 Le **processus classique de création d'un carnet** est le suivant (cette liste complète vous permet de rejoindre rapidement toutes les parties) :
 
-- vous <<create-song-tool, créez des chansons>> ou vous les <<load-song-from-site, récupérez depuis notre site>>,
-  - vous <<lyrics-file, écrivez les paroles>>,
-  - vous placez <<chords, les accords sur les paroles>> (avec l’<<song-chords-assistant, assistant>>),
-- s'ils n'existent pas vous créez <<diags, les diagrammes>> d'accord propres à ces chansons (avec ou sans l'<<diag-schema-producer, assistant>>),
-- vous créez <<tablature, les tablatures>>, <<score, les partitions>> dont elles ont besoin,
-- vous établissez <<gabarit-file, le gabarit de la chanson>> pour y injecter tous ces éléments et les disposer,
-- vous créez <<songbook-tdm-assistant, la table des matières du carnet à l'aide de l'assistant>>, donc la liste des chansons qu'il doit contenir,
-- vous définissez <<songbook-infos, les caractéristiques du carnet>> et peut-être même <<songbook-layout, sa mise en page>> (ou vous adoptez une <<app-layouts, mise en page déjà définie>>),
-- vous <<songbook-run-build, lancez le processus de fabrication du carnet>>,
-- vous ajustez <<gabarit-file, les gabarits des chansons>> qui peuvent poser problème,
-- vous relancez le processus de fabrication du carnet jusqu'à satifaction complète,
-- vous construisez <<cover, la couverture>> (par exemple <<cover-idml-file, à partir du fichier IDM fourni>>),
-- pour chaque opération, vous vous assurez bien entendu d'<<best-practices, adopter les bonnes pratiques>>, pour votre propre confort,
-- vous envoyez tout le matériel à votre imprimeur,
-- vous chantez et partagez ces chansons avec les autres !
+[cols="1,3,2"]
+|====
+.7+| Création de la chanson   | Récupération sur le site      | <<load-song-from-site, depuis le site>>
+                              | Création de A à Z             | <<create-song-tool, ASSISTANT DE CRÉATION>>
+                              | Rédaction des paroles         | <<lyrics-file, FICHIER DES PAROLES>>
+                              | Placement des accords         | <<chords, ACCORDS>>
+                              | Création des diags manquants  | <<diags, tous les DIAGRAMMES>>, <<diag-schema-producer, OUTIL DIAG>>
+                              | Création des tablatures       | <<tablature, TABLATURES>>
+                              | Création des partitions       | <<score, PARTITIONS>>
+                              | Agencement des parties        | <<gabarit-file, Fichier GABARIT>>
+                              | Construction de la chanson    | 
+.8+| Création du carnet       | Dossier des carnets           |
+                              | Dossier du carnet             |
+                              | Liste des chansons du carnet  | <<songbook-tdm-assistant, ASSISTANT TABLE DES MATIÈRES>>
+                              | Infos du carnet               | <<songbook-infos, caractéristiques du carnet>>
+                              | Mise en plage du carnet       | <<app-layouts, prédéfinie>> ou <<songbook-layout, personnalisée>>
+                              | Pages du carnet               |
+                              | Table(s) des matières         |
+                              | Construction du carnet        | <<songbook-run-build, COMMANDE BUILD>>
+.4+| Ajustements              2+| Après une première construction, il est fort possible que des ajustements seront nécessaires.
+                              | Ajustement des chansons       | <<gabarit-file, dans le fichier GABARIT>>
+                              | Diags manquants               | <<diag-schema-producer, OUTIL DIAG pour les fabriquer>>
+                              | Vérification des accords      | Chantez pour vérifier les accords.
+.2+| Couverture               | Construire la couverture      | <<cover, la couverture>>, <<cover-idml-file, Fichier IDML>>
+                              | Faire construire la couverture|
+| Impression                  | Envoi des PDF                 | 
+                              
+|====
+
+Pour chaque opération ci-dessus, vous vous assurez bien entendu d'<<best-practices, adopter les bonnes pratiques>>, pour votre propre confort.

@@ -25,7 +25,7 @@ include::diags.adoc[]
 include::riffs.adoc[]
 
 // Tablatures et partitions
-include::tablas-et-scores.adoc[]
+include::tabs-et-scores.adoc[]
 
 // Gabarit
 include::gabarit.adoc[]

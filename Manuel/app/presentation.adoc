@@ -13,4 +13,4 @@ songbook build
 
 … puis cliquer combo:Enter[]… Impressionnant, non ?
 
-Ce qui fait la force de __**SongBook**__, c'est aussi ses <<tools, outils en ligne de commande>> qui facilitent et accèlèrent tous les processus de production des chansons et des carnets. N'hésitez pas à consulter rapidement la section des <<tools, outils et assistants>>.
+Ce qui fait la force de __**SongBook**__, ce sont aussi ses <<tools, outils en ligne de commande>> qui facilitent et accèlèrent tous les processus de production des chansons et des carnets. N'hésitez pas à consulter rapidement la section des <<tools, outils et assistants>>.

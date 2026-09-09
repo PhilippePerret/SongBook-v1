@@ -366,7 +366,7 @@ diags:
 ==== Tablatures et partitions ====
 
 ----
-tablas:
+tabs:
   position: Under
   
 ----

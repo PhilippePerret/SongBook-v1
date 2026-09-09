@@ -561,7 +561,7 @@ a {
 <p>… puis cliquer <kbd style="font-size:1.25em;">↩︎</kbd>… Impressionnant, non ?</p>
 </div>
 <div class="paragraph">
-<p>Ce qui fait la force de <em><strong>SongBook</strong></em>, c&#8217;est aussi ses <a href="#tools">outils en ligne de commande</a> qui facilitent et accèlèrent tous les processus de production des chansons et des carnets. N&#8217;hésitez pas à consulter rapidement la section des <a href="#tools">outils et assistants</a>.</p>
+<p>Ce qui fait la force de <em><strong>SongBook</strong></em>, ce sont aussi ses <a href="#tools">outils en ligne de commande</a> qui facilitent et accèlèrent tous les processus de production des chansons et des carnets. N&#8217;hésitez pas à consulter rapidement la section des <a href="#tools">outils et assistants</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="console-command">Commande <code>songbook</code></h3>
@@ -580,7 +580,7 @@ a {
 </div>
 </div>
 <div class="paragraph">
-<p>Utiliser <code>songbook -h</code> ou <code>songbook --help</code> pour obtenir une aide rapide (moins détaillée qu&#8217;ici) — ou simplement <code>-h</code> en mode interactif.</p>
+<p>Utiliser <code>songbook -h</code> ou <code>songbook --help</code> pour obtenir une aide rapide (moins détaillée qu&#8217;ici) — ou <code>help</code> en mode interactif.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -593,6 +593,40 @@ a {
 <div class="paragraph">
 <p>Le <strong>processus classique de création d&#8217;un carnet</strong> est le suivant (cette liste complète vous permet de rejoindre rapidement toutes les parties) :</p>
 </div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 16.6666%;">
+<col style="width: 50%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" rowspan="6"><p class="tableblock">Création de la chanson</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Récupération sur le site</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#load-song-from-site">depuis le site</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Création de A à Z</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#create-song-tool">ASSISTANT DE CRÉATION</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Rédaction des paroles</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#lyrics-file">FICHIER DES PAROLES</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Placement des accords</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#chords">ACCORDS</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Création des diags manquants</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#diags">DIAGRAMMES</a>, <a href="#diag-schema-producer">OUTIL DIAG</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Création des tablatures</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#tablature">TABLATURES</a></p></td>
+</tr>
+</tbody>
+</table>
 <div class="ulist">
 <ul>
 <li>
@@ -1215,7 +1249,7 @@ songbook missing diags --all
 </ul>
 </div>
 <div class="paragraph">
-<p>Voir comment <a href="#gabarit-insert-tablas">insérer une tablature</a> dans la page de la chanson.</p>
+<p>Voir comment <a href="#gabarit-insert-tabs">insérer une tablature</a> dans la page de la chanson.</p>
 </div>
 <div class="sect3">
 <h4 id="tablature">Tablatures</h4>
@@ -1311,7 +1345,7 @@ Le troisième couplet
 </div>
 </div>
 <div class="sect4">
-<h5 id="gabarit-insert-tablas">Insertion de tablatures</h5>
+<h5 id="gabarit-insert-tabs">Insertion de tablatures</h5>
 <div class="paragraph">
 <p>Pour insérer une tablature à l&#8217;endroit voulu, on lui trouve un identifiant unique, on définit la tablature à prendre à l&#8217;aide de la propriété <code>tab</code> suivi du nom composé ou non de la tablature :</p>
 </div>
@@ -1354,7 +1388,7 @@ Le troisième couplet
 <div class="sect4">
 <h5 id="gabarit-insert-score">Insertion de partitions</h5>
 <div class="paragraph">
-<p>Les partitions répondent aux mêmes fonctionnalités que <a href="#gabarit-insert-tablas">la tablatures dans le gabarit</a> donc vous pouvez consulter cette partie (ci-dessus) pour voir comment utiliser les partitions dans le fichier <code>.gabarit</code> de la chanson.</p>
+<p>Les partitions répondent aux mêmes fonctionnalités que <a href="#gabarit-insert-tabs">la tablatures dans le gabarit</a> donc vous pouvez consulter cette partie (ci-dessus) pour voir comment utiliser les partitions dans le fichier <code>.gabarit</code> de la chanson.</p>
 </div>
 </div>
 <div class="sect4">
@@ -2410,7 +2444,7 @@ Noter que s&#8217;il y des options réglées pour le carnet en construction et d
 <h4 id="_tablatures_et_partitions_2">Tablatures et partitions</h4>
 <div class="listingblock">
 <div class="content">
-<pre>tablas:
+<pre>tabs:
   position: Under</pre>
 </div>
 </div>
@@ -4817,6 +4851,11 @@ Solution proposée ?</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RAD11</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lorsque plusieurs (&gt;1) colonnes de diags doivent être affichées verticalement les unes à côté des autres, l&#8217;écartement entre chaque colonnes doit rester fixe, ne pas être équilibré.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAD12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lorsque tous les diags occupent moins de la moitié de la page, on les aligne au centre.</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 </tbody>

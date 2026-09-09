@@ -6,7 +6,7 @@ Le système de __partitions__ et de __tablatures__ de __SongBook__ reste rudimen
 - produire une partition/tablature de l'accompagnement,
 - produire une partition/tablature d'un riff, d'un petit bout de musique à insérer quelque part, souvent au début ou à la fin de la chanson.
 
-Voir comment <<gabarit-insert-tablas, insérer une tablature>> dans la page de la chanson.
+Voir comment <<gabarit-insert-tabs, insérer une tablature>> dans la page de la chanson.
 
 [[tablature, tablature]]
 ==== Tablatures ====
