@@ -41,7 +41,9 @@ On peut même directement, si le schéma ne nous intéresse pas, utiliser la com
 
 Une chanson peut définir ses propres schémas dans un fichier `.schemas` (`sche`). Cela est nécessaire lorsque la chanson utilise des accords qui ne sont consignés <<diags-list, nulle part ailleurs>>.
 
-Dans ce fichier, on indique : 
+**OU**, plus important, lorsqu'elle utilise des positions particulières d'accord pouvant déjà exister. Dans ce cas, les accords qu'elle définit sont **prioritaires** sur les accords existants.
+
+Dans le fichier des schémas, on indique : 
 
 ----
 <NOM-DANS-LES-PAROLES> : <SCHÉMA DU DIAGRAMME>
@@ -50,7 +52,20 @@ Dans ce fichier, on indique :
 
 Le schéma est obtenu grâce à la commande `diag` qui permet de définir ces diagrammes avec confort et sécurité (l'erreur est pratiquement impossible).
 
-Choisissez bien le nom pour qu'il « n'écrase » pas un accord existant déjà (__rassurez-vous cependant, il ne sera pas vraiment « écrasé »__). C'est ce nom que vous devrez utiliser pour le fichier `.lyr`.
+Pour être clair, voilà la démarche à utiliser :
+
+__Les commandes sont données en mode interactif (`songbook -i`) avec la chanson mise en chanson courante (`🎸> use song "ma chanson"`)__
+
+[cols="4,1"]
+|====
+| S'assurer d'abord que l'accord n'existe pas déjà  | `diags`
+| Ouvrir ou créer le fichier `.schemas`             | `open schemas`
+| Dans un autre Terminal, lancer l'éditeur de diag  | `diag` (hors interactif)
+| Définir le diagramme                              |
+| Ne pas l'enregistrer pour l'application           |
+| Coller le schéma dans le fichier `.schemas`       | combo:Cmd+v[]
+| Lancer la production des fichiers SVG             | `build diags`
+|====
 
 [[diags-position]]
 ==== Position et taille des diagrammes ====

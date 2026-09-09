@@ -5,7 +5,7 @@ Le **processus classique de création d'un carnet** est le suivant (cette liste 
 
 [cols="1,3,2"]
 |====
-.7+| Création de la chanson   | Récupération sur le site      | <<load-song-from-site, depuis le site>>
+.9+| Création de la chanson   | Récupération sur le site      | <<load-song-from-site, depuis le site>>
                               | Création de A à Z             | <<create-song-tool, ASSISTANT DE CRÉATION>>
                               | Rédaction des paroles         | <<lyrics-file, FICHIER DES PAROLES>>
                               | Placement des accords         | <<chords, ACCORDS>>
