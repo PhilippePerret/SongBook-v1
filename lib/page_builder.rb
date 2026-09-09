@@ -772,15 +772,24 @@ module PageBuilder
     Layout::PageElement.new(height, draw)
   end
 
+  # `pair_elements` : {row_idx:, element_index:} pour chaque row à 2 colonnes rendue
+  # INTACTE côte à côte (jamais celles empilées en repli, `Layout.build_row_or_split` —
+  # déjà centrées individuellement dans ce cas) — sert à `build` à recalculer `col1_w`/
+  # `col2_w` par PAGE (jamais globalement sur toute la chanson, voir "Chante" : le
+  # centrage d'une pair ne doit dépendre que des pairs de SA PROPRE page, jamais d'une
+  # strophe plus large ailleurs dans la chanson, sur une page différente).
   def self.build_song_elements(pdf, items, rows, folder, text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
     row_idx = 0
     elements = []
     shrink_jobs = [] # {index:, svg_paths:, align:, title:} — tabs à réduire si besoin
+    pair_elements = []
     tab_scale = notation_scale(items, folder, text_w)
     items.each do |item|
       case item.type
       when :row
-        elements.concat(Layout.build_row_or_split(pdf, rows[row_idx], text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent))
+        built = Layout.build_row_or_split(pdf, rows[row_idx], text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
+        pair_elements << { row_idx: row_idx, element_index: elements.size } if rows[row_idx].size == 2 && built.size == 1
+        elements.concat(built)
         row_idx += 1
       when :side_by_side
         el = build_side_by_side_element(pdf, item, folder, text_x, text_w, h_gutter, chord_ascent, text_ascent, text_descent, tab_scale)
@@ -792,7 +801,7 @@ module PageBuilder
         sjs.each { |sj| shrink_jobs << sj.merge(index: base_index + sj[:local_index]).except(:local_index) }
       end
     end
-    [elements, shrink_jobs]
+    [elements, shrink_jobs, pair_elements]
   end
 
   # `diag_list` (option) : quels diagrammes graver, indépendamment de ceux réellement
@@ -986,8 +995,31 @@ module PageBuilder
       end
       col1_w, col2_w, h_gutter = Layout.row_column_widths(pdf, rows, text_w)
 
-      elements, shrink_jobs = build_song_elements(pdf, items, rows, folder, text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
+      elements, shrink_jobs, pair_elements = build_song_elements(pdf, items, rows, folder, text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
       elements_r = dynamic_mode ? build_song_elements(pdf, items, rows, folder, text_x_r, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent).first : nil
+
+      # Recentre chaque pair côte à côte sur `col1_w`/`col2_w` recalculées à partir des
+      # SEULES pairs de SA PROPRE page (jamais celles de toute la chanson, calculées
+      # juste au-dessus) : l'alignement colonne-à-colonne n'a de sens qu'ENTRE strophes
+      # visibles ensemble sur la MÊME page, jamais entre deux pages différentes. Sans
+      # risque sur la pagination déjà faite : la largeur par page est toujours >= la
+      # largeur naturelle de chacune de ses pairs (sous-ensemble du max global déjà
+      # utilisé), donc le retour à la ligne du texte — et la hauteur de chaque élément —
+      # reste identique, seul le slack de centrage change.
+      if pair_elements.any?
+        pages = Layout.paginate(elements, first_avail_h, pdf.bounds.height, pinned: shrink_jobs.map { |j| j[:index] })
+        pages.each do |page|
+          page_pairs = pair_elements.select { |pe| (page[:start]...page[:finish]).cover?(pe[:element_index]) }
+          next if page_pairs.empty?
+
+          page_col1_w, page_col2_w, page_h_gutter = Layout.row_column_widths(pdf, page_pairs.map { |pe| rows[pe[:row_idx]] }, text_w)
+          page_pairs.each do |pe|
+            row = rows[pe[:row_idx]]
+            elements[pe[:element_index]] = Layout.row_to_element(pdf, row, text_x, text_w, page_col1_w, page_col2_w, page_h_gutter, chord_ascent, text_ascent, text_descent)
+            elements_r[pe[:element_index]] = Layout.row_to_element(pdf, row, text_x_r, text_w, page_col1_w, page_col2_w, page_h_gutter, chord_ascent, text_ascent, text_descent) if dynamic_mode
+          end
+        end
+      end
 
       # `shrink` : RESPECTE la position choisie par l'auteur du .gab — jamais déplacée par
       # la pagination (épinglée), seulement réduite si besoin. L'espace qui lui revient
