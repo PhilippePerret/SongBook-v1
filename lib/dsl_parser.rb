@@ -1,4 +1,5 @@
 require "yaml"
+require_relative "app_config"
 
 Song    = Struct.new(:meta, :blocks, keyword_init: true)
 Block   = Struct.new(:lines, :directives, :paired_with_previous, keyword_init: true)
@@ -187,7 +188,7 @@ class DSLParser
       k, v = pair.split(":", 2)
       next unless k && v
 
-      h[k.strip.to_sym] = v.strip
+      h[AppConfig.normalize_property_key(k)] = v.strip
     end
   end
 end

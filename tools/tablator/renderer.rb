@@ -534,7 +534,7 @@ module Tablator
   # ne tiendrait pas lisiblement (`min_slot_width`), le nombre de mesures
   # visé est réduit tout seul (jamais un rendu illisible) — SAUF si
   # `measures_per_line` est donné explicitement (override `layout`
-  # `tabla_measures_per_page` : décision assumée de l'user, jamais réduite
+  # `tabs_measures_per_page` : décision assumée de l'user, jamais réduite
   # dans son dos). Sans `available_width_pt` connue (aperçu CLI/assistant) :
   # `slot_width` retombe sur son plancher de lisibilité.
   # Renvoie [{svg:, width_pt:, height_pt:}, ...] (1 par système).

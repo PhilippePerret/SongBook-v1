@@ -94,16 +94,38 @@ module AppConfig
     end
   end
 
+  # Issue #87 : clé de propriété/directive/option tapée par l'user (`.gab`/`.lyr`/`.infos`,
+  # ex. `margin-top:12pt;` ou `font-size:`) -> clé canonique attendue par le code. Temps 1 :
+  # "-" remplacé par "_" ("margin-top" -> "margin_top", tolérance pour les users mal à
+  # l'aise avec le tiret bas) — s'applique à TOUTE clé, déjà en "_" ou pas. Temps 2 : table
+  # (mauvaise clé -> bonne clé) pour les clés dont l'ORDRE des mots ne correspond pas à
+  # celui réellement lu par le code (`top_margin`, voir `PageBuilder.apply_extra_directives`)
+  # — une entrée par propriété concernée, à compléter au fur et à mesure.
+  PROPERTY_KEY_ALIASES = {
+    margin_top: :top_margin,
+    margin_bottom: :bottom_margin,
+    margin_left: :left_margin,
+    margin_right: :right_margin,
+  }.freeze
+
+  def self.normalize_property_key(str)
+    key = str.to_s.strip.gsub("-", "_").to_sym
+    PROPERTY_KEY_ALIASES.fetch(key, key)
+  end
+
   UNIT_TO_PT = { cm: CM_TO_PT, mm: MM_TO_PT, in: IN_TO_PT, pt: 1.0 }.freeze
 
   # "1cm" -> {amount: 1.0, unit: :cm} ; "12" -> {amount: 12.0, unit: nil} (pas d'unité
-  # explicite — l'appelant décide du défaut, voir `length_pt`/`length_in`).
+  # explicite — l'appelant décide du défaut, voir `length_pt`/`length_in`). "-1cm" ->
+  # {amount: -1.0, unit: :cm} (issue #86 : le signe "-" était perdu pour toute unité
+  # explicite autre que "pt" — regex sans `-?`, retombait sur `to_f` + unité par défaut,
+  # donc "-5cm" était compris comme "-5pt").
   def self.parse_length(value)
     case value.to_s.strip
-    when /\A([\d.]+)\s*cm\z/ then { amount: $1.to_f, unit: :cm }
-    when /\A([\d.]+)\s*mm\z/ then { amount: $1.to_f, unit: :mm }
-    when /\A([\d.]+)\s*in\z/ then { amount: $1.to_f, unit: :in }
-    when /\A([\d.]+)\s*pt\z/ then { amount: $1.to_f, unit: :pt }
+    when /\A(-?[\d.]+)\s*cm\z/ then { amount: $1.to_f, unit: :cm }
+    when /\A(-?[\d.]+)\s*mm\z/ then { amount: $1.to_f, unit: :mm }
+    when /\A(-?[\d.]+)\s*in\z/ then { amount: $1.to_f, unit: :in }
+    when /\A(-?[\d.]+)\s*pt\z/ then { amount: $1.to_f, unit: :pt }
     else { amount: value.to_f, unit: nil }
     end
   end

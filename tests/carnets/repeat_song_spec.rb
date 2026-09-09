@@ -47,7 +47,7 @@ RSpec.describe "répétition de chanson dans un .tdm" do
       File.write(song_override, "font-size: 14\n")
 
       begin
-        expect(CarnetBuilder.resolve_infos_override(carnet_folder, song_folder, "Angie [2]")["font-size"]).to eq("14")
+        expect(CarnetBuilder.resolve_infos_override(carnet_folder, song_folder, "Angie [2]")["font_size"]).to eq("14")
       ensure
         File.delete(song_override)
       end
@@ -58,7 +58,7 @@ RSpec.describe "répétition de chanson dans un .tdm" do
       File.write(override, "font-family: Garamond\n")
 
       begin
-        expect(CarnetBuilder.resolve_infos_override(carnet_folder, song_folder, "Angie")["font-family"]).to eq("Garamond")
+        expect(CarnetBuilder.resolve_infos_override(carnet_folder, song_folder, "Angie")["font_family"]).to eq("Garamond")
       ensure
         File.delete(override)
       end
@@ -156,7 +156,7 @@ RSpec.describe "répétition de chanson dans un .tdm" do
 
     it "le .infos indexé écrase la chanson ET le carnet" do
       build(song_infos: "title: Chanson\nfont-family: Futura\n", carnet_infos: "title: Carnet\nfont-family: Georgia\n",
-        overrides: { "font-family" => "Bodoni" })
+        overrides: { "font_family" => "Bodoni" })
       expect(Options.get(:font_family)).to eq("Bodoni")
     end
   end

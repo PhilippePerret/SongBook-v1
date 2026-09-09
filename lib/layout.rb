@@ -8,7 +8,7 @@ require_relative "transpose"
 require_relative "options"
 
 # Moteur de mise en page : primitives de dessin (police, en-tête, couplets/accords,
-# diagrammes, tabla) et pagination générique — indépendant du format source d'une
+# diagrammes, tabs) et pagination générique — indépendant du format source d'une
 # chanson (`.lyr`/`.gab`/`.infos` vs `.dsl`, voir `PageBuilder`) et de la résolution des
 # diagrammes d'accords (voir `ChordDiagrams`). Porte aussi le système de conflits
 # (`conflict!`), utilisé par les deux.
@@ -110,7 +110,7 @@ module Layout
     { vertical: vertical, horizontal: horizontal }
   end
 
-  # Options TRACKÉES pour `show_specs` — liste ouverte, à compléter (zoom tablas/score...)
+  # Options TRACKÉES pour `show_specs` — liste ouverte, à compléter (zoom tabs/score...)
   # quand leurs effets réels seront stabilisés. `prop` : nom affiché (celui du `.infos`).
   # `label:` formate la valeur RÉSOLUE (`Options.get`), pas la valeur brute du `.infos`.
   # Présentation UNIFORME quel que soit le nombre d'entrées : "(prop value)", jamais un
@@ -375,7 +375,7 @@ module Layout
   # libre, trop écartés reste moche aussi) — même valeur pour les deux directions pour
   # l'instant, à affiner par type d'élément plus tard. Valeurs de départ, à ajuster après
   # avoir vu le résultat. 
-  # Table par TYPE d'élément (:diags, :title, :score, :tabla, :strophe...) — clé absente ⇒
+  # Table par TYPE d'élément (:diags, :title, :score, :tabs, :strophe...) — clé absente ⇒
   # valeur de :default. Seul :diags a une valeur propre pour l'instant ,
   # les autres types tomberont sur :default tant qu'aucun besoin distinct n'est apparu.
   # `band_diag`/`band_strophe` : gouttière ENTRE la bande de titre et le 1er élément
@@ -384,7 +384,7 @@ module Layout
   # une plage resserrée pour "entre diags" resserre aussi, à tort, "sous le bandeau".
   # `tdm_num` (RATDM3) : distance entre le titre le plus long de la TDM et le chiffre de
   # page — valeur fixée à 20pt pour l'essai (Manuel, regles_esthetiques.adoc).
-  # `tabla_system` : PAS ici  : "garder cette config enregistrée en
+  # `tabs_system` : PAS ici  : "garder cette config enregistrée en
   # dur quelque part" — plancher/plafond lus depuis le preset Tablator ACTIF,
   # `system_gap_min`/`system_gap_max`, voir `tools/tablator/presets.rb` et
   # `min_v_dist`/`max_v_dist` ci-dessous), pour que TOUT le réglage tablature se
@@ -401,7 +401,7 @@ module Layout
   # (bas du bloc -> marge basse) — si `(DUP - DDO).abs <= VERTICAL_BALANCE_THRESHOLD_PT`,
   # le bloc est recentré (DUP = DDO = moyenne) ; sinon laissé tel quel (contenu qui remplit
   # déjà la page ne doit pas être artificiellement tassé). S'applique à TOUT contenu qui
-  # termine une page (texte, image, partition, tabla) — jamais quand une grille de diags
+  # termine une page (texte, image, partition, tabs) — jamais quand une grille de diags
   # en trop (RAD7) est calée en dessous : elle EST déjà la référence "bas", pas la marge.
   VERTICAL_BALANCE_THRESHOLD_PT = 80.0
   MAX_H_DIST = { default: 40.0, label: 30.0 }.freeze
@@ -412,7 +412,7 @@ module Layout
   TDM = { leader_character: ".", leader_space: 3.0 }.freeze
 
   def self.min_v_dist(type = :default)
-    return Tablator.param(:system_gap_min) if type == :tabla_system
+    return Tablator.param(:system_gap_min) if type == :tabs_system
 
     MIN_V_DIST.fetch(type, MIN_V_DIST[:default])
   end
@@ -422,7 +422,7 @@ module Layout
   end
 
   def self.max_v_dist(type = :default)
-    return Tablator.param(:system_gap_max) if type == :tabla_system
+    return Tablator.param(:system_gap_max) if type == :tabs_system
 
     MAX_V_DIST.fetch(type, MAX_V_DIST[:default])
   end
@@ -471,7 +471,7 @@ module Layout
 
   # `gutter_type` (optionnel, nil = `:default`) : type de gouttière à utiliser
   # AVANT cet élément  : systèmes de tablature quasi collés entre
-  # eux, `:tabla_system` — voir `MIN_V_DIST`/`MAX_V_DIST`/`distribute_v_gutters`).
+  # eux, `:tabs_system` — voir `MIN_V_DIST`/`MAX_V_DIST`/`distribute_v_gutters`).
   PageElement = Struct.new(:height, :draw, :gutter_type)
 
   # Boîte d'encre RÉELLE (llx, lly, urx, ury — unités/1000em) de chaque caractère latin
@@ -1309,7 +1309,7 @@ module Layout
   # Texte TOUJOURS aligné à gauche (sauf demande expresse) : `block_align: center`
   # centre le paragraphe entier dans la page, jamais chaque ligne dans sa colonne.
   # Construit un PageElement par row (couplet seul ou paire côte à côte), prêt à être
-  # paginé/équilibré par `paginate_and_draw` aux côtés d'autres éléments (ex. la tabla).
+  # paginé/équilibré par `paginate_and_draw` aux côtés d'autres éléments (ex. la tabs).
   def self.build_row_elements(pdf, blocks, x0, width, chord_ascent, text_ascent, text_descent, cote_a_cote)
     rows = build_rows(blocks, cote_a_cote)
     col1_w, col2_w, h_gutter = row_column_widths(pdf, rows, width)
@@ -1457,7 +1457,7 @@ module Layout
     PageElement.new(height, draw)
   end
 
-  # Pagination générique : chaque page reçoit autant d'éléments (rows de couplets, tabla...)
+  # Pagination générique : chaque page reçoit autant d'éléments (rows de couplets, tabs...)
   # que sa hauteur disponible permet, puis le reste (air en haut/bas + gouttière entre
   # éléments) est réparti sur CE QUI TIENT RÉELLEMENT sur la page — jamais sur le total.
   # RÈGLE ABSOLUE : un élément ne passe à la page suivante que s'il ne rentre vraiment pas,
@@ -1467,7 +1467,7 @@ module Layout
   # `PageBuilder.build`) pour savoir, SANS dessiner, où un élément atterrirait et combien
   # d'espace lui reste sur sa page.
   # pinned : indices d'éléments qui ne doivent JAMAIS être repoussés à la page suivante
-  # (ex. une tabla en `shrink` : sa page est fixée par sa position dans le .gab, jamais
+  # (ex. une tabs en `shrink` : sa page est fixée par sa position dans le .gab, jamais
   # déplacée — voir `PageBuilder.build`).
   # `top_type:` (défaut = `type`) : type de la TOUTE PREMIÈRE gouttière de la TOUTE
   # PREMIÈRE page seulement (entre bandeau et 1er élément — `:band_strophe`/`:band_diag`,
@@ -2683,7 +2683,7 @@ module Layout
   # `DIAG_COLUMN_TARGET_MIN` (ou moins s'il y a moins de diags que ça au total) tiennent,
   # jamais sous `MIN_SIZE[:diags][:width]` — si même la taille plancher n'y suffit pas,
   # tant pis, on s'arrête là (RAD6 gère le reste en page dédiée).
-  # Tabla/score : pas de taille nominale propre (contrairement aux diags, `DIAG_W`) —
+  # Tabs/score : pas de taille nominale propre (contrairement aux diags, `DIAG_W`) —
   # rétrécissement pertinent SEULEMENT pour une image à taille FIXE (PNG/JPEG), jamais
   # pour un SVG  : "n'a par nature pas de dimension fixe").
   RASTER_EXTENSIONS = %w[.png .jpg .jpeg].freeze
@@ -2692,7 +2692,7 @@ module Layout
     RASTER_EXTENSIONS.include?(File.extname(path).downcase)
   end
 
-  def self.tabla_shrinkable?(path)
+  def self.tabs_shrinkable?(path)
     raster_image?(path) && Options.get(:tabs_shrink)
   end
 
@@ -2900,7 +2900,7 @@ module Layout
   end
 
   # Largeur RÉELLEMENT dessinée d'un SVG (jamais plus que `max_width` dispo) — utilisé
-  # aussi bien pour l'incruster (`build_tabla_element_v2`) que pour connaître sa largeur
+  # aussi bien pour l'incruster (`build_tabs_element_v2`) que pour connaître sa largeur
   # AVANT de positionner autre chose à côté (`PageBuilder.build_side_by_side_element`,
   # issue "Le Sud" : le texte ne doit jamais être repoussé à une distance arbitraire,
   # seulement celle réellement occupée par la tablature).
@@ -2942,21 +2942,22 @@ module Layout
     available_width_pt / widths.max
   end
 
-  # Tabla (tablature/accompagnement, SVG rendu à part via Tablator). RÈGLE ABSOLUE (Phil,
+  # Tabs (tablature/accompagnement, SVG rendu à part via Tablator). RÈGLE ABSOLUE (Phil,
   # 2026-08-16) : jamais de saut de page sans raison de place — donc pas de page dédiée,
   # c'est un élément de plus dans la MÊME pagination que les rows de couplets (voir
   # `paginate_and_draw`), il partage la page courante si la place suffit.
-  def self.build_tabla_element(pdf, meta, dsl_path, x0, width)
-    return nil unless meta["tabla"]
+  def self.build_tabs_element(pdf, meta, dsl_path, x0, width)
+    tabs_path = meta["tabs"] || meta["tabla"]
+    return nil unless tabs_path
 
-    path = File.expand_path(meta["tabla"], File.dirname(dsl_path))
+    path = File.expand_path(tabs_path, File.dirname(dsl_path))
     return nil unless File.exist?(path)
 
     svg_data = File.read(path)
     embed_w = [tab_embed_width(svg_data, TAB_LINE_SPACING), width].min
     svg_h = svg_height_for(svg_data, embed_w)
 
-    title = meta["tabla_titre"]
+    title = meta["tabs_titre"] || meta["tabla_titre"]
     title_ascent = title ? font_metric(pdf, TAB_TITLE_SIZE) { pdf.font.ascender } : 0
     title_h = title ? font_metric(pdf, TAB_TITLE_SIZE) { pdf.font.height } + TAB_TITLE_GAP : 0
 
@@ -2964,7 +2965,7 @@ module Layout
       if title
         draw_text_colored(pdf_, title, at: [x0, y - title_ascent], size: TAB_TITLE_SIZE, style: :bold, color: TAB_TITLE_COLOR)
       end
-      engrave(bottom: y - title_h - svg_h, context: "tabla") { pdf_.svg(svg_data, at: [x0, y - title_h], width: embed_w, position: :left, enable_web_requests: false) }
+      engrave(bottom: y - title_h - svg_h, context: "tabs") { pdf_.svg(svg_data, at: [x0, y - title_h], width: embed_w, position: :left, enable_web_requests: false) }
     end
 
     PageElement.new(title_h + svg_h, draw)
@@ -3031,7 +3032,7 @@ module Layout
   end
 
   # Titre tab/score/image : majuscules + style/taille configurables (`title_size`/
-  # `title_style`) — factorisé, utilisé par `build_tabla_element_v2` ET
+  # `title_style`) — factorisé, utilisé par `build_tabs_element_v2` ET
   # `build_image_element` (Phil : "ça devrait être pareil" pour les deux).
   def self.draw_score_title(pdf, text, x, y)
     label = text.upcase
@@ -3048,20 +3049,20 @@ module Layout
     pdf.stroke_color "000000"
   end
 
-  # Tabla positionnée EXACTEMENT là où `{tabla: ...}` apparaît dans le `.gab` (au lieu de
+  # Tabs positionnée EXACTEMENT là où `{tabs: ...}` apparaît dans le `.gab` (au lieu de
   # toujours après les couplets) — sa place dans l'ordre du `.gab` EST sa position ("top"
   # = premier élément, "fin" = dernier). align:center la centre dans la largeur dispo.
-  # max_height : si donné et que la tabla (titre + image) ne tiendrait pas dedans, l'image
+  # max_height : si donné et que la tabs (titre + image) ne tiendrait pas dedans, l'image
   # est réduite (largeur, donc hauteur — ratio conservé) pour tenir EXACTEMENT dedans, sans
   # plancher minimal ("sans limite") — le titre, lui, ne rétrécit jamais.
   # Notation générée (tab/score vectoriel) : largeur = taille physique NATURELLE du SVG
   # (`svg_natural_width_pt`), multipliée par `scale` — échelle COMMUNE à toute la
-  # chanson (`uniform_tab_scale`), jamais recalculée tabla par tabla (sinon écarts
-  # visiblement différents d'une tabla à l'autre).
-  # `svg_paths` : liste à 1 élément (`PageBuilder.ensure_tabla_svg` — UN SEUL SVG
+  # chanson (`uniform_tab_scale`), jamais recalculée tabs par tabs (sinon écarts
+  # visiblement différents d'une tabs à l'autre).
+  # `svg_paths` : liste à 1 élément (`PageBuilder.ensure_tabs_svg` — UN SEUL SVG
   # multi-système depuis le rendu géométrique direct, plus de
   # fragmentation multi-fichiers).
-  def self.build_tabla_element_v2(pdf, svg_paths, x0, width, align: nil, title: nil, max_height: nil, count: nil, scale: 1.0)
+  def self.build_tabs_element_v2(pdf, svg_paths, x0, width, align: nil, title: nil, max_height: nil, count: nil, scale: 1.0)
     svg_data = File.read(svg_paths.first)
     embed_w = svg_embed_width(svg_data, width, scale: scale)
     svg_h = svg_height_for(svg_data, embed_w)
@@ -3083,7 +3084,7 @@ module Layout
     draw = lambda do |pdf_, y|
       draw_score_title(pdf_, title, svg_x, y - title_ascent) if title
       top = y - title_h
-      engrave(bottom: top - svg_h, context: "tabla") { pdf_.svg(svg_data, at: [svg_x, top], width: embed_w, position: :left, enable_web_requests: false) }
+      engrave(bottom: top - svg_h, context: "tabs") { pdf_.svg(svg_data, at: [svg_x, top], width: embed_w, position: :left, enable_web_requests: false) }
       count_draw&.call(pdf_, top)
     end
     PageElement.new(title_h + svg_h + count_extra_h, draw)

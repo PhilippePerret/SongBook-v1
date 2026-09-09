@@ -119,8 +119,8 @@ RSpec.describe "lecture des paroles et accords (.lyr)" do
     end
 
     it "Lire les indications entre accolades au début d'un morceau" do
-      song = DSLParser.parse("{tabla: intro.tab; shrink: true;}\nParoles\n")
-      expect(song.blocks.first.directives).to eq({ tabla: "intro.tab", shrink: "true" })
+      song = DSLParser.parse("{tabs: intro.tab; shrink: true;}\nParoles\n")
+      expect(song.blocks.first.directives).to eq({ tabs: "intro.tab", shrink: "true" })
     end
 
     it "Savoir que deux morceaux vont côte à côte (//)" do

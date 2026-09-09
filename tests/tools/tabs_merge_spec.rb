@@ -6,7 +6,7 @@ require "layout"
 require "tmpdir"
 require "fileutils"
 
-# Fusion de tablatures ("+" dans le nom) — `{tabla: intro+couplet}` =
+# Fusion de tablatures ("+" dans le nom) — `{tabs: intro+couplet}` =
 # mise bout à bout PURE des codes de "intro.tab" et "couplet.tab", un seul SVG produit.
 RSpec.describe "fusion de tablatures (\"+\")" do
   around do |example|
@@ -53,18 +53,18 @@ RSpec.describe "fusion de tablatures (\"+\")" do
     end
   end
 
-  describe ".ensure_tabla_svg (nom avec \"+\")" do
+  describe ".ensure_tabs_svg (nom avec \"+\")" do
     it "tableau vide si l'une des sources manque" do
       write_tab("intro", "title: Intro", "50/4")
       # "couplet.tab" n'existe pas.
-      expect(PageBuilder.ensure_tabla_svg(@dir, "intro+couplet", 300)).to eq([])
+      expect(PageBuilder.ensure_tabs_svg(@dir, "intro+couplet", 300)).to eq([])
     end
 
     it "produit le(s) SVG (rendu géométrique direct, un fichier par système) dans .export/" do
       write_tab("intro", "title: Intro", "50/4")
       write_tab("couplet", "title: Couplet", "60/4")
 
-      result = PageBuilder.ensure_tabla_svg(@dir, "intro+couplet", 300)
+      result = PageBuilder.ensure_tabs_svg(@dir, "intro+couplet", 300)
 
       expect(result).not_to be_empty
       expect(result.first).to match(%r{/\.export/intro\+couplet\..*\.s1\.svg\z})
@@ -75,9 +75,9 @@ RSpec.describe "fusion de tablatures (\"+\")" do
       write_tab("intro", "title: Intro", "50/4")
       write_tab("couplet", "title: Couplet", "60/4")
 
-      first = PageBuilder.ensure_tabla_svg(@dir, "intro+couplet", 300)
+      first = PageBuilder.ensure_tabs_svg(@dir, "intro+couplet", 300)
       mtime_before = File.mtime(first.first)
-      second = PageBuilder.ensure_tabla_svg(@dir, "intro+couplet", 300)
+      second = PageBuilder.ensure_tabs_svg(@dir, "intro+couplet", 300)
 
       expect(second).to eq(first)
       expect(File.mtime(second.first)).to eq(mtime_before)

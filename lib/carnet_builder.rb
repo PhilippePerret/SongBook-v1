@@ -57,7 +57,7 @@ module CarnetBuilder
       key, value = content.strip.split(":", 2)
       next unless key
 
-      key = key.strip
+      key = AppConfig.normalize_property_key(key).to_s
       value = value.to_s.strip
 
       stack.pop while stack.last[0] >= indent
@@ -542,8 +542,8 @@ module CarnetBuilder
     # Base du carnet (police/taille) : réglée ici pour le front-matter/colophon/TOC,
     # réglée À NOUVEAU par `PageBuilder.build` pour chaque chanson (chanson > carnet >
     # défaut) — sert aussi de référence pour `show_specs` et la page de copyright.
-    Options.set!(:font_family, conf.fetch("font-family", "HelveticaNeue"))
-    Options.set!(:font_size, conf.fetch("font-size", Layout::TEXT_SIZE.to_s).to_s[/[\d.]+/].to_f)
+    Options.set!(:font_family, conf.fetch("font_family", "HelveticaNeue"))
+    Options.set!(:font_size, conf.fetch("font_size", Layout::TEXT_SIZE.to_s).to_s[/[\d.]+/].to_f)
     Layout.carnet_font_baseline = { "font-family" => Options.get(:font_family), "font-size" => Options.get(:font_size).to_s }
     # Réglages imprimeur : physiques (carnet entier), résolus UNE SEULE FOIS ici.
     printer_paper = conf.fetch("paper", PrinterProfile::DEFAULT_PAPER).to_s.to_sym

@@ -65,7 +65,7 @@ module PageBuilder
     meta = {}
     File.foreach(path) do |line|
       k, v = line.strip.split(":", 2)
-      meta[k.strip] = v.strip if k && v && !k.strip.empty? && !v.strip.empty?
+      meta[AppConfig.normalize_property_key(k).to_s] = v.strip if k && v && !k.strip.empty? && !v.strip.empty?
     end
     # `meta[canon] ||= meta[alt]` créerait la clé canonique à `nil` même quand NI la
     # clé canonique NI son alias ne sont dans le fichier (`Hash#[]=` fixe TOUJOURS la
@@ -210,7 +210,7 @@ module PageBuilder
       k, v = pair.split(":", 2)
       next unless k && v && !k.strip.empty?
 
-      dirs[k.strip.to_sym] = v.strip.gsub(/\A["']|["']\z/, "")
+      dirs[AppConfig.normalize_property_key(k)] = v.strip.gsub(/\A["']|["']\z/, "")
     end
   end
 
@@ -232,7 +232,7 @@ module PageBuilder
   GabItem = Struct.new(:type, :data)
 
   # `.gab` : suite de paragraphes — soit une directive `{clé: valeur; ...}` (classée par la
-  # clé qu'elle porte : titre/tabla/diags), soit une row de contenu `{song: nom}` (une ou
+  # clé qu'elle porte : titre/tabs/diags), soit une row de contenu `{song: nom}` (une ou
   # deux, séparées par `//` pour le côte-à-côte, comme le `//` du DSL simple), soit une row
   # de blocs `.lyr` référencés DIRECTEMENT par leur nom `{nom}` (sans `song:`) — `+` entre
   # deux `{nom}` CONCATÈNE leurs paroles en un seul bloc rendu  : forcer
@@ -252,7 +252,7 @@ module PageBuilder
   # tolérées (ignorées), ni obligatoires ni interdites.
   # `{nom; tab: ...}` / `{nom; score: ...}` / `{nom; image: ...}` : forme déclarative
   # (nom en tête suivi d'attributs) — malgré le nom en tête qui la fait matcher
-  # ROW_TOKEN_RE, PAS une row de paroles : une ressource (tabla/score/image).
+  # ROW_TOKEN_RE, PAS une row de paroles : une ressource (tabs/score/image).
   RESOURCE_DECLARATION_RE = /;\s*(?:tab|score|image)\s*:/.freeze
 
   # Une seule marque `{nom; tab/score/image: ...}` (déjà isolée par l'appelant, que ce
@@ -268,11 +268,11 @@ module PageBuilder
       k, v = pair.split(":", 2)
       next unless k && v && !k.strip.empty?
 
-      key = k.strip.to_sym
-      key = :tabla if key == :tab
+      key = AppConfig.normalize_property_key(k)
+      key = :tabs if key == :tab
       dirs[key] = v.strip.gsub(/\A["']|["']\z/, "")
     end
-    type = %i[tabla score image].find { |k| dirs.key?(k) } || :unknown
+    type = %i[tabs score image].find { |k| dirs.key?(k) } || :unknown
     GabItem.new(type, dirs)
   end
 
@@ -288,7 +288,7 @@ module PageBuilder
         k, v = pair.split(":", 2)
         next unless k && v && !k.strip.empty?
 
-        (row_directives[name] ||= {})[k.strip.to_sym] = v.strip.gsub(/\A["']|["']\z/, "")
+        (row_directives[name] ||= {})[AppConfig.normalize_property_key(k)] = v.strip.gsub(/\A["']|["']\z/, "")
       end
       name
     end.join("+")
@@ -335,7 +335,7 @@ module PageBuilder
           k, v = pair.split(":", 2)
           next unless k && v && !k.strip.empty?
 
-          dirs[k.strip.to_sym] = v.strip.gsub(/\A["']|["']\z/, "")
+          dirs[AppConfig.normalize_property_key(k)] = v.strip.gsub(/\A["']|["']\z/, "")
         end
         [GabItem.new(:diags, dirs)]
       elsif (cols = para.split("//").map(&:strip)).all? { |c| c =~ ROW_TOKEN_RE }
@@ -349,21 +349,21 @@ module PageBuilder
           k, v = pair.split(":", 2)
           next unless k && v && !k.strip.empty?
 
-          # "tab" = diminutif toléré pour "tabla" — même convention que les formes
+          # "tab" = diminutif toléré pour "tabs" — même convention que les formes
           # longues/courtes déjà tolérées ailleurs (`FileFinder`).
-          key = k.strip.to_sym
-          key = :tabla if key == :tab
+          key = AppConfig.normalize_property_key(k)
+          key = :tabs if key == :tab
           dirs[key] = v.strip.gsub(/\A["']|["']\z/, "")
         end
-        # `tabla`/`score`/`image`/`diags` avant `title` : leur directive porte elle-même
+        # `tabs`/`score`/`image`/`diags` avant `title` : leur directive porte elle-même
         # une clé `title` (sa légende) — sinon elle se ferait passer pour la config d'en-tête.
-        type = %i[tabla score image diags title].find { |k| dirs.key?(k) } || :unknown
+        type = %i[tabs score image diags title].find { |k| dirs.key?(k) } || :unknown
         [GabItem.new(type, dirs)]
       end
     end
   end
 
-  # Génère le SVG de la tabla à la demande si absent, ou si le/les `.tab` source(s)
+  # Génère le SVG de la tabs à la demande si absent, ou si le/les `.tab` source(s)
   # sont plus récent(s) que le `.svg` déjà là (cache invalidé par date de fichier).
   # `name` sans extension — "intro+couplet"  : FUSION, pure mise
   # bout à bout des CODES de "intro.tab" et "couplet.tab" (frontmatter du 1er fichier
@@ -427,7 +427,7 @@ module PageBuilder
   # `scores/` reste UNIQUEMENT ses `.tab`).
   EXPORT_DIRNAME = ".export"
 
-  def self.ensure_tabla_svg(folder, name, available_width_pt, measures_override: nil)
+  def self.ensure_tabs_svg(folder, name, available_width_pt, measures_override: nil)
     content, _out_dir, source_paths = tab_source_content(folder, name)
     return [] unless content
 
@@ -451,8 +451,8 @@ module PageBuilder
     end
   end
 
-  # `score:`/`image:` : pas de génération (contrairement à `tab:`/`ensure_tabla_svg` —
-  # aucun outil ne produit encore de partition, `Manuel/song/tablas-et-scores.adoc`), le
+  # `score:`/`image:` : pas de génération (contrairement à `tab:`/`ensure_tabs_svg` —
+  # aucun outil ne produit encore de partition, `Manuel/song/tabs-et-scores.adoc`), le
   # fichier doit déjà exister sous ce nom (`locate_resource`). Extension devinée (Phil,
   # 2026-08-27 : "faciliter le travail de l'user", jamais à préciser dans la directive) —
   # SVG cherché en premier (notation vectorielle), sinon image matricielle
@@ -614,24 +614,24 @@ module PageBuilder
     Block.new(lines: block.lines, directives: block.directives.merge(block_align: align.to_s), paired_with_previous: block.paired_with_previous)
   end
 
-  # Construit `elements` (rows + tablas, dans l'ordre de `items`) pour UNE position
+  # Construit `elements` (rows + tabs, dans l'ordre de `items`) pour UNE position
   # donnée (`text_x`) — appelé une fois pour une position fixe, deux fois (gauche/droite)
   # pour une position dynamique `int`/`ext` (voir `build`). `rows` déjà résolu
   # (`resolve_block`/`with_intro_align`, compteurs `bare_kind_counters`) — ne dépend pas
   # de `text_x`, jamais recalculé ici (fausserait le mapping positionnel des blocs
   # génériques si appelé deux fois).
   # Échelle UNIFORME pour TOUTE la chanson  : "on l'applique à TOUTES")
-  # — jamais tabla par tabla. Chaque tab/score vectoriel a une largeur physique NATURELLE
+  # — jamais tabs par tabs. Chaque tab/score vectoriel a une largeur physique NATURELLE
   # (calculée directement par `Tablator.render_tab_svg` — plus de
   # dépendance LilyPond) : un seul facteur de réduction (si la plus large dépasse la
   # colonne) s'applique à toutes (`Layout.uniform_tab_scale`).
-  # `name`/`item.type` -> chemins SVG : `ensure_tabla_svg` pour `:tabla`/`:score`
+  # `name`/`item.type` -> chemins SVG : `ensure_tabs_svg` pour `:tabs`/`:score`
   # vectoriel (liste à 1 élément), `find_resource_asset` pour `:image`/`:score`
   # matriciel (un seul chemin, pas de génération). `nil` si introuvable.
   def self.notation_asset_paths(item, folder, text_w)
     name = item.data[item.type]
-    if item.type == :tabla
-      paths = ensure_tabla_svg(folder, name, text_w, measures_override: Options.get(:tabs_measures_per_page))
+    if item.type == :tabs
+      paths = ensure_tabs_svg(folder, name, text_w, measures_override: Options.get(:tabs_measures_per_page))
       paths.empty? ? nil : paths
     else
       path = find_resource_asset(folder, name, item.type)
@@ -640,7 +640,7 @@ module PageBuilder
       if Layout.raster_image?(path)
         path
       else
-        paths = ensure_tabla_svg(folder, name, text_w, measures_override: Options.get(:tabs_measures_per_page))
+        paths = ensure_tabs_svg(folder, name, text_w, measures_override: Options.get(:tabs_measures_per_page))
         paths.empty? ? nil : paths
       end
     end
@@ -648,7 +648,7 @@ module PageBuilder
 
   def self.notation_scale(items, folder, text_w)
     svgs = items.flat_map do |item|
-      next [] unless item.type == :tabla || item.type == :score
+      next [] unless item.type == :tabs || item.type == :score
 
       paths = notation_asset_paths(item, folder, text_w)
       next [] if paths.nil? || !paths.is_a?(Array)
@@ -658,7 +658,7 @@ module PageBuilder
     Layout.uniform_tab_scale(svgs, text_w)
   end
 
-  # Ressource (tabla/score/image) -> ses éléments de pagination, à la position/taille
+  # Ressource (tabs/score/image) -> ses éléments de pagination, à la position/taille
   # données (`x0`/`width` — jamais `text_x`/`text_w` en dur : réutilisé aussi bien pour
   # une ressource pleine largeur qu'une colonne d'un `:side_by_side`, voir plus bas).
   # `shrink_jobs` renvoyés avec un index LOCAL (position dans le tableau `elements`
@@ -686,11 +686,11 @@ module PageBuilder
       asset_paths.each_with_index do |svg_path, i|
         sys_title = i.zero? ? title : nil
         sys_count = i == asset_paths.size - 1 ? count : nil
-        el = Layout.build_tabla_element_v2(pdf, [svg_path], x0, width, align: align, title: sys_title, count: sys_count, scale: tab_scale)
+        el = Layout.build_tabs_element_v2(pdf, [svg_path], x0, width, align: align, title: sys_title, count: sys_count, scale: tab_scale)
         # Gouttière resserrée SEULEMENT entre 2 systèmes de LA MÊME tablature (jamais
         # celle qui précède le 1er, qui reste la gouttière normale — voir MIN/MAX_V_DIST
-        # `:tabla_system` : "systèmes trop séparés").
-        el.gutter_type = :tabla_system if i.positive?
+        # `:tabs_system` : "systèmes trop séparés").
+        el.gutter_type = :tabs_system if i.positive?
         elements << el
         shrink_jobs << { local_index: i, svg_paths: [svg_path], align: align, title: sys_title } if item.data[:shrink] == "true"
       end
@@ -775,7 +775,7 @@ module PageBuilder
   def self.build_song_elements(pdf, items, rows, folder, text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
     row_idx = 0
     elements = []
-    shrink_jobs = [] # {index:, svg_paths:, align:, title:} — tablas à réduire si besoin
+    shrink_jobs = [] # {index:, svg_paths:, align:, title:} — tabs à réduire si besoin
     tab_scale = notation_scale(items, folder, text_w)
     items.each do |item|
       case item.type
@@ -785,7 +785,7 @@ module PageBuilder
       when :side_by_side
         el = build_side_by_side_element(pdf, item, folder, text_x, text_w, h_gutter, chord_ascent, text_ascent, text_descent, tab_scale)
         elements << el if el
-      when :tabla, :score, :image
+      when :tabs, :score, :image
         base_index = elements.size
         els, sjs = build_resource_page_elements(pdf, item, folder, text_x, text_w, tab_scale)
         elements.concat(els)
@@ -1004,11 +1004,11 @@ module PageBuilder
         max_h = page[:avail_h] - others_h
         next if elements[job[:index]].height <= max_h
 
-        Layout.log_build("tabla \"#{job[:title] || job[:svg_paths]}\" (shrink: true) réduite à #{max_h.round(1)}pt de haut pour tenir sur sa page")
-        elements[job[:index]] = Layout.build_tabla_element_v2(
+        Layout.log_build("tabs \"#{job[:title] || job[:svg_paths]}\" (shrink: true) réduite à #{max_h.round(1)}pt de haut pour tenir sur sa page")
+        elements[job[:index]] = Layout.build_tabs_element_v2(
           pdf, job[:svg_paths], text_x, text_w, align: job[:align], title: job[:title], max_height: max_h
         )
-        elements_r[job[:index]] = Layout.build_tabla_element_v2(
+        elements_r[job[:index]] = Layout.build_tabs_element_v2(
           pdf, job[:svg_paths], text_x_r, text_w, align: job[:align], title: job[:title], max_height: max_h
         ) if dynamic_mode
       end
@@ -1054,8 +1054,8 @@ module PageBuilder
       cote_a_cote = song.meta.fetch("cote_a_cote", true)
 
       elements = Layout.build_row_elements(pdf, song.blocks, text_x, text_w, chord_ascent, text_ascent, text_descent, cote_a_cote)
-      tabla_el = Layout.build_tabla_element(pdf, song.meta, dsl_path, text_x, text_w)
-      elements << tabla_el if tabla_el
+      tabs_el = Layout.build_tabs_element(pdf, song.meta, dsl_path, text_x, text_w)
+      elements << tabs_el if tabs_el
 
       Layout.paginate_and_draw(pdf, elements, header_bottom, printer: printer, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, debug_marks: debug_marks)
     end

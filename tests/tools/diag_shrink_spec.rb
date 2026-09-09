@@ -49,7 +49,7 @@ end
 
 # `tabs_shrink`/`scores_shrink` : pas de taille nominale propre, donc pertinents
 # SEULEMENT pour une image à taille fixe (PNG/JPEG) — jamais pour un SVG.
-RSpec.describe "rétrécissement tabla/score (tabs_shrink/scores_shrink)" do
+RSpec.describe "rétrécissement tabs/score (tabs_shrink/scores_shrink)" do
   after do
     Options.set!(:tabs_shrink, true)
     Options.set!(:scores_shrink, true)
@@ -65,16 +65,16 @@ RSpec.describe "rétrécissement tabla/score (tabs_shrink/scores_shrink)" do
 
   it "SVG : jamais rétrécissable, quelle que soit la valeur de l'option (n'a pas de sens)" do
     Options.set!(:tabs_shrink, true)
-    expect(Layout.tabla_shrinkable?("partition.svg")).to eq(false)
+    expect(Layout.tabs_shrinkable?("partition.svg")).to eq(false)
     Options.set!(:scores_shrink, true)
     expect(Layout.score_shrinkable?("partition.svg")).to eq(false)
   end
 
   it "PNG/JPEG : rétrécissable seulement si l'option correspondante est active" do
     Options.set!(:tabs_shrink, true)
-    expect(Layout.tabla_shrinkable?("tabla.png")).to eq(true)
+    expect(Layout.tabs_shrinkable?("tabs.png")).to eq(true)
     Options.set!(:tabs_shrink, false)
-    expect(Layout.tabla_shrinkable?("tabla.png")).to eq(false)
+    expect(Layout.tabs_shrinkable?("tabs.png")).to eq(false)
 
     Options.set!(:scores_shrink, true)
     expect(Layout.score_shrinkable?("score.jpg")).to eq(true)
@@ -85,7 +85,7 @@ RSpec.describe "rétrécissement tabla/score (tabs_shrink/scores_shrink)" do
   it "tabs_shrink n'affecte pas scores_shrink, et inversement (options indépendantes)" do
     Options.set!(:tabs_shrink, false)
     Options.set!(:scores_shrink, true)
-    expect(Layout.tabla_shrinkable?("t.png")).to eq(false)
+    expect(Layout.tabs_shrinkable?("t.png")).to eq(false)
     expect(Layout.score_shrinkable?("s.png")).to eq(true)
   end
 end

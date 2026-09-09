@@ -43,7 +43,7 @@ module TablatorAssistant
 
   # Chanson demandée (contexte `use song ...` du REPL en priorité, sinon liste
   # filtrable de toutes les chansons) -> TOUTES ses tablatures (`.tab`, n'importe où
-  # dans le dossier de la chanson, voir Manuel/song/tablas-et-scores.adoc) rendues en SVG.
+  # dans le dossier de la chanson, voir Manuel/song/tabs-et-scores.adoc) rendues en SVG.
   def self.produce_svg
     song_folder = Session.song || SongResolver.resolve_song_folder(nil)
     tab_paths = Dir.glob(File.join(song_folder, "**", "*.tab"))
