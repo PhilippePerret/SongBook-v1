@@ -148,16 +148,9 @@ class DiagSchem
   private
 
   # Après production du schéma + copie presse-papier  : propose
-  # d'enregistrer dans la bibliothèque de l'application (`schemas.txt`). Si rien
-  # enregistré (refus, issue #80, voir `enregistrer_dans_application`) ET que
-  # `-o`/`--output` n'a pas déjà produit le SVG, propose (à défaut) de le produire quand
-  # même dans le dossier courant.
+  # d'enregistrer dans la bibliothèque de l'application (`schemas.txt`).
   def proposer_enregistrement
-    prompt = colored_prompt
-    enregistrer_dans_application(prompt)
-    return if @svg_path || @output_svg
-
-    @svg_path = generer_svg if prompt.yes?(blue(Loc.get('diag_output_question')))
+    enregistrer_dans_application(colored_prompt)
   end
 
   # Fichier `.schemas`/`.sch` CIBLE de l'enregistrement (issue #79) : celui DE LA
@@ -217,7 +210,7 @@ class DiagSchem
     # Mode chanson (`@song_dir`) : intention déjà explicite (commande "create diag"
     # lancée POUR cette chanson, issue #79) — aucune question, direct au nom.
     unless @song_dir
-      return unless prompt.yes?(blue(Loc.get('diag_save_in_app_question')), default: true)
+      return unless prompt.yes?(blue(Loc.get('diag_save_in_app_question')), default: false)
     end
 
     # `@nom` normalisé (`DSLParser.normalize_chord`, même règle partout) DÈS LA
