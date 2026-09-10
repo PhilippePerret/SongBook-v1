@@ -18,6 +18,6 @@ Pour l'écriture de la tablature, voir <<tablator, l'outil Tablator>>.
 [[score, partition]]
 ==== Partitions ====
 
-Pour le moment, on ne peut pas encore produire de partitions.
+Pour le moment, on ne peut pas encore produire de partitions. On peut passer néanmoins par Lilypond pour le faire, produire un fichier SVG qu'il suffit ensuite d'<<images, introduire comme une image>>.
 
 Voir comment <<gabarit-insert-score, insérer une partition>> dans la page de la chanson.

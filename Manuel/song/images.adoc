@@ -1,0 +1,10 @@
+[[images, images]]
+=== Les Images ===
+
+On peut introduire n'importe quelle image dans le fichier en l'ajoutant au fichier <<gabarit-file, gabarit>> à l'aide la balise :
+
+----
+{portrait; img: mon-image.png; ...}
+----
+
+C'est la propriété `img` qui indique à __**SongBook**__ qu'il s'agit d'une image à insérer. Les propriétés suivante, indiquées ci-dessus par `...` permettent de spécifier l'affichage de cette image.

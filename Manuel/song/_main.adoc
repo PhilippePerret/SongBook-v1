@@ -27,6 +27,9 @@ include::riffs.adoc[]
 // Tablatures et partitions
 include::tabs-et-scores.adoc[]
 
+// Images
+include::images.adoc[]
+
 // Gabarit
 include::gabarit.adoc[]
 
