@@ -101,6 +101,88 @@ module Tablator
     ev.notes.each { |n| parts << number_glyph(x, string_y(n[:corde], top_y), n[:case].to_s) }
   end
 
+  # Tracés VRAIS du glyphe Feta (police de gravure de LilyPond) pour chaque
+  # figure de pause — extraits directement d'un rendu `lilypond -dbackend=svg`
+  # (`r1 r2 r4 r8 r16 r32 r64`, police par défaut), pas une approximation
+  # géométrique maison (1er essai rejeté, "affreux et ne ressemble à rien").
+  # `d` : path SVG BRUT tel que sorti par LilyPond, en coordonnées locales du
+  # glyphe (échelle propre à la police, voir `FETA_SCALE`). `minx/maxx/miny/
+  # maxy` : bbox de ce path (calculée hors-ligne sur les points/points de
+  # contrôle), sert à centrer le glyphe sur `x` et à savoir quelles lignes de
+  # corde il traverse (`draw_rest`/`rest_line_span`).
+  REST_GLYPHS = {
+    1 => { d: 'M365 -156h-355c-6 0 -10 4 -10 10v136c0 6 4 10 10 10h355c6 0 10 -4 10 -10v-136c0 -6 -4 10 -10 10z', minx: 0.0, maxx: 375.0, miny: -156.0, maxy: 0.0 },
+    2 => { d: 'M365 0h-355c-6 0 -10 4 -10 10v136c0 6 4 10 10 10h355c6 0 10 -4 10 -10v-136c0 -6 -4 10 -10 10z', minx: 0.0, maxx: 375.0, miny: 0.0, maxy: 156.0 },
+    4 => { d: 'M-6 78c0 59 124 83 124 182c0 24 -8 49 -25 69l-35 42c-3 3 -4 7 -4 10c0 9 9 15 17 15c4 0 8 -1 11 -5l151 -180c7 -9 10 -17 10 -25c0 -59 -124 -83 -124 -182c0 -24 7 -49 24 -69l84 -99c3 -3 4 -7 4 -10c0 -9 -8 -16 -16 -16s-45 44 -109 44c-16 0 -53 0 -53 -67c0 -35 11 -74 28 -94c7 -8 -5 -19 -12 -11c-45 54 -92 148 -92 202c0 41 27 42 40 42c33 0 78 -13 119 -31l-132 158c-7 9 -10 17 -10 25z', minx: -23.0, maxx: 243.0, miny: -326.0, maxy: 396.0 },
+    8 => { d: 'M70 205c79 0 46 -98 91 -98c16 0 54 48 61 63c6 12 23 12 28 0l-123 -420c-8 -7 -17 -10 -27 -10s-20 3 -28 10l117 326c-34 -12 -69 -22 -105 -22c-47 0 -87 34 -87 79c0 40 33 72 73 72z', minx: -3.0, maxx: 250.0, miny: -260.0, maxy: 205.0 },
+    16 => { d: 'M125 205c79 0 45 -98 90 -98c15 0 50 49 57 63c6 12 23 12 28 0l-179 -670c-8 -7 -17 -10 -27 -10s-20 3 -28 10l101 327c-34 -12 -70 -23 -106 -23c-47 0 -87 34 -87 79c0 40 32 72 72 72c79 0 46 -98 91 -98c16 0 55 51 60 68l46 151c-34 -12 -68 -22 -104 -22c-47 0 -87 34 -87 79c0 40 33 72 73 72z', minx: -26.0, maxx: 300.0, miny: -510.0, maxy: 205.0 },
+    32 => { d: 'M154 455c79 0 46 -98 91 -98c15 0 46 49 52 63c6 13 23 12 28 0l-216 -920c-8 -7 -18 -10 -28 -10s-19 3 -27 10l86 327c-35 -13 -71 -23 -108 -23c-47 0 -87 34 -87 79c0 40 32 72 72 72c79 0 46 -98 91 -98c17 0 54 54 59 71l39 149c-34 -12 -70 -23 -106 -23c-47 0 -87 34 -87 79c0 40 33 72 73 72c79 0 45 -98 90 -98c16 0 52 51 56 68l40 151c-33 -12 -68 -22 -103 -22c-47 0 -87 34 -87 79c0 40 32 72 72 72z', minx: -55.0, maxx: 325.0, miny: -510.0, maxy: 455.0 },
+    64 => { d: 'M184 455c79 0 46 -98 91 -98c14 0 41 49 47 63c6 13 23 13 28 0l-235 -1170c-8 -7 -18 -10 -28 -10s-19 3 -27 10l73 328c-36 -13 -74 -24 -113 -24c-47 0 -87 34 -87 79c0 40 33 72 73 72c79 0 45 -98 90 -98c17 0 56 55 60 73l33 147c-35 -13 -71 -23 -109 -23c-47 0 -87 34 -87 79c0 40 32 72 72 72c79 0 46 -98 91 -98c16 0 51 54 55 71l34 149c-34 -12 -70 -23 -106 -23c-47 0 -87 34 -87 79c0 40 33 72 73 72c79 0 45 -98 90 -98c15 0 48 52 52 68l34 151c-33 -12 -67 -22 -102 -22c-47 0 -87 34 -87 79c0 40 32 72 72 72z', minx: -67.0, maxx: 350.0, miny: -760.0, maxy: 455.0 },
+  }.freeze
+
+  # Facteur d'échelle Feta -> unités locales (calibré sur le rendu LilyPond
+  # source : sa portée 5 lignes a un interligne de 1.0, exactement l'unité de
+  # `REST_GLYPHS`) — multiplié par `line_spacing` pour retomber dans NOS
+  # unités (pt) : la figure de pause garde la même taille RELATIVE aux
+  # cordes, quel que soit le preset actif.
+  FETA_SCALE = 0.0040
+
+  def rest_glyph_for(denom)
+    REST_GLYPHS[denom] || REST_GLYPHS[64]
+  end
+
+  # Ligne de référence verticale d'une figure de pause : la MÊME pour toutes
+  # sauf la ronde — soupir/demi-soupir/croche.../soixante-quatrième sont tous
+  # centrés sur la ligne médiane de la portée (exactement comme en gravure
+  # classique, r4/r8/r16/r32/r64 partagent la même ancre dans le rendu
+  # LilyPond source) ; SEULE la ronde est décalée d'un interligne au-dessus
+  # (elle "pend" sous cette ligne au lieu d'être centrée dessus).
+  def rest_anchor_y(denom, top_y)
+    mid_y = (string_y(3, top_y) + string_y(4, top_y)) / 2.0
+    denom <= 1 ? mid_y - param(:line_spacing) : mid_y
+  end
+
+  # Figure de pause classique (soupir/demi-soupir/quart de soupir...) — posée
+  # SUR la portée, à l'emplacement même où irait un chiffre pour une note
+  # (1er essai rejeté, "placé n'importe où, au-dessus de la tablature" —
+  # flottait dans la zone des hampes). `:skip` (silence invisible, non gravé)
+  # ne passe jamais ici — seul `:rest` (silence à graver) dessine quelque
+  # chose.
+  def draw_rest(parts, ev, x, top_y)
+    return unless ev.kind == :rest
+
+    glyph = rest_glyph_for(ev.denom)
+    k = param(:line_spacing) * FETA_SCALE
+    ty = rest_anchor_y(ev.denom, top_y)
+    center_x = (glyph[:minx] + glyph[:maxx]) / 2.0
+    tx = x - (center_x * k)
+    parts << %(<path transform="translate(#{tx.round(2)},#{ty.round(2)}) scale(#{k.round(4)},#{(-k).round(4)})" d="#{glyph[:d]}" fill="black"/>)
+
+    # Point(s) d'augmentation : dans l'espace juste au-dessus de la ligne
+    # médiane, jamais SUR une ligne (règle de gravure classique) — à droite
+    # du glyphe, même vocabulaire que `draw_dots` pour les notes.
+    mid_y = (string_y(3, top_y) + string_y(4, top_y)) / 2.0
+    dot_x = x + ((glyph[:maxx] - center_x) * k) + param(:dot_gap)
+    draw_dots(parts, dot_x, mid_y - (param(:line_spacing) * 0.5), ev.dots.to_i)
+  end
+
+  # Lignes de corde traversées par la figure de pause à `x` (pour les couper
+  # localement, comme `number_half_width`/`line_with_gaps` le font déjà pour
+  # les chiffres) — sinon une ligne de corde passerait EN PLEIN dans le
+  # glyphe.
+  def rest_line_gaps(ev, x, top_y)
+    return [] unless ev.kind == :rest
+
+    glyph = rest_glyph_for(ev.denom)
+    k = param(:line_spacing) * FETA_SCALE
+    ty = rest_anchor_y(ev.denom, top_y)
+    y_top = ty - (glyph[:maxy] * k)
+    y_bottom = ty - (glyph[:miny] * k)
+    half_w = ((glyph[:maxx] - glyph[:minx]) * k * 0.5) + 0.3
+    (1..TAB_LINES).select { |c| (string_y(c, top_y) - y_top) >= -0.01 && (string_y(c, top_y) - y_bottom) <= 0.01 }
+      .map { |c| [c, [x - half_w, x + half_w]] }
+  end
+
   def draw_fingering(parts, ev, x, bottom_y)
     return if ev.kind == :rest || ev.kind == :skip
 
@@ -463,11 +545,13 @@ module Tablator
     occupancy = Hash.new { |h, k| h[k] = [] }
     computed.each do |mp|
       mp[:events].each do |e|
-        next unless e[:ev].kind == :notes
-
-        e[:ev].notes.each do |n|
-          half = number_half_width(n[:case])
-          occupancy[n[:corde]] << [e[:x] - half, e[:x] + half]
+        if e[:ev].kind == :notes
+          e[:ev].notes.each do |n|
+            half = number_half_width(n[:case])
+            occupancy[n[:corde]] << [e[:x] - half, e[:x] + half]
+          end
+        else
+          rest_line_gaps(e[:ev], e[:x], top_y).each { |corde, range| occupancy[corde] << range }
         end
       end
     end
@@ -488,7 +572,7 @@ module Tablator
       # (celle du système, `time_sig_w`, ou celle insérée pour un changement
       # en cours de route — même largeur, même formule de centrage).
       parts << time_signature_markup(mp[:time], mp[:x0] - time_sig_w * 0.5, top_y + sh * 0.5) if mp[:show_time]
-      mp[:events].each { |e| draw_numbers(parts, e[:ev], e[:x], top_y) }
+      mp[:events].each { |e| draw_numbers(parts, e[:ev], e[:x], top_y); draw_rest(parts, e[:ev], e[:x], top_y) }
       draw_stems(parts, mp[:events], top_y)
       mp[:events].each { |e| draw_fingering(parts, e[:ev], e[:x], staff_bottom) }
       parts << svg_text(mp[:mid_x], chord_name_baseline, mp[:label], size: chord_name_size, weight: 'bold') if mp[:label]

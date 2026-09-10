@@ -665,30 +665,24 @@ class DiagSchem
 
   # --- Sortie ------------------------------------------------------
 
-  def preparer_sortie
+  def tokens_str
     tokens = @entries.each_with_index.map do |e, i|
       token = e.doigt_val ? "#{i + 1}#{e.case_val}/#{e.doigt_val}" : "#{i + 1}#{e.case_val}"
       e.optional ? "(#{token})" : token
     end
-    @sortie = "#{@nom}-#{@case_ref} : #{tokens.join(' ')}"
+    tokens.join(' ')
+  end
+
+  def preparer_sortie
+    @sortie = "#{@nom}-#{@case_ref} : #{tokens_str}"
     IO.popen('pbcopy', 'w') { |io| io.print @sortie }
     @svg_path = generer_svg if @output_svg
   end
 
-  # Cordes rangées grave (corde 6) -> aiguë (corde 1), ordre attendu par
-  # ChordDiagram.build ; @entries est rangé corde 1 -> corde 6.
-  def positions_et_doigts
-    ordonnees = @entries.reverse
-    positions = ordonnees.map { |e| e.case_val == 'x' ? :muted : (e.case_val.zero? ? :open : e.case_val) }
-    doigts = ordonnees.map(&:doigt_val)
-    optionnels = ordonnees.map { |e| !!e.optional }
-    [positions, doigts, optionnels]
-  end
-
+  # Passe par `GenerateChordDiagrams.build` (même chemin que "update diags") pour que
+  # le barré soit détecté ici aussi, pas seulement en régénération différée (issue #90).
   def generer_svg(chemin = nil)
-    positions, doigts, optionnels = positions_et_doigts
-    racine, basse = GenerateChordDiagrams.parse_name(@nom)
-    svg = ChordDiagram.build(name: GenerateChordDiagrams.display_name(racine), positions: positions, fingers: doigts, bass: basse && Transpose.italian_bass_symbol(basse), optionals: optionnels)
+    svg = GenerateChordDiagrams.build(name: @nom, tokens_str: tokens_str)
     chemin ||= "#{@nom}-#{@case_ref}.svg"
     File.write(chemin, svg)
     chemin
