@@ -1,7 +1,18 @@
 [[gabarit-file, gabarit de la chanson]]
 === Gabarit de la chanson ===
 
-TIP: Pour ouvrir directement ce fichier, `songbook open gabarit --song "titre chanson"`
+Pour ouvrir directement ce fichier, `songbook open gabarit --song "titre chanson"`
+
+Ou plus rapide, en mode interactif, ces commandes sont toutes équivalentes :
+
+----
+🎸> gab
+🎸> gabarit
+🎸> open gabarit
+🎸> open gab
+🎸> edit gabarit
+🎸> edit gab
+----
 
 Alors que <<song-layout, le fichier `.layout`>> définit les __règles__ régissant la mise en forme de la chanson, laissant la liberté à __**SongBook**__ de prendre toutes les décisions pour produire un affichage cohérent et esthétique, le fichier `.gabarit` va définir très précisément le positionnement des éléments de la chanson.
 

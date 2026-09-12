@@ -1,6 +1,21 @@
 [[lyrics-file, les strophes]]
 === Les paroles ===
 
+Pour ouvrir le fichier des paroles :
+
+----
+songbook open lyrics --song "ma chanson"
+----
+
+Ou en mode interactif :
+
+----
+🎸> lyr
+🎸> lyrics
+🎸> open lyrics
+🎸> edit lyrics
+----
+
 Conformément à la <<terminology>> de __**SongBook**__, on appelle __STROPHE__ les groupes de vers formant un couplet, un refrain ou autre texte parlé ou chanté au cours de la chanson.
 
 [[strophe-definition, définition de la strophe]]

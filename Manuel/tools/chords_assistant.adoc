@@ -7,6 +7,16 @@ La pose des accords peut être incroyablement facilitée avec l'aide à l'entré
 songbook edit chords "tittre chanson"
 ----
 
+Ou en mode interactif :
+
+----
+🎸> chords
+
+# ou
+
+🎸> edit chords
+----
+
 Elle permet de : 
 
 - se déplacer de syllabe en syllabe avec les flèches,

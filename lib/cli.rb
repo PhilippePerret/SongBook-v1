@@ -368,6 +368,27 @@ module CLI
       else
         abort unknown_command_message("edit #{arg1}")
       end
+    # Raccourcis top-level de `edit chords`/`open|edit lyrics`/`open|edit infos`/
+    # `open|edit gabarit` (Phil, 2026-09-12) : les formes `edit ...`/`open ...`
+    # restent utilisables telles quelles, ce sont de simples alias supplémentaires.
+    when "chords"
+      begin
+        song_folder = resolve_song_folder(arg1 || Session.song)
+        Session.song = song_folder
+        lyr_path = FileFinder.find(song_folder, :lyr)
+        abort "aucun .lyr/.lyrics trouvé dans #{song_folder}" unless lyr_path
+
+        ChordPlacer.run(lyr_path)
+      rescue Interrupt
+        puts
+      end
+      puts Loc.get("edition_cancelled")
+    when "lyrics", "lyr"
+      open_lyrics_file
+    when "infos", "inf"
+      open_infos_file
+    when "gabarit", "gab"
+      open_gabarit_file(confirm_create: false)
     when "song"
       case arg1
       when nil
@@ -673,7 +694,7 @@ module CLI
           Layout.report_missing_chords!
 
           if Layout.log_conflict_count.to_i.positive?
-            system("open", Layout.conflict_log_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_conflicts_question")))
+            system("open", Layout.conflict_log_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_conflicts_question")), default: false)
           end
 
           system("open", out_path) if open_pdf || colored_prompt.yes?(blue(format(Loc.get("carnet_build_open_pdf_question"), carnet_title)))
@@ -697,7 +718,7 @@ module CLI
 
           if Layout.log_conflict_count.to_i.positive?
             puts error("#{format(Loc.get("song_build_conflicts_count"), Layout.log_conflict_count)}")
-            system("open", Layout.conflict_log_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_conflicts_question")))
+            system("open", Layout.conflict_log_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_conflicts_question")), default: false)
           end
 
           system("open", pdf_path) if open_pdf || colored_prompt.yes?(blue(Loc.get("song_build_open_pdf_question")))

@@ -26,6 +26,12 @@ class DSLParser
   # avec la présence/absence de diagramme (`BASS_ONLY_RE`, elle, garde le "/" optionnel).
   BARE_BASS_RE = /\A\[[^\]]*\]\z/
 
+  # "[G][Fd][F]" (2+ marqueurs bracket COLLÉS, sans séparateur, capturés comme UN SEUL
+  # groupe 1 par `CHORD_RE` — sa classe de caractères admet `[`/`]`) : jamais une basse
+  # composée (`BARE_BASS_RE` n'accepte qu'un seul groupe) — chacun devient sa PROPRE
+  # note, comme un "[X]" isolé (issue #91).
+  MULTI_BRACKET_RE = /\A(?:\[[^\]]*\]){2,}\z/
+
   def self.parse(source)
     new(source).parse
   end
@@ -65,6 +71,18 @@ class DSLParser
     i = 0
     while i < matches.length
       m = matches[i]
+
+      if m[1].match?(MULTI_BRACKET_RE)
+        notes = m[1].scan(/\[[^\]]*\]/)
+        text_end = i + 1 < matches.length ? matches[i + 1].begin(0) : line.length
+        notes.each_with_index do |note, idx|
+          seg_text = idx == notes.length - 1 ? strip_bare_slashes(line[m.end(0)...text_end]) : ""
+          segments << Segment.new(chord: normalize_chord(note), fret: nil, text: seg_text)
+        end
+        i += 1
+        next
+      end
+
       chord = normalize_chord(m[1])
       # "//[B]:" (2026-09-07, Phil : "[B] n'est pas obligatoirement une basse") : un "/"
       # NU immédiatement AVANT un marqueur bracket SEUL (`BARE_BASS_RE`) distingue
@@ -92,7 +110,11 @@ class DSLParser
       # seul "Am7-5" était visé). Chaque marqueur garde SA case, alignée par position sur
       # `chord.split("/")` — jointes par "/" dans `fret` (case vide = aucune case pour ce
       # marqueur), déchiffrées ensemble par `ChordDiagrams.split_chord_frets`.
-      while i + 1 < matches.length && line[m.end(0)...matches[i + 1].begin(0)] == "/"
+      # `matches[i + 1][1]` bracket SEUL (`BARE_BASS_RE`) : ce "/" de l'écart n'est PAS ce
+      # séparateur de fusion, c'est le "/" EN TROP de SON PROPRE "//" (issue #91,
+      # "//[G]://[A]://[B]:", chacun sa propre basse) — jamais fusionné, laissé à
+      # l'itération suivante qui lui applique son propre préfixe "/" (ci-dessus).
+      while i + 1 < matches.length && line[m.end(0)...matches[i + 1].begin(0)] == "/" && !matches[i + 1][1].match?(BARE_BASS_RE)
         i += 1
         nxt = matches[i]
         chord = "#{chord}/#{normalize_chord(nxt[1])}"

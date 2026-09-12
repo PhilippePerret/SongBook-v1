@@ -42,13 +42,13 @@ Todo: image résultante
 [[only-bass]]
 **Basses seules**
 ----
-Don't give /am:up [g][fd]
+Don't give /am:up //[g][fd]:
 
 In /em:this proud land
 ----
 
 ----
-/c:_ C'est un en/[b]:droit qui res/am:semble
+/c:_ C'est un en//[b]:droit qui res/am:semble
 ----
 
 [[trait-plat-usages]]

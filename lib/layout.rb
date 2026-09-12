@@ -2322,8 +2322,12 @@ module Layout
   # l'espace manquant pour le suivre. Seuls les accords "filler" (posés dans du blanc, sans
   # rien de fixe collé) sont repoussés sans conséquence sur le texte, et vers la GAUCHE (en
   # partant de la fin) pour laisser sa vraie place à l'accord fixe qui suit.
+  def self.glued_to_word?(seg)
+    !seg.text.empty? && seg.text[0] != " "
+  end
+
   def self.fixed_chord?(seg)
-    (!seg.text.empty? && seg.text[0] != " ") || seg.chord&.match?(BASS_ONLY_RE)
+    glued_to_word?(seg) || seg.chord&.match?(BASS_ONLY_RE)
   end
 
   # Mesure une fois avec le texte D'ORIGINE (essai `spread_chord_positions` à part, sur une
@@ -2362,7 +2366,11 @@ module Layout
           step = steps[step_i]
           target_x = targets[step_i][:x]
           step_i += 1
-          gap = step[:fixed] && prev_seg && target_x - step[:natural_x]
+          # Espace inséré SEULEMENT si CE segment reste collé à un vrai mot (`glued_to_word?`)
+          # : une basse/note seule sans texte après elle (chaînées, issue #91) n'a rien à
+          # suivre — la laisser à sa position resserrée (`spread_chord_positions`) plutôt que
+          # de gonfler le texte en cascade à chaque basse supplémentaire de la chaîne.
+          gap = step[:fixed] && prev_seg && glued_to_word?(seg) && target_x - step[:natural_x]
           if gap && gap > 0.01
             extra = (gap / space_w).ceil
             prev_seg.text = "#{prev_seg.text}#{" " * extra}"

@@ -457,6 +457,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#chords">Les accords</a></li>
 <li><a href="#diags">Diagrammes d&#8217;accords</a></li>
 <li><a href="#_tablatures_et_partitions">Tablatures et Partitions</a></li>
+<li><a href="#images">Les Images</a></li>
 <li><a href="#gabarit-file">Gabarit de la chanson</a></li>
 <li><a href="#song-layout">Layout de la chanson</a></li>
 <li><a href="#song-pdf">Production du PDF</a></li>
@@ -843,17 +844,16 @@ Une chanson pouvant appartenir à plusieurs carnets, il est bon de la créer <em
 </div>
 <div class="sect2">
 <h3 id="infos-file">Fichier des informations de la chanson</h3>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Tip</div>
-</td>
-<td class="content">
-Pour ouvrir directement ce fichier, <code>songbook open infos --song "titre chanson"</code>
-</td>
-</tr>
-</table>
+<div class="paragraph">
+<p>Pour ouvrir directement ce fichier, <code>songbook open infos --song "titre chanson"</code></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; inf
+🎸&gt; infos
+🎸&gt; open infos
+🎸&gt; edit infos</pre>
+</div>
 </div>
 <div class="paragraph">
 <p>Les informations de la chanson sont consignés dans son <a href="#song-folder">dossier</a> dans une fichier portant l&#8217;extension <code>.infos</code> (ou <code>inf</code> en mode réduit) et un nom racine quelconque (p.e. <code>mc.inf</code>).</p>
@@ -900,6 +900,25 @@ layout: regular-B</pre>
 </div>
 <div class="sect2">
 <h3 id="lyrics-file">Les paroles</h3>
+<div class="paragraph">
+<p>Pour ouvrir le fichier des paroles :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook open lyrics --song "ma chanson"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Ou en mode interactif :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; lyr
+🎸&gt; lyrics
+🎸&gt; open lyrics
+🎸&gt; edit lyrics</pre>
+</div>
+</div>
 <div class="paragraph">
 <p>Conformément à la <a href="#terminology">terminologie</a> de <em><strong>SongBook</strong></em>, on appelle <em>STROPHE</em> les groupes de vers formant un couplet, un refrain ou autre texte parlé ou chanté au cours de la chanson.</p>
 </div>
@@ -1099,14 +1118,14 @@ Noter également que l'<a href="#song-chords-assistant">assistant d&#8217;éditi
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>Don't give /am:up [g][fd]
+<pre>Don't give /am:up //[g][fd]:
 
 In /em:this proud land</pre>
 </div>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>/c:_ C'est un en/[b]:droit qui res/am:semble</pre>
+<pre>/c:_ C'est un en//[b]:droit qui res/am:semble</pre>
 </div>
 </div>
 <div id="trait-plat-usages" class="paragraph">
@@ -1334,7 +1353,7 @@ songbook missing diags --all
 <div class="sect3">
 <h4 id="score">Partitions</h4>
 <div class="paragraph">
-<p>Pour le moment, on ne peut pas encore produire de partitions.</p>
+<p>Pour le moment, on ne peut pas encore produire de partitions. On peut passer néanmoins par Lilypond pour le faire, produire un fichier SVG qu&#8217;il suffit ensuite d'<a href="#images">introduire comme une image</a>.</p>
 </div>
 <div class="paragraph">
 <p>Voir comment <a href="#gabarit-insert-score">insérer une partition</a> dans la page de la chanson.</p>
@@ -1342,18 +1361,36 @@ songbook missing diags --all
 </div>
 </div>
 <div class="sect2">
+<h3 id="images">Les Images</h3>
+<div class="paragraph">
+<p>On peut introduire n&#8217;importe quelle image dans le fichier en l&#8217;ajoutant au fichier <a href="#gabarit-file">gabarit</a> à l&#8217;aide la balise :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>{portrait; img: mon-image.png; ...}</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>C&#8217;est la propriété <code>img</code> qui indique à <em><strong>SongBook</strong></em> qu&#8217;il s&#8217;agit d&#8217;une image à insérer. Les propriétés suivante, indiquées ci-dessus par <code>&#8230;&#8203;</code> permettent de spécifier l&#8217;affichage de cette image.</p>
+</div>
+</div>
+<div class="sect2">
 <h3 id="gabarit-file">Gabarit de la chanson</h3>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Tip</div>
-</td>
-<td class="content">
-Pour ouvrir directement ce fichier, <code>songbook open gabarit --song "titre chanson"</code>
-</td>
-</tr>
-</table>
+<div class="paragraph">
+<p>Pour ouvrir directement ce fichier, <code>songbook open gabarit --song "titre chanson"</code></p>
+</div>
+<div class="paragraph">
+<p>Ou plus rapide, en mode interactif, ces commandes sont toutes équivalentes :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; gab
+🎸&gt; gabarit
+🎸&gt; open gabarit
+🎸&gt; open gab
+🎸&gt; edit gabarit
+🎸&gt; edit gab</pre>
+</div>
 </div>
 <div class="paragraph">
 <p>Alors que <a href="#song-layout">le fichier <code>.layout</code></a> définit les <em>règles</em> régissant la mise en forme de la chanson, laissant la liberté à <em><strong>SongBook</strong></em> de prendre toutes les décisions pour produire un affichage cohérent et esthétique, le fichier <code>.gabarit</code> va définir très précisément le positionnement des éléments de la chanson.</p>
@@ -3518,6 +3555,18 @@ On and on</pre>
 </div>
 </div>
 <div class="paragraph">
+<p>Ou en mode interactif :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; chords
+
+# ou
+
+🎸&gt; edit chords</pre>
+</div>
+</div>
+<div class="paragraph">
 <p>Elle permet de :</p>
 </div>
 <div class="ulist">
@@ -4114,6 +4163,12 @@ On entre en mode interactif avec :</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>.sch</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>c.sch</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Définit les <a href="#songbook-schemas">schémas de diagrammes propres au carnet</a> ou <a href="#song-schemas">à la chanson</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>.tab</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">---</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>intro.tab</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pour une <a href="#tablature">tablature</a>.</p></td>
 </tr>
 </tbody>
 </table>
