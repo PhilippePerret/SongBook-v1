@@ -22,13 +22,15 @@ module GenerateChordDiagrams
   def self.display_name(raw)
     root = raw[0]
     rest = raw[1..] || ""
-    if rest.start_with?("d") && rest[1, 2] != "im"
-      "#{root}♯#{rest[1..]}"
-    elsif rest.start_with?("b")
-      "#{root}♭#{rest[1..]}"
-    else
-      raw
-    end
+    body =
+      if rest.start_with?("d") && rest[1, 2] != "im"
+        "#{root}♯#{rest[1..]}"
+      elsif rest.start_with?("b")
+        "#{root}♭#{rest[1..]}"
+      else
+        raw
+      end
+    body.gsub(/(\d+)d(?!im)/, '\1♯').gsub(/(\d+)b/, '\1♭')
   end
 
   def self.parse_token(str)

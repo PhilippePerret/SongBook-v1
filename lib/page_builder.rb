@@ -877,7 +877,14 @@ module PageBuilder
     Layout.current_song = meta["title"] || File.basename(folder)
     Layout.current_page = first_page_no
     Layout.current_ref_index = ref_index
-    Options.load!(meta: meta, infos_path: infos_path, carnet_folder: carnet_folder, override_path: override_infos_path, layout_preset: layout_preset)
+    # `meta:` = override runtime pur (`infos_overrides`, ex. "--transpose" sans fichier
+    # derrière) — jamais le `meta` fusionné ci-dessus (carnet+chanson+overrides) : le
+    # passer court-circuitait la cascade par-source dès qu'une clé plate existait quelque
+    # part, inversant la priorité chanson/carnet pour toute clé écrite en imbriqué d'un
+    # côté et en plat de l'autre (`diags_align` : carnet en plat battait la chanson en
+    # imbriqué). `infos_path`/`carnet_folder`/`override_path` couvrent déjà chanson/carnet/
+    # fichier indexé, chacun lu plat ET imbriqué.
+    Options.load!(meta: infos_overrides, infos_path: infos_path, carnet_folder: carnet_folder, override_path: override_infos_path, layout_preset: layout_preset)
     # `Tablator.active_preset` est un état GLOBAL du module ,
     # config "regular-tablatures"/"mini-tablatures", `tools/tablator/presets.rb`) —
     # TOUJOURS fixé ici, explicitement, jamais laissé hériter d'une chanson précédente
@@ -980,7 +987,9 @@ module PageBuilder
       text_descent = Layout.font_metric(pdf, Options.get(:font_size)) { pdf.font.descender }
 
       bare_kind_counters = Hash.new(0)
-      rows = items.select { |i| i.type == :row }.map { |i| i.data[:names].map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: i.data[:directives]), name) } }
+      row_items = items.select { |i| i.type == :row }
+      row_names = row_items.map { |i| i.data[:names] }
+      rows = row_items.map { |i| i.data[:names].map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: i.data[:directives]), name) } }
       # `:side_by_side` (issue "Le Sud", `//` mêlant une marque tab/score/image et des
       # paroles) : chaque colonne `:lyrics` résolue en `Block` directement dans la
       # colonne (`c[:block]`) — pas besoin d'indexation parallèle comme `rows`, chaque
@@ -1006,17 +1015,31 @@ module PageBuilder
       # largeur naturelle de chacune de ses pairs (sous-ensemble du max global déjà
       # utilisé), donc le retour à la ligne du texte — et la hauteur de chaque élément —
       # reste identique, seul le slack de centrage change.
+      # `top_type: :band_strophe`/`trailing_extra:` : MÊMES paramètres que la pagination
+      # RÉELLE (`Layout.paginate_and_draw`, plus bas) — sinon cette simulation-ci réserve
+      # un plancher de 1re gouttière différent (`:default` au lieu de `:band_strophe`) et
+      # ignore la place prise par les diags en trop en bas de page, et peut donc découper
+      # les pages autrement que la pagination réelle : deux pairs de couplets FINISSANT
+      # sur la MÊME page réelle se retrouvaient scindées ici en deux groupes différents,
+      # chacun avec son propre `col1_w`/`col2_w` — fers à gauche/droite décalés entre eux
+      # alors qu'ils partagent bien la même page à l'écran (bug constaté, "L'Étranger").
+      # Restriction "couplet"+"couplet" (jamais une autre pair, ex. couplet+refrain) :
+      # un décalage entre deux types de strophes différents peut être voulu, seul le
+      # partage du même type ET de la même page réelle justifie l'alignement forcé.
       if pair_elements.any?
-        pages = Layout.paginate(elements, first_avail_h, pdf.bounds.height, pinned: shrink_jobs.map { |j| j[:index] })
+        trailing_extra = row_excess.any? ? Layout.estimate_excess_grid_height(row_excess, text_w || pdf.bounds.width) : 0
+        pages = Layout.paginate(elements, first_avail_h, pdf.bounds.height, pinned: shrink_jobs.map { |j| j[:index] }, top_type: :band_strophe, trailing_extra: trailing_extra)
         pages.each do |page|
-          page_pairs = pair_elements.select { |pe| (page[:start]...page[:finish]).cover?(pe[:element_index]) }
+          page_pairs = pair_elements.select do |pe|
+            (page[:start]...page[:finish]).cover?(pe[:element_index]) && row_names[pe[:row_idx]].all? { |name| block_kind(name) == "couplet" }
+          end
           next if page_pairs.empty?
 
           page_col1_w, page_col2_w, page_h_gutter = Layout.row_column_widths(pdf, page_pairs.map { |pe| rows[pe[:row_idx]] }, text_w)
           page_pairs.each do |pe|
             row = rows[pe[:row_idx]]
-            elements[pe[:element_index]] = Layout.row_to_element(pdf, row, text_x, text_w, page_col1_w, page_col2_w, page_h_gutter, chord_ascent, text_ascent, text_descent)
-            elements_r[pe[:element_index]] = Layout.row_to_element(pdf, row, text_x_r, text_w, page_col1_w, page_col2_w, page_h_gutter, chord_ascent, text_ascent, text_descent) if dynamic_mode
+            elements[pe[:element_index]] = Layout.row_to_element(pdf, row, text_x, text_w, page_col1_w, page_col2_w, page_h_gutter, chord_ascent, text_ascent, text_descent, strict_align: true)
+            elements_r[pe[:element_index]] = Layout.row_to_element(pdf, row, text_x_r, text_w, page_col1_w, page_col2_w, page_h_gutter, chord_ascent, text_ascent, text_descent, strict_align: true) if dynamic_mode
           end
         end
       end

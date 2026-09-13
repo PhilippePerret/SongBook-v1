@@ -1393,7 +1393,7 @@ module Layout
   # RAL3 (Manuel/regles_esthetiques.adoc, "aucune exception") : dans une row côte à côte,
   # si UN des deux blocs a un accord sur sa 1re ligne, les DEUX alignent leur 1re ligne de
   # texte sur cet ancrage — un bloc sans accord ne "remonte" jamais au-dessus de son voisin.
-  def self.row_to_element(pdf, row, x0, width, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent)
+  def self.row_to_element(pdf, row, x0, width, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent, strict_align: false)
     widths = case row.size
              when 1 then [width]
              when 2 then [col1_w, col2_w]
@@ -1425,8 +1425,17 @@ module Layout
         block, nxt = row
         block_x0 = x0 + [(width - (col1_w + h_gutter + col2_w)) / 2.0, 0].max
         draw_block(pdf_, block, block_x0, y, col1_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
-        block1_w = block_width(pdf_, block)
-        col2_x = [block_x0 + col1_w + h_gutter, block_x0 + block1_w + max_h_dist].min
+        # `strict_align` (recentrage par page, `PageBuilder.build`) : fer à gauche de la
+        # colonne 2 fixé sur `col1_w` (partagé par toute la page), jamais resserré sur la
+        # largeur propre de CE bloc — sinon deux couplets de la même page, alignés en
+        # colonne 1, redivergent en colonne 2 dès que l'un des deux couplets de gauche est
+        # plus court qu'un autre (bug constaté, "L'Étranger").
+        col2_x = if strict_align
+          block_x0 + col1_w + h_gutter
+        else
+          block1_w = block_width(pdf_, block)
+          [block_x0 + col1_w + h_gutter, block_x0 + block1_w + max_h_dist].min
+        end
         draw_block(pdf_, nxt, col2_x, y, col2_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
       when 1
         block = row[0]
@@ -2016,11 +2025,12 @@ module Layout
   end
 
   def self.convert_note_symbol(note)
-    case note[1]
+    root = case note[1]
     when "d" then note[0] + "♯" + note[2..]
     when "b" then note[0] + "♭" + note[2..]
     else note
     end
+    root.gsub(/(\d+)d(?!im)/, '\1♯').gsub(/(\d+)b/, '\1♭')
   end
 
 

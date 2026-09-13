@@ -34,11 +34,16 @@ module SongCreator
 
     folder_title = CarnetBuilder.move_article_to_end(title)
 
-    year = ask_year(prompt, title, performer)
+    year_candidates = find_year_candidates(title, performer)
+    cl = find_composer_lyricist(title, performer)
+    fetched_lyrics = fetch_lyrics(title, performer)
+
+    all_found = !year_candidates.empty? && cl[:composer] && cl[:lyricist] && fetched_lyrics
+    propose_web_search(prompt, title, performer) unless all_found
+
+    year = pick_year(prompt, year_candidates)
     id = CarnetBuilder.slugify("#{title} #{performer} #{year}")
 
-    cl = find_composer_lyricist(title, performer)
-    offer_wikipedia_page(prompt, cl, title, performer)
     composer = prompt.ask(blue("Compositeur :"), default: cl[:composer]) { |q| q.required true }
     lyricist = prompt.ask(blue("Parolier :"), default: cl[:lyricist]) { |q| q.required true }
 
@@ -52,7 +57,7 @@ module SongCreator
       "transpose" => "",
     }
 
-    lyr_content = fetch_lyrics(title, performer) || CarnetBuilder::SONG_TEMPLATE
+    lyr_content = fetched_lyrics || CarnetBuilder::SONG_TEMPLATE
 
     result = CarnetBuilder.create_song_files(songs_dir, folder_title, infos, lyr_content)
 
@@ -92,23 +97,30 @@ module SongCreator
     title = infos["title"]
     performer = infos["performer"]
 
-    infos["year"] = ask_year(prompt, title, performer) if infos["year"].to_s.strip.empty?
+    need_year = infos["year"].to_s.strip.empty?
+    need_composer = infos["composer"].to_s.strip.empty?
+    need_lyricist = infos["lyrics"].to_s.strip.empty?
+    lyr_text = File.exist?(lyr_path) ? File.read(lyr_path) : nil
+    need_lyr = lyr_text.nil? || lyr_text.strip == CarnetBuilder::SONG_TEMPLATE.strip
 
-    cl = nil
-    if infos["composer"].to_s.strip.empty? || infos["lyrics"].to_s.strip.empty?
-      cl = find_composer_lyricist(title, performer)
-      offer_wikipedia_page(prompt, cl, title, performer)
-    end
-    infos["composer"] = prompt.ask(blue("Compositeur :"), default: cl && cl[:composer]) { |q| q.required true } if infos["composer"].to_s.strip.empty?
-    infos["lyrics"] = prompt.ask(blue("Parolier :"), default: cl && cl[:lyricist]) { |q| q.required true } if infos["lyrics"].to_s.strip.empty?
+    year_candidates = need_year ? find_year_candidates(title, performer) : []
+    cl = (need_composer || need_lyricist) ? find_composer_lyricist(title, performer) : { composer: nil, lyricist: nil }
+    fetched_lyrics = need_lyr ? fetch_lyrics(title, performer) : nil
+
+    all_found = true
+    all_found &&= !year_candidates.empty? if need_year
+    all_found &&= !!cl[:composer] if need_composer
+    all_found &&= !!cl[:lyricist] if need_lyricist
+    all_found &&= !!fetched_lyrics if need_lyr
+    propose_web_search(prompt, title, performer) unless all_found
+
+    infos["year"] = pick_year(prompt, year_candidates) if need_year
+    infos["composer"] = prompt.ask(blue("Compositeur :"), default: cl[:composer]) { |q| q.required true } if need_composer
+    infos["lyrics"] = prompt.ask(blue("Parolier :"), default: cl[:lyricist]) { |q| q.required true } if need_lyricist
 
     File.write(infos_path, "#{infos.map { |k, v| "#{k}: #{v}" }.join("\n")}\n")
 
-    lyr_text = File.exist?(lyr_path) ? File.read(lyr_path) : nil
-    if lyr_text.nil? || lyr_text.strip == CarnetBuilder::SONG_TEMPLATE.strip
-      fetched = fetch_lyrics(title, performer)
-      File.write(lyr_path, fetched) if fetched
-    end
+    File.write(lyr_path, fetched_lyrics) if need_lyr && fetched_lyrics
 
     editor = AppConfig.user_song_editor
     system("open", "-a", editor, infos_path, lyr_path)
@@ -192,8 +204,7 @@ module SongCreator
   # Carnets de chant, pas une thèse  : 1 an d'écart entre sources = bruit (rééditions,
   # dates de dépôt légal différentes...), pas une vraie divergence — prendre la plus basse
   # SANS demander de choisir. Le select n'apparaît que si l'écart dépasse 1 an.
-  def self.ask_year(prompt, title, performer)
-    candidates = find_year_candidates(title, performer)
+  def self.pick_year(prompt, candidates)
     by_year = candidates.group_by { |c| c[:year] }
     years = by_year.keys.map(&:to_i)
 
@@ -246,18 +257,14 @@ module SongCreator
     end
   end
 
-  # Compositeur et/ou parolier introuvables : demande (message localisé) avant d'ouvrir
-  # la fiche Wikipédia — page trouvée si `wikipedia_pageid` connu, sinon recherche.
-  def self.offer_wikipedia_page(prompt, cl, title, performer)
-    missing = []
-    missing << Loc.get("composer") if cl[:composer].nil?
-    missing << Loc.get("lyrics") if cl[:lyricist].nil?
-    return if missing.empty?
+  # Pas TOUTES les infos + paroles trouvées automatiquement : demande (message localisé)
+  # avant d'ouvrir une recherche web sur titre+interprète entre guillemets (barre de
+  # recherche du navigateur), jamais une page Wikipédia précise (souvent hors-sujet).
+  def self.propose_web_search(prompt, title, performer)
+    return unless prompt.yes?(blue(Loc.get("ask_open_web_search")))
 
-    items = missing.map { |f| format(Loc.get("wiki_missing_item"), f) }.join(" #{Loc.get('wiki_missing_join')} ")
-    return unless prompt.yes?(blue(format(Loc.get("ask_open_wikipedia"), items)))
-
-    url = cl[:wikipedia_pageid] ? "https://fr.wikipedia.org/?curid=#{cl[:wikipedia_pageid]}" : "https://fr.wikipedia.org/w/index.php?search=#{CGI.escape("#{title} #{performer}")}"
+    query = %("#{title}" "#{performer}")
+    url = "https://www.google.com/search?q=#{CGI.escape(query)}"
     system("open", url)
   end
 

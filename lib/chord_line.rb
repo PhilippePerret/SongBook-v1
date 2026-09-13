@@ -103,22 +103,48 @@ class ChordLine
   # "bi-cyc-let-te").
   LIQUID_CLUSTER_RE = /\A[bcdfgptv][rl]\z/i
 
+  ELISION_APOSTROPHES = ["'", "’"].freeze
+
+  # Apostrophe d'élision ("qu'on", "l'on", "aujourd'hui"...) collée entre deux lettres :
+  # TRANSPARENTE au découpage VCV (ni lettre ni frontière), sinon le balayage s'arrête
+  # dessus avant d'atteindre la voyelle qui suit, perdant la coupure normale entre les
+  # deux syllabes ("puis-qu'on" devenait imposé "puisqu'-on", bug constaté). Une
+  # apostrophe/guillemet ailleurs (pas collé entre deux lettres) reste une ponctuation
+  # normale, frontière de mot comme n'importe quel autre signe.
+  def elision_apostrophe?(orig_chars, idx)
+    ELISION_APOSTROPHES.include?(orig_chars[idx]) &&
+      idx.positive? && idx < orig_chars.length - 1 &&
+      letter?(orig_chars[idx - 1]) && letter?(orig_chars[idx + 1])
+  end
+
   # VCV -> boundary avant la consonne (V-CV). VCCV+ -> 1 CONSONNE (digraphe compris)
   # reste avec ce qui précède, le reste part avec la voyelle suivante (VC-CV), SAUF
   # groupe consonne+liquide (voir ci-dessus). Voyelle + n/m NON suivi d'une voyelle =
   # nasale, rattachée au groupe voyelle ("chan-son", pas "cha-n-son"). Pas de boundary
   # si le groupe de consonnes n'est suivi d'aucune voyelle (fin de mot).
   def syllable_boundaries
-    bounds = [0, text.length]
-    chars = text.chars
+    orig_chars = text.chars
+    # Apostrophes d'élision retirées AVANT le balayage (`elision_apostrophe?`), avec
+    # correspondance vers l'index d'origine — le VCV tourne comme si elles n'existaient
+    # pas, les frontières trouvées sont ensuite replacées dans le texte réel.
+    chars = []
+    index_map = []
+    orig_chars.each_with_index do |ch, idx|
+      next if elision_apostrophe?(orig_chars, idx)
+
+      chars << ch
+      index_map << idx
+    end
     n = chars.length
+
+    bounds = [0, orig_chars.length]
 
     # Une syllabe ne traverse JAMAIS un espace ou un signe de ponctuation — chaque
     # début de mot (lettre précédée d'un non-lettre) est TOUJOURS une frontière. Sans
     # ça, un mot court sans consonne interne ("du") n'avait AUCUNE frontière et se
     # faisait sauter entièrement par la navigation syllabe par syllabe (bug constaté,
     # "tenir compte des espaces et des ponctuations").
-    (1...n).each { |idx| bounds << idx if letter?(chars[idx]) && !letter?(chars[idx - 1]) }
+    (1...n).each { |idx| bounds << index_map[idx] if letter?(chars[idx]) && !letter?(chars[idx - 1]) }
 
     i = 0
     while i < n
@@ -138,7 +164,7 @@ class ChordLine
         end
         if k < n && vowel?(chars[k])
           liquid_cluster = units.size == 2 && (units[1] - units[0] == 1) && chars[units[0], 2].join =~ LIQUID_CLUSTER_RE
-          bounds << (units.size <= 1 || liquid_cluster ? j : units[1])
+          bounds << index_map[units.size <= 1 || liquid_cluster ? j : units[1]]
         end
         i = j
       else
