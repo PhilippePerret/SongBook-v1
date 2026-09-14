@@ -62,43 +62,64 @@ module GenerateChordDiagrams
   # 4/5/6 à vide/étouffées, hors du span, rien à couvrir), le span reste borné aux
   # candidates — jamais promu (bug trouvé sur D7M-0, 2026-08-19 : le repli sur 6 cordes
   # dessinait alors un barré traversant des cordes à vide, impossible aussi).
-  # Décode "<6 tokens>" en {positions:, fingers:, barre:, optionals:}, prêt pour
-  # `ChordDiagram.build`.
+  # Un groupe de 2+ cordes non facultatives, même frette, même doigt -> { fret:,
+  # finger:, indices:, span: } (voir commentaire de `decode` pour `indices`/`span`).
+  def self.barre_from(candidates, finger, fretted)
+    strings = candidates.map { |t| t[:string] }
+    min_s, max_s = strings.minmax
+    indices = candidates.map { |t| 6 - t[:string] }
+    gap_strings = ((min_s..max_s).to_a - strings)
+    gap_fretted = gap_strings.any? { |s| fretted.any? { |t| t[:string] == s } }
+    span = gap_fretted ? (indices.min..indices.max).to_a : indices
+    { fret: candidates.first[:fret], finger: finger, indices: indices, span: span }
+  end
+
+  # Décode "<6 tokens>" en {positions:, fingers:, barres:, optionals:}, prêt pour
+  # `ChordDiagram.build`. Plusieurs barrés possibles (ex. D-5B : grand barré doigt 1 à
+  # la frette 5 sur cordes 1/5/6 ET petit barré doigt 3 à la frette 7 sur cordes
+  # 2/3/4 — un doigt ne peut physiquement presser 2+ cordes qu'à plat, jamais deux
+  # fois indépendamment).
   def self.decode(tokens_str)
     tokens = tokens_str.split.map { |t| parse_token(t) }
 
     fretted = tokens.reject { |t| t[:optional] }.select { |t| t[:fret].is_a?(Integer) && t[:fret].positive? }
-    barre = nil
+    barres = []
+    main_candidates = []
     if fretted.size >= 2
       min_fret = fretted.map { |t| t[:fret] }.min
       at_min_fret = fretted.select { |t| t[:fret] == min_fret }
       groups = at_min_fret.group_by { |t| t[:finger] || :implicit }
       key, candidates = groups.max_by { |_, v| v.size }
       if candidates.size >= 2
-        strings = candidates.map { |t| t[:string] }
-        min_s, max_s = strings.minmax
-        indices = candidates.map { |t| 6 - t[:string] }
-        gap_strings = ((min_s..max_s).to_a - strings)
-        gap_fretted = gap_strings.any? { |s| fretted.any? { |t| t[:string] == s } }
-        span = gap_fretted ? (indices.min..indices.max).to_a : indices
-        barre = { fret: min_fret, finger: key == :implicit ? "1" : key, indices: indices, span: span }
+        main_candidates = candidates
+        barres << barre_from(candidates, key == :implicit ? "1" : key, fretted)
       end
+    end
+
+    # Barré(s) SECONDAIRE(S) : doigt EXPLICITE (jamais implicite — sans doigt précisé,
+    # rien n'impose une barre, contrairement à la frette la plus basse ci-dessus)
+    # partagé par 2+ cordes restantes à une même frette, quelle qu'elle soit.
+    (fretted - main_candidates).group_by { |t| [t[:fret], t[:finger]] }.each do |(_fret, finger), group|
+      next unless finger && group.size >= 2
+
+      barres << barre_from(group, finger, fretted)
     end
 
     positions = Array.new(6)
     fingers = Array.new(6)
     optionals = Array.new(6, false)
+    barred_indices = barres.flat_map { |b| b[:indices] }
     tokens.each do |t|
       idx = 6 - t[:string]
       positions[idx] = t[:fret] == :muted ? :muted : (t[:fret].zero? ? :open : t[:fret])
       optionals[idx] = t[:optional]
       next if t[:fret] == :muted || t[:fret].zero?
-      next if barre && barre[:indices].include?(idx)
+      next if barred_indices.include?(idx)
 
       fingers[idx] = t[:finger]
     end
 
-    { positions: positions, fingers: fingers, barre: barre, optionals: optionals }
+    { positions: positions, fingers: fingers, barres: barres, optionals: optionals }
   end
 
   # "D[Fd]" (convention filename, specs.md) -> ["D", "Fd"] (accord, basse). Pas de
@@ -111,7 +132,7 @@ module GenerateChordDiagrams
   def self.build(name:, tokens_str:)
     root, bass = parse_name(name)
     d = decode(tokens_str)
-    ChordDiagram.build(name: display_name(root), positions: d[:positions], fingers: d[:fingers], barre: d[:barre], bass: bass && Transpose.italian_bass_symbol(bass), optionals: d[:optionals])
+    ChordDiagram.build(name: display_name(root), positions: d[:positions], fingers: d[:fingers], barres: d[:barres], bass: bass && Transpose.italian_bass_symbol(bass), optionals: d[:optionals])
   end
 
   # Plus de versionnement  : un accord à actualiser se met à

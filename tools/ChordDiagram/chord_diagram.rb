@@ -31,14 +31,17 @@ module ChordDiagram
   #   Integer (1..VC, ou au-delà si position décalée) -> numéro de case
   # fingers : 6 entrées parallèles (nil, "1".."4", ou "p" pour le pouce) — ignoré
   #   pour :open/:muted.
-  # barre : optionnel { fret:, finger:, indices:, span: } — `indices` = cordes qui SONT
+  # barres : liste de { fret:, finger:, indices:, span: } — `indices` = cordes qui SONT
   #   la note du barré (leur point individuel est masqué) ; `span` = étendue de la
   #   ligne dessinée, peut couvrir des cordes hors `indices` (note individuelle plus
   #   haute par-dessus le barré, comme pour F) — ces cordes gardent leur propre point.
+  #   Plusieurs entrées possibles (ex. D-5B : grand barré doigt 1 + petit barré doigt 3
+  #   à une autre frette — un doigt ne peut presser 2+ cordes qu'à plat, jamais deux
+  #   fois indépendamment).
   # bass : nom de la basse si accord renversé (ex. "F♯"), sinon nil.
   # optionals : 6 entrées parallèles (bool) — note FACULTATIVE (même doigt qu'une
   #   autre corde, qui peut s'étendre là en plus), affichée en gris entre parenthèses.
-  def self.build(name:, positions:, fingers:, barre: nil, bass: nil, optionals: Array.new(6, false))
+  def self.build(name:, positions:, fingers:, barres: [], bass: nil, optionals: Array.new(6, false))
     raise ArgumentError, "positions/fingers doivent avoir 6 entrées" if positions.size != 6 || fingers.size != 6
 
     fretted_only = positions.grep(Integer)
@@ -53,13 +56,13 @@ module ChordDiagram
       # la 1re corde (index 5) dans la case numérotée elle-même — sinon le numéro reste
       # à sa distance normale, pour ne pas toucher la note/le barré.
       string1_fretted_here = positions[5] == base_fret
-      string1_barred_here = barre && barre[:fret] == base_fret && barre[:span].include?(5)
+      string1_barred_here = barres.any? { |b| b[:fret] == base_fret && b[:span].include?(5) }
       svg << position_label(base_fret, close: !(string1_fretted_here || string1_barred_here))
     elsif show_nut
       svg << nut
     end
 
-    barred = barre ? barre[:indices] : []
+    barred = barres.flat_map { |b| b[:indices] }
 
     positions.each_with_index do |pos, i|
       y = string_y(i)
@@ -76,7 +79,7 @@ module ChordDiagram
       end
     end
 
-    svg << barre_line(barre[:fret] - base_fret + 1, barre[:finger], barre[:span]) if barre
+    barres.each { |b| svg << barre_line(b[:fret] - base_fret + 1, b[:finger], b[:span]) }
 
     svg << "</svg>\n"
     svg
