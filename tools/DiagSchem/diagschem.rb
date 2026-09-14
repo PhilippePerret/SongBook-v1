@@ -210,7 +210,17 @@ class DiagSchem
     # Mode chanson (`@song_dir`) : intention déjà explicite (commande "create diag"
     # lancée POUR cette chanson, issue #79) — aucune question, direct au nom.
     unless @song_dir
-      return unless prompt.yes?(blue(Loc.get('diag_save_in_app_question')), default: false)
+      unless prompt.yes?(blue(Loc.get('diag_save_in_app_question')), default: false)
+        # Outil `diag` autonome lancé DEPUIS le dossier d'une chanson (terminal ouvert
+        # par `songbook diag`) : "non" à la question ci-dessus proposait de tout perdre
+        # (seulement copié dans le presse-papier) — si le dossier courant est bien une
+        # chanson (`FileFinder.find(:lyr)`, même test que `edit chords`), proposer
+        # l'enregistrement DANS cette chanson plutôt que rien.
+        return unless FileFinder.find(Dir.pwd, :lyr)
+        return unless prompt.yes?(blue(Loc.get('diag_save_in_song_question')), default: false)
+
+        @song_dir = Dir.pwd
+      end
     end
 
     # `@nom` normalisé (`DSLParser.normalize_chord`, même règle partout) DÈS LA

@@ -112,6 +112,7 @@ songbook_current_none: "Carnet courant : aucun (utiliser 'use sb \"titre approx\
 
 # diag (assistant de schéma d'accord)
 diag_save_in_app_question: "Voulez-vous faire de ce diagramme un diagramme de l'application ?"
+diag_save_in_song_question: "Voulez-vous enregistrer ce diagramme dans la chanson courante ?"
 diag_name_prompt: "Nom à donner au schéma : "
 diag_conflict_nom: "Ce nom existe déjà pour cette case : %s"
 diag_conflict_schema: "Ce schéma (mêmes positions) existe déjà, sous le nom %s."

@@ -149,6 +149,10 @@ Constructeur de diagramme
     {{command: songbook build diag "<schéma>"}}
     (pour construire le schéma, utilisez l'outil `diag` sans option)
 
+    {{command: songbook diag --song "titre"}}
+    (en mode interactif : {{command: diag}})
+    Ouvre un terminal sur le dossier de la chanson et y lance `diag`
+
   Options
   -------
   -c/--cover      Produire la couverture en même temps que le carnet

@@ -104,6 +104,7 @@ songbook_current_none: "Current songbook: none (use 'use sb \"approx title\"')"
 
 # diag (chord diagram schema assistant)
 diag_save_in_app_question: "Do you want to make this diagram an application diagram?"
+diag_save_in_song_question: "Do you want to save this diagram in the current song?"
 diag_name_prompt: "Name to give the schema: "
 diag_conflict_nom: "This name already exists for this fret: %s"
 diag_conflict_schema: "This schema (same positions) already exists, under the name %s."

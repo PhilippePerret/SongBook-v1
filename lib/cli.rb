@@ -389,6 +389,10 @@ module CLI
       open_infos_file
     when "gabarit", "gab"
       open_gabarit_file(confirm_create: false)
+    when "diag"
+      abort "aucune chanson de contexte pour diag (use song ou --song)" unless Session.song
+
+      open_terminal_diag(Session.song)
     when "song"
       case arg1
       when nil
@@ -834,6 +838,15 @@ module CLI
     abort "aucun fichier .schemas/.sch trouvé dans #{context[:folder]}" unless sch_path
 
     system("open", "-a", AppConfig.user_song_editor, sch_path)
+  end
+
+  # `diag` (top-level, mode direct `--song` ou interactif chanson courante) : ouvre un
+  # terminal externe dans le dossier de la chanson et y lance l'outil autonome `diag`
+  # (symlink `tools/DiagSchem/diagschem.rb`) SANS option, pas ce module CLI en interactif.
+  def self.open_terminal_diag(folder)
+    shell_cmd = "cd #{folder.shellescape} && diag"
+    escaped = shell_cmd.gsub("\\") { "\\\\" }.gsub('"') { '\"' }
+    system("osascript", "-e", %(tell application "Terminal" to do script "#{escaped}"))
   end
 
   # `tdm`, `open tdm/toc` ET `edit tdm/toc` partagent ce code — table des
