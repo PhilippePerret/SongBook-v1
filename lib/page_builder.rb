@@ -484,7 +484,7 @@ module PageBuilder
   # il gaspille toute une colonne de la row où il tombe (bug trouvé, 2026-08-18, sur "Au fur
   # et à mesure" — 2 rows sur 3 pages n'affichaient qu'un seul couplet, l'autre colonne vide).
   def self.block_kind(name)
-    name.sub(/-\d+\z/, "")
+    name.sub(/-part-\d+\z/, "").sub(/-\d+\z/, "")
   end
 
   # `title_band`/`diags_position` : défauts de CE dossier (Manuel/song/layout.adoc, voir

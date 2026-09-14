@@ -217,7 +217,7 @@ class DiagSchem
         # chanson (`FileFinder.find(:lyr)`, même test que `edit chords`), proposer
         # l'enregistrement DANS cette chanson plutôt que rien.
         return unless FileFinder.find(Dir.pwd, :lyr)
-        return unless prompt.yes?(blue(Loc.get('diag_save_in_song_question')), default: false)
+        return unless prompt.yes?(blue(Loc.get('diag_save_in_song_question')), default: true)
 
         @song_dir = Dir.pwd
       end
