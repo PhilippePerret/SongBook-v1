@@ -1,119 +1,34 @@
-[[tablator]]
-=== Générateur de tablatures ===
+[[song-chords-assistant]]
+=== Assistant pour l'entrée des accords de la chanson ===
 
-Pour produire les tablatures d'une chanson quelconque :
-
-----
-songbook create tab "nom-fichier-sans-tab" --song "titre approx"
-----
-
-Pour éditer une tablature :
+La pose des accords peut être incroyablement facilitée avec l'aide à l'entrée des accords.
 
 ----
-songbook edit tab "nom approx" --song "titre chanson"
+songbook edit chords "tittre chanson"
 ----
 
-Ces commandes ouvrent directement l'assistant pour entrer facilement les notes et produire le fichier `.tab` : 
-
-Asssistant qu'on peut aussi ouvrir avec :
-----
-songbook tab assistant --song "titre chanson" --create
-----
-
-Ou si l'on doit éditer une tablature avec l'assistant :
+Ou en mode interactif :
 
 ----
-songbook tab assistant --song "titre chanson" --tab "nom-tablature"
+🎸> chords
+
+# ou
+
+🎸> edit chords
 ----
 
-Ou en mode interactif : 
+Elle permet de : 
 
-----
-songbook -i
-🎸> use song "titre"
-🎸> tab assistant
-# ou encore mieux :
-🎸> create tab
-🎸> edit tab "nom-approx"
-🎸> build tabs
-----
+- se déplacer de syllabe en syllabe avec les flèches,
+- poser un accord déjà placé avec une seule lettre (et un chiffre),
+- déplacer du texte pour glisser des accords entre les syllabes,
+- etc.
 
-==== Produire les fichiers SVG ====
+TIP: Placer en tout premier lieu les accords les plus fréquents pour qu'ils soient __posables__ ensuite avec une simple lettre.
 
-Pour produire toutes les tablatures d'une chanson :
+[[add-chords-tips]]
+==== Quelques tips sur des erreurs classiques ====
 
-----
-songbook build tabs "titre chanson approx"
-----
+**Quand la découpe par syllabe est défectueuse**
 
-==== Conventions du langage ====
-
-__Voici les conventions de langage employées si vous devez écrire le fichier `.tab`  à la main (mais franchement, utiliser l'assistant est une bien meilleure idée ;))__.
-
-[cols="2,4,3", options="header"]
-|====
-| Élément         | Code | Exemple/note
-| Note            | `•corde••case•`         | `50` (5^e^ corde, à vide)
-| Note            | `•corde••case•/•duree•` | `60/4`
-| Accord          | `<•notes•>`             | `<11 23 32>`
-| Accord avec durée | `<•notes•>/•duree•` | `<11 23 32>/8`
-| Accord arpégé   | `[Arp]<•note•>` | [Arp]`<11 23 32>/8`
-| Hammer-on       | `h•corde••case•` | `50 h52` 
-| Pull-off        | `p•corde••case•` | `52 p50` 
-|====
-
-|====
-| •corde• | de 1 (mi aigu) à 6 (mi grave)
-| •case•  | de 0 (corde à vide) à environ 20
-| •duree• | 4 = noire, 2 = blanche, 8 = croche, etc.
-|====
-
-Indiquer les doigts de la main droite (chevalet) avec "p" (pouce) "i" (index), "m" (majeur) "a" (annulaire), "c" (chiquito = auriculaire).
-Indiquer les doigts de la main gauche (manche) avec des chiffres (1, 2, 3, 4, 0 pour le pouce, pour le distinguer de "p" de la main droite).
-
-Ces doigts s'indiquent après "-", comme dans Lilypond : 
-
-----
-60:p  # 6e corde à vide, avec le pouce
-52:i4 # 2e case de 5e corde, index et doigt 4
-----
-
-
-Le document peut commencer par une entête (appelée __front matter__) définissant : 
-
-----
-\---
-\# On peut ajouter des commentaires de cette manière
-title: Titre à donner à la tablature (au-dessus)
-metrique: Métrique à écrire, par exemple "6/8"
-capo: Numéro de case, par exemple "4"
-chord: si `true`, écrit les accords (calculés) au-dessus
-keep_ly: si `true` conserve le fichier Lilypond (pour vérification)
-\---
-
-\# Ici les notes
-----
-
-==== Options « vraies » notes ====
-
-Si l'on préfère, on peut entrer les notes de façon classique par leur nom, à la façon de Lilypond. Consulter la https://lilypond.org/doc/v2.26/Documentation/notation/index.fr.html[documentation du langage Lilypond] pour en apprendre plus.
-
-==== Assemblage ====
-
-Le mieux est de construire la tablature par petits segments car il sera possible de les assembler très facilement dans le fichier `.gabarit` de la chanson :
-
-----
-{intro; tab: intro.tab}
-
-{couplet; tab: intro.tab + coup.tab}
-----
-
-La seconde ligne produira le fichier `intro+coup.svg`. Donc, plus tard, pour ne pas forcer la reconstruction, on pourra mettre : 
-
-----
-{intro; tab: intro.svg, count: 2}
-
-{couplet; tab: intro+couplet.svg }
-
-{refrain: tab: refrain.svg }
-----
+Parfois, la découpe par syllabe peut être défectueuse. Par exemple, dans « nuage », l'app va considérer seulement les syllabes « nua » et « ge ». Dans ce cas, on utilise Combo::n/p[] pour se déplacer de lettre en lettre, puis combo::Maj+→[] pour déplacer le texte, ce qui donnera : « nu age » et dans ce cas, « a » sera forcément considéré comme une syllabe seule.

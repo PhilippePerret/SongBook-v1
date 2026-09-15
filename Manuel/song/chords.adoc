@@ -1,59 +1,104 @@
-[[chords, accords]]
-=== Les accords ===
+[[diags, diagrammes d'accords]]
+=== Diagrammes d'accords ===
 
-Les accords, dans les chansons, sont placés avant la syllabe sur laquelle ils doivent être joués. Par exemple, dans l'exemple ci-dessous :
+On appelle __diagrammes d'acccord__ ou tout simplement __diag__ ou __diagrammes les petits schémas représentant les accords à la guitare (__il existe des diagrammes pour d'autres instruments à cordes, mais ils ne sont pas utilisés ici__).
 
-----
-Les /am:portes /c:du pé/d:niten/f:cier
-----
+Todo: montrer diagramme d'accord.
 
-… l'accord `Am` (La mineur) est joué sur le « por » de « portes », le `C` (Do majeur) est joué sur « du », le `D` (Ré majeur) est joué sur « ni » et le `F` sur « cier ».
+[[diags-list, liste des diagrammes existants]]
+==== Liste des diagrammes ====
 
-NOTE: Cette notation peut paraitre plus complexe à lire que la notation dans ChordPro, mais à la différence de ChordPro, __**SongBook**__ est __pensé pour l'utilisateur__. Et pour l'utilisateur, taper des crochets est compliqué alors que taper « /: » est un jeu d'enfant.
-
-TIP: Noter également que l'<<song-chords-assistant, assistant d'édition des accords>> rend la pose de ces accords particulièrement confortable et rapide ! Une fois qu'on y a gouté, on ne peut plus s'en passer.
-
-Une fois mise en forme, cet extrait devient :
-
-Todo: image résultante
-
-[[chords-syntax]]
-==== Syntaxe des accords ====
-
-* **Noms des accords** :
-** le nom des accords se mettent en notation batave (La = `a`, Si = `B), Do = `c`, Ré = `D`, Mi = `E`, Fa = `f`, Sol = `G`)
-** les notes se marquent en majuscule (`F`) ou en minuscule (`f`), peu importe
-** la première lettre d'un « groupe » de lettres est toujours considérée comme la note du nom de l'accord (par exemple le « A » de « abm9 »),
-** le signe dièse se marque `d` et le signe bémol par `b` (`Dd` ou `dd` pour Ré dièse majeur, `bb` pour Si bémol majeur),
-* **les basses** :
-** elles s'indiquent toujours entre crochets (`[fd]`)
-** elles seront en italien dans le carnet, mais elles se définissent aussi en notation batave
-** elles peuvent se marquer juste après la note de l'accord (`A[c]m7`) ou à la fin de l'accord (`Am7[c]`)
-** on peut utiliser les <<only-bass, basses seules>>, sans accords
-- on peut __affiner__ l'accord en mettant des indications après un « - », par exemple la case où l'accord doit être joué sur une guitare (`Am-5`)
-* **Accords et diagrammes** :
-** les accords doivent toujours correspondre à un diagramme (voir la todo: liste des diagrammes),
-- lorsque le diagramme n'existe pas, on peut le produire à l'aide du <<diag-schema-producer, constructeur de diagramme>>.
-- plusieurs accords peuvent s'enchainer sans espaces entre eux : `/c:/dm:/em:`,
-- on peut séparer les accords par n'importe quel signe, souvent une balance pour indiquer qu'ils sont enchainés, joués dans la même mesure : `/c://f:` (noter le `//`, dont le deuxième définit le début de l'accord `/f:`),
-- pour marquer que l'accord est joué hors syllabe, au début du vers, on ajoute un trait plat : `/C:_`
-- à la fin d'un vers, le trait plat <<trait-plat-usages, n'est pas obligatoire>>
-
-[[only-bass]]
-**Basses seules**
-----
-Don't give /am:up //[g][fd]:
-
-In /em:this proud land
-----
+On peut obtenir la liste de tous les diagrammes, afin de pouvoir choisir ceux qui nous intéressent pour une chanson, en jouant la commande : 
 
 ----
-/c:_ C'est un en//[b]:droit qui res/am:semble
+songbook diags
 ----
 
-[[trait-plat-usages]]
-**Usage du trait plat**
+Elle ouvre un fichier HTML où sont présentés tous les diagrammes, et il suffit de cliquer sur leur diagrammes pour mettre le nom dans le presse-papier et le coller dans la chanson.
+
+Bien que vous n'ayez normalement jamais à utiliser cette commande, nous l'indiquons dans le cas où vous touchiez les fichiers SVG par inadvertance. Elle actualise tous les fichiers SVG des accords.
 
 ----
-/c:_ Au début mais /dm:pas à la fin /g: /g7:
+songbook update diags
+----
+
+
+==== Produire ses propres diagrammes ====
+
+On peut aller plus loin et produire ses propres diagrammes personnalisés. Pour ça
+
+----
+songbook build diag "<schéma>"
+----
+
+Le schéma est très précis et peut s'obtenir avec la commande `diag`.
+
+On peut même directement, si le schéma ne nous intéresse pas, utiliser la commande `diag -o` pour définir le diagramme et produire son image SVG à insérer dans le carnet.
+
+
+[[song-schemas, diagrammes de la chanson]]
+==== Diagrammes propres à la chanson ====
+
+Une chanson peut définir ses propres schémas dans un fichier `.schemas` (`sche`). Cela est nécessaire lorsque la chanson utilise des accords qui ne sont consignés <<diags-list, nulle part ailleurs>>.
+
+**OU**, plus important, lorsqu'elle utilise des positions particulières d'accord pouvant déjà exister. Dans ce cas, les accords qu'elle définit sont **prioritaires** sur les accords existants.
+
+Dans le fichier des schémas, on indique : 
+
+----
+<NOM-DANS-LES-PAROLES> : <SCHÉMA DU DIAGRAMME>
+# etc. les uns sous les autres
+----
+
+Le schéma est obtenu grâce à la commande `diag` qui permet de définir ces diagrammes avec confort et sécurité (l'erreur est pratiquement impossible).
+
+Pour être clair, voilà la démarche à utiliser :
+
+__Les commandes sont données en mode interactif (`songbook -i`) avec la chanson mise en chanson courante (`🎸> use song "ma chanson"`)__
+
+[cols="4,1"]
+|====
+| S'assurer d'abord que l'accord n'existe pas déjà  | `diags`
+| Ouvrir ou créer le fichier `.schemas`             | `open schemas`
+| Dans un autre Terminal, lancer l'éditeur de diag  | `diag` (hors interactif)
+| Définir le diagramme                              |
+| Ne pas l'enregistrer pour l'application           |
+| Coller le schéma dans le fichier `.schemas`       | combo:Cmd+v[]
+| Lancer la production des fichiers SVG             | `build diags`
+|====
+
+[[diags-position]]
+==== Position et taille des diagrammes ====
+
+Pour placer les diagrammes dans la chanson ou le carnet, utiliser le <<gabarit-file>> de la chanson ou les règles du <<songbook-layout layout (mise en page)>> du carnet.
+
+Pour redimensionner les diags, vous pouvez jouer sur plusieurs <<diags-options, options spécialisées>>.
+
+==== Limiter la liste des diagrammes ====
+
+Vous pouvez, dans les carnets dont l'option `diag_list` est réglée à `list`, définir avec l'option `diag_list` aussi la liste des seuls diags à afficher. Cf. <<diags-options, les options en matière de diagrammes>>. 
+
+[[diags-missing]]
+==== Diagrammes manquant ====
+
+On peut obtenir la liste des diags introuvables (ni dans l'app ni dans la chanson).
+
+----
+songbook missing diags --song "titre approx"
+# => Liste dans la chanson
+
+songbook missing diags --songbook "titre approx"
+# => Liste dans le carnet de chant
+
+songbook missing diags --all
+# => Liste dans toutes les chansons
+----
+
+En <<interactive-mode, mode interactif>>, c'est la chanson ou le carnet courant qui est pris en référence :
+
+----
+songbook -i
+🎸> use song titre-approx
+🎸> missing diags
+# => Liste des diagrammes manquant dans la chanson.
 ----
