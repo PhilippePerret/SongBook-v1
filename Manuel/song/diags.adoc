@@ -43,7 +43,7 @@ Une chanson peut définir ses propres schémas dans un fichier `.schemas` (`sche
 
 **OU**, plus important, lorsqu'elle utilise des positions particulières d'accord pouvant déjà exister. Dans ce cas, les accords qu'elle définit sont **prioritaires** sur les accords existants.
 
-Dans le fichier des schémas, on indique : 
+Dans le fichier des schémas, on indique : 
 
 ----
 <NOM-DANS-LES-PAROLES> : <SCHÉMA DU DIAGRAMME>
@@ -52,7 +52,7 @@ Dans le fichier des schémas, on indique :
 
 Le schéma est obtenu grâce à la commande `diag` qui permet de définir ces diagrammes avec confort et sécurité (l'erreur est pratiquement impossible).
 
-Pour être clair, voilà la démarche à utiliser :
+Pour être clair, voilà la démarche à utiliser :
 
 __Les commandes sont données en mode interactif (`songbook -i`) avec la chanson mise en chanson courante (`🎸> use song "ma chanson"`)__
 
@@ -94,7 +94,7 @@ songbook missing diags --all
 # => Liste dans toutes les chansons
 ----
 
-En <<interactive-mode, mode interactif>>, c'est la chanson ou le carnet courant qui est pris en référence :
+En <<interactive-mode, mode interactif>>, c'est la chanson ou le carnet courant qui est pris en référence :
 
 ----
 songbook -i

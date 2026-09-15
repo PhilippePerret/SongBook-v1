@@ -1,35 +1,34 @@
-[[diag-schema-producer, Production de schéma de diags]]
-=== Production du schéma du diags ===
+[[song-chords-assistant]]
+=== Assistant pour l'entrée des accords de la chanson ===
 
-Utiliser la commande : 
-
-----
-diag
-----
-
-[[diag-svg-producer]]
-==== Production de l'image SVG du diagramme ====
-
-Pour produire une image à partir d'un schéma, utiliser la commande : 
+La pose des accords peut être incroyablement facilitée avec l'aide à l'entrée des accords.
 
 ----
-songbook build diag "schéma"
+songbook edit chords "tittre chanson"
 ----
 
-Par exemple :
-
-todo: exemple
-
-… qui produira :
-
-todo: exemple image
-
-==== Actualisation des diags ====
-
-Si vous avez ajouté des diags dans l'application, il peut être nécessaire d'actualiser les fichiers SVG et surtout le fichier HTML présentant tous les diags et permettant d'en choisir. Pour ce faire, utiliser la commande : 
+Ou en mode interactif :
 
 ----
-songbook update diags
+🎸> chords
+
+# ou
+
+🎸> edit chords
 ----
 
-Ou simplement `update diags` en mode interactif.
+Elle permet de : 
+
+- se déplacer de syllabe en syllabe avec les flèches,
+- poser un accord déjà placé avec une seule lettre (et un chiffre),
+- déplacer du texte pour glisser des accords entre les syllabes,
+- etc.
+
+TIP: Placer en tout premier lieu les accords les plus fréquents pour qu'ils soient __posables__ ensuite avec une simple lettre.
+
+[[add-chords-tips]]
+==== Quelques tips sur des erreurs classiques ====
+
+**Quand la découpe par syllabe est défectueuse**
+
+Parfois, la découpe par syllabe peut être défectueuse. Par exemple, dans « nuage », l'app va considérer seulement les syllabes « nua » et « ge ». Dans ce cas, on utilise Combo::n/p[] pour se déplacer de lettre en lettre, puis combo::Maj+→[] pour déplacer le texte, ce qui donnera : « nu age » et dans ce cas, « a » sera forcément considéré comme une syllabe seule.
