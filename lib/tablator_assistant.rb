@@ -388,7 +388,13 @@ module TablatorAssistant
       base = File.basename(edit_path, ".tab")
     else
       meta["title"] ||= colored_prompt.ask(blue("Titre :")) { |q| q.required true }
-      dir = Session.song ? File.join(Session.song, "scores") : Dir.pwd
+      # Jamais de repli sur `Dir.pwd` (ex-comportement) : sans chanson de contexte, une
+      # nouvelle tablature n'a nulle part où exister légitimement — écrivait auparavant
+      # à la racine de l'app si `Session.song` était absent (pollution constatée, issue
+      # #92 discussion, fichiers "test-*.tab/.svg" commités par erreur).
+      raise "aucune chanson de contexte (Session.song) pour écrire une tablature" unless Session.song
+
+      dir = File.join(Session.song, "scores")
       FileUtils.mkdir_p(dir)
       base = CarnetBuilder.slugify(meta["title"])
     end
