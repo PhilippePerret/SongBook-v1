@@ -1393,7 +1393,7 @@ module Layout
   # RAL3 (Manuel/regles_esthetiques.adoc, "aucune exception") : dans une row côte à côte,
   # si UN des deux blocs a un accord sur sa 1re ligne, les DEUX alignent leur 1re ligne de
   # texte sur cet ancrage — un bloc sans accord ne "remonte" jamais au-dessus de son voisin.
-  def self.row_to_element(pdf, row, x0, width, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent, strict_align: false)
+  def self.row_to_element(pdf, row, x0, width, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent, strict_align: false, align_width: nil)
     widths = case row.size
              when 1 then [width]
              when 2 then [col1_w, col2_w]
@@ -1440,8 +1440,15 @@ module Layout
       when 1
         block = row[0]
         centered = block.directives[:block_align] != "left"
+        # `align_width` (recentrage par page, `PageBuilder.build`) : largeur PARTAGÉE par
+        # tous les blocs seuls de même type sur la MÊME page (ex. couplet-5 à côté de
+        # couplet-3/couplet-4 empilés), jamais la largeur PROPRE de CE bloc — sinon deux
+        # couplets seuls de la même page, tous deux centrés, divergent dès que l'un est
+        # plus court que l'autre, et un bloc seul peut même retomber par coïncidence sur
+        # le centrage d'un bloc voisin SANS RAPPORT (ex. le label d'un refrain) — bug
+        # constaté (issue #92, "Fais-moi une place").
         bx = if centered
-               x0 + [(width - block_width(pdf_, block)) / 2.0, 0].max
+               x0 + [(width - (align_width || block_width(pdf_, block))) / 2.0, 0].max
              else
                x0 + h_gutter # même retrait que la colonne 1, pour rester aligné avec elle
              end
