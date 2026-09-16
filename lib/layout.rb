@@ -398,12 +398,13 @@ module Layout
 
   # Rééquilibrage vertical , "L'Aigle noir" p.9 : bloc de paroles collé
   # en haut, grand vide en bas) : DUP (haut du bloc -> bas du bandeau/marge haut) et DDO
-  # (bas du bloc -> marge basse) — si `(DUP - DDO).abs <= VERTICAL_BALANCE_THRESHOLD_PT`,
-  # le bloc est recentré (DUP = DDO = moyenne) ; sinon laissé tel quel (contenu qui remplit
-  # déjà la page ne doit pas être artificiellement tassé). S'applique à TOUT contenu qui
-  # termine une page (texte, image, partition, tabs) — jamais quand une grille de diags
-  # en trop (RAD7) est calée en dessous : elle EST déjà la référence "bas", pas la marge.
-  VERTICAL_BALANCE_THRESHOLD_PT = 80.0
+  # (bas du bloc -> marge basse), bloc recentré (DUP = DDO = moyenne) dès que `ddo >= 0`.
+  # S'applique à TOUT contenu qui termine une page (texte, image, partition, tabs) —
+  # jamais quand une grille de diags en trop (RAD7) est calée en dessous : elle EST déjà
+  # la référence "bas", pas la marge (`merging_here`).
+  # Bug constaté (Phil, 2026-09-16, "For no one" p.1) : un ancien seuil sur `(DUP-DDO).abs`
+  # désactivait le rééquilibrage pile quand l'écart le dépassait de peu — l'inverse de
+  # l'effet voulu (page peu remplie, gros DDO -> justement le cas à corriger).
   MAX_H_DIST = { default: 40.0, label: 30.0 }.freeze
   DEFAULT_H_DIST = { label: 20.0 }.freeze
 
@@ -1769,12 +1770,12 @@ module Layout
         page_heights = page_els.map(&:height)
         gutters = distribute_v_gutters(avail_for_text, page_heights, top_type: i.zero? ? :band_strophe : :default, types: page_els.map(&:gutter_type))
 
-        # Rééquilibrage vertical (voir `VERTICAL_BALANCE_THRESHOLD_PT`) : jamais si une
+        # Rééquilibrage vertical : jamais si une
         # grille de diags en trop occupe déjà le bas (`merging_here`, RAD7) — elle EST la
         # référence "bas" voulue, pas la marge réelle.
         dup = gutters[0]
         ddo = avail_for_text - (page_heights.sum + gutters.sum)
-        balance_shift = if !merging_here && ddo >= 0 && (dup - ddo).abs <= VERTICAL_BALANCE_THRESHOLD_PT
+        balance_shift = if !merging_here && ddo >= 0
           (ddo - dup) / 2.0
         else
           0.0
