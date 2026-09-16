@@ -278,9 +278,12 @@ module Layout
   CHORD_SLASH_GAP_BASS_ONLY = 0.5
   DIAG_W = 60
   DIAG_TEXT_GAP = 26
-  # RAD3 : largeur plancher sous laquelle un diag ne doit jamais être réduit (valeur
-  # provisoire, à ajuster — .
-  MIN_SIZE = { diags: { width: 24.0 } }.freeze
+  # RAD3 : largeur plancher sous laquelle un diag ne doit jamais être réduit — la taille
+  # normale (`DIAG_W`) elle-même, jamais une valeur inférieure inventée à part (bug
+  # constaté : un ancien plancher à 24pt, bien plus petit que `DIAG_W`, écrasait les
+  # diags "en trop" d'une chanson jusqu'à les rendre illisibles rien que pour éviter une
+  # page en plus).
+  MIN_SIZE = { diags: { width: DIAG_W.to_f } }.freeze
 
   GEORGIA_DIR = File.expand_path("../assets/fonts/Georgia", __dir__)
   HELVETICA_NEUE_DIR = File.expand_path("../assets/fonts/HelveticaNeue", __dir__)
@@ -2268,6 +2271,62 @@ module Layout
     [clean, ranges]
   end
 
+  # Longueur du délimiteur de chaque style (identique des 2 côtés) — "[...]" 1 caractère,
+  # "**...**"/"__...__" 2 caractères.
+  STYLE_DELIM_LEN = { underline: 1, bold: 2, italic: 2 }.freeze
+
+  # Même règle que `extract_style_ranges`, mais appliquée à une LIGNE ENTIÈRE (tous ses
+  # segments accord/texte concaténés) plutôt que segment par segment — un marqueur
+  # `__..__`/`**..**` dont le contenu chevauche un accord ("__Au /bm:moins...reux ?__")
+  # n'a jamais son ouvrant ET son fermant dans le MÊME segment, donc jamais reconnu par
+  # `extract_style_ranges` appliqué segment par segment (bug constaté : le "__" restait
+  # affiché tel quel, aucune italique). Un délimiteur lui-même n'est jamais coupé par un
+  # accord (`DSLParser.parse_line` ne laisse jamais un "_"/"*"/"[" isolé survivre juste à
+  # côté d'un accord sans déjà être fusionné) — seul le CONTENU d'un marqueur peut
+  # chevaucher plusieurs segments. Renvoie une liste parallèle à `segs` : `[[clean_text,
+  # ranges], ...]`, même forme que `extract_style_ranges` par segment.
+  def self.extract_style_ranges_across_segments(segs)
+    full_raw = segs.map(&:text).join
+    keep = Array.new(full_raw.length, true)
+    matches = full_raw.to_enum(:scan, STYLE_MARKERS_RE).map { Regexp.last_match }
+    matches.each do |m|
+      key = m[1] ? :underline : (m[2] ? :bold : :italic)
+      delim = STYLE_DELIM_LEN[key]
+      (m.begin(0)...(m.begin(0) + delim)).each { |j| keep[j] = false }
+      ((m.end(0) - delim)...m.end(0)).each { |j| keep[j] = false }
+    end
+
+    clean_offset = Array.new(full_raw.length + 1)
+    acc = 0
+    full_raw.length.times do |j|
+      clean_offset[j] = acc
+      acc += 1 if keep[j]
+    end
+    clean_offset[full_raw.length] = acc
+
+    ranges = { underline: [], bold: [], italic: [] }
+    matches.each do |m|
+      key = m[1] ? :underline : (m[2] ? :bold : :italic)
+      delim = STYLE_DELIM_LEN[key]
+      ranges[key] << [clean_offset[m.begin(0) + delim], clean_offset[m.end(0) - delim]]
+    end
+
+    seg_start = 0
+    segs.map do |seg|
+      seg_end = seg_start + seg.text.length
+      clean_text = (seg_start...seg_end).select { |j| keep[j] }.map { |j| full_raw[j] }.join
+      local = { underline: [], bold: [], italic: [] }
+      ranges.each do |key, list|
+        list.each do |s, e|
+          cs, ce = [s, clean_offset[seg_start]].max, [e, clean_offset[seg_end]].min
+          local[key] << [cs - clean_offset[seg_start], ce - clean_offset[seg_start]] if ce > cs
+        end
+      end
+      seg_start = seg_end
+      [clean_text, local]
+    end
+  end
+
   # Position x (et offset caractère dans `text`) de chaque token — sert à la fois à
   # dessiner les mots UNE SEULE FOIS pour tout le vers, et à replacer chaque accord à la
   # bonne position après coup (`chord_x_at_offset`), y compris un accord tombé EN PLEIN
@@ -2478,8 +2537,9 @@ module Layout
     text_y = has_chord ? y - chord_to_text_drop(chord_size, text_size) : y
     text_descent = font_metric(pdf, text_size) { pdf.font.descender }
 
-    base_segs = line.segments.map do |seg|
-      clean_text, ranges = extract_style_ranges(seg.text)
+    styled = extract_style_ranges_across_segments(line.segments)
+    base_segs = line.segments.each_with_index.map do |seg, i|
+      clean_text, ranges = styled[i]
       seg.dup.tap do |s|
         s.text = clean_text
         s.underline_ranges = ranges[:underline]

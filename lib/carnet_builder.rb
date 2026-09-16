@@ -635,14 +635,23 @@ module CarnetBuilder
       [name, resolve_infos_override_path(carnet_folder, File.join(chansons_dir, entry[:folder]), name)]
     end
 
-    real_page_counts = {}
-    real_songs.each do |name, entry|
-      folder = File.join(chansons_dir, entry[:folder])
-      tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
-      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: 1, layout_preset: layout_preset, ref_index: CarnetBuilder.repeat_index_of(name), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
-      real_page_counts[name] = CombinePDF.load(tmp_out).pages.size
-      File.delete(tmp_out)
+    # Fonction (jamais juste une passe inline) : rejouée une 2e fois plus bas si le
+    # total RÉEL de pages change de PALIER de marge de reliure KDP par rapport à
+    # `provisional_page_count` (voir plus bas, `gutter_for`) — sinon les pages de
+    # chansons gardaient la marge de l'ESTIMATION, jamais celle du total réel (bug
+    # constaté, Phil : "ça toucherait aussi ta mise en page").
+    measure_song_pages = lambda do |page_count_for_margins|
+      counts = {}
+      real_songs.each do |name, entry|
+        folder = File.join(chansons_dir, entry[:folder])
+        tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
+        PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: page_count_for_margins, first_page_no: 1, layout_preset: layout_preset, ref_index: CarnetBuilder.repeat_index_of(name), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+        counts[name] = CombinePDF.load(tmp_out).pages.size
+        File.delete(tmp_out)
+      end
+      counts
     end
+    real_page_counts = measure_song_pages.call(provisional_page_count)
 
     # --- 2) Structure du front matter (ordre = ordre des clés dans le `.infos`/`.inf` du carnet) —
     # `tdm_position` (options.yaml, surchargeable par le `.infos`/`.inf` du carnet) décide si la TDM
@@ -668,81 +677,121 @@ module CarnetBuilder
 
     # --- 3) Rendu final des chansons, dans l'ordre du TDM (déplacé/complété par #54 si
     # besoin), page par page RÉELLE -------------------------------------------------
-    entries = [] # {name:, interprete:, compositeur:, parolier:, first_page:, last_page:}
-    combined_songs = CombinePDF.new
-    page_no = front_matter_page_count + 1
-    real_songs_by_name = real_songs.to_h
-    song_order = plan_song_order(real_songs.map(&:first), real_page_counts, front_matter_page_count, reorder_allowed, printer_facing_pages)
+    render_songs_pass = lambda do |page_count_for_margins, page_counts|
+      entries = [] # {name:, interprete:, compositeur:, parolier:, first_page:, last_page:}
+      combined_songs = CombinePDF.new
+      page_no = front_matter_page_count + 1
+      real_songs_by_name = real_songs.to_h
+      printer_for_blanks = PrinterProfile.new(page_count: page_count_for_margins, trim_width: page_size_in[0], trim_height: page_size_in[1], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+      song_order = plan_song_order(real_songs.map(&:first), page_counts, front_matter_page_count, reorder_allowed, printer_facing_pages)
 
-    song_order.each do |item|
-      if item == :blank
-        blank_out = File.join(export_dir, ".tmp-blank-#{page_no}.pdf")
-        Prawn::Document.generate(blank_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
-          Layout.register_fonts(pdf)
-          Layout.apply_print_margins(pdf, printer_probe, page_no, page_w_pt, page_h_pt)
-          Layout.current_song = "(carnet)"
-          Layout.current_page = page_no
-          Layout.log_build("page vide insérée avant chanson à nombre de pages pair (#54)")
+      song_order.each do |item|
+        if item == :blank
+          blank_out = File.join(export_dir, ".tmp-blank-#{page_no}.pdf")
+          Prawn::Document.generate(blank_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
+            Layout.register_fonts(pdf)
+            Layout.apply_print_margins(pdf, printer_for_blanks, page_no, page_w_pt, page_h_pt)
+            Layout.current_song = "(carnet)"
+            Layout.current_page = page_no
+            Layout.log_build("page vide insérée avant chanson à nombre de pages pair (#54)")
+          end
+          combined_songs << CombinePDF.load(blank_out)
+          File.delete(blank_out)
+          page_no += 1
+          next
         end
-        combined_songs << CombinePDF.load(blank_out)
-        File.delete(blank_out)
-        page_no += 1
-        next
-      end
 
-      name = item
-      entry = real_songs_by_name[name]
-      folder = File.join(chansons_dir, entry[:folder])
-      meta = carnet_base_meta.merge(entry[:infos]).merge(overrides_by_name[name])
-      if only_song == name || only_song == entry[:folder]
-        # `only_song` : ISOLE une seule chanson, rendue avec EXACTEMENT les mêmes
-        # paramètres (page_count, first_page_no, layout résolu) que dans ce carnet réel —
-        # même appel `PageBuilder.build`, pas une simulation à part  :
-        # "sortir la chanson EXACTEMENT comme elle sortirait"). Sortie PERSISTANTE, jamais
-        # un temp supprimé — numérotée en version , même convention que
-        # les carnets complets (`existing_versions`/`version` plus haut), sinon un second
-        # essai écrase silencieusement le précédent.
-        song_stem = "#{slug}-song-#{slugify(name)}"
-        song_existing_versions = Dir.glob(File.join(songs_dir, "#{song_stem}-v*.pdf")).filter_map { |f| f[/-v(\d+)\.pdf\z/, 1]&.to_i }
-        song_version = (song_existing_versions.max || 0) + 1
-        song_out = File.join(songs_dir, "#{song_stem}-v#{song_version}.pdf")
-        PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout_preset: layout_preset, ref_index: CarnetBuilder.repeat_index_of(name), debug_marks: debug_marks, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
-        return song_out
-      end
+        name = item
+        entry = real_songs_by_name[name]
+        folder = File.join(chansons_dir, entry[:folder])
+        meta = carnet_base_meta.merge(entry[:infos]).merge(overrides_by_name[name])
+        if only_song == name || only_song == entry[:folder]
+          # `only_song` : ISOLE une seule chanson, rendue avec EXACTEMENT les mêmes
+          # paramètres (page_count, first_page_no, layout résolu) que dans ce carnet réel —
+          # même appel `PageBuilder.build`, pas une simulation à part  :
+          # "sortir la chanson EXACTEMENT comme elle sortirait"). Sortie PERSISTANTE, jamais
+          # un temp supprimé — numérotée en version , même convention que
+          # les carnets complets (`existing_versions`/`version` plus haut), sinon un second
+          # essai écrase silencieusement le précédent.
+          song_stem = "#{slug}-song-#{slugify(name)}"
+          song_existing_versions = Dir.glob(File.join(songs_dir, "#{song_stem}-v*.pdf")).filter_map { |f| f[/-v(\d+)\.pdf\z/, 1]&.to_i }
+          song_version = (song_existing_versions.max || 0) + 1
+          song_out = File.join(songs_dir, "#{song_stem}-v#{song_version}.pdf")
+          PageBuilder.build(folder, song_out, page_size_in: page_size_in, page_count: page_count_for_margins, first_page_no: page_no, layout_preset: layout_preset, ref_index: CarnetBuilder.repeat_index_of(name), debug_marks: debug_marks, carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+          return { only_song_out: song_out }
+        end
 
-      tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
-      PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: provisional_page_count, first_page_no: page_no, layout_preset: layout_preset, ref_index: CarnetBuilder.repeat_index_of(name), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
-      n = real_page_counts[name]
-      combined_songs << CombinePDF.load(tmp_out)
-      File.delete(tmp_out)
-      entries << { name: meta["title"] || name, performer: meta["performer"].to_s, performer_name: meta["performer_name"].to_s,
-                   composer: meta["composer"].to_s, lyrics: meta["lyrics"].to_s, first_page: page_no, last_page: page_no + n - 1 }
-      page_no += n
+        tmp_out = File.join(export_dir, ".tmp-#{name}.pdf")
+        PageBuilder.build(folder, tmp_out, page_size_in: page_size_in, page_count: page_count_for_margins, first_page_no: page_no, layout_preset: layout_preset, ref_index: CarnetBuilder.repeat_index_of(name), carnet_folder: carnet_folder, infos_overrides: overrides_by_name[name], override_infos_path: override_paths_by_name[name], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
+        n = page_counts[name]
+        combined_songs << CombinePDF.load(tmp_out)
+        File.delete(tmp_out)
+        entries << { name: meta["title"] || name, performer: meta["performer"].to_s, performer_name: meta["performer_name"].to_s,
+                     composer: meta["composer"].to_s, lyrics: meta["lyrics"].to_s, first_page: page_no, last_page: page_no + n - 1 }
+        page_no += n
+      end
+      raise "chanson introuvable pour only_song: #{only_song.inspect} (voir .tdm : #{tdm_path})" if only_song
+
+      { entries: entries, combined: combined_songs, last_song_page: page_no - 1 }
     end
-    raise "chanson introuvable pour only_song: #{only_song.inspect} (voir .tdm : #{tdm_path})" if only_song
 
-    last_song_page = page_no - 1
+    render_result = render_songs_pass.call(provisional_page_count, real_page_counts)
+    return render_result[:only_song_out] if render_result[:only_song_out]
+
+    entries, combined_songs, last_song_page = render_result[:entries], render_result[:combined], render_result[:last_song_page]
 
     # --- 3bis) TDM "end" (tdm_position) : juste avant le colophon. Parité (1p -> belle-
     # page, 2p -> fausse-page, >2p -> toujours belle-page) forcée via une page blanche si
     # besoin. "front" : déjà dans `front_specs` (voir 2), rien à refaire ici.
-    toc_at_end = tdm_position != "front"
-    end_toc_list = toc_at_end ? toc_page_list : []
-    toc_start = force_parity(last_song_page + 1, toc_parity(end_toc_list.size))
-    needs_blank_before_toc = toc_start != last_song_page + 1
-    toc_end = toc_start + end_toc_list.size - 1
+    compute_totals = lambda do |last_page|
+      toc_at_end = tdm_position != "front"
+      end_toc_list = toc_at_end ? toc_page_list : []
+      toc_start = force_parity(last_page + 1, toc_parity(end_toc_list.size))
+      needs_blank_before_toc = toc_start != last_page + 1
+      toc_end = toc_start + end_toc_list.size - 1
 
-    if credits_page
-      colophon_page_no = toc_end + 1
-      # La page de crédits est TOUJOURS une belle-page (recto, numéro IMPAIR)
-      # Une page blanche est insérée avant si elle tomberait sur une page paire.
-      needs_blank_before_colophon = colophon_page_no.even?
-      colophon_page_no += 1 if needs_blank_before_colophon
-      total_page_count = colophon_page_no
-    else
-      needs_blank_before_colophon = false
-      total_page_count = toc_end
+      if credits_page
+        colophon_page_no = toc_end + 1
+        # La page de crédits est TOUJOURS une belle-page (recto, numéro IMPAIR)
+        # Une page blanche est insérée avant si elle tomberait sur une page paire.
+        needs_blank_before_colophon = colophon_page_no.even?
+        colophon_page_no += 1 if needs_blank_before_colophon
+        total = colophon_page_no
+      else
+        needs_blank_before_colophon = false
+        colophon_page_no = nil
+        total = toc_end
+      end
+      { toc_at_end: toc_at_end, end_toc_list: end_toc_list, toc_start: toc_start, needs_blank_before_toc: needs_blank_before_toc,
+        toc_end: toc_end, colophon_page_no: colophon_page_no, needs_blank_before_colophon: needs_blank_before_colophon, total_page_count: total }
     end
+
+    totals = compute_totals.call(last_song_page)
+
+    # Marge de reliure KDP dépendant du nombre TOTAL de pages (paliers, voir
+    # `PrinterProfile::GUTTER_RANGES`) : la passe 1+2 ci-dessus a mesuré/rendu les
+    # chansons sur `provisional_page_count`, une ESTIMATION — si le total RÉEL change de
+    # palier, la marge posée sur les pages de chansons est FAUSSE (bug constaté, Phil :
+    # "ça toucherait aussi ta mise en page"). Rejoué avec le total réel seulement si le
+    # palier change vraiment (jamais un rendu en double pour rien).
+    gutter_for = lambda do |page_count_for_margins|
+      PrinterProfile.new(page_count: page_count_for_margins, trim_width: page_size_in[0], trim_height: page_size_in[1],
+        paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins).gutter_margin
+    end
+
+    if gutter_for.call(totals[:total_page_count]) != gutter_for.call(provisional_page_count)
+      provisional_page_count = totals[:total_page_count]
+      real_page_counts = measure_song_pages.call(provisional_page_count)
+      render_result = render_songs_pass.call(provisional_page_count, real_page_counts)
+      return render_result[:only_song_out] if render_result[:only_song_out]
+
+      entries, combined_songs, last_song_page = render_result[:entries], render_result[:combined], render_result[:last_song_page]
+      totals = compute_totals.call(last_song_page)
+    end
+
+    toc_at_end, end_toc_list, toc_start, needs_blank_before_toc, toc_end, colophon_page_no, needs_blank_before_colophon, total_page_count =
+      totals.values_at(:toc_at_end, :end_toc_list, :toc_start, :needs_blank_before_toc, :toc_end, :colophon_page_no, :needs_blank_before_colophon, :total_page_count)
+
     if %w[amazon kdp].include?(conf["printer"].to_s.downcase)
       min, max = PrinterProfile.page_count_range
       unless total_page_count.between?(min, max)
@@ -750,9 +799,6 @@ module CarnetBuilder
         puts orange("Attention : le carnet contient #{total_page_count} pages, ce qui est #{sens} aux plages KDP (#{min} à #{max})")
       end
     end
-    # Le total EXACT est maintenant connu — les marges KDP ci-dessus (chansons, passe 1+2)
-    # ont été calculées sur `provisional_page_count` : écart possible seulement si ça
-    # change de palier de marge KDP (rare sur un carnet-test), pas re-rendu pour l'instant.
     printer_final = PrinterProfile.new(page_count: total_page_count, trim_width: page_size_in[0], trim_height: page_size_in[1], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
 
     render_blank_page = lambda do |printer, blank_page_no|
