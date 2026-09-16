@@ -54,7 +54,6 @@ module SongCreator
       "composer" => composer,
       "lyrics" => lyricist,
       "year" => year,
-      "transpose" => "",
     }
 
     lyr_content = fetched_lyrics || CarnetBuilder::SONG_TEMPLATE
