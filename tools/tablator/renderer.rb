@@ -324,9 +324,13 @@ module Tablator
     any_stem = measures.any? { |m| m[:events].any? { |ev| ev.kind == :notes && ev.denom > 1 } }
     # Les ligatures de niveau 2+ s'empilent VERS la note (voir `draw_stem_group`,
     # `beam_top + (level-1)*beam_gap`), jamais au-dessus du niveau 1 — la hauteur
-    # maxi au-dessus de la portée reste `stem_height`, quel que soit le nombre de
-    # ligatures.
-    any_stem ? param(:stem_height) : 0
+    # maxi au-dessus de la portée reste `stem_height` + `stem_gap` (distance
+    # corde -> bas de hampe), quel que soit le nombre de ligatures. `stem_gap`
+    # manquait ici (bug constaté : une note sur la corde 1, la plus haute,
+    # pousse sa hampe/ligature au-delà de `top_y`, jusqu'à y devenir NÉGATIVE —
+    # coupée au rendu, ce qui fait disparaître le crochet/la ligature et rend
+    # une croche indiscernable d'une noire).
+    any_stem ? param(:stem_height) + param(:stem_gap) : 0
   end
 
   # Place au-dessus de la portée, dans la même zone que les hampes
