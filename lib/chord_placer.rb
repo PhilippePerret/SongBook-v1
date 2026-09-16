@@ -444,7 +444,10 @@ module ChordPlacer
     # cassait le raccourci 1 lettre pour tout accord de plus d'1 caractère). Au-delà
     # d'1 caractère, correspondance EXACTE seulement (nécessaire pour "f"+"7" : "F7"
     # existant repris seulement si "F7" lui-même est déjà connu, pas juste "F...").
-    return bucket.first if typing.length == 1
+    # Case ("-<fret>") jamais reprise ici, même si le 1er accord enregistré sous cette
+    # lettre en portait une (bug constaté : "e" reprenait "Em-0" au lieu de "Em") — le
+    # raccourci 1 lettre vise toujours l'accord SANS case.
+    return bucket.first.split("-", 2).first if typing.length == 1
 
     # "b2" = 2e accord de la lettre "b" TEL QU'AFFICHÉ dans la légende (`chord_label`) —
     # index résolu dans le bucket ACTIF (`active_letters`), PAS le bucket complet : un
