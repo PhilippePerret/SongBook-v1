@@ -108,6 +108,7 @@ diag_save_in_song_question: "Do you want to save this diagram in the current son
 diag_name_prompt: "Name to give the schema: "
 diag_conflict_nom: "This name already exists for this fret: %s"
 diag_conflict_schema: "This schema (same positions) already exists, under the name %s."
+diag_confirm_duplicate_schema_question: "Do you still want to save this same schema under this new name?"
 diag_inserted: "Schema %s inserted."
 diags_page_opened: "Diagrams page opened."
 diags_update_in_progress: "Updating all diagrams…"

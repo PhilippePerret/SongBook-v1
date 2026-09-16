@@ -202,9 +202,12 @@ class DiagSchem
   # déjà présent dans le texte tapé (case reprise telle quelle) ; sinon la case en cours
   # dans le tableau est utilisée pour reconstituer la ligne `schemas.txt` (`SchemaLibrary`
   # exige un `Nom-case`), mais le SVG s'appelle toujours EXACTEMENT le texte tapé.
-  # Vérifie 1) le nom (même nom+case) 2) SURTOUT le schéma (mêmes positions, sous
-  # n'importe quel autre nom) — refuse l'enregistrement si l'un des deux existe déjà
-  # (Phil : "trop dangereux"). Sinon insère (`SchemaLibrary`) et
+  # Vérifie 1) le nom (même nom+case) — refus ABSOLU, jamais contourné 2) le schéma
+  # (mêmes positions, sous n'importe quel autre nom) — signalé, mais demande
+  # confirmation plutôt que de refuser d'office (bug constaté : deux accords qui
+  # partagent le même schéma sous 2 noms différents, voulu par l'user, étaient bloqués
+  # comme si c'était une erreur) ; "oui" enregistre les DEUX schémas, sous leurs 2 noms,
+  # jamais un remplacement/renommage du premier. Sinon insère (`SchemaLibrary`) et
   # produit tout de suite le SVG (dossier de la lettre, ou de la chanson courante).
   def enregistrer_dans_application(prompt)
     # Mode chanson (`@song_dir`) : intention déjà explicite (commande "create diag"
@@ -237,12 +240,23 @@ class DiagSchem
 
     tokens = @sortie.split(':', 2).last.strip
     path = schema_target_path(nom)
-    case SchemaLibrary.save(nom, case_ref, tokens, path: path)
+    result = SchemaLibrary.save(nom, case_ref, tokens, path: path)
+
+    # Doublon de SCHÉMA seulement (jamais `:nom`) : demande confirmation plutôt que de
+    # refuser d'office — "oui" réessaie avec `force:`, qui passe outre CE refus-là
+    # uniquement, jamais un doublon de nom.
+    if result == :schema
+      doublon = SchemaLibrary.entries(nom, path: path).find { |e| e.tokens == tokens }
+      puts "#{ROUGE}#{format(Loc.get('diag_conflict_schema'), "#{doublon.nom}-#{doublon.case_ref}")}#{RESET}"
+      result = SchemaLibrary.save(nom, case_ref, tokens, path: path, force: true) if prompt.yes?(blue(Loc.get('diag_confirm_duplicate_schema_question')), default: false)
+    end
+
+    case result
     when :nom
       puts "#{ROUGE}#{format(Loc.get('diag_conflict_nom'), texte)}#{RESET}"
     when :schema
-      doublon = SchemaLibrary.entries(nom, path: path).find { |e| e.tokens == tokens }
-      puts "#{ROUGE}#{format(Loc.get('diag_conflict_schema'), "#{doublon.nom}-#{doublon.case_ref}")}#{RESET}"
+      # Doublon confirmé mais REFUSÉ par l'user (répondu "non" à la question ci-dessus) :
+      # déjà signalé plus haut, rien de plus à faire.
     else
       puts "#{VERT}👍 #{format(Loc.get('diag_inserted'), texte)}#{RESET}"
       @nom = nom

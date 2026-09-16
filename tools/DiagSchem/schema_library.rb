@@ -62,17 +62,21 @@ module SchemaLibrary
   end
 
   # Raison de refus (`:nom` ou `:schema`), `nil` si l'insertion est permise. Vérifie
-  # 1) le nom (même nom ET même case) 2) SURTOUT le schéma (mêmes positions, sous
-  # n'importe quel autre nom/case — un doublon visuel, plus dangereux qu'un doublon de
-  # nom). Nom comparé sous sa forme CANONIQUE (`DSLParser.normalize_chord`) — l'user
+  # 1) le nom (même nom ET même case) — refus ABSOLU, jamais contournable (deux entrées
+  # au même nom+case seraient une vraie collision d'identité) 2) le schéma (mêmes
+  # positions, sous n'importe quel autre nom/case) — signalé, mais PAS un refus définitif
+  # : deux accords peuvent légitimement partager le même schéma sous 2 noms différents
+  # (bug constaté : le même schéma sous un autre nom était bloqué comme une erreur,
+  # alors que l'user voulait bien les DEUX, comme deux diagrammes distincts) — voir
+  # `force:`. Nom comparé sous sa forme CANONIQUE (`DSLParser.normalize_chord`) — l'user
   # écrit comme il veut, majuscules ou minuscules, "cd[e]" et "Cd[E]" sont LE MÊME nom
   # (bug constaté : "c[e]-0B" enregistré en minuscule un jour, invisible de la page
   # `diags`  mais toujours trouvé en doublon par ce check — deux vérités
   # différentes pour le même accord).
-  def self.conflict(entries, nom, case_ref, tokens)
+  def self.conflict(entries, nom, case_ref, tokens, force: false)
     canon = DSLParser.normalize_chord(nom)
     return :nom if entries.any? { |e| DSLParser.normalize_chord(e.nom) == canon && e.case_ref.to_s == case_ref.to_s }
-    return :schema if entries.any? { |e| e.tokens == tokens }
+    return :schema if !force && entries.any? { |e| e.tokens == tokens }
 
     nil
   end
@@ -120,12 +124,13 @@ module SchemaLibrary
   end
 
   # Vérifie et insère en une fois — renvoie `nil` en cas de succès, ou la raison de
-  # refus (`:nom`/`:schema`).
-  def self.save(nom, case_ref, tokens, path: schemas_path(nom))
+  # refus (`:nom`/`:schema`). `force:` (confirmation explicite de l'user après un
+  # doublon `:schema` signalé) : passe outre CE refus-là uniquement, jamais `:nom`.
+  def self.save(nom, case_ref, tokens, path: schemas_path(nom), force: false)
     content = File.exist?(path) ? File.read(path) : ""
     existing = parse_lines(content.each_line.map(&:chomp))
 
-    reason = conflict(existing, nom, case_ref, tokens)
+    reason = conflict(existing, nom, case_ref, tokens, force: force)
     return reason if reason
 
     FileUtils.mkdir_p(File.dirname(path))

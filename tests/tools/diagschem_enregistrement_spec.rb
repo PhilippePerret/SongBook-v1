@@ -80,6 +80,39 @@ RSpec.describe "DiagSchem#enregistrer_dans_application" do
     expect(File.exist?(schemas_txt)).to be false
   end
 
+  # Même schéma déjà enregistré sous un autre nom : signalé, mais jamais un refus
+  # définitif — confirmation demandée, "oui" enregistre les DEUX (jamais un
+  # remplacement/renommage du premier).
+  describe "même schéma déjà enregistré sous un autre nom" do
+    before { File.write(schemas_txt, "Am6-0 : 10 21/1 32/3 42/2 50 6x\n") }
+
+    it "\"oui\" à la confirmation : enregistre le 2e nom EN PLUS, sans toucher au 1er" do
+      instance = build_instance("Am6d-0: 10 21/1 32/3 42/2 50 6x")
+      allow(SchemaLibrary).to receive(:schemas_path).and_return(schemas_txt)
+      allow(prompt).to receive(:ask).and_return("Am6d-0")
+      allow(prompt).to receive(:yes?).and_return(true)
+
+      instance.send(:enregistrer_dans_application, prompt)
+
+      content = File.read(schemas_txt)
+      expect(content).to include("Am6-0 : 10 21/1 32/3 42/2 50 6x")
+      expect(content).to include("Am6d-0 : 10 21/1 32/3 42/2 50 6x")
+      expect(File.exist?("Am6d-0.svg")).to be true
+    end
+
+    it "\"non\" à la confirmation : rien écrit de plus, le 1er reste seul" do
+      instance = build_instance("Am6d-0: 10 21/1 32/3 42/2 50 6x")
+      allow(SchemaLibrary).to receive(:schemas_path).and_return(schemas_txt)
+      allow(prompt).to receive(:ask).and_return("Am6d-0")
+      allow(prompt).to receive(:yes?).and_return(false)
+
+      instance.send(:enregistrer_dans_application, prompt)
+
+      expect(File.read(schemas_txt)).to eq("Am6-0 : 10 21/1 32/3 42/2 50 6x\n")
+      expect(File.exist?("Am6d-0.svg")).to be false
+    end
+  end
+
   # Issue #79 : `song_dir:` -> enregistre dans le `.schemas`/`.sch` DE LA CHANSON, jamais
   # dans la bibliothèque partagée de l'application (`SchemaLibrary`/`assets/`).
   describe "avec song_dir: (create diag)" do

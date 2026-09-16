@@ -116,6 +116,7 @@ diag_save_in_song_question: "Voulez-vous enregistrer ce diagramme dans la chanso
 diag_name_prompt: "Nom à donner au schéma : "
 diag_conflict_nom: "Ce nom existe déjà pour cette case : %s"
 diag_conflict_schema: "Ce schéma (mêmes positions) existe déjà, sous le nom %s."
+diag_confirm_duplicate_schema_question: "Voulez-vous quand même enregistrer ce même schéma sous ce nouveau nom ?"
 diag_inserted: "Schéma %s inséré."
 diags_page_opened: "Page des diagrammes ouverte."
 diags_update_in_progress: "Actualisation de tous les diagrammes…"
