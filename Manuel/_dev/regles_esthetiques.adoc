@@ -223,6 +223,10 @@ Solution proposée ?
 | S'il y a beaucoup d'air sous le ou les blocs de paroles de la page DROITE, essayer d'aligner la première ligne (qui est peut-être une ligne d'accords) avec la première ligne d'accords ou de texte de la page GAUCHE. Si ligne de texte, l'aligner avec la ligne de texte, sinon avec la ligne d'accords.
 |
 
+|RAL6
+|Lorsqu'une stophe contient des accords mais qu'une ligne (ou deux, ou trois) n'en contient pas, il faut pourtant faire comme si la ligne en contenait, pour maintenir l'écart entre les lignes de texte dans cette strophe.
+|
+
 |====
 
 

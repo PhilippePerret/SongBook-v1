@@ -12,10 +12,14 @@
 module Transpose
   LETTRES = %w[A B C D E F G].freeze # ordre alphabétique, PAS l'ordre chromatique
   PITCH_NATUREL = { "A" => 9, "B" => 11, "C" => 0, "D" => 2, "E" => 4, "F" => 5, "G" => 7 }.freeze
-  DIESE = %w[# ♯].freeze
+  # "d" (dièse, convention interne du projet — noms de fichiers de diags "Fd-*.svg",
+  # `Layout.convert_note_symbol`, `DSLParser.normalize_chord`) reconnu ICI au même titre
+  # que "#"/"♯" — issue #100 (basse "[Fd]" jamais transposée, ET accords PLEINS "Cdm"/
+  # "Fdm" mal transposés, MÊME cause : cette note reconnaissait seulement "#"/"♯"/"b"/"♭").
+  DIESE = %w[# ♯ d].freeze
   BEMOL = %w[b ♭].freeze
 
-  NOTE_RE = /\A([A-G])(#|♯|b|♭)?\z/
+  NOTE_RE = /\A([A-G])(#|♯|b|♭|d)?\z/
 
   # "Bb", "F#", "C" -> [lettre, altération en demi-tons (-1/0/1)]. Accepte # et ♯
   # (dièse), b et ♭ (bémol) en entrée — la sortie normalise toujours en ♯/♭
@@ -63,8 +67,11 @@ module Transpose
   # compte.
   def self.parser_entete(str)
     depart, arrivee = split_entete(str)
-    depart_lettre = depart[/\A[A-G](?:#|♯|b|♭)?/]
-    arrivee_lettre = arrivee[/\A[A-G](?:#|♯|b|♭)?/]
+    # "d(?!im)" (issue #100) : "d" reconnu comme dièse SAUF s'il démarre la qualité
+    # "dim" du reste de la chaîne (ex. "Ddim" = RÉ diminué, PAS RÉ# + "im") — même garde
+    # que `CHORD_RE` plus bas, brackets `BASS_RE` non concernés (jamais de qualité dedans).
+    depart_lettre = depart[/\A[A-G](?:#|♯|b|♭|d(?!im))?/]
+    arrivee_lettre = arrivee[/\A[A-G](?:#|♯|b|♭|d(?!im))?/]
     raise ArgumentError, "entête transpose illisible : #{str.inspect}" unless depart_lettre && arrivee_lettre
 
     decalages(depart_lettre, arrivee_lettre)
@@ -86,8 +93,14 @@ module Transpose
     "#{nouvelle_lettre}#{symbole}"
   end
 
-  CHORD_RE = /\A([A-G](?:#|♯|b|♭)?)(.*)\z/
-  BASS_RE = /\[([A-G](?:#|♯|b|♭)?)\]/
+  # "d(?!im)" (issue #100) : "d" reconnu comme dièse de la FONDAMENTALE d'un accord
+  # plein ("Fdm" = FA# mineur), SAUF s'il démarre la qualité "dim" du reste ("Ddim" = RÉ
+  # diminué, PAS RÉ# + "im" — bug constaté sur l'asset réel "Fddim[c]-3.svg" = FA#
+  # diminué, où le 2e "d" démarre bien "dim", le 1er reste la seule vraie altération).
+  CHORD_RE = /\A([A-G](?:#|♯|b|♭|d(?!im))?)(.*)\z/
+  # Basse entre crochets ("[Fd]") : ne contient JAMAIS de suffixe de qualité derrière —
+  # "d" y est donc SANS AMBIGUÏTÉ un dièse, pas besoin du garde `(?!im)` ci-dessus.
+  BASS_RE = /\[([A-G](?:#|♯|b|♭|d)?)\]/
 
   # Accord complet ("Bb7", "F#m", "C") : sépare tonique et qualité, transpose
   # seulement la tonique, recolle la qualité telle quelle. "F/C" (2 accords de la
