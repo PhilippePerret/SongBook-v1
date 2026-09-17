@@ -73,8 +73,9 @@ Exemple :
 [cols="1,1,5", options="header"]
 |====
 | Propritété | Valeur | Description
-.12+| `position`   | `Front` | Placement sous la bande de titre, avant les paroles.
+.13+| `position`   | `Front` | Placement sous la bande de titre, avant les paroles.
                   | `End`   | Placement à la fin de la chanson, après les paroles.
+                  | `Back`  | Placement à la fin du LIVRE (grilles rassemblées, dédoublonnées), sauf les accords listés dans `diag_list` qui restent sur la page de la chanson.
                   | `Left`  | Placement à gauche des paroles.
                   | `Ext`   | Placement à l'extérieur, donc à l'opposé de la reliure.
                   | `Right` | Placement à droite des paroles.

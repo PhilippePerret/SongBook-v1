@@ -1,5 +1,5 @@
 :doctype: book
-= Manuel SongBook
+= Manuel SongBook =
 :toc:
 
 ++++

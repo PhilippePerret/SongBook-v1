@@ -219,6 +219,10 @@ Solution proposée ?
 | S'il n'y a pas de colonne de diags ou si ces colonnes sont vides (aucun diag), les strophes doivent être alignées au centre de toute la page, horizontalement, donc par rapport aux marges gauche et droite.
 |
 
+|RAL5
+| S'il y a beaucoup d'air sous le ou les blocs de paroles de la page DROITE, essayer d'aligner la première ligne (qui est peut-être une ligne d'accords) avec la première ligne d'accords ou de texte de la page GAUCHE. Si ligne de texte, l'aligner avec la ligne de texte, sinon avec la ligne d'accords.
+|
+
 |====
 
 

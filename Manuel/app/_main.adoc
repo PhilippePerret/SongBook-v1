@@ -1,11 +1,11 @@
 [[options, options]]
-=== Options ===
+== Options ==
 
 On peut définir dans le fichier `infos` (`inf`) toutes les options gérant la fabrication des carnets ou des chansons.
 
 NOTE: Noter que s'il y des options réglées pour le carnet en construction et des options réglées pour la chanson la précédence se fait en fonction de la nature de l'option, sauf dans le cas où l'option `todo: à déterminer` est à `true`.
 
-==== Options générales ====
+=== Options générales ===
 
 [cols="2,6,3,1,1", options="header"]
 |====
@@ -28,7 +28,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 |====
 
 [[printer-options]]
-==== Options d'impression ====
+=== Options d'impression ===
 
 [cols="1,5,3", options="header"]
 |====
@@ -97,7 +97,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 
 
 [[tdm-options]]
-==== Options de la tables des matières ====
+=== Options de la tables des matières ===
 
 [cols="2,6,3,1,1", options="header"]
 |====
@@ -127,7 +127,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 
 
 [[band-title-option]]
-==== Options de la « bande de titre » ====
+=== Options de la « bande de titre » ===
 
 [cols="2,6,3,1,1", options="header"]
 |====
@@ -150,7 +150,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 
 
 [[lyrics-options]]
-==== Options des paroles ====
+=== Options des paroles ===
 
 [cols="2,6,3,1,1", options="header"]
 |====
@@ -174,7 +174,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 
 
 [[diags-options]]
-==== Options des diagrammes ====
+=== Options des diagrammes ===
 
 [cols="2,6,3", options="header"]
 |====
@@ -237,7 +237,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 
 
 [[tablatures-options]]
-==== Options sur les tablatures ====
+=== Options sur les tablatures ===
 
 [cols="2,6,3", options="header"]
 |====
@@ -273,7 +273,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 
 
 [[scores-options]]
-==== Options sur les partitions ====
+=== Options sur les partitions ===
 
 [cols="2,6,3", options="header"]
 |====
@@ -300,7 +300,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 
 
 [[song-options, options chanson]]
-==== Options propres aux chansons ====
+=== Options propres aux chansons ===
 
 __(donc qu'on ne trouve que dans un fichier `.infos` d'une chanson)__
 
@@ -311,7 +311,7 @@ __(donc qu'on ne trouve que dans un fichier `.infos` d'une chanson)__
 |====
 
 [[option-diags]]
-===== Options pour les diags =====
+==== Options pour les diags ====
 
 ----
 diags:
@@ -372,7 +372,7 @@ tabs:
 ----
 
 [[songbook-options, options du carnet]]
-==== Options du carnet ====
+=== Options du carnet ===
 
 Ces options sont à définir (si changement par rapport au comportement par défaut) dans le fichier `infos` (ou `inf`) du carnet, donc à la racine de son dossier.
 
