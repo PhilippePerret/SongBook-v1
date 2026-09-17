@@ -54,10 +54,14 @@ module Layout
   # si l'entrée n'en a pas (cas normal, immense majorité des chansons) — affiché sous le
   # bandeau témoin pour repérer une page précise dans un carnet d'essai.
   @current_ref_index = nil
+  # `[chord, fret, song_dir]` accumulés pendant le build quand `diags_position: Back`
+  # (issue #98) — vidé par `reset_conflicts!`, lu/dédoublonné par `CarnetBuilder.build`
+  # une fois toutes les chansons rendues.
+  @back_diags = []
   class << self
     attr_accessor :conflict_log_path, :building_log_path, :current_song, :current_page, :char_spacing, :word_spacing,
       :sensitivity, :log_conflict_count, :carnet_font_baseline,
-      :folio_position, :current_ref_index
+      :folio_position, :current_ref_index, :back_diags
   end
 
   # Taille/style/gras du titre tab/score/image (`title:`/nom de déclaration) — options
@@ -161,6 +165,7 @@ module Layout
     CONFLICTS.clear
     @missing_chords = Hash.new { |h, k| h[k] = [] }
     @log_conflict_count = 0
+    @back_diags = []
   end
   @missing_chords = Hash.new { |h, k| h[k] = [] }
 
@@ -2866,13 +2871,17 @@ module Layout
     when :front
       block_h, excess, w = draw_diag_front_block(pdf, diag_paths, header_bottom, align: align)
       [0, pdf.bounds.width, header_bottom - block_h, nil, excess, w]
-    when :end
+    when :end, :back
       # Rattachés à la VRAIE fin des paroles (dernière page réelle, pas juste la page 1
       # comme `bottom`) — RIEN réservé ici (Phil, point 5), tous les diags entrent
       # directement dans le mécanisme d'excédent (RAD5/6/7/10, `paginate_and_draw`),
       # exactement comme un excédent de colonne. `DIAG_W` : aucune rangée dessinée avant
       # pour établir une largeur de référence déjà rétrécie. `align` PAS encore branché
       # ici (mécanisme partagé avec les débordements RAD7-10, non touché).
+      # `:back` (issue #98) : `diag_paths` reçu ici est DÉJÀ réduit aux seuls accords de
+      # `diag_list` (voir `PageBuilder.build`/`chord_frets_kept_on_song_page`) — le reste
+      # des accords de la chanson est ailleurs (`Layout.back_diags`), rassemblé en fin de
+      # livre par `CarnetBuilder.build`, jamais ici.
       [0, pdf.bounds.width, header_bottom, nil, diag_paths, Options.get(:diags_size)]
     else # :left, défaut
       diag_w = diag_column_width(diag_paths, header_bottom, pdf.bounds.height)

@@ -838,6 +838,16 @@ module PageBuilder
     end
   end
 
+  # `diags_position: Back` (issue #98) : seuls les accords listés EXPLICITEMENT dans
+  # `diag_list` restent sur la page de la chanson — "all" (défaut) ne veut plus dire "tout
+  # afficher ici" mais "tout envoyer en fin de livre" (`Layout.back_diags`, voir `build`).
+  def self.chord_frets_kept_on_song_page(chord_frets)
+    diag_list = Options.get(:diag_list).to_s.strip.downcase
+    return [] if %w[all none false list].include?(diag_list) || diag_list.empty?
+
+    filter_chord_frets(chord_frets)
+  end
+
   # Paires [accord, case] d'une chanson SEULES (`ChordDiagrams.collect_chord_frets`),
   # transposition appliquée comme en production réelle (`build`) — scan LÉGER pour
   # `missing diags` (CLI) : aucun PDF généré, juste `.lyr`/`.infos` lus.
@@ -981,7 +991,13 @@ module PageBuilder
       header_bottom = header_style == :band ? Layout.draw_header_band(pdf, meta, capo_side: capo_side) : Layout.draw_header_inline(pdf, meta, capo_side: capo_side)
       Layout.log_build("titre en #{header_style == :band ? "bandeau" : "ligne simple"} (header_style)")
 
-      chord_frets = filter_chord_frets(ChordDiagrams.collect_chord_frets(lyr_blocks.values))
+      all_chord_frets = ChordDiagrams.collect_chord_frets(lyr_blocks.values)
+      if diag_position == :back
+        chord_frets = chord_frets_kept_on_song_page(all_chord_frets)
+        (all_chord_frets - chord_frets).each { |chord, fret| Layout.back_diags << [chord, fret, folder] }
+      else
+        chord_frets = filter_chord_frets(all_chord_frets)
+      end
       diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret, carnet_dir: carnet_folder, song_dir: folder) }
       Layout.log_build("#{diag_paths.size} diagramme(s) d'accord, position=#{dynamic_mode ? "#{dynamic_mode} (résolu page par page)" : diag_position}")
 

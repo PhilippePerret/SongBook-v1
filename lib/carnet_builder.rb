@@ -678,6 +678,10 @@ module CarnetBuilder
     # --- 3) Rendu final des chansons, dans l'ordre du TDM (déplacé/complété par #54 si
     # besoin), page par page RÉELLE -------------------------------------------------
     render_songs_pass = lambda do |page_count_for_margins, page_counts|
+      # Repartis à zéro à CHAQUE passe (`measure_song_pages` en a déjà rempli/sali un via
+      # ses propres appels `PageBuilder.build`, jetés ensuite) — seule la DERNIÈRE passe
+      # de rendu réel doit compter (issue #98, `diags_position: Back`).
+      Layout.back_diags = []
       entries = [] # {name:, interprete:, compositeur:, parolier:, first_page:, last_page:}
       combined_songs = CombinePDF.new
       page_no = front_matter_page_count + 1
@@ -740,14 +744,60 @@ module CarnetBuilder
 
     entries, combined_songs, last_song_page = render_result[:entries], render_result[:combined], render_result[:last_song_page]
 
-    # --- 3bis) TDM "end" (tdm_position) : juste avant le colophon. Parité (1p -> belle-
-    # page, 2p -> fausse-page, >2p -> toujours belle-page) forcée via une page blanche si
-    # besoin. "front" : déjà dans `front_specs` (voir 2), rien à refaire ici.
+    # --- 3ter) Grilles des accords rassemblés (`diags_position: Back`, issue #98) : les
+    # accords non gardés sur leur page de chanson (`Layout.back_diags`, rempli par
+    # `PageBuilder.build`) sont dédoublonnés (accord+case EXACTS, "Am-0O" != "Am-0") puis
+    # classés, résolus en chemins SVG (précédence carnet > chanson d'origine > défaut app,
+    # comme `ChordDiagrams.diag_path` partout ailleurs), et paginés en grille (mêmes
+    # formules que `Layout.draw_diags_grid`, dupliquées ici pour un DOCUMENT SÉPARÉ —
+    # jamais de page numérotée dessus, comme la TDM/le colophon, voir `draw_back_diags_page`).
+    # Réglages (taille/alignement) : cascade carnet SEUL (`infos_path`, sans chanson),
+    # jamais ceux, périmés, de la dernière chanson rendue par `render_songs_pass`.
+    resolve_back_matter = lambda do
+      Options.load!(meta: {}, infos_path: infos_path, carnet_folder: nil, layout_preset: layout_preset)
+      diag_w = Options.get(:diags_size)
+      diag_align = Options.get(:diags_align).to_sym
+      back_entries = Layout.back_diags.uniq { |chord, fret, _| [chord, fret] }.sort_by { |chord, _, _| chord }
+      paths = back_entries.filter_map { |chord, fret, song_dir| ChordDiagrams.diag_path(chord, fret: fret, carnet_dir: carnet_folder, song_dir: song_dir) }
+      next { paths: [], slices: [], diag_w: diag_w, diag_align: diag_align, page_count: 0 } if paths.empty?
+
+      gap_h = Layout.min_h_dist(:diags)
+      gap_v = Layout.min_v_dist(:diags)
+      content_w_pt = page_w_pt - Layout.in_pt(printer_probe.outside_margin) - Layout.in_pt(printer_probe.gutter_margin)
+      diag_h = paths.map { |p| Layout.svg_height_for(File.read(p), diag_w) }.max
+      cols = [((content_w_pt + gap_h) / (diag_w + gap_h)).floor, 1].max
+      rows_per_page = [((content_h_pt - TOC_HEADING_RESERVE + gap_v) / (diag_h + gap_v)).floor, 1].max
+      slices = paths.each_slice(cols * rows_per_page).to_a
+      { paths: paths, slices: slices, diag_w: diag_w, diag_align: diag_align, page_count: slices.size }
+    end
+    back_matter = resolve_back_matter.call
+
+    # --- 3bis) TDM "end" (tdm_position) : juste avant le colophon (après les grilles
+    # d'accords rassemblées ci-dessus, s'il y en a). Parité (1p -> belle-page, 2p ->
+    # fausse-page, >2p -> toujours belle-page) forcée via une page blanche si besoin.
+    # "front" : déjà dans `front_specs` (voir 2), rien à refaire ici pour la TDM — mais
+    # les grilles d'accords, elles, vont TOUJOURS juste après les chansons (Phil :
+    # "tdm_position=front => diags AVANT le colophon, tdm_position=end => diags AVANT la
+    # tdm" — dans les deux cas, juste après `last_song_page`).
     compute_totals = lambda do |last_page|
+      back_page_count = back_matter[:page_count]
+      if back_page_count.positive?
+        # Parité de la section Back : simple parité du nombre de pages qu'elle prend
+        # (paire -> démarre en fausse-page/gauche, impaire -> belle-page/droite), PAS la
+        # règle spéciale de `toc_parity` (Phil, réponse issue #98).
+        back_start = force_parity(last_page + 1, back_page_count.even? ? :even : :odd)
+        needs_blank_before_back = back_start != last_page + 1
+        back_end = back_start + back_page_count - 1
+      else
+        back_start = nil
+        needs_blank_before_back = false
+        back_end = last_page
+      end
+
       toc_at_end = tdm_position != "front"
       end_toc_list = toc_at_end ? toc_page_list : []
-      toc_start = force_parity(last_page + 1, toc_parity(end_toc_list.size))
-      needs_blank_before_toc = toc_start != last_page + 1
+      toc_start = force_parity(back_end + 1, toc_parity(end_toc_list.size))
+      needs_blank_before_toc = toc_start != back_end + 1
       toc_end = toc_start + end_toc_list.size - 1
 
       if credits_page
@@ -762,7 +812,8 @@ module CarnetBuilder
         colophon_page_no = nil
         total = toc_end
       end
-      { toc_at_end: toc_at_end, end_toc_list: end_toc_list, toc_start: toc_start, needs_blank_before_toc: needs_blank_before_toc,
+      { back_start: back_start, back_end: back_end, needs_blank_before_back: needs_blank_before_back,
+        toc_at_end: toc_at_end, end_toc_list: end_toc_list, toc_start: toc_start, needs_blank_before_toc: needs_blank_before_toc,
         toc_end: toc_end, colophon_page_no: colophon_page_no, needs_blank_before_colophon: needs_blank_before_colophon, total_page_count: total }
     end
 
@@ -786,11 +837,12 @@ module CarnetBuilder
       return render_result[:only_song_out] if render_result[:only_song_out]
 
       entries, combined_songs, last_song_page = render_result[:entries], render_result[:combined], render_result[:last_song_page]
+      back_matter = resolve_back_matter.call
       totals = compute_totals.call(last_song_page)
     end
 
-    toc_at_end, end_toc_list, toc_start, needs_blank_before_toc, toc_end, colophon_page_no, needs_blank_before_colophon, total_page_count =
-      totals.values_at(:toc_at_end, :end_toc_list, :toc_start, :needs_blank_before_toc, :toc_end, :colophon_page_no, :needs_blank_before_colophon, :total_page_count)
+    back_start, back_end, needs_blank_before_back, toc_at_end, end_toc_list, toc_start, needs_blank_before_toc, toc_end, colophon_page_no, needs_blank_before_colophon, total_page_count =
+      totals.values_at(:back_start, :back_end, :needs_blank_before_back, :toc_at_end, :end_toc_list, :toc_start, :needs_blank_before_toc, :toc_end, :colophon_page_no, :needs_blank_before_colophon, :total_page_count)
 
     if %w[amazon kdp].include?(conf["printer"].to_s.downcase)
       min, max = PrinterProfile.page_count_range
@@ -815,7 +867,31 @@ module CarnetBuilder
       loaded
     end
 
-    combined_songs << render_blank_page.call(printer_final, last_song_page + 1) if needs_blank_before_toc
+    blank_before_back = render_blank_page.call(printer_final, last_song_page + 1) if needs_blank_before_back
+
+    # --- 3ter bis) Rendu des grilles d'accords rassemblées (voir 3ter, issue #98) — jamais
+    # de numéro de page dessus, comme la TDM/le colophon (aucun des deux n'en a).
+    back_combined = nil
+    unless back_matter[:slices].empty?
+      back_out = File.join(export_dir, ".tmp-back.pdf")
+      Prawn::Document.generate(back_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
+        Layout.register_fonts(pdf)
+        back_matter[:slices].each_with_index do |slice, i|
+          page_no = back_start + i
+          pdf.start_new_page if i.positive?
+          Layout.apply_print_margins(pdf, printer_final, page_no, page_w_pt, page_h_pt)
+          Layout.current_song = "(carnet)"
+          Layout.current_page = page_no
+          Layout.log_build("grilles des accords rassemblées (page #{i + 1}/#{back_matter[:slices].size}) rendue (issue #98)")
+          draw_heading(pdf, "Grilles des accords") if i.zero?
+          draw_back_diags_page(pdf, slice, back_matter[:diag_w], back_matter[:diag_align])
+        end
+      end
+      back_combined = CombinePDF.load(back_out)
+      File.delete(back_out)
+    end
+
+    blank_before_toc = render_blank_page.call(printer_final, back_end + 1) if needs_blank_before_toc
 
     # --- 4) Front matter (garde/faux-titre/textes), avec les VRAIES pages connues ------
     front_out = File.join(export_dir, ".tmp-front.pdf")
@@ -871,6 +947,9 @@ module CarnetBuilder
 
     # --- 6) Assemblage final ----------------------------------------------------------
     combined = CombinePDF.load(front_out) << combined_songs
+    combined << blank_before_back if blank_before_back
+    combined << back_combined if back_combined
+    combined << blank_before_toc if blank_before_toc
     combined << toc_combined if toc_combined
     combined << blank_before_colophon if blank_before_colophon
     combined << CombinePDF.load(colophon_out) if credits_page
@@ -1191,6 +1270,34 @@ module CarnetBuilder
     y = pdf.bounds.height - 20
     descent = Layout.font_metric(pdf, 14) { pdf.font.descender }
     Layout.engrave(bottom: y - descent, context: "titre de section") { pdf.draw_text text, at: [0, y], size: 14, style: :bold }
+  end
+
+  # Une page de la section "Grilles des accords" (issue #98) : `paths` = les diagrammes
+  # de CETTE page (déjà tranchés par `resolve_back_matter`, voir `build`) — grille de
+  # rangées, mêmes formules que `Layout.draw_diags_grid` (dupliquées ici, DOCUMENT séparé,
+  # jamais mêlé au mécanisme d'excédent RAD5/6/7/10 d'une chanson). `TOC_HEADING_RESERVE`
+  # réservé en haut sur TOUTES les pages de la section (même sans titre affiché dessus,
+  # continuation) — sinon la pagination précalculée (`resolve_back_matter`) diverge du
+  # rendu réel.
+  def self.draw_back_diags_page(pdf, paths, diag_w, align)
+    diag_h = paths.map { |p| Layout.svg_height_for(File.read(p), diag_w) }.max
+    gap_h = Layout.min_h_dist(:diags)
+    gap_v = Layout.min_v_dist(:diags)
+    cols = [((pdf.bounds.width + gap_h) / (diag_w + gap_h)).floor, 1].max
+    top_y = pdf.bounds.height - TOC_HEADING_RESERVE
+    paths.each_slice(cols).with_index do |row, ri|
+      row_align = Layout.rad12_align(align, pdf.bounds.width, row.size, diag_w)
+      row_gap = Layout.diag_row_gap(row_align, pdf.bounds.width, row.size, diag_w)
+      row_w = row.size * diag_w + [row.size - 1, 0].max * row_gap
+      x0 = Layout.diag_row_x(row_align, 0, pdf.bounds.width, row_w, row_gap)
+      y = top_y - ri * (diag_h + gap_v)
+      row.each_with_index do |path, ci|
+        x = x0 + ci * (diag_w + row_gap)
+        Layout.engrave(bottom: y - diag_h, context: "diagramme (grilles des accords)") do
+          pdf.svg(IO.read(path), at: [x, y], width: diag_w, position: :left, enable_web_requests: false)
+        end
+      end
+    end
   end
 
   # `sort` :song garde l'ordre du TDM (une ligne par chanson) ; :performer/:composer/
