@@ -244,6 +244,12 @@ module ChordPlacer
             merge_next = false
             if editable.any? { |i| chord_lines[i].chords.any? } && confirm_delete_all
               editable.each { |i| chord_lines[i].chords.clear }
+              # "X" (TOUS les accords effacés) : les raccourcis clavier repartent aussi à
+              # zéro (issue #102) — contrairement à "x" (un seul accord), qui laisse le
+              # raccourci disponible pour le reposer ailleurs (`active_letters`, voir plus
+              # bas), "X" est une remise à zéro totale, `.cached` compris.
+              letters.clear
+              save_cached_chords(song_dir, [])
               dirty = true
             end
           when "J"
