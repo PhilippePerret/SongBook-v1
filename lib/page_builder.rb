@@ -1001,7 +1001,7 @@ module PageBuilder
       diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret, carnet_dir: carnet_folder, song_dir: folder) }
       Layout.log_build("#{diag_paths.size} diagramme(s) d'accord, position=#{dynamic_mode ? "#{dynamic_mode} (résolu page par page)" : diag_position}")
 
-      text_x, text_w, first_avail_h, side_col, row_excess, row_excess_w = Layout.layout_diags(pdf, diag_paths, dynamic_mode ? :left : diag_position, header_bottom, align: diag_align)
+      text_x, text_w, first_avail_h, side_col, row_excess, row_excess_w, side_col2 = Layout.layout_diags(pdf, diag_paths, dynamic_mode ? :left : diag_position, header_bottom, align: diag_align)
       text_x_r, side_col_r = if dynamic_mode
         tx_r, _, _, sc_r, = Layout.layout_diags(pdf, diag_paths, :right, header_bottom, align: diag_align)
         [tx_r, sc_r]
@@ -1113,7 +1113,7 @@ module PageBuilder
         ) if dynamic_mode
       end
 
-      Layout.paginate_and_draw(pdf, elements, first_avail_h, printer: printer, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col, text_x: text_x, text_w: text_w, debug_marks: debug_marks,
+      Layout.paginate_and_draw(pdf, elements, first_avail_h, printer: printer, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col, side_col2: side_col2, text_x: text_x, text_w: text_w, debug_marks: debug_marks,
         dynamic_mode: dynamic_mode, elements_alt: elements_r, side_col_alt: side_col_r, text_x_alt: text_x_r, row_excess: row_excess, row_excess_w: row_excess_w, row_excess_align: diag_align)
     end
   end

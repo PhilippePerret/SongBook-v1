@@ -1581,7 +1581,13 @@ module Layout
   # étant la largeur RÉELLE choisie pour la rangée (référence RAD10 pour la grille de
   # secours, voir plus bas). Jamais les deux en même temps que `side_col` (une chanson a
   # soit une colonne, soit une rangée, jamais les deux).
-  def self.paginate_and_draw(pdf, elements, first_avail_h, printer:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, text_x: 0, text_w: nil, debug_marks: false,
+  # `side_col2` (`Left-Right`, issue #103) : 2e colonne, dessinée EN PLUS de `side_col`
+  # sur les MÊMES pages — pas une alternative page par page comme `side_col_alt`
+  # (mutuellement exclusifs : `dynamic_mode` n'est jamais actif avec `Left-Right`, voir
+  # `PageBuilder.build`). Pagination/rognage dupliqués pour `side_col2` (mêmes règles
+  # que `side_col`) ; tout excédent des deux colonnes part directement en page dédiée,
+  # sans la fusion en bas de dernière page réservée au cas mono-colonne.
+  def self.paginate_and_draw(pdf, elements, first_avail_h, printer:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, side_col2: nil, text_x: 0, text_w: nil, debug_marks: false,
       dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil, row_excess: [], row_excess_w: Options.get(:diags_size), row_excess_align: :center)
     heights = elements.map(&:height)
     trailing_extra = row_excess.any? ? estimate_excess_grid_height(row_excess, text_w || pdf.bounds.width) : 0
@@ -1647,6 +1653,53 @@ module Layout
       end
     end
 
+    # `side_col2` (`Left-Right`, issue #103) : 2e colonne, dessinée EN PLUS de
+    # `side_col` sur les MÊMES pages (jamais une ALTERNATIVE page par page comme
+    # `side_col_alt`/`int`/`ext`) — même mécanique de pagination/rognage que `side_col`
+    # ci-dessus, dupliquée ici plutôt que factorisée pour ne pas toucher au chemin
+    # `side_col_alt` existant (réutilisation DÉLIBÉRÉE de la même pagination pour les
+    # deux variantes gauche/droite, voir plus haut).
+    side_elements2 = []
+    side_pages2 = []
+    excess_paths2 = []
+    excess_heights2 = []
+    if side_col2
+      side_elements2 = side_col2[:paths].each_with_index.map do |path, i|
+        h = side_col2[:heights][i]
+        x = side_col2[:x]
+        w = side_col2[:width]
+        PageElement.new(h, lambda do |pdf_, y|
+          engrave(bottom: y - h, context: "diagramme") { pdf_.svg(IO.read(path), at: [x, y], width: w, position: :left, enable_web_requests: false) }
+        end)
+      end
+      side_pages2_all = paginate(side_elements2, first_avail_h, pdf.bounds.height, type: :diags, top_type: :band_diag)
+      if side_pages2_all.size > pages.size
+        side_pages2 = side_pages2_all.first(pages.size)
+        excess_start2 = side_pages2.empty? ? 0 : side_pages2.last[:finish]
+        excess_paths2 = side_col2[:paths][excess_start2..] || []
+        excess_heights2 = side_col2[:heights][excess_start2..] || []
+      else
+        side_pages2 = side_pages2_all
+      end
+
+      unless side_pages2.empty?
+        last2 = side_pages2.last
+        loop do
+          els2 = side_elements2[last2[:start]...last2[:finish]]
+          heights2, gutters2 = side_column_gutters(last2, els2, top_type: side_pages2.size == 1 ? :band_diag : :diags, align: side_col2[:align] || :justify)
+          break if heights2.empty?
+
+          clearance2 = last2[:avail_h] - gutters2.sum - heights2.sum
+          break if clearance2 >= DIAG_COLUMN_BOTTOM_SAFETY_PT || last2[:finish] <= last2[:start]
+
+          last2[:finish] -= 1
+        end
+        excess_start2 = last2[:finish]
+        excess_paths2 = side_col2[:paths][excess_start2..] || []
+        excess_heights2 = side_col2[:heights][excess_start2..] || []
+      end
+    end
+
     # Passe VIRTUELLE (aucun dessin) : les diags en trop, réagencés en grille à la largeur
     # de la colonne TEXTE (`text_w`, PAS la colonne de diags), tiennent-ils avec le reste
     # de la DERNIÈRE page de texte (E1, E2...) ? Décidé AVANT tout dessin : impossible de
@@ -1667,7 +1720,11 @@ module Layout
     #          principe avec `row_excess_w`, la largeur réellement choisie pour la
     #          rangée — jamais `DIAG_W` nominal recalculé à part non plus.
     merged_last_page = nil
-    unless excess_paths.empty? || text_w.nil? || pages.empty?
+    # `side_col2` (`Left-Right`) : jamais de fusion en bas de page ici — l'alignement
+    # RAD9 plus bas suppose UNE seule colonne de référence (côté reliure) ; en mode
+    # deux colonnes, tout excédent (`excess_paths`/`excess_paths2`) part directement en
+    # page dédiée (`draw_diags_grid`, fin de méthode), jamais optimisé en bas de page.
+    unless excess_paths.empty? || text_w.nil? || pages.empty? || side_col2
       gap_h = min_h_dist(:diags)
       gap_v = min_v_dist(:diags)
 
@@ -1755,7 +1812,14 @@ module Layout
       end
     end
 
-    page_count = [pages.size, side_pages.size, 1].max
+    page_count = [pages.size, side_pages.size, side_pages2.size, 1].max
+    # RAL5 (Manuel/regles_esthetiques.adoc) : y de la 1re ligne de la page VERSO (gauche)
+    # la plus récemment rendue — consultée par la page RECTO (droite) suivante, dans CETTE
+    # MÊME chanson uniquement (coordonnées Y comparables d'une page à l'autre : mêmes
+    # marges haut/bas pour toutes les pages d'une même chanson, `apply_print_margins`).
+    # Remise à `nil` à chaque page recto (voir plus bas) : jamais une valeur PÉRIMÉE
+    # réutilisée si deux page recto se suivaient sans verso entre les deux.
+    prev_verso_first_line_y = nil
     page_count.times do |i|
       page_no = first_page_no + i
       self.current_page = page_no
@@ -1796,6 +1860,29 @@ module Layout
         # v22, "Ad libitum" recouvert par la 1re ligne de diags).
         y = page[:avail_h] - gutters[0] - balance_shift
 
+        # RAL5 (Manuel/regles_esthetiques.adoc) : beaucoup d'air sous les paroles de cette
+        # page DROITE -> essayer d'aligner sa 1re ligne sur celle de la page GAUCHE en
+        # vis-à-vis (`prev_verso_first_line_y`, même chanson, page immédiatement
+        # précédente) plutôt que le centrage générique (`balance_shift` ci-dessus).
+        # "Essayer" SEULEMENT, jamais au prix des règles déjà en place (RAD7/8/9/10,
+        # `min_v_dist`) — TOUJOURS prioritaires (Phil, "Bungalow Bill" p.79, RAL5 avait
+        # poussé le texte JUSQUE DANS la grille de diags fusionnée en bas de page) :
+        #   - `!merging_here` : jamais si une grille de diags est fusionnée au bas de
+        #     CETTE page — sa réservation (`try_width`/`column_bottom_y`) a déjà fixé la
+        #     seule position sûre, RAL5 n'a pas à y toucher (même garde que `balance_shift`
+        #     juste au-dessus, RAD7).
+        #   - `min_v_dist(:default)` : même distance minimale texte<->bas de page que
+        #     `try_width` ailleurs — jamais seulement "ne dépasse pas y=0", un ÉCART reste
+        #     du.
+        if !merging_here && printer.facing_pages && printer.recto?(page_no) && prev_verso_first_line_y
+          content_span = page_heights.sum + gutters[1..].sum
+          if prev_verso_first_line_y - content_span >= min_v_dist(:default)
+            y = prev_verso_first_line_y
+            log_build("1re ligne calée sur celle de la page gauche en vis-à-vis (RAL5)")
+          end
+        end
+        first_line_y = y
+
         # RAL4 (Manuel/regles_esthetiques.adoc) : pas de colonne de diags SUR CETTE PAGE
         # précise (position sans colonne, OU colonne existante mais épuisée ici — chanson
         # à cheval sur plusieurs pages, diags déjà tous montrés plus tôt,
@@ -1804,7 +1891,10 @@ module Layout
         # `pdf.translate` (translation pure, aucune distorsion) plutôt que reconstruire les
         # éléments : `text_x`/`text_w` déjà figés dans chaque `PageElement` à la création.
         side_page_here = side_pages[i]
-        no_diags_here = !merging_here && (side_col.nil? || side_page_here.nil? || side_page_here[:finish] == side_page_here[:start])
+        side_page_here2 = side_pages2[i]
+        col1_empty = side_col.nil? || side_page_here.nil? || side_page_here[:finish] == side_page_here[:start]
+        col2_empty = side_col2.nil? || side_page_here2.nil? || side_page_here2[:finish] == side_page_here2[:start]
+        no_diags_here = !merging_here && col1_empty && col2_empty
         ral4_shift = no_diags_here ? (pdf.bounds.width - text_w) / 2.0 - cur_text_x : 0.0
 
         page_els.each_with_index do |el, j|
@@ -1900,28 +1990,56 @@ module Layout
         end
       end
 
+      # RAL5 : valeur consultée par la PROCHAINE page recto (voir plus haut) — mise à
+      # jour à CHAQUE page (y compris `nil` sur une page recto ou sans texte), jamais
+      # laissée traîner au-delà de la page verso qui vient d'être rendue.
+      prev_verso_first_line_y = (page && printer.facing_pages && printer.verso?(page_no)) ? first_line_y : nil
+
       side_page = side_pages[i]
-      next unless side_page
+      if side_page
+        side_page_els = cur_side_elements[side_page[:start]...side_page[:finish]]
+        side_page_heights, side_gutters = side_column_gutters(side_page, side_page_els, top_type: i.zero? ? :band_diag : :diags, align: side_col[:align] || :justify)
 
-      side_page_els = cur_side_elements[side_page[:start]...side_page[:finish]]
-      side_page_heights, side_gutters = side_column_gutters(side_page, side_page_els, top_type: i.zero? ? :band_diag : :diags, align: side_col[:align] || :justify)
-
-      y = side_page[:avail_h] - side_gutters[0]
-      side_page_els.each_with_index do |el, j|
-        el.draw.call(pdf, y)
-        y -= side_page_heights[j]
-        y -= side_gutters[j + 1] if j + 1 < side_gutters.size
+        y = side_page[:avail_h] - side_gutters[0]
+        side_page_els.each_with_index do |el, j|
+          el.draw.call(pdf, y)
+          y -= side_page_heights[j]
+          y -= side_gutters[j + 1] if j + 1 < side_gutters.size
+        end
+        if y < -0.01
+          conflict!("diagrammes dépassent la zone sûre de #{-y.round(2)}pt", solution: "dessinés quand même, hors zone sûre")
+        end
       end
-      if y < -0.01
-        conflict!("diagrammes dépassent la zone sûre de #{-y.round(2)}pt", solution: "dessinés quand même, hors zone sûre")
+
+      # `side_col2` (`Left-Right`) : 2e colonne dessinée EN PLUS de la précédente sur la
+      # même page — jamais d'alternance `dynamic_mode` ici (mutuellement exclusif avec
+      # `Left-Right`, voir `PageBuilder.build`).
+      side_page2 = side_pages2[i]
+      if side_page2
+        side_page2_els = side_elements2[side_page2[:start]...side_page2[:finish]]
+        side_page2_heights, side_gutters2 = side_column_gutters(side_page2, side_page2_els, top_type: i.zero? ? :band_diag : :diags, align: side_col2[:align] || :justify)
+
+        y2 = side_page2[:avail_h] - side_gutters2[0]
+        side_page2_els.each_with_index do |el, j|
+          el.draw.call(pdf, y2)
+          y2 -= side_page2_heights[j]
+          y2 -= side_gutters2[j + 1] if j + 1 < side_gutters2.size
+        end
+        if y2 < -0.01
+          conflict!("diagrammes dépassent la zone sûre de #{-y2.round(2)}pt", solution: "dessinés quand même, hors zone sûre")
+        end
       end
     end
 
-    return if excess_paths.empty?
+    return if excess_paths.empty? && excess_paths2.empty?
 
-    draw_diags_grid(pdf, excess_paths, excess_heights, printer: printer, page_w_pt: page_w_pt, page_h_pt: page_h_pt,
-      first_page_no: first_page_no + page_count, debug_marks: debug_marks, diag_w: side_col ? side_col[:width] : Options.get(:diags_size),
-      align: side_col ? (side_col[:align] || :justify) : row_excess_align)
+    all_excess_paths = excess_paths + excess_paths2
+    all_excess_heights = excess_heights + excess_heights2
+    grid_ref_w = side_col ? side_col[:width] : (side_col2 ? side_col2[:width] : Options.get(:diags_size))
+    grid_align = side_col ? (side_col[:align] || :justify) : (side_col2 ? (side_col2[:align] || :justify) : row_excess_align)
+
+    draw_diags_grid(pdf, all_excess_paths, all_excess_heights, printer: printer, page_w_pt: page_w_pt, page_h_pt: page_h_pt,
+      first_page_no: first_page_no + page_count, debug_marks: debug_marks, diag_w: grid_ref_w, align: grid_align)
   end
 
   # RAD6 : diags en excès — regroupés horizontalement, plusieurs par ligne, sur une ou
@@ -2847,30 +2965,45 @@ module Layout
   # façon imprévisible, a provoqué un chevauchement colonne/ligne fusionnée, retiré).
   DIAG_COLUMN_BOTTOM_SAFETY_PT = 10.0
 
-  # Renvoie [text_x, text_w, first_avail_h, side_col, excess_paths, excess_ref_w] —
+  # Renvoie [text_x, text_w, first_avail_h, side_col, excess_paths, excess_ref_w, side_col2] —
   # `excess_paths` : diags qui ne rentrent PAS dans la rangée (Top/Bot/Front/End),
-  # toujours `[]` pour une colonne (Left/Right, débordement géré page par page, pas
-  # ici). `excess_ref_w` : largeur de référence RAD10 pour cet excédent (voir
-  # `paginate_and_draw`, `row_excess:`/`row_excess_w:`).
+  # toujours `[]` pour une colonne (Left/Right/Left-Right, débordement géré page par
+  # page, pas ici). `excess_ref_w` : largeur de référence RAD10 pour cet excédent (voir
+  # `paginate_and_draw`, `row_excess:`/`row_excess_w:`). `side_col2` : 2e colonne
+  # (droite) pour `Left-Right`, toujours `nil` sinon — dessinée EN PLUS de `side_col`,
+  # jamais à sa place (voir `side_col_alt`, lui une ALTERNATIVE page par page pour
+  # `int`/`ext`, mécanisme différent).
   def self.layout_diags(pdf, diag_paths, position, header_bottom, align: :justify)
     case position
-    when :both
-      raise "position de diagrammes :both (layouts Column/Column-B, Manuel/song/layout.adoc) pas encore implémentée"
+    when :"left-right"
+      # Répartition ÉQUILIBRÉE par nombre (Phil, issue #103) — moitié à gauche
+      # (l'impaire en plus si le compte est impair), moitié à droite ; jamais un
+      # partage qui laisse un côté avec presque rien pendant que l'autre déborde.
+      # Taille commune (RAD10) calculée sur la colonne la plus chargée des deux —
+      # l'autre colonne, moins remplie, tient forcément dans la même largeur.
+      left_paths, right_paths = diag_paths.empty? ? [[], []] : diag_paths.each_slice((diag_paths.size / 2.0).ceil).to_a
+      right_paths ||= []
+      bigger = left_paths.size >= right_paths.size ? left_paths : right_paths
+      diag_w = diag_column_width(bigger, header_bottom, pdf.bounds.height)
+      diag_col_w = diag_w + DIAG_TEXT_GAP
+      left_col = { x: 0, width: diag_w, paths: left_paths, heights: left_paths.map { |p| svg_height_for(File.read(p), diag_w) }, align: align }
+      right_col = { x: pdf.bounds.width - diag_w, width: diag_w, paths: right_paths, heights: right_paths.map { |p| svg_height_for(File.read(p), diag_w) }, align: align }
+      [diag_col_w, pdf.bounds.width - 2 * diag_col_w, header_bottom, left_col, [], Options.get(:diags_size), right_col]
     when :right
       diag_w = diag_column_width(diag_paths, header_bottom, pdf.bounds.height)
       diag_heights = diag_paths.map { |p| svg_height_for(File.read(p), diag_w) }
       diag_col_w = diag_w + DIAG_TEXT_GAP
       side_col = { x: pdf.bounds.width - diag_w, width: diag_w, paths: diag_paths, heights: diag_heights, align: align }
-      [0, pdf.bounds.width - diag_col_w, header_bottom, side_col, [], Options.get(:diags_size)]
+      [0, pdf.bounds.width - diag_col_w, header_bottom, side_col, [], Options.get(:diags_size), nil]
     when :top
       row_h, excess, w = draw_diag_row_position(pdf, diag_paths, header_bottom, at: :top, align: align)
-      [0, pdf.bounds.width, header_bottom - row_h, nil, excess, w]
+      [0, pdf.bounds.width, header_bottom - row_h, nil, excess, w, nil]
     when :bottom
       row_h, excess, w = draw_diag_row_position(pdf, diag_paths, header_bottom, at: :bottom, align: align)
-      [0, pdf.bounds.width, header_bottom - row_h, nil, excess, w]
+      [0, pdf.bounds.width, header_bottom - row_h, nil, excess, w, nil]
     when :front
       block_h, excess, w = draw_diag_front_block(pdf, diag_paths, header_bottom, align: align)
-      [0, pdf.bounds.width, header_bottom - block_h, nil, excess, w]
+      [0, pdf.bounds.width, header_bottom - block_h, nil, excess, w, nil]
     when :end, :back
       # Rattachés à la VRAIE fin des paroles (dernière page réelle, pas juste la page 1
       # comme `bottom`) — RIEN réservé ici (Phil, point 5), tous les diags entrent
@@ -2882,13 +3015,13 @@ module Layout
       # `diag_list` (voir `PageBuilder.build`/`chord_frets_kept_on_song_page`) — le reste
       # des accords de la chanson est ailleurs (`Layout.back_diags`), rassemblé en fin de
       # livre par `CarnetBuilder.build`, jamais ici.
-      [0, pdf.bounds.width, header_bottom, nil, diag_paths, Options.get(:diags_size)]
+      [0, pdf.bounds.width, header_bottom, nil, diag_paths, Options.get(:diags_size), nil]
     else # :left, défaut
       diag_w = diag_column_width(diag_paths, header_bottom, pdf.bounds.height)
       diag_heights = diag_paths.map { |p| svg_height_for(File.read(p), diag_w) }
       diag_col_w = diag_w + DIAG_TEXT_GAP
       side_col = { x: 0, width: diag_w, paths: diag_paths, heights: diag_heights, align: align }
-      [diag_col_w, pdf.bounds.width - diag_col_w, header_bottom, side_col, [], Options.get(:diags_size)]
+      [diag_col_w, pdf.bounds.width - diag_col_w, header_bottom, side_col, [], Options.get(:diags_size), nil]
     end
   end
 

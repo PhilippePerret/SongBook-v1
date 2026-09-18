@@ -29,9 +29,10 @@ module CarnetBuilder
   # bandeau ou pas (title_band), position des diagrammes (diags_position), enchaînement
   # des strophes (lyrics_flux), alignement du bloc "intro" (intro_align). `diags_size`/
   # `music_position` (Manuel/song/layout.adoc) pas encore implémentés. `diags_position:
-  # both` (Column/Column-B) pas encore implémenté — voir `Layout.layout_diags`, lève une
-  # erreur claire si sélectionné. `int`/`ext` (côté reliure/extérieur) résolus en left/right
-  # sur la parité recto/verso de la 1re page de la chanson .
+  # left-right` (Column/Column-B, issue #103) : diags répartis des deux côtés des
+  # paroles — voir `Layout.layout_diags`/`side_col2`. `int`/`ext` (côté reliure/
+  # extérieur) résolus en left/right sur la parité recto/verso de la 1re page de la
+  # chanson .
   # `LAYOUTS_DIR`/`DEFAULT_LAYOUT`/`DEFAULT_LAYOUT_NAME`/`LAYOUTS` : définis dans
   # `PageBuilder` (seule source, `PageBuilder` défauts de rendu ET cascade carnet en
   # dépendent tous les deux — jamais deux copies). Un layout nommé n'est qu'un PRESET de
@@ -465,8 +466,17 @@ module CarnetBuilder
     page_count = [CombinePDF.load(tmp_out).pages.size, 24].max
     File.delete(tmp_out)
 
+    # Page blanche ajoutée devant dès que la chanson a plus d'une page (voir plus bas,
+    # "Aperçu") : la chanson démarre donc RÉELLEMENT en page 2 (verso), jamais en page 1
+    # (recto) — `first_page_no: 1` ici tromperait marges/recto-verso ET RAL5 (Manuel/
+    # regles_esthetiques.adoc) sur le côté réel de chaque page (bug constaté, "Harvest"
+    # construite seule : la page blanche décale tout d'un cran sans que ce cran soit
+    # répercuté ici). Largeur de texte totale INCHANGÉE par ce choix (`gutter_margin` +
+    # `outside_margin` toujours la même somme, seul le côté change), donc la mesure
+    # `page_count` ci-dessus, faite à `first_page_no: 1`, reste valable telle quelle.
+    real_first_page_no = page_count > 1 ? 2 : 1
     out_path = File.join(export_dir, "#{pdf_slug}.pdf")
-    PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: 1, layout_preset: layout, infos_overrides: infos_overrides)
+    PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: real_first_page_no, layout_preset: layout, infos_overrides: infos_overrides)
     # Aperçu (macOS) affiche TOUJOURS la page 1 d'un PDF seule, jamais en vis-à-vis avec
     # la 2 — page blanche ajoutée devant dès que la chanson a plus d'une page.
     if page_count > 1

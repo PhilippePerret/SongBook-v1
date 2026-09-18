@@ -101,4 +101,25 @@ RSpec.describe "positions de diagrammes (top/front/end), situation critique (exc
       expect(log).to match(/lignes? fixes|page dédiée/)
     end
   end
+
+  # Issue #103 : diags répartis des deux côtés des paroles (layouts Column/Column-B).
+  describe "position left-right (diags des deux côtés)" do
+    it "peu de diags : construit sans erreur, une colonne de chaque côté" do
+      write_song(CHORDS.first(4), diags_position: "left-right")
+      out_path = build
+
+      expect(File.exist?(out_path)).to be true
+      pages = CombinePDF.load(out_path).pages
+      expect(pages.size).to be >= 1
+    end
+
+    it "beaucoup de diags (excédent) : construit sans erreur, aucun diag perdu" do
+      write_song(CHORDS, diags_position: "left-right")
+      out_path = build
+
+      expect(File.exist?(out_path)).to be true
+      pages = CombinePDF.load(out_path).pages
+      expect(pages.size).to be >= 1
+    end
+  end
 end
