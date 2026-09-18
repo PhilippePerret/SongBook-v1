@@ -13,9 +13,6 @@ include::creation.adoc[]
 // Fichier des informations
 include::infos.adoc[]
 
-// Options
-include::options.adoc[]
-
 // Layout du carnet
 include::sb-layout.adoc[]
 

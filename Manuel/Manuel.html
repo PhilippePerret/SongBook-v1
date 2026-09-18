@@ -458,12 +458,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#song-creation">Création de la chanson</a></li>
 <li><a href="#infos-file">Fichier des informations de la chanson</a></li>
-<li><a href="#infos-file">Fichier des informations de la chanson</a></li>
 <li><a href="#lyrics-file">Les paroles</a></li>
 <li><a href="#_fichier_des_paroles_et_accords">Fichier des paroles et accords</a></li>
 <li><a href="#diags">Diagrammes d&#8217;accords</a></li>
-<li><a href="#diags">Diagrammes d&#8217;accords</a></li>
 <li><a href="#_tablatures_et_partitions_2">Tablatures et Partitions</a></li>
+<li><a href="#song-images">Les images</a></li>
 <li><a href="#gabarit-file">Gabarit de la chanson</a></li>
 <li><a href="#song-layout">Layout de la chanson</a></li>
 <li><a href="#song-pdf">Production du PDF</a></li>
@@ -1468,62 +1467,6 @@ layout: regular-B</pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="infos-file">Fichier des informations de la chanson</h3>
-<div class="paragraph">
-<p>Pour ouvrir directement ce fichier, <code>songbook open infos --song "titre chanson"</code></p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>🎸&gt; inf
-🎸&gt; infos
-🎸&gt; open infos
-🎸&gt; edit infos</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Les informations de la chanson sont consignés dans son <a href="#song-folder">dossier</a> dans une fichier portant l&#8217;extension <code>.infos</code> (ou <code>inf</code> en mode réduit) et un nom racine quelconque (p.e. <code>mc.inf</code>).</p>
-</div>
-<div class="paragraph">
-<p>Ce fichier est un <a href="#pseudo-yaml-format">format pseudo YAML</a> (liste superposée de <code>propriétés: valeurs</code>)</p>
-</div>
-<div class="paragraph">
-<p>On met dans ce fichier toutes les informations utiles, à savoir :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>id: Identifiant simple de la chanson
-title: Titre de la chanson (tel qu'il sera affiché)
-performer: l'interprète de la chanson
-composer: Compositeur ou compositrice de la chanson
-lyrics: Auteur ou autrice des paroles
-year: L'année de sortie
-# Optionnel (utiliser avec prudence)
-layout: La disposition utilisée (par défaut, regular)</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Par exemple :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>id: dont-give-up-gabriel-1986
-title: Don’t Give Up
-performer: Peter Gabriel et Kate Bush
-composer: P. Gabriel
-lyrics: P. Gabriel
-year: 1986
-
-layout: regular-B</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Notez que si vous utilisez la commande <strong><code>songbook create song</code></strong> pour créer une nouvelle chanson, ce fichier sera rempli pour vous (ou prérempli en fonction des informations récoltées sur le web).</p>
-</div>
-<div class="paragraph">
-<p>Ce fichier contient aussi la définition des <a href="#options">options</a> propres à la chanson (options partagées par le carnet si c&#8217;est lui qui est contruit).</p>
-</div>
-</div>
-<div class="sect2">
 <h3 id="lyrics-file">Les paroles</h3>
 <div class="paragraph">
 <p>Pour ouvrir le fichier des paroles :</p>
@@ -1769,161 +1712,6 @@ songbook missing diags --all
 </div>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="diags">Diagrammes d&#8217;accords</h3>
-<div class="paragraph">
-<p>On appelle <em>diagrammes d&#8217;acccord</em> ou tout simplement <em>diag</em> ou <em>diagrammes les petits schémas représentant les accords à la guitare (</em>il existe des diagrammes pour d&#8217;autres instruments à cordes, mais ils ne sont pas utilisés ici__).</p>
-</div>
-<div class="paragraph">
-<p>Todo: montrer diagramme d&#8217;accord.</p>
-</div>
-<div class="sect3">
-<h4 id="diags-list">Liste des diagrammes</h4>
-<div class="paragraph">
-<p>On peut obtenir la liste de tous les diagrammes, afin de pouvoir choisir ceux qui nous intéressent pour une chanson, en jouant la commande :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook diags</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Elle ouvre un fichier HTML où sont présentés tous les diagrammes, et il suffit de cliquer sur leur diagrammes pour mettre le nom dans le presse-papier et le coller dans la chanson.</p>
-</div>
-<div class="paragraph">
-<p>Bien que vous n&#8217;ayez normalement jamais à utiliser cette commande, nous l&#8217;indiquons dans le cas où vous touchiez les fichiers SVG par inadvertance. Elle actualise tous les fichiers SVG des accords.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook update diags</pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_produire_ses_propres_diagrammes_2">Produire ses propres diagrammes</h4>
-<div class="paragraph">
-<p>On peut aller plus loin et produire ses propres diagrammes personnalisés. Pour ça</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook build diag "&lt;schéma&gt;"</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Le schéma est très précis et peut s&#8217;obtenir avec la commande <code>diag</code>.</p>
-</div>
-<div class="paragraph">
-<p>On peut même directement, si le schéma ne nous intéresse pas, utiliser la commande <code>diag -o</code> pour définir le diagramme et produire son image SVG à insérer dans le carnet.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="song-schemas">Diagrammes propres à la chanson</h4>
-<div class="paragraph">
-<p>Une chanson peut définir ses propres schémas dans un fichier <code>.schemas</code> (<code>sche</code>). Cela est nécessaire lorsque la chanson utilise des accords qui ne sont consignés <a href="#diags-list">nulle part ailleurs</a>.</p>
-</div>
-<div class="paragraph">
-<p><strong>OU</strong>, plus important, lorsqu&#8217;elle utilise des positions particulières d&#8217;accord pouvant déjà exister. Dans ce cas, les accords qu&#8217;elle définit sont <strong>prioritaires</strong> sur les accords existants.</p>
-</div>
-<div class="paragraph">
-<p>Dans le fichier des schémas, on indique :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>&lt;NOM-DANS-LES-PAROLES&gt; : &lt;SCHÉMA DU DIAGRAMME&gt;
-# etc. les uns sous les autres</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Le schéma est obtenu grâce à la commande <code>diag</code> qui permet de définir ces diagrammes avec confort et sécurité (l&#8217;erreur est pratiquement impossible).</p>
-</div>
-<div class="paragraph">
-<p>Pour être clair, voilà la démarche à utiliser :</p>
-</div>
-<div class="paragraph">
-<p><em>Les commandes sont données en mode interactif (<code>songbook -i</code>) avec la chanson mise en chanson courante (<code>🎸&gt; use song "ma chanson"</code>)</em></p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 80%;">
-<col style="width: 20%;">
-</colgroup>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">S&#8217;assurer d&#8217;abord que l&#8217;accord n&#8217;existe pas déjà</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diags</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Ouvrir ou créer le fichier <code>.schemas</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>open schemas</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Dans un autre Terminal, lancer l&#8217;éditeur de diag</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>diag</code> (hors interactif)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Définir le diagramme</p></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Ne pas l&#8217;enregistrer pour l&#8217;application</p></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Coller le schéma dans le fichier <code>.schemas</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><kbd style="font-size:1.25em;">⌘</kbd>+<kbd style="font-size:1.25em;">v</kbd></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lancer la production des fichiers SVG</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>build diags</code></p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect3">
-<h4 id="diags-position">Position et taille des diagrammes</h4>
-<div class="paragraph">
-<p>Pour placer les diagrammes dans la chanson ou le carnet, utiliser le <a href="#gabarit-file">gabarit de la chanson</a> de la chanson ou les règles du <a href="#songbook-layout layout (mise en page)">[songbook-layout layout (mise en page)]</a> du carnet.</p>
-</div>
-<div class="paragraph">
-<p>Pour redimensionner les diags, vous pouvez jouer sur plusieurs <a href="#diags-options">options spécialisées</a>.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_limiter_la_liste_des_diagrammes_2">Limiter la liste des diagrammes</h4>
-<div class="paragraph">
-<p>Vous pouvez, dans les carnets dont l&#8217;option <code>diag_list</code> est réglée à <code>list</code>, définir avec l&#8217;option <code>diag_list</code> aussi la liste des seuls diags à afficher. Cf. <a href="#diags-options">les options en matière de diagrammes</a>.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="diags-missing">Diagrammes manquant</h4>
-<div class="paragraph">
-<p>On peut obtenir la liste des diags introuvables (ni dans l&#8217;app ni dans la chanson).</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook missing diags --song "titre approx"
-# =&gt; Liste dans la chanson
-
-songbook missing diags --songbook "titre approx"
-# =&gt; Liste dans le carnet de chant
-
-songbook missing diags --all
-# =&gt; Liste dans toutes les chansons</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>En <a href="#interactive-mode">mode interactif</a>, c&#8217;est la chanson ou le carnet courant qui est pris en référence :</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>songbook -i
-🎸&gt; use song titre-approx
-🎸&gt; missing diags
-# =&gt; Liste des diagrammes manquant dans la chanson.</pre>
-</div>
-</div>
-</div>
 <div class="sect3">
 <h4 id="riffs">Riffs, les « petits bouts de musique »</h4>
 <div class="paragraph">
@@ -1990,10 +1778,11 @@ songbook missing diags --all
 <div class="paragraph">
 <p>Voir comment <a href="#gabarit-insert-score">insérer une partition</a> dans la page de la chanson.</p>
 </div>
-<div class="paragraph">
-<p>Unresolved directive in song/_main.adoc - include::images.adoc[]</p>
 </div>
 </div>
+<div class="sect2">
+<h3 id="song-images">Les images</h3>
+
 </div>
 <div class="sect2">
 <h3 id="gabarit-file">Gabarit de la chanson</h3>
@@ -2465,9 +2254,6 @@ options:
 </div>
 <div class="paragraph">
 <p>Voir les <a href="#songbook-options">options du carnet</a>.</p>
-</div>
-<div class="paragraph">
-<p>Unresolved directive in songbook/_main.adoc - include::options.adoc[]</p>
 </div>
 </div>
 </div>
@@ -3674,6 +3460,11 @@ Solution proposée ?</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RAL5</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">S&#8217;il y a beaucoup d&#8217;air sous le ou les blocs de paroles de la page DROITE, essayer d&#8217;aligner la première ligne (qui est peut-être une ligne d&#8217;accords) avec la première ligne d&#8217;accords ou de texte de la page GAUCHE. Si ligne de texte, l&#8217;aligner avec la ligne de texte, sinon avec la ligne d&#8217;accords.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RAL6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lorsqu&#8217;une stophe contient des accords mais qu&#8217;une ligne (ou deux, ou trois) n&#8217;en contient pas, il faut pourtant faire comme si la ligne en contenait, pour maintenir l&#8217;écart entre les lignes de texte dans cette strophe.</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 </tbody>

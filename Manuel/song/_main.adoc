@@ -15,9 +15,6 @@ include::lyrics.adoc[]
 // Accords
 include::chords.adoc[]
 
-// Diagrammes
-include::diags.adoc[]
-
 // Les riffs de musique
 include::riffs.adoc[]
 
