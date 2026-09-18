@@ -43,7 +43,7 @@ RSpec.describe "commande build (chanson)" do
 
     it "signale le nombre de conflits en rouge, PUIS propose (en bleu) d'ouvrir le fichier des conflits, PUIS le PDF" do
       build_with_conflicts do |dir|
-        expect(prompt).to receive(:yes?).with(CLI.blue(Loc.get("song_build_open_conflicts_question"))).ordered.and_return(false)
+        expect(prompt).to receive(:yes?).with(CLI.blue(Loc.get("song_build_open_conflicts_question")), default: false).ordered.and_return(false)
         expect(prompt).to receive(:yes?).with(CLI.blue(Loc.get("song_build_open_pdf_question"))).ordered.and_return(false)
 
         expect { CLI.run(["build", dir], interactive: true) }

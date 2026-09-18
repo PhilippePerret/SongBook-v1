@@ -175,6 +175,48 @@ RSpec.describe "recherche des diagrammes d'accords" do
     end
   end
 
+  # Issue #104 : dédoublonnage des grilles de fin de livre par forme réelle
+  # ("corde+case" seul), jamais par doigté — voir `CarnetBuilder.resolve_back_matter`.
+  describe ".diag_shape_from_path" do
+    it "deux cases différentes, MÊMES positions, doigté différent -> MÊME forme" do
+      Dir.mktmpdir do |song_dir|
+        File.write(File.join(song_dir, "c.schemas"), <<~SCH)
+          Zz-1 : 1x 2x 30 40 53/2 63/3
+          Zz-2 : 1x 2x 30 40 53/1 63/1
+        SCH
+        shape1 = ChordDiagrams.diag_shape_from_path("/fake/Zz-1.svg", song_dir: song_dir)
+        shape2 = ChordDiagrams.diag_shape_from_path("/fake/Zz-2.svg", song_dir: song_dir)
+        expect(shape1).to eq(shape2)
+      end
+    end
+
+    it "positions RÉELLEMENT différentes -> formes différentes" do
+      Dir.mktmpdir do |song_dir|
+        File.write(File.join(song_dir, "c.schemas"), <<~SCH)
+          Zz-1 : 1x 2x 30 40 53/2 63/3
+          Zz-3 : 1x 2x 32/1 40 53/2 63/3
+        SCH
+        shape1 = ChordDiagrams.diag_shape_from_path("/fake/Zz-1.svg", song_dir: song_dir)
+        shape3 = ChordDiagrams.diag_shape_from_path("/fake/Zz-3.svg", song_dir: song_dir)
+        expect(shape1).not_to eq(shape3)
+      end
+    end
+
+    it "note facultative entre parenthèses : parenthèses/doigt ignorés, seule la case compte" do
+      Dir.mktmpdir do |song_dir|
+        File.write(File.join(song_dir, "c.schemas"), "Zz-1 : 1x 2x 30 40 53/2 (63/3)\n")
+        expect(ChordDiagrams.diag_shape_from_path("/fake/Zz-1.svg", song_dir: song_dir))
+          .to eq([%w[1 x], %w[2 x], %w[3 0], %w[4 0], %w[5 3], %w[6 3]])
+      end
+    end
+
+    it "aucune entrée .schemas correspondante -> nil (jamais un faux regroupement)" do
+      Dir.mktmpdir do |song_dir|
+        expect(ChordDiagrams.diag_shape_from_path("/fake/Zz-9.svg", song_dir: song_dir)).to be_nil
+      end
+    end
+  end
+
   describe ".collect_chord_frets — accord composé, une seule partie précisée (issue #81)" do
     def blocks_from(pairs)
       segments = pairs.map { |chord, fret| Segment.new(chord: chord, fret: fret, text: "x") }

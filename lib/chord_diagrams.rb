@@ -1,5 +1,6 @@
 require_relative "layout"
 require_relative "transpose"
+require_relative "file_finder"
 
 # Résolution des diagrammes d'accords (fichiers SVG sous `assets/chords_diags/`) et
 # transposition des blocs `.lyr` (accord + case) — sépare "quel accord/quelle case
@@ -204,6 +205,41 @@ module ChordDiagrams
   # Applique la transposition (accord + case) à tous les segments des blocs `.lyr`, en
   # place — appelé avant tout usage des blocs (diags, rendu) pour que le reste du
   # pipeline n'ait jamais à savoir qu'une transposition a eu lieu.
+  # Grammaire des `.schemas`/`schemas.txt` ("<Nom>-<case> : <6 tokens>", un token par
+  # corde "<corde><frette>[/<doigt>]", parenthèses = note facultative) — voir
+  # `tools/ChordDiagram/generate_chord_diagrams.rb` (générateur SVG, même grammaire,
+  # copie minimale ici : seule la forme "<corde><frette>" nous intéresse, jamais le
+  # doigté).
+  SCHEMA_LINE_RE = /\A([^-]+)-(\S+)\s*:\s*(.+)\z/
+  SCHEMA_TOKEN_RE = /\A\(?([1-6])(x|\d{1,2})(?:\/\w+)?\)?\z/
+
+  # Forme "corde+case" d'un diagramme DÉJÀ résolu à un fichier SVG précis (Phil, issue
+  # #104 : dédoublonnage des grilles de fin de livre — "il faut seulement comparer
+  # <corde><case>", jamais le doigté, deux schémas identiques aux doigts près sont LE
+  # MÊME diagramme). Cherche la ligne `<variant>-<case>` dans le `.schemas` de la
+  # chanson (`FileFinder`, précédence chanson) puis `schemas.txt` de l'app — MÊME
+  # précédence que `diag_path`, sans le carnet (les diags de carnet, issue "Il n'est
+  # pas raisonnable de ne concevoir des diags juste pour un carnet", Manuel/songbook/
+  # diags.adoc, n'ont pas de `.schemas` séparé). `nil` si la case exacte n'est décrite
+  # nulle part (SVG déposé à la main, sans entrée `.schemas`) — le dédoublonnage retombe
+  # alors sur l'identité du fichier (voir `CarnetBuilder`), jamais un faux regroupement.
+  def self.diag_shape_from_path(path, song_dir: nil)
+    variant, kase = File.basename(path, ".svg").split("-", 2)
+    return nil unless kase
+
+    [song_dir && FileFinder.find(song_dir, :sch), File.join(ASSETS, variant[0].upcase, "schemas.txt")].compact.each do |schema_path|
+      next unless File.exist?(schema_path)
+
+      File.foreach(schema_path) do |line|
+        m = SCHEMA_LINE_RE.match(line.strip)
+        next unless m && m[1] == variant && m[2] == kase
+
+        return m[3].split.filter_map { |t| SCHEMA_TOKEN_RE.match(t) }.map { |t| [t[1], t[2]] }.sort
+      end
+    end
+    nil
+  end
+
   def self.transpose_blocks!(blocks, decalage_lettres, decalage_demitons)
     blocks.each_value do |block|
       block.lines.each do |line|

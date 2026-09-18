@@ -756,11 +756,17 @@ module CarnetBuilder
 
     # --- 3ter) Grilles des accords rassemblés (`diags_position: Back`, issue #98) : les
     # accords non gardés sur leur page de chanson (`Layout.back_diags`, rempli par
-    # `PageBuilder.build`) sont dédoublonnés (accord+case EXACTS, "Am-0O" != "Am-0") puis
-    # classés, résolus en chemins SVG (précédence carnet > chanson d'origine > défaut app,
-    # comme `ChordDiagrams.diag_path` partout ailleurs), et paginés en grille (mêmes
-    # formules que `Layout.draw_diags_grid`, dupliquées ici pour un DOCUMENT SÉPARÉ —
-    # jamais de page numérotée dessus, comme la TDM/le colophon, voir `draw_back_diags_page`).
+    # `PageBuilder.build`) sont dédoublonnés en 2 passes : d'abord accord+case EXACTS
+    # (`"Am-0O" != "Am-0"`, comme avant — évite d'appeler `ChordDiagrams.diag_path` en
+    # double, donc de doubler un éventuel conflit "accord manquant"), PUIS, une fois
+    # résolus en chemins SVG (précédence carnet > chanson d'origine > défaut app, comme
+    # `ChordDiagrams.diag_path` partout ailleurs), par FORME RÉELLE (`diag_shape_from_path`,
+    # issue #104 : "corde+case" seul, doigté ignoré — deux cases différentes qui pressent
+    # les mêmes cordes/frettes sont LE MÊME diagramme). Classés par lettre de fondamentale
+    # (qualité/altération ignorées — "Am"/"A7"/"Ab" sous "A"), sous-titrés, et paginés en
+    # grille (mêmes formules que `Layout.draw_diags_grid`, dupliquées ici pour un DOCUMENT
+    # SÉPARÉ — jamais de page numérotée dessus, comme la TDM/le colophon, voir
+    # `pack_back_matter_pages`/`draw_back_matter_page`).
     # Réglages (taille/alignement) : cascade carnet SEUL (`infos_path`, sans chanson),
     # jamais ceux, périmés, de la dernière chanson rendue par `render_songs_pass`.
     resolve_back_matter = lambda do
@@ -768,17 +774,20 @@ module CarnetBuilder
       diag_w = Options.get(:diags_size)
       diag_align = Options.get(:diags_align).to_sym
       back_entries = Layout.back_diags.uniq { |chord, fret, _| [chord, fret] }.sort_by { |chord, _, _| chord }
-      paths = back_entries.filter_map { |chord, fret, song_dir| ChordDiagrams.diag_path(chord, fret: fret, carnet_dir: carnet_folder, song_dir: song_dir) }
-      next { paths: [], slices: [], diag_w: diag_w, diag_align: diag_align, page_count: 0 } if paths.empty?
+      resolved = back_entries.filter_map do |chord, fret, song_dir|
+        path = ChordDiagrams.diag_path(chord, fret: fret, carnet_dir: carnet_folder, song_dir: song_dir)
+        next nil unless path
 
-      gap_h = Layout.min_h_dist(:diags)
-      gap_v = Layout.min_v_dist(:diags)
+        [chord, path, ChordDiagrams.diag_shape_from_path(path, song_dir: song_dir)]
+      end
+      deduped = resolved.uniq { |chord, path, shape| shape ? [chord, shape] : [chord, :path, path] }
+      groups = deduped.group_by { |chord, _path, _shape| chord[0].upcase }.sort.to_h
+      next { groups: {}, pages: [], diag_w: diag_w, diag_h: nil, diag_align: diag_align, page_count: 0 } if groups.empty?
+
       content_w_pt = page_w_pt - Layout.in_pt(printer_probe.outside_margin) - Layout.in_pt(printer_probe.gutter_margin)
-      diag_h = paths.map { |p| Layout.svg_height_for(File.read(p), diag_w) }.max
-      cols = [((content_w_pt + gap_h) / (diag_w + gap_h)).floor, 1].max
-      rows_per_page = [((content_h_pt - TOC_HEADING_RESERVE + gap_v) / (diag_h + gap_v)).floor, 1].max
-      slices = paths.each_slice(cols * rows_per_page).to_a
-      { paths: paths, slices: slices, diag_w: diag_w, diag_align: diag_align, page_count: slices.size }
+      diag_h = deduped.map { |_c, path, _s| Layout.svg_height_for(File.read(path), diag_w) }.max
+      pages = pack_back_matter_pages(groups, diag_w, diag_h, content_w_pt, content_h_pt)
+      { groups: groups, pages: pages, diag_w: diag_w, diag_h: diag_h, diag_align: diag_align, page_count: pages.size }
     end
     back_matter = resolve_back_matter.call
 
@@ -882,19 +891,19 @@ module CarnetBuilder
     # --- 3ter bis) Rendu des grilles d'accords rassemblées (voir 3ter, issue #98) — jamais
     # de numéro de page dessus, comme la TDM/le colophon (aucun des deux n'en a).
     back_combined = nil
-    unless back_matter[:slices].empty?
+    unless back_matter[:pages].empty?
       back_out = File.join(export_dir, ".tmp-back.pdf")
       Prawn::Document.generate(back_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
         Layout.register_fonts(pdf)
-        back_matter[:slices].each_with_index do |slice, i|
+        back_matter[:pages].each_with_index do |items, i|
           page_no = back_start + i
           pdf.start_new_page if i.positive?
           Layout.apply_print_margins(pdf, printer_final, page_no, page_w_pt, page_h_pt)
           Layout.current_song = "(carnet)"
           Layout.current_page = page_no
-          Layout.log_build("grilles des accords rassemblées (page #{i + 1}/#{back_matter[:slices].size}) rendue (issue #98)")
-          draw_heading(pdf, "Grilles des accords") if i.zero?
-          draw_back_diags_page(pdf, slice, back_matter[:diag_w], back_matter[:diag_align])
+          Layout.log_build("grilles des accords rassemblées (page #{i + 1}/#{back_matter[:pages].size}) rendue (issue #98)")
+          draw_heading(pdf, "GRILLES DES ACCORDS") if i.zero?
+          draw_back_matter_page(pdf, items, back_matter[:diag_w], back_matter[:diag_h], back_matter[:diag_align])
         end
       end
       back_combined = CombinePDF.load(back_out)
@@ -1282,31 +1291,77 @@ module CarnetBuilder
     Layout.engrave(bottom: y - descent, context: "titre de section") { pdf.draw_text text, at: [0, y], size: 14, style: :bold }
   end
 
-  # Une page de la section "Grilles des accords" (issue #98) : `paths` = les diagrammes
-  # de CETTE page (déjà tranchés par `resolve_back_matter`, voir `build`) — grille de
-  # rangées, mêmes formules que `Layout.draw_diags_grid` (dupliquées ici, DOCUMENT séparé,
-  # jamais mêlé au mécanisme d'excédent RAD5/6/7/10 d'une chanson). `TOC_HEADING_RESERVE`
-  # réservé en haut sur TOUTES les pages de la section (même sans titre affiché dessus,
-  # continuation) — sinon la pagination précalculée (`resolve_back_matter`) diverge du
-  # rendu réel.
-  def self.draw_back_diags_page(pdf, paths, diag_w, align)
-    diag_h = paths.map { |p| Layout.svg_height_for(File.read(p), diag_w) }.max
+  # Hauteur réservée pour une ligne de sous-titre ("A"/"B"/"C"..., issue #104) dans la
+  # section "Grilles des accords" — MÊME valeur utilisée par `pack_back_matter_pages`
+  # (calcul de pagination, sans pdf) ET `draw_back_matter_page` (dessin réel) : jamais
+  # deux valeurs qui divergent, sinon la pagination précalculée ment sur le rendu.
+  BACK_SUBTITLE_H = 24.0
+
+  # Répartit les groupes lettre->diagrammes (déjà dédoublonnés/classés par
+  # `resolve_back_matter`) en pages, SANS pdf (appelé aussi pour le seul `page_count`,
+  # avant que le document existe) — chaque page = suite de `{type: :subtitle, letter:}`/
+  # `{type: :row, paths:}`, consommée telle quelle par `draw_back_matter_page`. Un
+  # sous-titre ne démarre JAMAIS en bas de page sans au moins une rangée sous lui (saut
+  # de page avant le sous-titre si la place restante ne tient pas les deux).
+  def self.pack_back_matter_pages(groups, diag_w, diag_h, content_w_pt, content_h_pt)
     gap_h = Layout.min_h_dist(:diags)
     gap_v = Layout.min_v_dist(:diags)
-    cols = [((pdf.bounds.width + gap_h) / (diag_w + gap_h)).floor, 1].max
-    top_y = pdf.bounds.height - TOC_HEADING_RESERVE
-    paths.each_slice(cols).with_index do |row, ri|
+    cols = [((content_w_pt + gap_h) / (diag_w + gap_h)).floor, 1].max
+    row_h = diag_h + gap_v
+    top_avail = content_h_pt - TOC_HEADING_RESERVE
+
+    pages = [[]]
+    avail = top_avail
+    groups.each do |letter, entries|
+      if avail < BACK_SUBTITLE_H + row_h
+        pages << []
+        avail = top_avail
+      end
+      pages.last << { type: :subtitle, letter: letter }
+      avail -= BACK_SUBTITLE_H
+
+      entries.map { |_c, path, _s| path }.each_slice(cols) do |row|
+        if avail < row_h
+          pages << []
+          avail = top_avail
+        end
+        pages.last << { type: :row, paths: row }
+        avail -= row_h
+      end
+    end
+    pages
+  end
+
+  # Une page de la section "Grilles des accords" (issue #98/#104) : `items` = suite de
+  # sous-titres/rangées de CETTE page (déjà tranchée par `pack_back_matter_pages`, voir
+  # `build`) — grille de rangées, mêmes formules que `Layout.draw_diags_grid`
+  # (dupliquées ici, DOCUMENT séparé, jamais mêlé au mécanisme d'excédent RAD5/6/7/10
+  # d'une chanson). `diag_h` : passé par l'appelant (calculé UNE fois pour toute la
+  # section, RAD10 — jamais recalculé page par page, sinon dérive possible entre la
+  # pagination précalculée et le dessin réel). `TOC_HEADING_RESERVE` réservé en haut sur
+  # TOUTES les pages de la section (même sans titre affiché dessus, continuation).
+  def self.draw_back_matter_page(pdf, items, diag_w, diag_h, align)
+    gap_v = Layout.min_v_dist(:diags)
+    y = pdf.bounds.height - TOC_HEADING_RESERVE
+    items.each do |item|
+      if item[:type] == :subtitle
+        Layout.engrave(bottom: y - 16, context: "sous-titre \"grilles des accords\"") { pdf.draw_text item[:letter], at: [0, y - 2], size: 12, style: :bold }
+        y -= BACK_SUBTITLE_H
+        next
+      end
+
+      row = item[:paths]
       row_align = Layout.rad12_align(align, pdf.bounds.width, row.size, diag_w)
       row_gap = Layout.diag_row_gap(row_align, pdf.bounds.width, row.size, diag_w)
       row_w = row.size * diag_w + [row.size - 1, 0].max * row_gap
       x0 = Layout.diag_row_x(row_align, 0, pdf.bounds.width, row_w, row_gap)
-      y = top_y - ri * (diag_h + gap_v)
       row.each_with_index do |path, ci|
         x = x0 + ci * (diag_w + row_gap)
         Layout.engrave(bottom: y - diag_h, context: "diagramme (grilles des accords)") do
           pdf.svg(IO.read(path), at: [x, y], width: diag_w, position: :left, enable_web_requests: false)
         end
       end
+      y -= diag_h + gap_v
     end
   end
 
