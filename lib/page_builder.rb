@@ -1048,22 +1048,31 @@ module PageBuilder
       # sur la MÊME page réelle se retrouvaient scindées ici en deux groupes différents,
       # chacun avec son propre `col1_w`/`col2_w` — fers à gauche/droite décalés entre eux
       # alors qu'ils partagent bien la même page à l'écran (bug constaté, "L'Étranger").
-      # Restriction "couplet"+"couplet" (jamais une autre pair, ex. couplet+refrain) :
-      # un décalage entre deux types de strophes différents peut être voulu, seul le
-      # partage du même type ET de la même page réelle justifie l'alignement forcé.
+      # Restriction MÊME signature de types (ex. "couplet"+"couplet", ou "couplet"+
+      # "refrain" tant que les DEUX pairs comparées ont exactement cette même paire de
+      # types) : un décalage entre deux signatures DIFFÉRENTES peut être voulu, seul le
+      # partage de la même signature ET de la même page réelle justifie l'alignement
+      # forcé — sinon deux pairs "couplet // refrain" de la même page redivergeaient en
+      # colonne 2 dès que l'un des deux couplets de gauche était plus court que l'autre
+      # (même bug que "L'Étranger" ci-dessus, constaté sur "Il").
       if pair_elements.any? || solo_elements.any?
         trailing_extra = row_excess.any? ? Layout.estimate_excess_grid_height(row_excess, text_w || pdf.bounds.width) : 0
         pages = Layout.paginate(elements, first_avail_h, pdf.bounds.height, pinned: shrink_jobs.map { |j| j[:index] }, top_type: :band_strophe, trailing_extra: trailing_extra)
         pages.each do |page|
-          page_pairs = pair_elements.select do |pe|
-            (page[:start]...page[:finish]).cover?(pe[:element_index]) && row_names[pe[:row_idx]].all? { |name| block_kind(name) == "couplet" }
-          end
-          unless page_pairs.empty?
-            page_col1_w, page_col2_w, page_h_gutter = Layout.row_column_widths(pdf, page_pairs.map { |pe| rows[pe[:row_idx]] }, text_w)
-            page_pairs.each do |pe|
+          # `page_edges` (issue #104, `align:Left`/`align:Right`) : fer gauche/droit RÉEL de
+          # chaque row (paire ou bloc seul) de CETTE page, accumulé au fil des deux boucles
+          # ci-dessous — sert ensuite à poser un bloc `align:` sur le fer d'un AUTRE bloc de
+          # la MÊME page, jamais sur une marge fixe.
+          page_edges = []
+
+          page_pairs = pair_elements.select { |pe| (page[:start]...page[:finish]).cover?(pe[:element_index]) }
+          page_pairs.group_by { |pe| row_names[pe[:row_idx]].map { |name| block_kind(name) } }.each_value do |group|
+            page_col1_w, page_col2_w, page_h_gutter = Layout.row_column_widths(pdf, group.map { |pe| rows[pe[:row_idx]] }, text_w)
+            group.each do |pe|
               row = rows[pe[:row_idx]]
               elements[pe[:element_index]] = Layout.row_to_element(pdf, row, text_x, text_w, page_col1_w, page_col2_w, page_h_gutter, chord_ascent, text_ascent, text_descent, strict_align: true)
               elements_r[pe[:element_index]] = Layout.row_to_element(pdf, row, text_x_r, text_w, page_col1_w, page_col2_w, page_h_gutter, chord_ascent, text_ascent, text_descent, strict_align: true) if dynamic_mode
+              page_edges << Layout.row_edges(pdf, row, text_x, text_w, page_col1_w, page_col2_w, page_h_gutter)
             end
           end
 
@@ -1075,16 +1084,30 @@ module PageBuilder
           # (`.gab`) garde toujours la main, jamais absorbé dans ce partage. Restriction même
           # type ET même page, même principe que `page_pairs` ci-dessus.
           page_solos = solo_elements.select { |se| (page[:start]...page[:finish]).cover?(se[:element_index]) }
-          page_solos.group_by { |se| block_kind(row_names[se[:row_idx]][se[:sub_index]]) }.each_value do |group|
+          align_solos, plain_solos = page_solos.partition { |se| %w[left right].include?(rows[se[:row_idx]][se[:sub_index]].directives[:align].to_s.downcase) }
+          plain_solos.group_by { |se| block_kind(row_names[se[:row_idx]][se[:sub_index]]) }.each_value do |group|
             group = group.reject { |se| rows[se[:row_idx]][se[:sub_index]].directives.key?(:block_align) }
-            next if group.size < 2
+            if group.size < 2
+              group.each { |se| page_edges << Layout.row_edges(pdf, [rows[se[:row_idx]][se[:sub_index]]], text_x, text_w, col1_w, col2_w, h_gutter) }
+              next
+            end
 
             shared_w = group.map { |se| Layout.block_width(pdf, rows[se[:row_idx]][se[:sub_index]]) }.max
             group.each do |se|
               block = rows[se[:row_idx]][se[:sub_index]]
               elements[se[:element_index]] = Layout.row_to_element(pdf, [block], text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent, align_width: shared_w)
               elements_r[se[:element_index]] = Layout.row_to_element(pdf, [block], text_x_r, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent, align_width: shared_w) if dynamic_mode
+              page_edges << Layout.row_edges(pdf, [block], text_x, text_w, col1_w, col2_w, h_gutter, align_width: shared_w)
             end
+          end
+
+          next if align_solos.empty?
+
+          align_edges = [page_edges.map(&:first).min || text_x, page_edges.map(&:last).max || (text_x + text_w)]
+          align_solos.each do |se|
+            block = rows[se[:row_idx]][se[:sub_index]]
+            elements[se[:element_index]] = Layout.row_to_element(pdf, [block], text_x, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent, align_edges: align_edges)
+            elements_r[se[:element_index]] = Layout.row_to_element(pdf, [block], text_x_r, text_w, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent, align_edges: align_edges) if dynamic_mode
           end
         end
       end

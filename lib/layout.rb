@@ -1402,7 +1402,29 @@ module Layout
   # RAL3 (Manuel/regles_esthetiques.adoc, "aucune exception") : dans une row côte à côte,
   # si UN des deux blocs a un accord sur sa 1re ligne, les DEUX alignent leur 1re ligne de
   # texte sur cet ancrage — un bloc sans accord ne "remonte" jamais au-dessus de son voisin.
-  def self.row_to_element(pdf, row, x0, width, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent, strict_align: false, align_width: nil)
+  # Fer gauche/droit RÉEL d'une row (paire ou bloc seul) dans son contexte de page — mêmes
+  # formules que `row_to_element` (paire : `block_x0` ; seul : centré ou `block_align:left`)
+  # — extrait pour permettre à un bloc `align:Left`/`align:Right` (issue #104) de se
+  # positionner sur le fer d'un AUTRE bloc de la même page, jamais une marge fixe.
+  def self.row_edges(pdf, row, x0, width, col1_w, col2_w, h_gutter, align_width: nil)
+    case row.size
+    when 2
+      w = col1_w + h_gutter + col2_w
+      left = x0 + [(width - w) / 2.0, 0].max
+      [left, left + w]
+    when 1
+      block = row[0]
+      w = align_width || block_width(pdf, block)
+      left = if block.directives[:block_align] != "left"
+               x0 + [(width - w) / 2.0, 0].max
+             else
+               x0 + h_gutter
+             end
+      [left, left + w]
+    end
+  end
+
+  def self.row_to_element(pdf, row, x0, width, col1_w, col2_w, h_gutter, chord_ascent, text_ascent, text_descent, strict_align: false, align_width: nil, align_edges: nil)
     widths = case row.size
              when 1 then [width]
              when 2 then [col1_w, col2_w]
@@ -1448,18 +1470,28 @@ module Layout
         draw_block(pdf_, nxt, col2_x, y, col2_w, chord_ascent, text_ascent, force_chord_baseline: force_chord)
       when 1
         block = row[0]
-        centered = block.directives[:block_align] != "left"
-        # `align_width` (recentrage par page, `PageBuilder.build`) : largeur PARTAGÉE par
-        # tous les blocs seuls de même type sur la MÊME page (ex. couplet-5 à côté de
-        # couplet-3/couplet-4 empilés), jamais la largeur PROPRE de CE bloc — sinon deux
-        # couplets seuls de la même page, tous deux centrés, divergent dès que l'un est
-        # plus court que l'autre, et un bloc seul peut même retomber par coïncidence sur
-        # le centrage d'un bloc voisin SANS RAPPORT (ex. le label d'un refrain) — bug
-        # constaté (issue #92, "Fais-moi une place").
-        bx = if centered
-               x0 + [(width - (align_width || block_width(pdf_, block))) / 2.0, 0].max
+        gab_align = block.directives[:align].to_s.downcase
+        # `align:Left`/`align:Right` (issue #104) : posé sur le fer du bloc voisin le plus
+        # à gauche/droite de la MÊME page (`align_edges`, calculé par `PageBuilder.build`),
+        # jamais sur une marge fixe — sinon deux carnets de mise en page différente
+        # donneraient un rendu incohérent d'un bloc à l'autre.
+        bx = if %w[left right].include?(gab_align) && align_edges
+               ref_left, ref_right = align_edges
+               gab_align == "right" ? ref_right - block_width(pdf_, block) : ref_left
              else
-               x0 + h_gutter # même retrait que la colonne 1, pour rester aligné avec elle
+               # `align_width` (recentrage par page, `PageBuilder.build`) : largeur PARTAGÉE
+               # par tous les blocs seuls de même type sur la MÊME page (ex. couplet-5 à côté
+               # de couplet-3/couplet-4 empilés), jamais la largeur PROPRE de CE bloc — sinon
+               # deux couplets seuls de la même page, tous deux centrés, divergent dès que
+               # l'un est plus court que l'autre, et un bloc seul peut même retomber par
+               # coïncidence sur le centrage d'un bloc voisin SANS RAPPORT (ex. le label
+               # d'un refrain) — bug constaté (issue #92, "Fais-moi une place").
+               centered = block.directives[:block_align] != "left"
+               if centered
+                 x0 + [(width - (align_width || block_width(pdf_, block))) / 2.0, 0].max
+               else
+                 x0 + h_gutter # même retrait que la colonne 1, pour rester aligné avec elle
+               end
              end
         draw_block(pdf_, block, bx, y, width, chord_ascent, text_ascent)
       else

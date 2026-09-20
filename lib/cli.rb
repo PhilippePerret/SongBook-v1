@@ -147,18 +147,6 @@ module CLI
       end
     end
 
-    # `-b/--book PATH` : sortir UNE chanson (arg1) EXACTEMENT comme elle sortirait dans CE
-    # carnet-là (layout/page_count/marges résolus du carnet, voir `CarnetBuilder.build`,
-    # `only_song:`) — sans reconstruire tout le carnet.
-    book_path = nil
-    %w[-b --book].each do |flag|
-      if (i = argv.index(flag))
-        book_path = argv[i + 1]
-        argv.delete_at(i + 1)
-        argv.delete_at(i)
-      end
-    end
-
     # `--song TITRE` : contexte chanson pour CETTE commande SEULEMENT (recherche
     # intelligente comme `use song`, mais sans persistance — voir `Session.with_song`).
     song_opt = nil
@@ -171,13 +159,22 @@ module CLI
     end
     song_override = song_opt ? resolve_song_folder(song_opt) : nil
 
-    # `songbook songs` : `--sb/--songbook TITRE` limite la liste à un carnet, `--sort
-    # alpha|year|performer` change le classement (défaut alpha).
+    # `--sb/--songbook TITRE` : sur `songbook songs`, limite la liste à un carnet ; sur
+    # `build "titre approx"`, sort cette chanson EXACTEMENT comme elle sortirait dans CE
+    # carnet-là (layout/page_count/marges résolus du carnet, voir `CarnetBuilder.build`,
+    # `only_song:`) — sans reconstruire tout le carnet (Manuel/song/pdf.adoc). TITRE
+    # optionnel (rien, ou un flag juste après) : `sb_given` reste vrai, `songs_carnet_opt`
+    # nil -> `resolve_carnet_folder(nil)` proposera la liste de tous les carnets.
     songs_carnet_opt = nil
+    sb_given = false
     %w[--sb --songbook].each do |flag|
       if (i = argv.index(flag))
-        songs_carnet_opt = argv[i + 1]
-        argv.delete_at(i + 1)
+        sb_given = true
+        val = argv[i + 1]
+        if val && !val.start_with?("-")
+          songs_carnet_opt = val
+          argv.delete_at(i + 1)
+        end
         argv.delete_at(i)
       end
     end
@@ -667,11 +664,30 @@ module CLI
           Session.carnet = target[:folder]
         end
 
-        if book_path
-          book_dir = File.expand_path(book_path)
-          abort "dossier de carnet introuvable : #{book_dir}" unless Dir.exist?(book_dir)
-          abort "pas un carnet (.tdm/.toc introuvable) : #{book_dir}" unless CarnetBuilder.carnet_folder?(book_dir)
-          CarnetBuilder.build(book_dir, only_song: File.basename(target[:folder]), debug_marks: debug_marks)
+        if sb_given
+          book_dir = resolve_carnet_folder(songs_carnet_opt)
+          captured = StringIO.new
+          pdf_path = SongCreator.with_spinner(Loc.get("carnet_building_in_progress")) do
+            orig_stdout, orig_stderr = $stdout, $stderr
+            $stdout = captured
+            $stderr = captured
+            begin
+              CarnetBuilder.build_song(target[:folder], carnet_folder: book_dir)
+            ensure
+              $stdout = orig_stdout
+              $stderr = orig_stderr
+            end
+          end
+          puts success("👍 #{format(Loc.get("song_pdf_generated"), SongResolver.display_name(target[:folder]))}")
+          print captured.string
+
+          Layout.report_missing_chords!
+
+          if Layout.log_conflict_count.to_i.positive?
+            system("open", Layout.conflict_log_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_conflicts_question")), default: false)
+          end
+
+          system("open", pdf_path) if open_pdf || colored_prompt.yes?(blue(Loc.get("song_build_open_pdf_question")))
         elsif target[:kind] == :carnet
           # Tout ce que `CarnetBuilder.build` peut encore écrire PENDANT la construction
           # (avertissement KDP...) est capturé ici et réaffiché APRÈS l'arrêt du spinner

@@ -12,3 +12,13 @@ On peut demander l'ouverture immédiate du PDF avec l'option `-o/--open` :
 ----
 songbook build "titre approx" -o
 ----
+
+On peut également produire le pdf mais comme si la chanson était gravée dans un carnet de chant en particulier, donc avec les options et le layout du carnet, avec l'option `--sb "carnet de chant"`. En mode interactif :
+
+----
+> songbook -i
+🎸> use song "titre approx"
+🎸> build -o --sb "titre carnet approx"
+----
+
+TIP: Si le nom du carnet n'est pas fourni, il sera demandé en proposant la liste de tous les carnets.

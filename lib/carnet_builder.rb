@@ -433,6 +433,33 @@ module CarnetBuilder
     !!FileFinder.find(dir, :lyr)
   end
 
+  # Réglages RÉSOLUS du `.infos` d'un carnet (format/layout/imprimeur/police) — SEULE la
+  # résolution, jamais l'itération sur les chansons du `.tdm` (voir `build`, qui a son
+  # propre calcul inline, jamais refactoré dessus pour ne rien risquer sur le carnet
+  # complet). Sert à `build_song(..., carnet_folder:)` : construire UNE chanson avec les
+  # préférences d'un carnet SANS reconstruire tout le carnet (issue "juste avec les
+  # réglages du carnet, c'est tout").
+  def self.resolve_carnet_page_prefs(carnet_folder)
+    infos_path = FileFinder.find(carnet_folder, :inf)
+    raise "aucun fichier .infos/.inf trouvé dans #{carnet_folder}" unless infos_path
+
+    conf = parse_nested_infos(infos_path)
+    page_size_in = conf.fetch("format") { AppConfig.get("format") }.split(/\s*x\s*/i).map { |v| v =~ /[a-z]/i ? AppConfig.length_pt(v) / AppConfig::IN_TO_PT : v.to_f }
+    layout_name = conf["layout"] || PageBuilder::DEFAULT_LAYOUT_NAME
+    layout_preset = PageBuilder::LAYOUTS.fetch(layout_name) { raise "layout inconnu : #{layout_name} (voir PageBuilder::LAYOUTS)" }
+    {
+      layout_preset: layout_preset,
+      page_size_in: page_size_in,
+      font_family: conf.fetch("font_family", "HelveticaNeue"),
+      font_size: conf.fetch("font_size", Layout::TEXT_SIZE.to_s).to_s[/[\d.]+/].to_f,
+      paper: conf.fetch("paper", PrinterProfile::DEFAULT_PAPER).to_s.to_sym,
+      bleed: conf.key?("bleed") ? conf["bleed"] == true : PrinterProfile::DEFAULT_BLEED,
+      facing_pages: PrinterProfile.facing_pages(conf),
+      margins: PrinterProfile.margin_overrides(conf),
+      folio_position: conf["folio_position"],
+    }
+  end
+
   # Chanson seule, HORS carnet : format/layout de `_default.yaml` (pas de `.tdm`/`.infos`
   # de carnet à consulter). Passe 1 (mesure, page_count provisoire) -> passe 2 (page_count
   # réel), même principe que `build` pour la marge de reliure KDP.
@@ -441,11 +468,19 @@ module CarnetBuilder
   # (`infos_overrides` cascade déjà au-dessus du `.infos` réel, voir `PageBuilder.build`).
   # `out_suffix` (ex. "CtoF") : fichier SÉPARÉ, jamais un `slug` normal écrasé, jamais
   # sluggifié (voulu tel quel, casse comprise) — `nil`/vide = fichier normal, écrasé.
-  def self.build_song(song_folder, infos_overrides: {}, out_suffix: nil)
-    layout = PageBuilder::DEFAULT_LAYOUT.merge(diags_align: "left")
-    page_size_in = layout.fetch(:format).to_s.split(/\s*x\s*/i).map { |v| AppConfig.length_pt(v) / AppConfig::IN_TO_PT }
+  # `carnet_folder` : chanson sortie EXACTEMENT comme une chanson seule, mais avec les
+  # préférences (format/layout/imprimeur/police) DE CE carnet — jamais la reconstruction
+  # du carnet entier (`build(..., only_song:)`, coûteux, mesure/rend TOUTES les chansons
+  # du `.tdm` pour connaître la pagination réelle : "du simple bon sens", Phil, ce n'est
+  # PAS ce qui est demandé ici — pas de numéro de page "réel dans le livre", seulement
+  # les réglages).
+  def self.build_song(song_folder, infos_overrides: {}, out_suffix: nil, carnet_folder: nil)
+    carnet_prefs = carnet_folder ? resolve_carnet_page_prefs(carnet_folder) : nil
+    layout = carnet_prefs ? carnet_prefs[:layout_preset] : PageBuilder::DEFAULT_LAYOUT.merge(diags_align: "left")
+    page_size_in = carnet_prefs ? carnet_prefs[:page_size_in] : layout.fetch(:format).to_s.split(/\s*x\s*/i).map { |v| AppConfig.length_pt(v) / AppConfig::IN_TO_PT }
     slug = slugify(File.basename(song_folder))
     pdf_slug = out_suffix.to_s.empty? ? slug : "#{slug}-#{out_suffix}"
+    pdf_slug = "#{slugify(File.basename(carnet_folder))}-song-#{pdf_slug}" if carnet_folder
     export_dir = File.join(song_folder, "export")
     FileUtils.mkdir_p(export_dir)
 
@@ -454,15 +489,25 @@ module CarnetBuilder
     # carnet construit juste avant dans le même process REPL) : sinon `log_build` écrit
     # dans le dossier de logs d'UN AUTRE build, potentiellement déjà nettoyé (bug
     # constaté 2026-08-25, `tests/songs/build_song_spec.rb` après un build de carnet).
-    Layout.conflict_log_path = File.join(export_dir, "#{slug}-conflicts.log")
+    Layout.conflict_log_path = File.join(export_dir, "#{pdf_slug}-conflicts.log")
     File.write(Layout.conflict_log_path, "Début : #{Time.now}\n")
-    Layout.building_log_path = File.join(export_dir, "#{slug}-building.log")
+    Layout.building_log_path = File.join(export_dir, "#{pdf_slug}-building.log")
     File.write(Layout.building_log_path, "Début : #{Time.now}\n")
     Layout.sensitivity = "log" # chanson seule : pas de `.infos` de carnet à consulter
     Layout.reset_conflicts!
 
+    printer_kwargs = {}
+    if carnet_prefs
+      Options.set!(:font_family, carnet_prefs[:font_family])
+      Options.set!(:font_size, carnet_prefs[:font_size])
+      Layout.carnet_font_baseline = { "font-family" => Options.get(:font_family), "font-size" => Options.get(:font_size).to_s }
+      Layout.folio_position = Layout.resolve_folio_position(carnet_prefs[:folio_position], carnet_prefs[:facing_pages])
+      infos_overrides = resolve_infos_override(carnet_folder, song_folder, File.basename(song_folder)).merge(infos_overrides)
+      printer_kwargs = { paper: carnet_prefs[:paper], bleed: carnet_prefs[:bleed], facing_pages: carnet_prefs[:facing_pages], **carnet_prefs[:margins] }
+    end
+
     tmp_out = File.join(export_dir, ".tmp-#{pdf_slug}.pdf")
-    PageBuilder.build(song_folder, tmp_out, page_size_in: page_size_in, page_count: 24, first_page_no: 1, layout_preset: layout, infos_overrides: infos_overrides)
+    PageBuilder.build(song_folder, tmp_out, page_size_in: page_size_in, page_count: 24, first_page_no: 1, layout_preset: layout, infos_overrides: infos_overrides, carnet_folder: carnet_folder, **printer_kwargs)
     page_count = [CombinePDF.load(tmp_out).pages.size, 24].max
     File.delete(tmp_out)
 
@@ -476,7 +521,7 @@ module CarnetBuilder
     # `page_count` ci-dessus, faite à `first_page_no: 1`, reste valable telle quelle.
     real_first_page_no = page_count > 1 ? 2 : 1
     out_path = File.join(export_dir, "#{pdf_slug}.pdf")
-    PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: real_first_page_no, layout_preset: layout, infos_overrides: infos_overrides)
+    PageBuilder.build(song_folder, out_path, page_size_in: page_size_in, page_count: page_count, first_page_no: real_first_page_no, layout_preset: layout, infos_overrides: infos_overrides, carnet_folder: carnet_folder, **printer_kwargs)
     # Aperçu (macOS) affiche TOUJOURS la page 1 d'un PDF seule, jamais en vis-à-vis avec
     # la 2 — page blanche ajoutée devant dès que la chanson a plus d'une page.
     if page_count > 1
