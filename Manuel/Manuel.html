@@ -1966,6 +1966,28 @@ Pour ouvrir directement ce fichier, <code>songbook open layout --song "titre car
 <pre>songbook build "titre approx" -o</pre>
 </div>
 </div>
+<div class="paragraph">
+<p>On peut également produire le pdf mais comme si elle était produite dans un carnet de chant en particulier, donc avec les options et le layout du carnet, avec l&#8217;option <code>--sb "carnet de chant"</code>. En mode interactif :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>&gt; songbook -i
+🎸&gt; use song "titre approx"
+🎸&gt; build -o --sb "titre carnet approx"</pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+Si le nom du carnet n&#8217;est pas fourni, il sera demandé en proposant la liste de tous les carnets.
+</td>
+</tr>
+</table>
+</div>
 </div>
 <div class="sect2">
 <h3 id="song-list">Liste des chansons</h3>
