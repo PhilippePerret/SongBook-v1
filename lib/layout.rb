@@ -1214,6 +1214,11 @@ module Layout
     line && line.segments.any?(&:chord)
   end
 
+  # RAL6 (Manuel/regles_esthetiques.adoc) : au moins une ligne du bloc porte un accord.
+  def self.block_has_chord?(block)
+    block.lines.any? { |line| line_has_chord?(line) }
+  end
+
   # Ligne sans AUCUN mot réel (que des accords + séparateurs "/" espaces...) — intro/outro
   # instrumentale, voir `draw_chords_only_line`.
   def self.line_has_words?(line)
@@ -1280,10 +1285,11 @@ module Layout
       # jamais sur la 1re ligne du bloc (rien au-dessus, c'est la gouttière normale
       # entre rows qui joue déjà ce rôle-là).
       baseline += line.top_gap if i.positive? && line.top_gap
-      # `reserve_chord_row` (1re ligne seulement) : même réserve "ligne d'accords" que
-      # `draw_block`/`draw_line`, sinon la hauteur mesurée ici (utilisée pour la row
-      # entière) désaccorde de ce qui est réellement dessiné — RAL3.
-      reserve_chord_row = i.zero? && force_chord_baseline
+      # `reserve_chord_row` : même réserve "ligne d'accords" que `draw_block`/`draw_line`,
+      # sinon la hauteur mesurée ici (utilisée pour la row entière) désaccorde de ce qui
+      # est réellement dessiné — RAL3 (1re ligne, `force_chord_baseline`) + RAL6 (toute
+      # ligne sans accord dans un bloc qui en a ailleurs).
+      reserve_chord_row = (i.zero? && force_chord_baseline) || (!line_has_chord?(line) && block_has_chord?(block))
       last_text_offset = if chords_only_line?(line)
                             baseline
                           else
@@ -2157,7 +2163,8 @@ module Layout
       # bien à la bonne hauteur mais `line_step` le faisait remonter trop tôt vers la
       # ligne suivante, redésalignant tout à partir de la 2e ligne (bug constaté
       # 2026-08-24, "La Ballade des gens heureux" p.21).
-      reserve_chord_row = i.zero? && force_chord_baseline
+      # RAL6 : même réserve pour toute ligne sans accord d'un bloc qui en a ailleurs.
+      reserve_chord_row = (i.zero? && force_chord_baseline) || (!line_has_chord?(line) && block_has_chord?(block))
       draw_line(pdf, line, line_x, y, width, chord_size: chord_size, text_size: text_size, reserve_chord_row: reserve_chord_row)
       y -= line_step(pdf, line, width, chord_size: chord_size, text_size: text_size, reserve_chord_row: reserve_chord_row)
     end
