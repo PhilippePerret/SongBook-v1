@@ -1642,8 +1642,24 @@ module Layout
   # `PageBuilder.build`). Pagination/rognage dupliqués pour `side_col2` (mêmes règles
   # que `side_col`) ; tout excédent des deux colonnes part directement en page dédiée,
   # sans la fusion en bas de dernière page réservée au cas mono-colonne.
+  # Découpe `paths` en rangées d'au plus `cols` — `top_row_partial:` (issue #107,
+  # `diags_position: End` SEULEMENT) : si la dernière rangée "normale" (`each_slice`)
+  # n'est PAS pleine, la rangée incomplète passe EN PREMIER (dessinée tout en HAUT du
+  # bloc, voir `rows[0]` plus bas) et toutes les autres sont pleines — l'ORDRE des
+  # diagrammes reste inchangé (1..N, gauche->droite puis rangée suivante), seule la
+  # TAILLE de chaque rangée change. Ex. 13 diags, 8 par rangée : `each_slice` donnerait
+  # [8, 5] (pleine en haut) -> ici [5, 8] (les 5 premiers accords en haut, pleine en bas).
+  def self.diag_excess_rows(paths, cols, top_row_partial: false)
+    return paths.each_slice(cols).to_a if paths.empty? || cols <= 0
+
+    remainder = paths.size % cols
+    return paths.each_slice(cols).to_a unless top_row_partial && remainder.positive? && paths.size > cols
+
+    [paths.first(remainder)] + paths[remainder..].each_slice(cols).to_a
+  end
+
   def self.paginate_and_draw(pdf, elements, first_avail_h, printer:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, side_col2: nil, text_x: 0, text_w: nil, debug_marks: false,
-      dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil, row_excess: [], row_excess_w: Options.get(:diags_size), row_excess_align: :center)
+      dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil, row_excess: [], row_excess_w: Options.get(:diags_size), row_excess_align: :center, diag_position: nil)
     heights = elements.map(&:height)
     trailing_extra = row_excess.any? ? estimate_excess_grid_height(row_excess, text_w || pdf.bounds.width) : 0
     pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned, top_type: :band_strophe, trailing_extra: trailing_extra)
@@ -1826,7 +1842,7 @@ module Layout
       try_width = lambda do |w|
         grid_diag_h = svg_height_for(File.read(excess_paths.first), w)
         cols = [((text_w + gap_h) / (w + gap_h)).floor, 1].max
-        rows = excess_paths.each_slice(cols).to_a
+        rows = diag_excess_rows(excess_paths, cols, top_row_partial: diag_position == :end)
         block_h = rows.size * grid_diag_h + [rows.size - 1, 0].max * gap_v
         row_top_y = column_bottom_y ? column_bottom_y + block_h : gap_v + block_h
         remaining_h = last_page[:avail_h] - row_top_y - min_v_dist(:default) - page_number_reserve
