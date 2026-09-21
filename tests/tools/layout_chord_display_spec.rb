@@ -3,6 +3,7 @@
 require_relative "../spec_helper"
 require "layout"
 require "transpose"
+require "dsl_parser"
 
 # Rendu ("gravure") des accords : la fondamentale garde les lettres A-G (`convert_note_symbol`),
 # mais la basse entre crochets (`A[c]m7`, `[fd]` seule) suit une règle DIFFÉRENTE (Phil,
@@ -56,6 +57,92 @@ RSpec.describe "Layout : affichage des accords (basse en solfège italien)" do
     it "fondamentale seule (sans basse) : comportement inchangé (lettres A-G)" do
       expect(Layout.display_chord("Am7")).to eq("Am7")
       expect(Layout.display_chord("Fd")).to eq("F♯")
+    end
+  end
+
+  # Issue #106 ("Jamais Partir") : la basse embarquée doit se rapprocher de SON "/",
+  # jamais de l'accord suivant — mais un accord COMPOSÉ ("Bb6/C", 2 accords distincts
+  # collés, `ChordDiagrams.split_chord`) garde un écart NORMAL des deux côtés de son "/".
+  describe ".slash_bass_flags" do
+    it "basse embarquée (\"G6[B]\") : le \"/\" affiché est une basse" do
+      expect(Layout.slash_bass_flags("G6[B]")).to eq([true])
+    end
+
+    it "accord composé (\"Bb6/C\") : le \"/\" affiché N'est PAS une basse" do
+      expect(Layout.slash_bass_flags("Bb6/C")).to eq([false])
+    end
+
+    it "basse seule (\"/[fd]\") : nil, repli sur l'ancien critère (déjà resserré)" do
+      expect(Layout.slash_bass_flags("/[fd]")).to be_nil
+    end
+  end
+
+  describe ".slash_label_width (écart resserré après le \"/\" d'une basse embarquée)" do
+    it "une basse embarquée mesure moins large qu'un accord composé à noms égaux" do
+      pdf = Prawn::Document.new
+      Layout.register_fonts(pdf)
+      bass_w = Layout.slash_label_width(pdf, "G6/si", Layout::CHORD_SIZE, bass_flags: Layout.slash_bass_flags("G6[B]"))
+      composite_w = Layout.slash_label_width(pdf, "G6/si", Layout::CHORD_SIZE, bass_flags: Layout.slash_bass_flags("G6/si"))
+      expect(bass_w).to be < composite_w
+    end
+
+    it "1pt de moins UNIQUEMENT avant le \"/\" (entre l'accord et le \"/\"), après inchangé" do
+      expect(Layout::CHORD_SLASH_GAP_BASS_LEAD).to eq(Layout::CHORD_SLASH_GAP - 1.0)
+      expect(Layout::CHORD_SLASH_GAP_BASS_TRAIL).to eq(Layout::CHORD_SLASH_GAP_BASS_ONLY)
+    end
+
+    it "séparateur ACCORD COMPOSÉ (2 accords collés, ex. fusion \"G6[B]\"+\"Gm6[Bb]\") : 2pt de plus des 2 côtés" do
+      expect(Layout::CHORD_SLASH_GAP_COMPOSITE_LEAD).to eq(Layout::CHORD_SLASH_GAP + 2.0)
+      expect(Layout::CHORD_SLASH_GAP_COMPOSITE_TRAIL).to eq(Layout::CHORD_SLASH_GAP + 2.0)
+      expect(Layout.slash_gaps(Layout.slash_bass_flags("Bb6/C"), 0, "Bb6")).to eq([Layout::CHORD_SLASH_GAP_COMPOSITE_LEAD, Layout::CHORD_SLASH_GAP_COMPOSITE_TRAIL])
+    end
+  end
+
+  # Issue #106 (suite) : 2 accords qui se suivent SANS retomber sur des paroles ("Jamais
+  # Partir", fin du 1er vers du refrain et 2e "Jamais partir") -> `CHORD_VOID_GAP` en plus.
+  describe ".text_line_steps (écart accord/accord \"dans le vide\")" do
+    it "ajoute CHORD_VOID_GAP quand rien ne tombe entre 2 accords consécutifs" do
+      pdf = Prawn::Document.new
+      Layout.register_fonts(pdf)
+      void_segments = [
+        Segment.new(chord: "G6[B]", fret: "0", text: ""),
+        Segment.new(chord: "Gm6[Bb]", fret: "0", text: "")
+      ]
+      no_void_segments = [
+        Segment.new(chord: "G6[B]", fret: "0", text: ""),
+        Segment.new(chord: nil, fret: nil, text: "x")
+      ]
+      void_steps, = Layout.text_line_steps(pdf, void_segments, Layout::CHORD_SIZE, Layout::TEXT_SIZE)
+      no_void_steps, = Layout.text_line_steps(pdf, no_void_segments, Layout::CHORD_SIZE, Layout::TEXT_SIZE)
+      expect(void_steps[1][:x] - no_void_steps[1][:x]).to eq(Layout::CHORD_VOID_GAP)
+    end
+
+    it "un espace SEUL entre 2 accords compte AUSSI comme \"dans le vide\"" do
+      pdf = Prawn::Document.new
+      Layout.register_fonts(pdf)
+      space_segments = [
+        Segment.new(chord: "G6[B]", fret: "0", text: " "),
+        Segment.new(chord: "Gm6[Bb]", fret: "0", text: "")
+      ]
+      no_void_segments = [
+        Segment.new(chord: "G6[B]", fret: "0", text: " "),
+        Segment.new(chord: nil, fret: nil, text: "x")
+      ]
+      space_steps, = Layout.text_line_steps(pdf, space_segments, Layout::CHORD_SIZE, Layout::TEXT_SIZE)
+      no_void_steps, = Layout.text_line_steps(pdf, no_void_segments, Layout::CHORD_SIZE, Layout::TEXT_SIZE)
+      expect(space_steps[1][:x] - no_void_steps[1][:x]).to eq(Layout::CHORD_VOID_GAP)
+    end
+
+    it "de vraies paroles entre 2 accords : pas de supplément" do
+      pdf = Prawn::Document.new
+      Layout.register_fonts(pdf)
+      segments = [
+        Segment.new(chord: "G6[B]", fret: "0", text: "x"),
+        Segment.new(chord: "Gm6[Bb]", fret: "0", text: "")
+      ]
+      steps, = Layout.text_line_steps(pdf, segments, Layout::CHORD_SIZE, Layout::TEXT_SIZE)
+      chord_w = Layout.chord_label_width(pdf, "G6[B]", Layout::CHORD_SIZE)
+      expect(steps[1][:x]).to eq(chord_w + Layout::CHORD_GAP)
     end
   end
 end

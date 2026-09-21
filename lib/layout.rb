@@ -281,6 +281,23 @@ module Layout
   #  — NE concerne PAS un accord+basse ("Bb6/C"), qui garde
   # `CHORD_SLASH_GAP` normal des deux côtés.
   CHORD_SLASH_GAP_BASS_ONLY = 0.5
+  # Basse EMBARQUÉE dans un accord (ex. "G6[B]" -> "G6/si", issue #106) : écart AVANT le
+  # "/" (entre l'accord et le "/") resserré, 1pt de moins que `CHORD_SLASH_GAP`. Écart
+  # APRÈS le "/" (entre le "/" et la basse) INCHANGÉ (`CHORD_SLASH_GAP_BASS_ONLY`). Ne
+  # concerne QUE ce cas précis (`Layout.slash_bass_flags`), jamais un accord composé
+  # ("Bb6/C").
+  CHORD_SLASH_GAP_BASS_LEAD = CHORD_SLASH_GAP - 1.0
+  CHORD_SLASH_GAP_BASS_TRAIL = CHORD_SLASH_GAP_BASS_ONLY
+  # Séparateur ACCORD COMPOSÉ (2 accords collés par un "/", `Layout.slash_bass_flags` ->
+  # `false` — issue #106, "Jamais Partir" 1er vers du refrain, "G6[B]" collé à
+  # "Gm6[Bb]") : écart des DEUX côtés du "/" élargi de 2pt par rapport à `CHORD_SLASH_GAP`.
+  CHORD_SLASH_GAP_COMPOSITE_LEAD = CHORD_SLASH_GAP + 2.0
+  CHORD_SLASH_GAP_COMPOSITE_TRAIL = CHORD_SLASH_GAP + 2.0
+  # Deux accords qui se suivent SANS retomber sur des paroles entre eux (segment au texte
+  # vide/blanc, ligne NORMALE — `text_line_steps`, pas une ligne "chords-only", déjà
+  # traitée séparément par `CHORD_CHORD_GAP`) : `CHORD_GAP` seul les laissait trop
+  # proches (issue #106) — `CHORD_GAP` normal + ce supplément.
+  CHORD_VOID_GAP = 4.0
   DIAG_W = 60
   DIAG_TEXT_GAP = 26
   # RAD3 : largeur plancher sous laquelle un diag ne doit jamais être réduit — la taille
@@ -2236,7 +2253,7 @@ module Layout
 
   def self.chord_label_width(pdf, chord, size)
     text = display_chord(chord)
-    return slash_label_width(pdf, text, size) if text.include?("/")
+    return slash_label_width(pdf, text, size, bass_flags: slash_bass_flags(chord)) if text.include?("/")
 
     main, suffix = chord_label_parts(chord)
     with_chord_font(pdf) do
@@ -2246,18 +2263,38 @@ module Layout
     end
   end
 
-  def self.slash_label_width(pdf, text, size)
+  # `bass_flags` (issue #106, voir `slash_bass_flags`) : un séparateur "basse" (`nil` ->
+  # repli sur l'ancien critère "partie précédente vide", cas de la basse SEULE) serre son
+  # écart des DEUX côtés du "/" (`CHORD_SLASH_GAP_BASS_LEAD`/`_TRAIL`) ; un séparateur
+  # ACCORD COMPOSÉ garde `CHORD_SLASH_GAP` normal des deux côtés.
+  def self.slash_label_width(pdf, text, size, bass_flags: nil)
     parts = text.split("/")
-    trailing_gap = parts.first.to_s.empty? ? CHORD_SLASH_GAP_BASS_ONLY : CHORD_SLASH_GAP
     with_chord_font(pdf) do
-      parts.sum { |p| pdf.width_of(p, size: size, style: :bold) } +
-        (parts.length - 1) * (pdf.width_of("/", size: size, style: :bold) + CHORD_SLASH_GAP + trailing_gap)
+      slash_w = pdf.width_of("/", size: size, style: :bold)
+      width = parts.sum { |p| pdf.width_of(p, size: size, style: :bold) }
+      parts.each_index do |i|
+        next if i == parts.length - 1
+
+        lead_gap, trailing_gap = slash_gaps(bass_flags, i, parts[i])
+        width += slash_w + lead_gap + trailing_gap
+      end
+      width
+    end
+  end
+
+  # Écarts avant/après le "/" d'UN séparateur (`bass_flags`/`i` : voir `slash_label_width`/
+  # `draw_slash_chord_label`, UNE SEULE formule pour les deux, issue #106).
+  def self.slash_gaps(bass_flags, i, leading_part)
+    if bass_flags
+      bass_flags[i] ? [CHORD_SLASH_GAP_BASS_LEAD, CHORD_SLASH_GAP_BASS_TRAIL] : [CHORD_SLASH_GAP_COMPOSITE_LEAD, CHORD_SLASH_GAP_COMPOSITE_TRAIL]
+    else
+      [CHORD_SLASH_GAP, leading_part.to_s.empty? ? CHORD_SLASH_GAP_BASS_ONLY : CHORD_SLASH_GAP]
     end
   end
 
   def self.draw_chord_label(pdf, chord, x, y, size: scaled_chord_size)
     text = display_chord(chord)
-    return draw_slash_chord_label(pdf, text, x, y, size) if text.include?("/")
+    return draw_slash_chord_label(pdf, text, x, y, size, bass_flags: slash_bass_flags(chord)) if text.include?("/")
 
     main, suffix = chord_label_parts(chord)
     with_chord_font(pdf) do
@@ -2275,7 +2312,8 @@ module Layout
   # Accord "slash" (ex. "Bb6/C") : chaque partie + le "/" dessinés SÉPARÉMENT, avec
   # `CHORD_SLASH_GAP` de chaque côté du "/" — mêmes offsets ici et dans `slash_label_width`
   # (une seule formule pour mesurer et dessiner, voir commentaire `text_line_steps`).
-  def self.draw_slash_chord_label(pdf, text, x, y, size)
+  # `bass_flags` : voir `slash_label_width`/`slash_bass_flags` (issue #106).
+  def self.draw_slash_chord_label(pdf, text, x, y, size, bass_flags: nil)
     with_chord_font(pdf) do
       descent = font_metric(pdf, size) { pdf.font.descender }
       cx = x
@@ -2285,12 +2323,34 @@ module Layout
         cx += pdf.width_of(part, size: size, style: :bold)
         next if i == parts.length - 1
 
-        cx += CHORD_SLASH_GAP
+        lead_gap, trailing_gap = slash_gaps(bass_flags, i, part)
+        cx += lead_gap
         engrave(bottom: y - descent, context: "accord (slash) séparateur") { pdf.draw_text "/", at: [cx, y], size: size, style: :bold }
-        trailing_gap = part.empty? ? CHORD_SLASH_GAP_BASS_ONLY : CHORD_SLASH_GAP
         cx += pdf.width_of("/", size: size, style: :bold) + trailing_gap
       end
     end
+  end
+
+  # Pour `chord` (chaîne SOURCE, avant `display_chord`) : un "/" affiché ("G6[B]" ->
+  # "G6/si") peut venir soit d'une BASSE entre crochets (le "/" séparant la fondamentale
+  # de sa basse, ex. "G6[B]"), soit d'un accord COMPOSÉ (deux accords distincts collés,
+  # ex. "Bb6/C", voir `ChordDiagrams.split_chord`) — les deux se ressemblent une fois
+  # affichés, mais SEULE la basse doit se rapprocher de son "/" (issue #106, "Jamais
+  # Partir" : la basse "si" de "G6[B]" paraissait plus proche de l'accord SUIVANT que de
+  # son propre "/"). Retourne un flag par "/" affiché, dans l'ORDRE d'affichage, `true`
+  # si ce "/" sépare une fondamentale de SA basse. `nil` pour la basse SEULE (ex. "/[B]",
+  # "[fd]" seule) — repli sur l'ancien critère dans `slash_label_width`/
+  # `draw_slash_chord_label` (un seul "/" de toute façon, déjà resserré).
+  def self.slash_bass_flags(chord)
+    return nil if chord.start_with?("/[") || chord.match?(BASS_ONLY_RE)
+
+    parts = chord.split("/")
+    flags = []
+    parts.each_with_index do |part, i|
+      flags << true if part.include?("[")
+      flags << false if i < parts.length - 1
+    end
+    flags
   end
 
   # Positions x de chaque segment d'une ligne NORMALE (texte + accords éventuels) — avance
@@ -2302,11 +2362,12 @@ module Layout
   # chose qui mesure VRAIMENT la taille d'un bloc").
   def self.text_line_steps(pdf, segments, chord_size, text_size)
     cx = 0
-    steps = segments.map do |seg|
+    steps = segments.each_with_index.map do |seg, i|
       text_w = pdf.width_of(seg.text, size: text_size)
       chord_w = seg.chord ? chord_label_width(pdf, seg.chord, chord_size) : 0
       step = { x: cx, seg: seg, text_w: text_w }
-      cx += [text_w, chord_w].max + (seg.chord ? CHORD_GAP : 0)
+      void_gap = seg.chord && seg.text.strip.empty? && segments[i + 1]&.chord ? CHORD_VOID_GAP : 0
+      cx += [text_w, chord_w].max + (seg.chord ? CHORD_GAP : 0) + void_gap
       step
     end
     [steps, cx]
@@ -2569,6 +2630,14 @@ module Layout
     glued_to_word?(seg) || seg.chord&.match?(BASS_ONLY_RE)
   end
 
+  # Écart voulu APRÈS `seg` (jusqu'au PROCHAIN accord) — `CHORD_GAP` normal, `CHORD_VOID_GAP`
+  # en plus quand `seg` n'a AUCUNE parole avant le prochain accord (issue #106). Utilisé par
+  # `align_fixed_chords!` ET `draw_line` (mêmes `chord_steps` passés à `spread_chord_positions`,
+  # jamais deux formules à tenir synchronisées).
+  def self.chord_gap_after(seg, next_seg)
+    CHORD_GAP + (seg.text.strip.empty? && next_seg&.chord ? CHORD_VOID_GAP : 0)
+  end
+
   # Mesure une fois avec le texte D'ORIGINE (essai `spread_chord_positions` à part, sur une
   # copie) pour savoir de combien chaque accord fixe est repoussé, puis mute `segs` en
   # conséquence ; `draw_line` retokenise et respread ensuite normalement sur le résultat.
@@ -2585,16 +2654,16 @@ module Layout
 
       seg_offset = 0
       steps = []
-      segs.each do |seg|
+      segs.each_with_index do |seg, i|
         if seg.chord
           steps << { natural_x: chord_x_at_offset(pdf, tokens, seg_offset, text_size, char_spacing: cs),
-                     chord: seg.chord, fixed: fixed_chord?(seg) }
+                     chord: seg.chord, fixed: fixed_chord?(seg), gap_after: chord_gap_after(seg, segs[i + 1]) }
         end
         seg_offset += seg.text.length
       end
       break if steps.empty?
 
-      targets = steps.map { |s| { x: s[:natural_x], chord: s[:chord], anchored: s[:fixed] } }
+      targets = steps.map { |s| { x: s[:natural_x], chord: s[:chord], anchored: s[:fixed], gap_after: s[:gap_after] } }
       spread_chord_positions(pdf, targets, chord_size)
 
       changed = false
@@ -2622,11 +2691,15 @@ module Layout
     end
   end
 
+  # `step[:gap_after]` (voir `chord_gap_after`) : écart minimum voulu APRÈS ce step,
+  # avant le SUIVANT — `CHORD_GAP` si absent (chords-only ou tout autre appelant qui ne
+  # le fournit pas).
   def self.spread_chord_positions(pdf, chord_steps, chord_size)
     max_x = nil
     chord_steps.reverse_each do |step|
       unless step[:anchored]
-        limit = max_x && max_x - chord_label_width(pdf, step[:chord], chord_size) - CHORD_GAP
+        gap = step[:gap_after] || CHORD_GAP
+        limit = max_x && max_x - chord_label_width(pdf, step[:chord], chord_size) - gap
         step[:x] = limit if limit && step[:x] > limit
       end
       max_x = step[:x]
@@ -2639,7 +2712,8 @@ module Layout
     min_x = nil
     chord_steps.each do |step|
       step[:x] = min_x if min_x && step[:x] < min_x
-      min_x = step[:x] + chord_label_width(pdf, step[:chord], chord_size) + CHORD_GAP
+      gap = step[:gap_after] || CHORD_GAP
+      min_x = step[:x] + chord_label_width(pdf, step[:chord], chord_size) + gap
     end
   end
 
@@ -2739,10 +2813,10 @@ module Layout
 
     seg_offset = 0
     underline_steps = []
-    chord_steps = segs.filter_map do |seg|
+    chord_steps = segs.each_with_index.filter_map do |seg, i|
       if seg.chord
         step = { x: chord_x_at_offset(pdf, tokens, seg_offset, text_size, char_spacing: cs), chord: seg.chord,
-                 anchored: fixed_chord?(seg) }
+                 anchored: fixed_chord?(seg), gap_after: chord_gap_after(seg, segs[i + 1]) }
       end
       (seg.underline_ranges || []).each { |s, e| underline_steps << [seg_offset + s, seg_offset + e] }
       seg_offset += seg.text.length
