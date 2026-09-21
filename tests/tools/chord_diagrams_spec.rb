@@ -51,6 +51,43 @@ RSpec.describe "recherche des diagrammes d'accords" do
     end
   end
 
+  # Issue #105 : sans case précisée, la case choisie est la plus proche, ÉGALE OU
+  # INFÉRIEURE, à celle de l'accord PRÉCÉDENT dans la chanson (tous noms confondus).
+  describe "issue #105 — case choisie sans précision explicite" do
+    it "sans accord précédent : la case la plus basse disponible" do
+      Dir.mktmpdir do |dir|
+        %w[0 3 5 7].each { |c| File.write(File.join(dir, "A-#{c}.svg"), "") }
+        found = ChordDiagrams.diag_path("A", carnet_dir: dir)
+        expect(found).to eq(File.join(dir, "A-0.svg"))
+      end
+    end
+
+    it "avec un accord précédent : la case égale ou inférieure la plus proche" do
+      Dir.mktmpdir do |dir|
+        %w[0 3 5 7].each { |c| File.write(File.join(dir, "A-#{c}.svg"), "") }
+        found = ChordDiagrams.diag_path("A", carnet_dir: dir, previous_case: 5)
+        expect(found).to eq(File.join(dir, "A-5.svg"))
+      end
+    end
+
+    it "aucune case disponible ≤ l'accord précédent : repli sur la plus basse disponible" do
+      Dir.mktmpdir do |dir|
+        %w[5 7].each { |c| File.write(File.join(dir, "A-#{c}.svg"), "") }
+        found = ChordDiagrams.diag_path("A", carnet_dir: dir, previous_case: 2)
+        expect(found).to eq(File.join(dir, "A-5.svg"))
+      end
+    end
+
+    it "ChordDiagrams.diag_paths_for fait transiter la case résolue d'un accord au suivant" do
+      Dir.mktmpdir do |dir|
+        %w[0 3 5 7].each { |c| File.write(File.join(dir, "A-#{c}.svg"), "") }
+        File.write(File.join(dir, "F-5.svg"), "")
+        paths = ChordDiagrams.diag_paths_for([["F", "5"], ["A", nil]], carnet_dir: dir)
+        expect(paths).to eq([File.join(dir, "F-5.svg"), File.join(dir, "A-5.svg")])
+      end
+    end
+  end
+
   it "trouve un fichier enregistré dans une AUTRE casse (bug constaté : \"c[e]-0B.svg\" introuvable via le nom canonique \"C[E]\")" do
     Dir.mktmpdir do |dir|
       File.write(File.join(dir, "c[e]-0B.svg"), "")

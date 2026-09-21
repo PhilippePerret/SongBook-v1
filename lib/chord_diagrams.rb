@@ -37,18 +37,18 @@ module ChordDiagrams
   # diagramme dédié, aucune des deux n'est un "accord" au sens raccourci/diagramme).
   BASS_ONLY_RE = %r{\A/?\[[^\]]*\]\z}
 
-  def self.diag_path(chord, fret: nil, carnet_dir: nil, song_dir: nil)
+  def self.diag_path(chord, fret: nil, carnet_dir: nil, song_dir: nil, previous_case: nil)
     return nil if chord.match?(BASS_ONLY_RE)
 
     fc = file_chord(chord)
 
     [carnet_dir, song_dir].compact.each do |dir|
-      found = find_svg(dir, fc, fret, recursive: true)
+      found = find_svg(dir, fc, fret, recursive: true, previous_case: previous_case)
       return found if found
     end
 
     letter = chord[0].upcase
-    found = find_svg(File.join(ASSETS, letter), fc, fret, recursive: false)
+    found = find_svg(File.join(ASSETS, letter), fc, fret, recursive: false, previous_case: previous_case)
     return found if found
 
     Layout.conflict!("accord inconnu ou case absente: #{chord}#{fret ? "-#{fret}" : ""}", solution: "diagramme omis")
@@ -57,10 +57,14 @@ module ChordDiagrams
   end
 
   # `fret` (case) : N'IMPORTE QUOI après le nom, pas de contrainte numérique,
-  # ex. "5C" (case 5, variante C). Sans `fret` donné, la case la plus basse disponible
-  # est choisie par sa partie numérique DE TÊTE ("10O" -> 10), jamais un tri de chaînes
-  # (sinon "10" < "2" lexicographiquement, faux musicalement).
-  def self.find_svg(dir, fc, fret, recursive:)
+  # ex. "5C" (case 5, variante C). Sans `fret` donné : `previous_case` (case NUMÉRIQUE de
+  # l'accord précédent DANS LA CHANSON, tous noms confondus — `diag_paths_for`) fixe la
+  # case choisie (issue #105) — la plus PROCHE, ÉGALE OU INFÉRIEURE à `previous_case`,
+  # parmi celles qui existent pour CET accord ; aucune case dispo ≤ `previous_case` (ou
+  # pas de `previous_case`, 1er accord de la chanson) -> repli sur la case la plus basse
+  # disponible, comme avant. Jamais un tri de chaînes sur la case ("10O" -> 10 par sa
+  # partie numérique DE TÊTE, sinon "10" < "2" lexicographiquement, faux musicalement).
+  def self.find_svg(dir, fc, fret, recursive:, previous_case: nil)
     return nil unless Dir.exist?(dir)
 
     name_variants(fc).each do |variant|
@@ -72,11 +76,40 @@ module ChordDiagrams
       entries.select! { |_, kase| kase == fret } if fret
       next if entries.empty?
 
-      target_case = fret || entries.min_by { |_, kase| kase[/\d+/].to_i }.last
+      target_case = fret || closest_case_leq(entries, previous_case)
       found = entries.find { |_, kase| kase == target_case }
       return found.first if found
     end
     nil
+  end
+
+  # Voir `find_svg` (issue #105). `entries` : paires [fichier, case] d'UN SEUL accord.
+  def self.closest_case_leq(entries, previous_case)
+    numbered = entries.map { |_, kase| [kase, kase[/\d+/].to_i] }
+    if previous_case
+      leq = numbered.select { |_, n| n <= previous_case }
+      return leq.max_by { |_, n| n }.first unless leq.empty?
+    end
+    numbered.min_by { |_, n| n }.first
+  end
+
+  # Résout `chord_frets` (paires [accord, case], ORDRE DE PARCOURS de la chanson —
+  # `collect_chord_frets`) en chemins SVG, en faisant transiter la case NUMÉRIQUE
+  # de chaque diagramme résolu vers le suivant (`previous_case`, issue #105) — un accord
+  # SANS case précisée est donc influencé par la case de l'accord juste avant lui DANS LA
+  # CHANSON, quel que soit son nom (jamais seulement une répétition du même accord, voir
+  # `collect_chord_frets`). Accord manquant (`diag_path` -> nil) : simplement omis, la
+  # case précédente n'avance pas.
+  def self.diag_paths_for(chord_frets, carnet_dir: nil, song_dir: nil)
+    previous_case = nil
+    chord_frets.filter_map do |chord, fret|
+      path = diag_path(chord, fret: fret, carnet_dir: carnet_dir, song_dir: song_dir, previous_case: previous_case)
+      if path
+        kase = File.basename(path, ".svg").split("-", 2).last
+        previous_case = kase[/\d+/].to_i if kase&.match?(/\d/)
+      end
+      path
+    end
   end
 
   # Variantes de casse à essayer pour la 1re lettre de la fondamentale ET celle de la

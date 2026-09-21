@@ -998,7 +998,7 @@ module PageBuilder
       else
         chord_frets = filter_chord_frets(all_chord_frets)
       end
-      diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret, carnet_dir: carnet_folder, song_dir: folder) }
+      diag_paths = ChordDiagrams.diag_paths_for(chord_frets, carnet_dir: carnet_folder, song_dir: folder)
       Layout.log_build("#{diag_paths.size} diagramme(s) d'accord, position=#{dynamic_mode ? "#{dynamic_mode} (résolu page par page)" : diag_position}")
 
       text_x, text_w, first_avail_h, side_col, row_excess, row_excess_w, side_col2 = Layout.layout_diags(pdf, diag_paths, dynamic_mode ? :left : diag_position, header_bottom, align: diag_align)
@@ -1160,7 +1160,7 @@ module PageBuilder
       Layout.apply_print_margins(pdf, printer, first_page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
       header_bottom = header_style == :band ? Layout.draw_header_band(pdf, song.meta) : Layout.draw_header_inline(pdf, song.meta)
 
-      diag_paths = chord_frets.filter_map { |chord, fret| ChordDiagrams.diag_path(chord, fret: fret) }
+      diag_paths = ChordDiagrams.diag_paths_for(chord_frets)
       diag_w = Layout::DIAG_W
       diag_heights = diag_paths.map { |p| Layout.svg_height_for(File.read(p), diag_w) }
 
