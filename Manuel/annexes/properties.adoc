@@ -82,7 +82,7 @@ Exemple :
                   | `Int`   | Placement à l'intérieur, donc toujours côté reliure.
                   | `Top`   | Placement à haut de chaque page.
                   | `Bot`   | Placement en bas de chaque page.
-                  3+| Valeurs composées/composites
+                  2+| Valeurs composées/composites
                   | `Left-Right` | (pour les diags) À gauche et à droite.
                   | `Top-Left` | En haut à gauche.
                   | `Top-Right` | En haut à droite.

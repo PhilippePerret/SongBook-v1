@@ -1,0 +1,45 @@
+[[droits]]
+=== Gestion des droits de reproduction ===
+
+Si le carnet de chant doit être publié, la question de la gestion des droits de reproduction doit être intégrée.
+
+Une commande permet de gérer ces droits, c'est-à-dire : 
+
+* de trouver l'éditeur en possession des droits de reproduction,
+* de le contacter pour un accord,
+* de finaliser cet accord.
+
+La commandes pour faire cela est `songbook droits` ou `songbook rights`.
+
+S'ouvre alors un menu permettant de gérer ces droits.
+
+==== Recherche des éditeurs ====
+
+----
+songbook -i
+🎸> droits
+----
+
+Choisir "Rechercher les éditeurs"
+
+Après quelques questions pour cerner la demande, la recherche est lancée (connexion internet requise). On peut suivre en direct les résultats. Les ambiguïtés sont soumises à résolution.
+
+[[droits-send-demande]]
+==== Transmettre les demandes d'autorisation ====
+
+Si vous avez peu de chansons, vous pouvez transmettre votre demande au cas par cas en trouvant les coordonnées de l'éditeur dans le <<file-infos, fichier .infos>> de la chanson. 
+
+Mais pour un grand nombre de chansons, il peut être utile de les transmettre de façon automatisée. Pour ce faire, il vous faut commencer par renseigner les données de mail qui vont permettre l'envoi depuis votre ordinateur.
+
+Une première tentative d'envoi vous permettra de définir ces données.
+
+Vous pouvez commencer par éditer la lettre de demande d'autorisation en choisissant : 
+
+----
+> Suivi des demandes de droits
+> Modifier le mail type de demande de droits
+----
+
+On peut faire la même chose avec la relance pour la même demande.
+
+Ensuite, il faut l'envoyer 

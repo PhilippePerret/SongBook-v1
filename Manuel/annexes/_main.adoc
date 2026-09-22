@@ -1,32 +1,29 @@
-[[terminology, terminologie]]
-=== Terminologie ===
+[[annexes]]
+== Annexes ==
 
-[cols="1,4,3", options="header"]
-|====
-| Terme 
-| Définition
-| Exemple
+// Outils
+include::outils.adoc[]
 
-| Élément
-| Voir « objet » ci-dessous.
-|
+// Propriétés
+include::properties.adoc[]
 
-| Ligne de définition
-| C'est la ligne, toujours entre crochet, qui définit le bloc qui la suit sans espace. Voir __propriété__ ci-dessous pour son contenu.
-| `{refrain; font-size:2em;}`
+// Mode interactif
+include::interactive_mode.adoc[]
 
-| Objet (ou élément)
-| Désigne tout élément du carnet de chant à partir du moment où il est imprimé dans le carnet, visible ou non.
-| bande de titre, couplet, numéro de page, séparateur…
+// Titre approximatif
+include::approximatif.adoc[]
 
-| Propriété
-| On désigne par __pr.__ tous les attributs qui permettent de définir l'aspect des éléments d'un carnet de chant. Elles sont définies entre crochets au-dessus des __objets__, dans la __ligne de définition__.
-| font-size, font, align
+// Terminologie
+include::terminology.adoc[]
 
-| Strophe 
-| Tout texte parlé ou chanté dans la chanson.
-| Couplet, refrain…
+// Sur le droit de reproduction
+include::droits-reproduction.adoc[]
 
-|====
+// Extensions
+include::extension-driven.adoc[]
 
-TODO: Poursuivre le tableau ci-dessus.
+// Chargement depuis le site
+include::load-from-site.adoc[]
+
+// Format pseudo YAML
+include::pseudo-yaml.adoc[]

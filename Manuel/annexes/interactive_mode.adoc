@@ -1,39 +1,51 @@
-[[approximatif]]
-=== Titre approximatif ===
 
-Il n'y a rien de plus énervant qu'une application pointilleuse qui exige, par exemple, d'entrer un titre exact pour retrouver une chanson…
+[[interactive-mode]]
+=== Mode interactif ===
 
-Rien de tout ça avec __**SongBook**__ ! Vous pouvez taper le titre de façon tout à fait paresseuse, l'app vous le retrouvera toujours ou, au pire, vous fournira la liste intégrale des chansons que vous pourrez filtrer.
+****
+* <<enter-interactive-mode>>
+* <<interactive-mode-focus-song>>
+* <<quit-interactive-mode>>
+****
 
-Si le titre de votre chanson contient un mot ou une partie de mot que seule cette chanson contient, l'app le trouvera en mettant ce seul mot en __titre approximatif__.
+Le __mode interactif__ de la commande `songbook` permet de ne pas avoir à taper `songbook` chaque fois qu'on veut jouer une commande. Il permet aussi de fixer un contexte (un carnet et une chanson) qui rendront très confortable le travail sur le carnet et les chansons.
 
-Si, par exemple, j'ai la chanson « With a Little Help of my Friend » (vous imaginez taper ce titre à chaque fois, vous ? ;)), et que c'est la seule qui contient le mot "Help", je peux utiliser : 
-
-----
-🎸> use song "Help"
-----
-
-L'application confirme par un message ressemblant à :
-
-----
-🎸> use song "Help"
-Utilisation de la chanson "With a Little Help of my Friend"
-----
+[[enter-interactive-mode]]
+==== Entrer en mode interactif ====
+s
+On entre en mode interactif avec :
 
 ----
-🎸> use sb "n°1" # ^*^
-Utilisation du carnet "Carnet n°1 : Mes chansons de Michel Berger préférées"
+songbook -i
 ----
 
-… si ce carnet est le seul qui porte le « n°1 »
-
-^*^ Dans toute l'application, `sb` peut s'employer pour `songbook`.
-
-==== Connaitre la chanson ou le carnet courant ====
+À partir de là, on peut faire simplement :
 
 ----
-🎸> song
-La chanson courante est "With a Little Help of my Friend"
-🎸> songbook
-Le carnet courant est "Carnet n°1 : Mes chansons de Michel Berger préférées"
+🎸> build "titre chanson"
 ----
+
+[[interactive-mode-focus-song]]
+==== Se focaliser sur une chanson et un carnet ====
+
+Pour focaliser toutes les commandes suivantes sur une chanson en particulier, celle qu'on travaille par exemple : 
+
+----
+🎸> use song "chanson court"
+----
+
+[[current-songbook]]
+… ou sur un carnet :
+
+----
+🎸> user songbook "mon carnet"
+# ou 
+🎸> user sb "mon carnet"
+----
+
+Noter que le titre à rentre ici peut être tout à fait <<approximatif>>.
+
+[[quit-interactive-mode]]
+==== Quitter le mode interactif ====
+
+Pour **quitter le mode interactif**, utiliser `q`, `quit` ou `exit`.
