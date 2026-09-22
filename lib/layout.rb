@@ -1937,17 +1937,19 @@ module Layout
         # précédente) plutôt que le centrage générique (`balance_shift` ci-dessus).
         # "Essayer" SEULEMENT, jamais au prix des règles déjà en place (RAD7/8/9/10,
         # `min_v_dist`) — TOUJOURS prioritaires (Phil, "Bungalow Bill" p.79, RAL5 avait
-        # poussé le texte JUSQUE DANS la grille de diags fusionnée en bas de page) :
-        #   - `!merging_here` : jamais si une grille de diags est fusionnée au bas de
-        #     CETTE page — sa réservation (`try_width`/`column_bottom_y`) a déjà fixé la
-        #     seule position sûre, RAL5 n'a pas à y toucher (même garde que `balance_shift`
-        #     juste au-dessus, RAD7).
-        #   - `min_v_dist(:default)` : même distance minimale texte<->bas de page que
-        #     `try_width` ailleurs — jamais seulement "ne dépasse pas y=0", un ÉCART reste
-        #     du.
-        if !merging_here && printer.facing_pages && printer.recto?(page_no) && prev_verso_first_line_y
+        # poussé le texte JUSQUE DANS la grille de diags en trop recasée en bas de page) :
+        #   - `merging_here` : la place que prend cette grille (`merged_last_page[:block_h]`
+        #     + `min_v_dist(:diags)`) est retirée de la place disponible AVANT de caler la
+        #     1re ligne sur la page de gauche — jamais un blocage total (bug constaté,
+        #     "Julia" p.3, issue #108 : blocage même avec largement assez de place
+        #     au-dessus de la grille).
+        #   - `min_v_dist(:default)` : même distance minimale texte<->bas de page (ou
+        #     texte<->grille si `merging_here`) que `try_width` ailleurs — jamais
+        #     seulement "ne dépasse pas y=0/la grille", un ÉCART reste dû.
+        if printer.facing_pages && printer.recto?(page_no) && prev_verso_first_line_y
           content_span = page_heights.sum + gutters[1..].sum
-          if prev_verso_first_line_y - content_span >= min_v_dist(:default)
+          floor_h = merging_here ? (min_v_dist(:diags) + merged_last_page[:block_h]) : 0.0
+          if prev_verso_first_line_y - content_span - floor_h >= min_v_dist(:default)
             y = prev_verso_first_line_y
             log_build("1re ligne calée sur celle de la page gauche en vis-à-vis (RAL5)")
           end
