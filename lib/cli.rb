@@ -25,6 +25,7 @@ require_relative "printer_profile"
 require_relative "missing_diags"
 require_relative "songs_list"
 require_relative "tdm_creator"
+require_relative "rights_cli"
 require_relative "../tools/DiagSchem/diagschem"
 require_relative "../tools/ChordDiagram/generate_chord_diagrams"
 
@@ -196,6 +197,8 @@ module CLI
     when "diags"
       DiagsPage.build_and_open!
       puts success("👍 #{Loc.get("diags_page_opened")}")
+    when "rights", "droits"
+      RightsCli.run
     when "missing"
       case arg1
       when "diags"
