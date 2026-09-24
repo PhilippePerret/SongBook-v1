@@ -73,7 +73,7 @@ Exemple :
 [cols="1,1,5", options="header"]
 |====
 | Propritété | Valeur | Description
-.14+| `position`   | `Front` | Placement sous la bande de titre, avant les paroles.
+.18+| `position`   | `Front` | Placement sous la bande de titre, avant les paroles.
                   | `End`   | Placement à la fin de la chanson, après les paroles.
                   | `Back`  | Placement à la fin du LIVRE (grilles rassemblées, dédoublonnées), sauf les accords listés dans `diag_list` qui restent sur la page de la chanson.
                   | `Left`  | Placement à gauche.
@@ -86,6 +86,10 @@ Exemple :
                   | `Left-Right` | (pour les diags) À gauche et à droite.
                   | `Top-Left` | En haut à gauche.
                   | `Top-Right` | En haut à droite.
+                  | `Right-End` | À droite à la fin
+                  | `Left-End` | À gauche à la fin
+                  | `Int-End` | À l'intérieur à la fin
+                  | `Ext-End` | À l'extérieur à la fin
                   2+| etc.
 |====
 

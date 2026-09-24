@@ -8,23 +8,26 @@ require_relative "carnet_builder"
 require_relative "file_finder"
 require_relative "app_config"
 require_relative "songs_list"
+require_relative "mail_config"
 
 # Envoi des demandes de droits (premier contact / relance) à l'éditeur d'une ou
 # plusieurs chansons — UN email par éditeur, groupant toutes les chansons du carnet
 # dont il détient les droits (Phil, 2026-09-22, plutôt qu'un email par chanson).
-# Identifiants SMTP lus dans `~/.secret/mail.rb` (`MAILS_DATA`, HORS du repo — jamais
-# copiés dans un fichier du projet). Envoi réel APRÈS validation explicite de l'appelant
+# Identifiants SMTP demandés/enregistrés via `MailConfig` (HORS du repo — jamais copiés
+# dans un fichier du projet). Envoi réel APRÈS validation explicite de l'appelant
 # (`RightsCli`) — ce module n'envoie jamais tout seul, `send_group` est un acte
 # délibéré, un par un.
 module RightsMailer
   FROM_NAME = "Icare Éditions"
-  FROM_TAG = "rights-manager@icare-editions.fr"
   TEMPLATES_DIR = File.expand_path("../mail_templates", __dir__)
 
   Group = Struct.new(:publisher_name, :publisher_email, :songs, keyword_init: true)
 
-  # `carnet_folder` -> un `Group` par éditeur ayant un email renseigné, chacun listant
-  # les chansons du carnet qu'il édite (`{title:, infos_path:, status:}`). Chansons sans
+  # `carnet_folder` -> un `Group` par ÉDITEUR (pas par chanson) ayant un email renseigné,
+  # chacun listant les chansons du carnet qu'il édite (`{title:, infos_path:, status:}`).
+  # Une chanson à plusieurs co-éditeurs (Phil, 2026-09-22, "l'éditeur de la chanson doit
+  # pouvoir être une liste") apparaît dans PLUSIEURS groupes, un par éditeur — chacun ne
+  # reçoit une demande QUE pour les droits qu'il détient réellement. Chansons sans
   # `music_publisher`/email connu ignorées (rien à envoyer).
   #
   # NB : `entry[:infos]` (`SongsList`) vient de `PageBuilder.parse_infos`, un parseur
@@ -38,20 +41,21 @@ module RightsMailer
       next unless infos_path
 
       infos = CarnetBuilder.parse_nested_infos(infos_path)
-      publisher = infos["music_publisher"]
-      next unless publisher.is_a?(Hash) && !publisher["email"].to_s.strip.empty?
+      RightsManager.publisher_list(infos).each do |publisher|
+        next if publisher["email"].to_s.strip.empty?
 
-      email = publisher["email"].to_s.strip
-      by_email[email] ||= Group.new(publisher_name: publisher["name"], publisher_email: email, songs: [])
-      by_email[email].songs << {
-        title: infos["title"].to_s,
-        performer: infos["performer"].to_s,
-        composer: infos["composer"].to_s,
-        lyrics: infos["lyrics"].to_s,
-        iswc: infos["iswc"].to_s,
-        infos_path: infos_path,
-        status: RightsManager.rights_status(infos),
-      }
+        email = publisher["email"].to_s.strip
+        by_email[email] ||= Group.new(publisher_name: publisher["name"], publisher_email: email, songs: [])
+        by_email[email].songs << {
+          title: infos["title"].to_s,
+          performer: infos["performer"].to_s,
+          composer: infos["composer"].to_s,
+          lyrics: infos["lyrics"].to_s,
+          iswc: infos["iswc"].to_s,
+          infos_path: infos_path,
+          status: RightsManager.rights_status(infos),
+        }
+      end
     end
     by_email.values
   end
@@ -143,14 +147,12 @@ module RightsMailer
 
   # `multipart/related` : le HTML + le logo embarqué (`Content-ID: <logo>`, référencé en
   # `cid:logo` dans le HTML — pas un lien externe, l'image reste jointe au mail).
-  # Auth SMTP via `MAILS_DATA[:smtp]` (compte relais, confirmé fonctionnel) — le
-  # `From:` affiché est `rights-manager@icare-editions.fr`
-  # (`MAILS_DATA[:icare_editions][:rights][:email]`), mais SON mot de passe n'est jamais
-  # utilisé : c'est le compte relais qui s'authentifie, pas l'adresse d'expédition
-  # (Phil, 2026-09-22).
+  # Identifiants via `MailConfig.ensure!` (demandés/enregistrés au premier besoin, voir
+  # ce module) — `user_name`/`password` pour l'auth SMTP, `from_email` juste comme
+  # adresse d'expédition affichée (pas forcément le même compte, voir `MailConfig`).
   def self.deliver(to:, subject:, html:)
-    cfg = secrets[:smtp]
-    from = secrets[:icare_editions][:rights][:email]
+    creds = MailConfig.ensure!
+    from = creds[:from_email]
     boundary = "----=_songbook_rights_#{rand(1_000_000_000)}"
 
     parts = +"--#{boundary}\r\n"
@@ -175,22 +177,12 @@ module RightsMailer
       #{parts}
     MSG
 
-    smtp = Net::SMTP.new(cfg[:server], cfg[:port])
+    smtp = Net::SMTP.new(creds[:server], creds[:port].to_i)
     smtp.enable_starttls_auto
-    smtp.start(cfg[:domain], cfg[:user_name], cfg[:password], :plain) { |s| s.send_message(message, from, to) }
+    smtp.start(creds[:domain], creds[:user_name], creds[:password], :plain) { |s| s.send_message(message, from, to) }
   end
 
   def self.encode_header(text)
     "=?UTF-8?B?#{[text].pack("m0")}?="
-  end
-
-  def self.secrets
-    return @secrets if @secrets
-
-    path = File.expand_path("~/.secret/mail.rb")
-    raise "fichier de secrets introuvable : #{path}" unless File.exist?(path)
-
-    require path
-    @secrets = MAILS_DATA
   end
 end

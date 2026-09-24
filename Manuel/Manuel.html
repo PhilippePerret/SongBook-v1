@@ -499,6 +499,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#interactive-mode">Mode interactif</a></li>
 <li><a href="#approximatif">Titre approximatif</a></li>
 <li><a href="#terminology">Terminologie</a></li>
+<li><a href="#droits">Gestion des droits de reproduction</a></li>
 <li><a href="#app-extension-driven">Dirigée par ses extensions</a></li>
 <li><a href="#load-from-site.adoc">Chargement depuis le site</a></li>
 <li><a href="#pseudo-yaml-format">Fichiers au format pseudo YAML</a></li>
@@ -3238,7 +3239,7 @@ Placer en tout premier lieu les accords les plus fréquents pour qu&#8217;ils so
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top" rowspan="14"><p class="tableblock"><code>position</code></p></td>
+<td class="tableblock halign-left valign-top" rowspan="18"><p class="tableblock"><code>position</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>Front</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Placement sous la bande de titre, avant les paroles.</p></td>
 </tr>
@@ -3288,6 +3289,22 @@ Placer en tout premier lieu les accords les plus fréquents pour qu&#8217;ils so
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>Top-Right</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">En haut à droite.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Right-End</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">À droite à la fin</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Left-End</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">À gauche à la fin</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Int-End</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">À l&#8217;intérieur à la fin</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Ext-End</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">À l&#8217;extérieur à la fin</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top" colspan="2"><p class="tableblock">etc.</p></td>
@@ -3522,6 +3539,99 @@ Le carnet courant est "Carnet n°1 : Mes chansons de Michel Berger préférées"
 </table>
 <div class="paragraph">
 <p>TODO: Poursuivre le tableau ci-dessus.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="droits">Gestion des droits de reproduction</h3>
+<div class="paragraph">
+<p>Si le carnet de chant doit être publié, la question de la gestion des droits de reproduction doit être intégrée.</p>
+</div>
+<div class="paragraph">
+<p>Une commande permet de gérer ces droits, c&#8217;est-à-dire :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>de trouver l&#8217;éditeur en possession des droits de reproduction,</p>
+</li>
+<li>
+<p>de le contacter pour un accord,</p>
+</li>
+<li>
+<p>de finaliser cet accord.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>La commandes pour faire cela est <code>songbook droits</code> ou <code>songbook rights</code>.</p>
+</div>
+<div class="paragraph">
+<p>S&#8217;ouvre alors un menu permettant de gérer ces droits.</p>
+</div>
+<div class="sect3">
+<h4 id="_recherche_des_éditeurs">Recherche des éditeurs</h4>
+<div class="listingblock">
+<div class="content">
+<pre>songbook -i
+🎸&gt; droits</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Choisir "Rechercher les éditeurs"</p>
+</div>
+<div class="paragraph">
+<p>Après quelques questions pour cerner la demande, la recherche est lancée (connexion internet requise). On peut suivre en direct les résultats. Les ambiguïtés sont soumises à résolution.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="droits-send-demande">Transmettre les demandes d&#8217;autorisation</h4>
+<div class="paragraph">
+<p>Si vous avez peu de chansons, vous pouvez transmettre votre demande au cas par cas en trouvant les coordonnées de l&#8217;éditeur dans le <a href="#file-infos">fichier .infos</a> de la chanson.</p>
+</div>
+<div class="paragraph">
+<p>Mais pour un grand nombre de chansons, il peut être utile de les transmettre de façon automatisée. Pour ce faire, il vous faut commencer par renseigner les données de mail qui vont permettre l&#8217;envoi depuis votre ordinateur (domain, SMTP, etc.).</p>
+</div>
+<div class="paragraph">
+<p>Une première tentative d&#8217;envoi vous permettra de définir ces données de façon assistée.</p>
+</div>
+<div class="paragraph">
+<p>Vous pouvez également éditer la lettre de demande d&#8217;autorisation en choisissant :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>&gt; Suivi des demandes de droits
+&gt; Modifier le mail type de demande de droits</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Vous pouuvez faire la même chose avec la relance pour la même demande.</p>
+</div>
+<div class="sect4">
+<h5 id="_procéder_à_lenvoi">Procéder à l&#8217;envoi</h5>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; droits
+🎸&gt; Suivi des demandes de droits
+🎸&gt; Envoyer des demandes de publication</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Vous est alors demandé de choisir les demandes qui doivent être envoyées.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_rapport_de_létat_des_droits">Rapport de l&#8217;état des droits</h5>
+<div class="paragraph">
+<p>Vous pouvez à tout moment obtenir un état du traitement des droits en jouant l&#8217;outil :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>🎸&gt; droits
+🎸&gt; Suivi des demandes de droits
+🎸&gt; Afficher un rapport de l'état des droits</pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect2">

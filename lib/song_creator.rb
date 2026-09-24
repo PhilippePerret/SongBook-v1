@@ -21,13 +21,13 @@ module SongCreator
   def self.run(title = nil, performer = nil, interactive: false)
     prompt = colored_prompt
 
-    title ||= prompt.ask(blue("Titre de la chanson :")) { |q| q.required true }
+    title ||= prompt.ask(yellow("Titre de la chanson :")) { |q| q.required true }
 
     songs_dir = AppConfig.songs_dir
     existing = CarnetBuilder.find_song_by_folder_name(songs_dir, title)
     return handle_existing_song(prompt, existing, interactive: interactive) if existing
 
-    performer ||= prompt.ask(blue("Interprète :")) { |q| q.required true }
+    performer ||= prompt.ask(yellow("Interprète :")) { |q| q.required true }
 
     existing = CarnetBuilder.find_song(songs_dir, title, performer)
     return handle_existing_song(prompt, existing, interactive: interactive) if existing
@@ -44,8 +44,8 @@ module SongCreator
     year = pick_year(prompt, year_candidates)
     id = CarnetBuilder.slugify("#{title} #{performer} #{year}")
 
-    composer = prompt.ask(blue("Compositeur :"), default: cl[:composer]) { |q| q.required true }
-    lyricist = prompt.ask(blue("Parolier :"), default: cl[:lyricist]) { |q| q.required true }
+    composer = prompt.ask(yellow("Compositeur :"), default: cl[:composer]) { |q| q.required true }
+    lyricist = prompt.ask(yellow("Parolier :"), default: cl[:lyricist]) { |q| q.required true }
 
     infos = {
       "id" => id,
@@ -71,7 +71,7 @@ module SongCreator
   # Chanson déjà trouvée (`CarnetBuilder.find_song`) : poursuivre (compléter les champs
   # vides de la fiche existante) ou ouvrir son dossier.
   def self.handle_existing_song(prompt, folder, interactive: false)
-    choice = prompt.select(blue(format(Loc.get("song_exists"), File.basename(folder))), [
+    choice = prompt.select(yellow(format(Loc.get("song_exists"), File.basename(folder))), [
       { name: Loc.get("continue_creation"), value: :continue },
       { name: Loc.get("open_folder_question"), value: :open },
       { name: Loc.get("stop_here"), value: :stop },
@@ -114,8 +114,8 @@ module SongCreator
     propose_web_search(prompt, title, performer) unless all_found
 
     infos["year"] = pick_year(prompt, year_candidates) if need_year
-    infos["composer"] = prompt.ask(blue("Compositeur :"), default: cl[:composer]) { |q| q.required true } if need_composer
-    infos["lyrics"] = prompt.ask(blue("Parolier :"), default: cl[:lyricist]) { |q| q.required true } if need_lyricist
+    infos["composer"] = prompt.ask(yellow("Compositeur :"), default: cl[:composer]) { |q| q.required true } if need_composer
+    infos["lyrics"] = prompt.ask(yellow("Parolier :"), default: cl[:lyricist]) { |q| q.required true } if need_lyricist
 
     File.write(infos_path, "#{infos.map { |k, v| "#{k}: #{v}" }.join("\n")}\n")
 
@@ -208,14 +208,14 @@ module SongCreator
     years = by_year.keys.map(&:to_i)
 
     if years.empty?
-      prompt.ask(blue("Année :")) { |q| q.required true }
+      prompt.ask(yellow("Année :")) { |q| q.required true }
     elsif years.max - years.min <= 1
-      prompt.ask(blue("Année :"), default: years.min.to_s) { |q| q.required true }
+      prompt.ask(yellow("Année :"), default: years.min.to_s) { |q| q.required true }
     else
       choices = by_year.map { |year, cs| { name: "#{year} (#{cs.map { |c| c[:source] }.join(", ")})", value: year } }
       choices << { name: "Autre (saisir)", value: :other }
-      picked = prompt.select(blue("Plusieurs années trouvées, laquelle ?"), choices, show_help: false)
-      picked == :other ? prompt.ask(blue("Année :")) { |q| q.required true } : picked
+      picked = prompt.select(yellow("Plusieurs années trouvées, laquelle ?"), choices, show_help: false)
+      picked == :other ? prompt.ask(yellow("Année :")) { |q| q.required true } : picked
     end
   end
 
@@ -260,7 +260,7 @@ module SongCreator
   # avant d'ouvrir une recherche web sur titre+interprète entre guillemets (barre de
   # recherche du navigateur), jamais une page Wikipédia précise (souvent hors-sujet).
   def self.propose_web_search(prompt, title, performer)
-    return unless prompt.yes?(blue(Loc.get("ask_open_web_search")))
+    return unless prompt.yes?(yellow(Loc.get("ask_open_web_search")))
 
     query = %("#{title}" "#{performer}")
     url = "https://www.google.com/search?q=#{CGI.escape(query)}"

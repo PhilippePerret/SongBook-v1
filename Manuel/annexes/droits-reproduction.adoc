@@ -29,17 +29,35 @@ Après quelques questions pour cerner la demande, la recherche est lancée (conn
 
 Si vous avez peu de chansons, vous pouvez transmettre votre demande au cas par cas en trouvant les coordonnées de l'éditeur dans le <<file-infos, fichier .infos>> de la chanson. 
 
-Mais pour un grand nombre de chansons, il peut être utile de les transmettre de façon automatisée. Pour ce faire, il vous faut commencer par renseigner les données de mail qui vont permettre l'envoi depuis votre ordinateur.
+Mais pour un grand nombre de chansons, il peut être utile de les transmettre de façon automatisée. Pour ce faire, il vous faut commencer par renseigner les données de mail qui vont permettre l'envoi depuis votre ordinateur (domain, SMTP, etc.).
 
-Une première tentative d'envoi vous permettra de définir ces données.
+Une première tentative d'envoi vous permettra de définir ces données de façon assistée.
 
-Vous pouvez commencer par éditer la lettre de demande d'autorisation en choisissant : 
+Vous pouvez également éditer la lettre de demande d'autorisation en choisissant : 
 
 ----
 > Suivi des demandes de droits
 > Modifier le mail type de demande de droits
 ----
 
-On peut faire la même chose avec la relance pour la même demande.
+Vous pouuvez faire la même chose avec la relance pour la même demande.
 
-Ensuite, il faut l'envoyer 
+===== Procéder à l'envoi =====
+
+----
+🎸> droits
+🎸> Suivi des demandes de droits
+🎸> Envoyer des demandes de publication
+----
+
+Vous est alors demandé de choisir les demandes qui doivent être envoyées.
+
+===== Rapport de l'état des droits =====
+
+Vous pouvez à tout moment obtenir un état du traitement des droits en jouant l'outil : 
+
+----
+🎸> droits
+🎸> Suivi des demandes de droits
+🎸> Afficher un rapport de l'état des droits
+----

@@ -30,20 +30,20 @@ module TdmCreator
     return if chosen.empty?
 
     if carnet_folder == NEW_CARNET
-      name = colored_prompt.ask(blue("#{Loc.get("tdm_new_carnet_name_question")} #{gray(Loc.get("tdm_empty_to_cancel"))}")).to_s.strip
+      name = colored_prompt.ask(yellow("#{Loc.get("tdm_new_carnet_name_question")} #{gray(Loc.get("tdm_empty_to_cancel"))}")).to_s.strip
       return if name.empty?
 
       carnet_folder = resolve_or_create_carnet_folder(name)
     end
 
-    return unless colored_prompt.yes?(blue(Loc.get("tdm_save_question")))
+    return unless colored_prompt.yes?(yellow(Loc.get("tdm_save_question")))
 
     FileUtils.mkdir_p(carnet_folder) unless Dir.exist?(carnet_folder)
     tdm_path = FileFinder.find(carnet_folder, :tdm) || File.join(carnet_folder, "c.tdm")
     File.write(tdm_path, chosen.map { |e| "- #{e[:infos]["id"]}" }.join("\n") << "\n")
     Session.carnet = carnet_folder
     puts success("👍 #{Loc.get("tdm_created")}")
-    SongCreator.open_in_file_manager(carnet_folder) if colored_prompt.yes?(blue(Loc.get("tdm_open_question")))
+    SongCreator.open_in_file_manager(carnet_folder) if colored_prompt.yes?(yellow(Loc.get("tdm_open_question")))
   end
 
   # Contexte (`Session.carnet`) ou `--sb/--songbook TITRE` : carnet DÉJÀ choisi, aucun
@@ -57,7 +57,7 @@ module TdmCreator
     new_choice = { name: orange(Loc.get("tdm_new_carnet_option")), value: NEW_CARNET }
     choices = carnets.map { |c| { name: c[:title] ? "#{c[:name]} (#{c[:title]})" : c[:name], value: c[:folder] } }
     choices = command == "create" ? [new_choice] + choices : choices + [new_choice]
-    colored_prompt.select(blue(Loc.get("tdm_pick_carnet_question")), choices, filter: true, per_page: 20, show_help: false)
+    colored_prompt.select(yellow(Loc.get("tdm_pick_carnet_question")), choices, filter: true, per_page: 20, show_help: false)
   end
 
   # Chansons déjà présentes dans le `.tdm` du carnet choisi (id, titre, OU nom de
@@ -125,7 +125,7 @@ module TdmCreator
       chosen.first(5).each { |e| puts "  - #{e[:infos]["title"]}" }
       puts gray(format(Loc.get("tdm_chosen_more"), chosen.size - 5)) if chosen.size > 5
       puts
-      question = blue(Loc.get("tdm_pick_songs_question"))
+      question = yellow(Loc.get("tdm_pick_songs_question"))
       question += " #{gray("(#{filter_text})")}" unless filter_text.empty?
       puts question
       puts highlight.zero? ? blue("‣ #{Loc.get("tdm_done_option")}") : orange("  #{Loc.get("tdm_done_option")}")

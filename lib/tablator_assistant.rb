@@ -27,7 +27,7 @@ module TablatorAssistant
       if create then :write
       elsif build then :svg
       else
-        colored_prompt.select(blue(Loc.get("tablator_assistant_question")), [
+        colored_prompt.select(yellow(Loc.get("tablator_assistant_question")), [
           { name: Loc.get("tablator_choice_svg"), value: :svg },
           { name: Loc.get("tablator_choice_write"), value: :write },
         ], show_help: false)
@@ -118,7 +118,7 @@ module TablatorAssistant
   def self.propose_create_tab(name, offer_create:)
     abort "tablature introuvable : #{name}" unless offer_create
 
-    if colored_prompt.yes?(blue(format(Loc.get("create_missing_tab_question"), name)))
+    if colored_prompt.yes?(yellow(format(Loc.get("create_missing_tab_question"), name)))
       write_tablature(title: name.sub(/\.tab\z/i, ""))
       return nil
     end
@@ -364,13 +364,13 @@ module TablatorAssistant
         return
       end
 
-      return if ask_before_save && !colored_prompt.yes?(blue(Loc.get("save_changes_question")), default: false)
+      return if ask_before_save && !colored_prompt.yes?(yellow(Loc.get("save_changes_question")), default: false)
 
       meta["metrique"] = metrique if metrique
       out_path = save_tablature(tokens, meta, unit, edit_path)
       puts success("👍 #{Loc.get("tablator_write_saved")}")
 
-      return unless colored_prompt.yes?(blue(Loc.get("tablator_build_now_question")))
+      return unless colored_prompt.yes?(yellow(Loc.get("tablator_build_now_question")))
 
       render_tab_svg(out_path)
     ensure
@@ -387,7 +387,7 @@ module TablatorAssistant
       dir = File.dirname(edit_path)
       base = File.basename(edit_path, ".tab")
     else
-      meta["title"] ||= colored_prompt.ask(blue("Titre :")) { |q| q.required true }
+      meta["title"] ||= colored_prompt.ask(yellow("Titre :")) { |q| q.required true }
       # Jamais de repli sur `Dir.pwd` (ex-comportement) : sans chanson de contexte, une
       # nouvelle tablature n'a nulle part où exister légitimement — écrivait auparavant
       # à la racine de l'app si `Session.song` était absent (pollution constatée, issue
@@ -454,7 +454,7 @@ module TablatorAssistant
   end
 
   def self.open_config(unit, metrique)
-    choice = colored_prompt.select(blue(Loc.get("tablator_config_menu")), [
+    choice = colored_prompt.select(yellow(Loc.get("tablator_config_menu")), [
       { name: Loc.get("tablator_config_unit"), value: :unit },
       { name: Loc.get("tablator_config_metrique"), value: :metrique },
     ], show_help: false)
@@ -467,13 +467,13 @@ module TablatorAssistant
 
   def self.choose_unit(current)
     choices = DURATIONS.keys
-    colored_prompt.select(blue(Loc.get("tablator_config_question")), choices, default: choices.index(current).to_i + 1, show_help: false)
+    colored_prompt.select(yellow(Loc.get("tablator_config_question")), choices, default: choices.index(current).to_i + 1, show_help: false)
   end
 
   def self.ask_metrique
     prompt = colored_prompt
-    haut = prompt.ask(blue(Loc.get("tablator_metrique_top"))) { |q| q.validate(/\A\d+\z/) }
-    bas = prompt.ask(blue(Loc.get("tablator_metrique_bottom"))) { |q| q.validate(/\A\d+\z/) }
+    haut = prompt.ask(yellow(Loc.get("tablator_metrique_top"))) { |q| q.validate(/\A\d+\z/) }
+    bas = prompt.ask(yellow(Loc.get("tablator_metrique_bottom"))) { |q| q.validate(/\A\d+\z/) }
     "#{haut}/#{bas}"
   end
 

@@ -108,21 +108,21 @@ class SacemClient
     })()
   JS
 
-  # Le bloc "Ayants droit" donne le VRAI rôle (Editeur / Sous Editeur) ; le `h3` du
-  # bloc contact en bas de page est TOUJOURS littéralement "Éditeur", même pour un
+  # Le bloc "Ayants droit" donne le VRAI rôle par nom (Editeur / Sous Editeur) ; le `h3`
+  # du bloc contact en bas de page est TOUJOURS littéralement "Éditeur", même pour un
   # sous-éditeur étranger (vérifié sur "Ecoute dans le vent"/Dylan -> Sous Éditeur
-  # Universal, mais `h3` = "Éditeur" quand même) — le rôle est donc lu là-bas, pas
-  # dans ce `h3`. Le conteneur direct du bloc contact (`.grid2.borderBoxMod.mod.mb1`,
-  # seule classe combinée qui identifie ce bloc PARMI les autres `.grid2` de la page —
-  # ex. celui d'"Interprète", répété par interprète, n'a jamais `.mb1`) est parfois le
-  # frère direct du `h3`, parfois enveloppé dans un `<div>` intermédiaire
-  # supplémentaire selon les œuvres (constaté, pas documenté par la Sacem) — cherché
-  # par classe dans TOUT le parent du `h3` plutôt que par position fixe.
+  # Universal, mais `h3` = "Éditeur" quand même) — le rôle est donc lu là-bas, pas dans
+  # ce `h3`. UNE œuvre peut avoir PLUSIEURS co-éditeurs (vérifié sur "Get Back" : 3 blocs
+  # `.grid2.borderBoxMod.mod.mb1` sous le MÊME `h3` — Universal/Sony/Because, chacun son
+  # IPI/adresse/email) — `querySelectorAll`, jamais `querySelector` seul (bug constaté,
+  # ne récupérait que le 1er). Position de ces blocs (frère direct du `h3`, ou enveloppés
+  # dans un `<div>` intermédiaire selon les œuvres, pas documenté par la Sacem) cherchée
+  # par classe dans tout le parent du `h3`, jamais par position fixe.
   DETAIL_JS = <<~JS.freeze
     (function() {
       function txt(el) { return el ? el.textContent.trim() : null; }
-      var headings = function(label) {
-        return Array.from(document.querySelectorAll('h3.cUniv.txtUpp')).find(function(h) {
+      var headingsList = function(label) {
+        return Array.from(document.querySelectorAll('h3.cUniv.txtUpp')).filter(function(h) {
           return h.textContent.trim().toLowerCase() === label;
         });
       };
@@ -132,41 +132,53 @@ class SacemClient
         if (p.textContent.indexOf('ISWC') !== -1) iswc = p.textContent.replace(/.*ISWC\\s*:\\s*/, '').trim();
       });
 
-      var role = null;
-      var ayantsH3 = headings('ayants droit');
+      var rolesByName = {};
+      var ayantsH3 = headingsList('ayants droit')[0];
       if (ayantsH3 && ayantsH3.nextElementSibling) {
-        var roleP = Array.from(ayantsH3.nextElementSibling.querySelectorAll('p')).find(function(p) {
-          return /,\\s*(sous\\s+)?[ée]diteur/i.test(p.textContent);
+        Array.from(ayantsH3.nextElementSibling.querySelectorAll('p')).forEach(function(p) {
+          var m = p.textContent.match(/^(.+?),\\s*((?:sous\\s+)?[ée]diteur)/i);
+          if (m) rolesByName[m[1].trim().toUpperCase()] = m[2].trim();
         });
-        if (roleP) role = roleP.textContent.replace(/^.*,\\s*/, '').trim();
       }
 
-      var pubHeading = headings('éditeur');
-      if (!pubHeading) return { iswc: iswc, publisher: null };
+      var pubHeading = headingsList('éditeur')[0];
+      if (!pubHeading) return { iswc: iswc, publishers: [] };
 
-      var block = pubHeading.parentElement
-        ? pubHeading.parentElement.querySelector('.grid2.borderBoxMod.mod.mb1')
-        : null;
-      if (!block) return { iswc: iswc, publisher: { label: role, name: null, ipi: null, address: null, email: null } };
+      var blocks = pubHeading.parentElement
+        ? Array.from(pubHeading.parentElement.querySelectorAll('.grid2.borderBoxMod.mod.mb1'))
+        : [];
 
-      var ps = Array.from(block.children).filter(function(c) { return c.tagName === 'P'; });
-      var name = ps[0] ? txt(ps[0]) : null;
-      var ipiP = ps.find(function(p) { return p.textContent.indexOf('Code IPI') !== -1; });
-      var ipi = ipiP ? ipiP.textContent.replace('Code IPI', '').replace(':', '').trim() : null;
+      var publishers = blocks.map(function(block) {
+        var ps = Array.from(block.children).filter(function(c) { return c.tagName === 'P'; });
+        var name = ps[0] ? txt(ps[0]) : null;
+        var ipiP = ps.find(function(p) { return p.textContent.indexOf('Code IPI') !== -1; });
+        var ipi = ipiP ? ipiP.textContent.replace('Code IPI', '').replace(':', '').trim() : null;
 
-      var addrDiv = block.querySelector('div.grid2.borderBoxMod.mod');
-      var address = null;
-      if (addrDiv) {
-        var addrP = addrDiv.querySelector('p');
-        address = addrP ? addrP.innerText.trim().replace(/\\n+/g, ', ') : null;
-      }
+        var addrDiv = block.querySelector('div.grid2.borderBoxMod.mod');
+        var address = null;
+        if (addrDiv) {
+          var addrP = addrDiv.querySelector('p');
+          address = addrP ? addrP.innerText.trim().replace(/\\n+/g, ', ') : null;
+        }
 
-      var emailP = Array.from(block.children).find(function(c) {
-        return c.tagName === 'P' && !c.className && c.textContent.indexOf('@') !== -1;
-      });
-      var email = emailP ? txt(emailP) : null;
+        // Après nom/IPI/adresse, ce qui reste (`<p>` sans classe) : l'email s'il y en a
+        // un, tout le reste (souvent un téléphone) part en `note` plutôt que d'être
+        // silencieusement perdu.
+        var email = null;
+        var extras = [];
+        Array.from(block.children).forEach(function(c) {
+          if (c.tagName !== 'P' || c.className) return;
+          var t = txt(c);
+          if (!t) return;
+          if (!email && t.indexOf('@') !== -1) email = t;
+          else extras.push(t);
+        });
 
-      return { iswc: iswc, publisher: { label: role, name: name, ipi: ipi, address: address, email: email } };
+        var role = name ? (rolesByName[name.toUpperCase()] || null) : null;
+        return { name: name, ipi: ipi, address: address, email: email, role: role, note: extras.join(' ; ') };
+      }).filter(function(p) { return p.name; });
+
+      return { iswc: iswc, publishers: publishers };
     })()
   JS
 end

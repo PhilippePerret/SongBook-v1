@@ -23,17 +23,17 @@ module SongbookCreator
   def self.run(title = nil)
     prompt = colored_prompt
 
-    title ||= prompt.ask(blue("Titre du carnet :")) { |q| q.required true }
-    folder_name = prompt.ask(blue("Nom du dossier :"), default: "Carnet-#{CarnetBuilder.slugify(title)}") { |q| q.required true }
+    title ||= prompt.ask(yellow("Titre du carnet :")) { |q| q.required true }
+    folder_name = prompt.ask(yellow("Nom du dossier :"), default: "Carnet-#{CarnetBuilder.slugify(title)}") { |q| q.required true }
 
     songbooks_dir = AppConfig.songbooks_dir
     folder = File.join(songbooks_dir, folder_name)
     return handle_existing_songbook(prompt, folder) if Dir.exist?(folder)
 
-    subtitle = prompt.ask(blue("Sous-titre (rien si aucun) :"))
-    price = prompt.ask(blue("Prix (ex. 9,90 € — rien si inconnu) :"))
-    editor_name = prompt.ask(blue("Nom de l'éditeur (rien si aucun) :"))
-    book_designer = prompt.ask(blue("Conception du carnet (rien si inconnu) :"))
+    subtitle = prompt.ask(yellow("Sous-titre (rien si aucun) :"))
+    price = prompt.ask(yellow("Prix (ex. 9,90 € — rien si inconnu) :"))
+    editor_name = prompt.ask(yellow("Nom de l'éditeur (rien si aucun) :"))
+    book_designer = prompt.ask(yellow("Conception du carnet (rien si inconnu) :"))
 
     infos = default_infos(title: title, subtitle: subtitle, price: price, editor_name: editor_name, book_designer: book_designer)
 
@@ -105,7 +105,7 @@ module SongbookCreator
   # `edit tdm` (`TdmCreator.run`, carnet déjà connu via `carnet_opt:`).
   def self.open_folder_and_offer_songs(prompt, folder)
     open_in_file_manager(folder)
-    return unless prompt.yes?(blue(Loc.get("songbook_choose_songs_question")))
+    return unless prompt.yes?(yellow(Loc.get("songbook_choose_songs_question")))
 
     # `Session.carnet` prime sur `carnet_opt` dans `TdmCreator.resolve_carnet`
     # (contexte REPL) : fixé ici pour être sûr que c'est CE carnet-là qui
