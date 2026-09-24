@@ -26,6 +26,7 @@ require_relative "missing_diags"
 require_relative "songs_list"
 require_relative "tdm_creator"
 require_relative "rights_cli"
+require_relative "rights_expiry"
 require_relative "../tools/DiagSchem/diagschem"
 require_relative "../tools/ChordDiagram/generate_chord_diagrams"
 
@@ -56,6 +57,7 @@ module CLI
   # sont rattrapés ici pour ne pas tuer la boucle.
   def self.run_interactive
     system("clear")
+    RightsExpiry.check_once_per_day!
     load_history
     prompt = "#{PROMPT_ICON}> "
     loop do
@@ -105,6 +107,7 @@ module CLI
     unless interactive
       system("clear")
       system("clear")
+      RightsExpiry.check_once_per_day!
     end
 
     argv = argv.dup
@@ -214,7 +217,7 @@ module CLI
           hints << Loc.get("missing_diags_hint_all") unless missing_all || auto_all
           hints << Loc.get("missing_diags_hint_context") if auto_all
           hints << Loc.get("missing_diags_hint_name") unless missing_names
-          message = blue(Loc.get("missing_diags_prompt"))
+          message = yellow(Loc.get("missing_diags_prompt"))
           message += "\n#{gray(hints.join(", "))}" unless hints.empty?
           choices = missing.sort.map do |key, songs|
             { name: missing_names ? "#{key} (#{songs.join(", ")})" : key, value: key }
@@ -235,9 +238,9 @@ module CLI
 
       choices = entries.map { |e| { name: SongsList.label(e), value: File.join(AppConfig.songs_dir, e[:folder]) } }
       begin
-        folder = colored_prompt.select(blue(Loc.get("songs_pick_question")), choices, filter: true, per_page: 20, show_help: false)
+        folder = colored_prompt.select(yellow(Loc.get("songs_pick_question")), choices, filter: true, per_page: 20, show_help: false)
         Session.song = folder
-        action = colored_prompt.select(blue(format(Loc.get("songs_action_question"), SongResolver.display_name(folder))), [
+        action = colored_prompt.select(yellow(format(Loc.get("songs_action_question"), SongResolver.display_name(folder))), [
           { name: Loc.get("songs_action_open"), value: %w[open song] },
           { name: Loc.get("songs_action_edit_chords"), value: %w[edit chords] },
           { name: Loc.get("songs_action_edit_tab"), value: %w[edit tab] },
@@ -533,7 +536,7 @@ module CLI
           abort "aucun fichier connu trouvé dans #{song_folder}" if choices.empty?
 
           puts "Ouverture de « #{title} »"
-          selected = colored_prompt.multi_select(blue(Loc.get("open_which_files")), choices, default: defaults, echo: false, show_help: false)
+          selected = colored_prompt.multi_select(yellow(Loc.get("open_which_files")), choices, default: defaults, echo: false, show_help: false)
           files = selected - [:folder]
           system("open", "-a", AppConfig.user_song_editor, *files) unless files.empty?
           SongCreator.open_in_file_manager(song_folder) if selected.include?(:folder)
@@ -687,10 +690,10 @@ module CLI
           Layout.report_missing_chords!
 
           if Layout.log_conflict_count.to_i.positive?
-            system("open", Layout.conflict_log_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_conflicts_question")), default: false)
+            system("open", Layout.conflict_log_path) if colored_prompt.yes?(yellow(Loc.get("song_build_open_conflicts_question")), default: false)
           end
 
-          system("open", pdf_path) if open_pdf || colored_prompt.yes?(blue(Loc.get("song_build_open_pdf_question")))
+          system("open", pdf_path) if open_pdf || colored_prompt.yes?(yellow(Loc.get("song_build_open_pdf_question")))
         elsif target[:kind] == :carnet
           # Tout ce que `CarnetBuilder.build` peut encore écrire PENDANT la construction
           # (avertissement KDP...) est capturé ici et réaffiché APRÈS l'arrêt du spinner
@@ -717,10 +720,10 @@ module CLI
           Layout.report_missing_chords!
 
           if Layout.log_conflict_count.to_i.positive?
-            system("open", Layout.conflict_log_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_conflicts_question")), default: false)
+            system("open", Layout.conflict_log_path) if colored_prompt.yes?(yellow(Loc.get("song_build_open_conflicts_question")), default: false)
           end
 
-          system("open", out_path) if open_pdf || colored_prompt.yes?(blue(format(Loc.get("carnet_build_open_pdf_question"), carnet_title)))
+          system("open", out_path) if open_pdf || colored_prompt.yes?(yellow(format(Loc.get("carnet_build_open_pdf_question"), carnet_title)))
         else
           # `--transpose "C:F"` (issue #71) : ponctuel pour CE build, jamais écrit dans le
           # `.infos` (`infos_overrides`) — fichier séparé (suffixe "-CtoF", jamais
@@ -731,7 +734,7 @@ module CLI
           if transpose_opt
             depart, arrivee = Transpose.split_entete(transpose_opt)
             infos_overrides = { "transpose" => transpose_opt }
-            separate = colored_prompt.yes?(blue(Loc.get("transpose_separate_file_question")), default: true)
+            separate = colored_prompt.yes?(yellow(Loc.get("transpose_separate_file_question")), default: true)
             out_suffix = "#{depart}to#{arrivee}" if separate
           end
           pdf_path = CarnetBuilder.build_song(target[:folder], infos_overrides: infos_overrides, out_suffix: out_suffix)
@@ -741,10 +744,10 @@ module CLI
 
           if Layout.log_conflict_count.to_i.positive?
             puts error("#{format(Loc.get("song_build_conflicts_count"), Layout.log_conflict_count)}")
-            system("open", Layout.conflict_log_path) if colored_prompt.yes?(blue(Loc.get("song_build_open_conflicts_question")), default: false)
+            system("open", Layout.conflict_log_path) if colored_prompt.yes?(yellow(Loc.get("song_build_open_conflicts_question")), default: false)
           end
 
-          system("open", pdf_path) if open_pdf || colored_prompt.yes?(blue(Loc.get("song_build_open_pdf_question")))
+          system("open", pdf_path) if open_pdf || colored_prompt.yes?(yellow(Loc.get("song_build_open_pdf_question")))
         end
       rescue Interrupt
         puts
@@ -909,7 +912,7 @@ module CLI
   # l'intention de l'user — inutile de lui redemander s'il veut créer le fichier qu'il
   # vient justement de demander à éditer.
   def self.propose_create_file(folder, ext, confirm: true)
-    return nil if confirm && !colored_prompt.yes?(blue(format(Loc.get("create_missing_file_question"), ext)))
+    return nil if confirm && !colored_prompt.yes?(yellow(format(Loc.get("create_missing_file_question"), ext)))
 
     path = File.join(folder, "#{most_common_root(folder)}.#{ext}")
     File.write(path, "")
@@ -980,7 +983,7 @@ module CLI
 
   def self.build_not_found_menu(songs_dir, songbooks_dir)
     puts Loc.get("build_nothing_found")
-    choice = colored_prompt.select(blue(Loc.get("build_what_to_build")), [
+    choice = colored_prompt.select(yellow(Loc.get("build_what_to_build")), [
       { name: Loc.get("build_choice_carnet"), value: :carnet },
       { name: Loc.get("build_choice_song"), value: :song },
       { name: Loc.get("build_choice_cancel"), value: nil },

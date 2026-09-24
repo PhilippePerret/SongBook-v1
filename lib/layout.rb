@@ -1218,7 +1218,17 @@ module Layout
     else
       gutters = heights.each_index.map { |i| min_v_dist(i.zero? ? top_type : :diags) }
       slack = [side_page[:avail_h] - gutters.sum - heights.sum, 0].max
-      gutters[0] += align == :bot ? slack : (align == :center ? slack / 2.0 : 0.0)
+      # `:bot` : garde `DIAG_COLUMN_BOTTOM_SAFETY_PT` de côté (même marge que le rognage
+      # `paginate_and_draw` juste après) — sinon le slack ENTIER absorbé ici colle le
+      # dernier diag pile au ras du bas (clearance 0), le rognage suivant le prend
+      # systématiquement pour "pas assez de marge" et vide la colonne en boucle.
+      gutters[0] += if align == :bot
+        [slack - DIAG_COLUMN_BOTTOM_SAFETY_PT, 0].max
+      elsif align == :center
+        slack / 2.0
+      else
+        0.0
+      end
     end
     [heights, gutters]
   end
@@ -1665,7 +1675,7 @@ module Layout
     pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned, top_type: :band_strophe, trailing_extra: trailing_extra)
     # `int`/`ext` (alternance recto/verso) n'a de sens qu'en reliure (`facing_pages`) —
     # sinon retombe sur `int` fixe (pas d'alternance sans vis-à-vis).
-    want_left_for = ->(page_no) { dynamic_mode.nil? || !printer.facing_pages || (dynamic_mode == :int) == printer.recto?(page_no) }
+    want_left_for = ->(page_no) { dynamic_mode.nil? || !printer.facing_pages || %i[int int-end].include?(dynamic_mode) == printer.recto?(page_no) }
 
     side_elements = []
     side_elements_alt = []
@@ -1690,7 +1700,23 @@ module Layout
       side_elements = build_side_elements.call(side_col)
       side_elements_alt = side_col_alt ? build_side_elements.call(side_col_alt) : side_elements
       side_pages_all = paginate(side_elements, first_avail_h, pdf.bounds.height, type: :diags, top_type: :band_diag)
-      if side_pages_all.size > pages.size
+      # `Right-End`/`Left-End`/`Ext-End`/`Int-End` : colonne ANCRÉE à la fin — occupe les
+      # DERNIÈRES pages de la chanson (jamais dès la page 1 comme une colonne normale),
+      # `nil` sur les pages qui précèdent (RAL4 les recentre déjà, aucun changement
+      # nécessaire là). Si même étalée sur TOUTE la chanson ça ne suffit pas (rare), le
+      # début de la liste part en excédent (même sort que l'excédent normal ci-dessous),
+      # les dernières pages restent occupées.
+      end_anchored = %i[right-end left-end ext-end int-end].include?(diag_position)
+      if end_anchored
+        if side_pages_all.size > pages.size
+          side_pages = side_pages_all.last(pages.size)
+          excess_end = side_pages.first[:start]
+          excess_paths = side_col[:paths][0...excess_end] || []
+          excess_heights = side_col[:heights][0...excess_end] || []
+        else
+          side_pages = Array.new(pages.size - side_pages_all.size, nil) + side_pages_all
+        end
+      elsif side_pages_all.size > pages.size
         side_pages = side_pages_all.first(pages.size)
         excess_start = side_pages.empty? ? 0 : side_pages.last[:finish]
         excess_paths = side_col[:paths][excess_start..] || []
@@ -1718,9 +1744,19 @@ module Layout
 
           last[:finish] -= 1
         end
-        excess_start = last[:finish]
-        excess_paths = side_col[:paths][excess_start..] || []
-        excess_heights = side_col[:heights][excess_start..] || []
+        if end_anchored
+          # Ancré fin : tout ce qui précède `last[:start]` est DÉJÀ l'excédent calculé
+          # plus haut (paths qui ne rentrent même pas sur toute la chanson) — à
+          # conserver, PAS écraser (bug constaté : le rognage ci-dessus écrasait cet
+          # excédent avec un slice `[last[:finish]..]` pensé pour le cas front-aligné,
+          # perdant silencieusement les diags en trop, "24 accords" -> 0 dessiné).
+          excess_paths = side_col[:paths][0...last[:start]] + (side_col[:paths][last[:finish]..] || [])
+          excess_heights = side_col[:heights][0...last[:start]] + (side_col[:heights][last[:finish]..] || [])
+        else
+          excess_start = last[:finish]
+          excess_paths = side_col[:paths][excess_start..] || []
+          excess_heights = side_col[:heights][excess_start..] || []
+        end
       end
     end
 
@@ -3120,7 +3156,7 @@ module Layout
       left_col = { x: 0, width: diag_w, paths: left_paths, heights: left_paths.map { |p| svg_height_for(File.read(p), diag_w) }, align: align }
       right_col = { x: pdf.bounds.width - diag_w, width: diag_w, paths: right_paths, heights: right_paths.map { |p| svg_height_for(File.read(p), diag_w) }, align: align }
       [diag_col_w, pdf.bounds.width - 2 * diag_col_w, header_bottom, left_col, [], Options.get(:diags_size), right_col]
-    when :right
+    when :right, :"right-end"
       diag_w = diag_column_width(diag_paths, header_bottom, pdf.bounds.height)
       diag_heights = diag_paths.map { |p| svg_height_for(File.read(p), diag_w) }
       diag_col_w = diag_w + DIAG_TEXT_GAP

@@ -14,10 +14,18 @@ module AnsiColors
   # Couleur des items "hors liste" dans un picker (ex. "Terminé", "Nouveau carnet…",
   # jamais un contenu réel, une ACTION à part du contenu choisi.
   ORANGE = "\e[38;2;255;165;0m"
+  # Question posée à l'user (`prompt.ask`/`.select`/`.yes?`/`.multi_select`) — distincte du
+  # bleu de l'item survolé dans un picker (`colored_prompt`), sinon les deux se confondent
+  # visuellement (Phil, 2026-09-23, "on les mélange avec l'item courant").
+  YELLOW = "\e[38;2;255;235;59m"
   RESET = "\e[0m"
 
   def blue(text)
     "#{BLUE}#{text}#{RESET}"
+  end
+
+  def yellow(text)
+    "#{YELLOW}#{text}#{RESET}"
   end
 
   def success(text)
@@ -45,7 +53,19 @@ module AnsiColors
   # nom déjà coloré dans le bleu (`decorate`), ce qui imbrique les codes ANSI et fait
   # ressortir la couleur d'origine (le code couleur imbriqué l'emporte visuellement).
   # Nettoyée d'abord pour repartir d'un texte neutre.
+  #
+  # `select`/`multi_select` toujours avec `cycle: true` (Phil, 2026-09-23) — centralisé
+  # ICI (surcharge sur l'instance) plutôt que répété à chaque appel dans tout le projet,
+  # jamais réinventé fichier par fichier. Un `cycle:` explicite au site d'appel reste
+  # prioritaire (fusion avec les options reçues, valeur de l'appelant en dernier).
   def colored_prompt
-    TTY::Prompt.new(active_color: ->(s) { blue(s.gsub(/\e\[[\d;]*m/, "")) })
+    prompt = TTY::Prompt.new(active_color: ->(s) { blue(s.gsub(/\e\[[\d;]*m/, "")) })
+    def prompt.select(*args, **opts, &block)
+      super(*args, **{ cycle: true }.merge(opts), &block)
+    end
+    def prompt.multi_select(*args, **opts, &block)
+      super(*args, **{ cycle: true }.merge(opts), &block)
+    end
+    prompt
   end
 end

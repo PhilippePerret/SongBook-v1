@@ -38,13 +38,13 @@ RSpec.describe "positions de diagrammes (top/front/end), situation critique (exc
     chords.each { |c| File.write(File.join(@song_dir, "#{c}-0.svg"), %(<svg viewBox="0 0 60 90"></svg>)) }
   end
 
-  def build(carnet_folder: nil)
+  def build(carnet_folder: nil, first_page_no: 1, facing_pages: PrinterProfile::DEFAULT_FACING_PAGES)
     out_path = File.join(@song_dir, "out.pdf")
-    PageBuilder.build(@song_dir, out_path, page_size_in: [3.5, 5], page_count: 24, first_page_no: 1, carnet_folder: carnet_folder)
+    PageBuilder.build(@song_dir, out_path, page_size_in: [3.5, 5], page_count: 24, first_page_no: first_page_no, carnet_folder: carnet_folder, facing_pages: facing_pages)
     out_path
   end
 
-  %w[top front end].each do |position|
+  %w[top front end right-end left-end].each do |position|
     it "position #{position} : construit sans erreur, aucun diag perdu, jamais sous le plancher" do
       write_song(CHORDS, diags_position: position)
       out_path = build
@@ -79,6 +79,21 @@ RSpec.describe "positions de diagrammes (top/front/end), situation critique (exc
     expect(File.exist?(out_path)).to be true
   end
 
+  # Bug constaté (Phil, "Mercy Street") : `Right-End`/`Left-End`/`Ext-End`/`Int-End` avec
+  # PEU de diags partaient quand même en page dédiée (mécanisme de fusion RAD7-10 réutilisé
+  # à tort, colonne forcée à 1 diag/ligne ne tenant jamais sous le texte) — ici peu de
+  # diags DOIT tenir directement sur la vraie dernière page, EXACTEMENT comme Right/Left.
+  %w[right-end left-end ext-end int-end].each do |position|
+    it "position #{position}, peu de diags : tient sur la dernière page, pas de page dédiée" do
+      write_song(CHORDS.first(3), diags_position: position)
+      out_path = build
+
+      log = File.read(Layout.building_log_path)
+      expect(log).not_to match(/lignes? fixes|page dédiée/)
+      expect(File.exist?(out_path)).to be true
+    end
+  end
+
   # Issue Carnet-1 : `diags_align` (alignement DANS le bloc, indépendant de
   # `diags_position`) doit s'appliquer aussi à la grille de fin de chanson (RAD7-10,
   # `diags_position: end` + excédent) — avant ce fix, cette grille ignorait `align`,
@@ -99,6 +114,25 @@ RSpec.describe "positions de diagrammes (top/front/end), situation critique (exc
       expect(File.exist?(out_path)).to be true
       log = File.read(Layout.building_log_path)
       expect(log).to match(/lignes? fixes|page dédiée/)
+    end
+  end
+
+  # `Ext-End`/`Int-End` : côté résolu sur la parité de la VRAIE dernière page (reliure).
+  %w[ext-end int-end].each do |position|
+    it "position #{position}, reliure (facing_pages) : construit sans erreur, aucun diag perdu" do
+      write_song(CHORDS, diags_position: position)
+      out_path = build(facing_pages: true)
+
+      expect(File.exist?(out_path)).to be true
+      log = File.read(Layout.building_log_path)
+      expect(log).to match(/lignes? fixes|page dédiée/)
+    end
+
+    it "position #{position}, reliure, première page verso : construit sans erreur" do
+      write_song(CHORDS, diags_position: position)
+      out_path = build(facing_pages: true, first_page_no: 2)
+
+      expect(File.exist?(out_path)).to be true
     end
   end
 

@@ -14,6 +14,8 @@ require_relative '../../lib/ansi_colors'
 require_relative '../../lib/file_finder'
 require_relative '../../lib/diags_sync'
 
+include AnsiColors
+
 DOIGTS_VALIDES = %w[1 2 3 4 p].freeze
 CORDES_AUTORISEES_POUR_P = [5, 6].freeze
 
@@ -24,13 +26,6 @@ RESET = "\e[0m"
 GRAS = "\e[1m"
 
 def touche(s) = "#{ORANGE}#{s}#{RESET}"
-
-# Bleu (`AnsiColors::BLUE`) pour toute question posée à l'user .
-def blue(s) = "#{AnsiColors::BLUE}#{s}#{AnsiColors::RESET}"
-
-# Notre bleu comme couleur de l'item survolé, pas le vert par défaut de la gem
-# (réservé aux résultats/succès) — voir `AnsiColors#colored_prompt`.
-def colored_prompt = TTY::Prompt.new(active_color: ->(s) { blue(s) })
 
 HELP_TEXT = <<~TXT
   #{GRAS}diag#{RESET} — saisie assistée du schéma d'un diagramme d'accord
@@ -213,14 +208,14 @@ class DiagSchem
     # Mode chanson (`@song_dir`) : intention déjà explicite (commande "create diag"
     # lancée POUR cette chanson, issue #79) — aucune question, direct au nom.
     unless @song_dir
-      unless prompt.yes?(blue(Loc.get('diag_save_in_app_question')), default: false)
+      unless prompt.yes?(yellow(Loc.get('diag_save_in_app_question')), default: false)
         # Outil `diag` autonome lancé DEPUIS le dossier d'une chanson (terminal ouvert
         # par `songbook diag`) : "non" à la question ci-dessus proposait de tout perdre
         # (seulement copié dans le presse-papier) — si le dossier courant est bien une
         # chanson (`FileFinder.find(:lyr)`, même test que `edit chords`), proposer
         # l'enregistrement DANS cette chanson plutôt que rien.
         return unless FileFinder.find(Dir.pwd, :lyr)
-        return unless prompt.yes?(blue(Loc.get('diag_save_in_song_question')), default: true)
+        return unless prompt.yes?(yellow(Loc.get('diag_save_in_song_question')), default: true)
 
         @song_dir = Dir.pwd
       end
@@ -230,7 +225,7 @@ class DiagSchem
     # PROPOSITION par défaut — 1re lettre de la fondamentale ET de la basse entre
     # crochets capitalisées, RIEN d'autre (bug constaté : "c[e]-0B" enregistré tel
     # quel un jour, en minuscule, invisible depuis de la page `diags`).
-    texte = prompt.ask(blue(Loc.get('diag_name_prompt')), default: "#{DSLParser.normalize_chord(@nom)}-#{@case_ref}").to_s.strip
+    texte = prompt.ask(yellow(Loc.get('diag_name_prompt')), default: "#{DSLParser.normalize_chord(@nom)}-#{@case_ref}").to_s.strip
     return if texte.empty?
 
     # Nom = tout ce qui précède le PREMIER "-" ; case = tout le reste, n'importe quoi,
@@ -248,7 +243,7 @@ class DiagSchem
     if result == :schema
       doublon = SchemaLibrary.entries(nom, path: path).find { |e| e.tokens == tokens }
       puts "#{ROUGE}#{format(Loc.get('diag_conflict_schema'), "#{doublon.nom}-#{doublon.case_ref}")}#{RESET}"
-      result = SchemaLibrary.save(nom, case_ref, tokens, path: path, force: true) if prompt.yes?(blue(Loc.get('diag_confirm_duplicate_schema_question')), default: false)
+      result = SchemaLibrary.save(nom, case_ref, tokens, path: path, force: true) if prompt.yes?(yellow(Loc.get('diag_confirm_duplicate_schema_question')), default: false)
     end
 
     case result

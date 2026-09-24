@@ -45,7 +45,7 @@ module AppConfig
     return dir if dir && !dir.to_s.strip.empty? && Dir.exist?(dir.to_s)
 
     loop do
-      print blue("#{question} : ")
+      print yellow("#{question} : ")
       input = $stdin.gets.to_s.strip
       return set(key, input) if Dir.exist?(input)
       warn "dossier introuvable : #{input}"
@@ -70,7 +70,7 @@ module AppConfig
     return app if app && editor_app?(app)
 
     loop do
-      print blue("Éditer les chansons avec : ")
+      print yellow("Éditer les chansons avec : ")
       input = $stdin.gets.to_s.strip
       return set("user_song_editor", input) if editor_app?(input)
       warn "application introuvable : #{input}"

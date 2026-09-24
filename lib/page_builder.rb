@@ -963,12 +963,18 @@ module PageBuilder
       # couvrir les deux — "on s'en branle d'où commence la chanson"). Les deux
       # variantes gauche/droite sont construites ICI (`text_x`/`text_x_r`, `side_col`/
       # `side_col_r`), `Layout.paginate_and_draw` choisit la bonne PAGE PAR PAGE.
-      dynamic_mode = %i[int ext].include?(diag_position) ? diag_position : nil
+      # `Right-End`/`Left-End`/`Ext-End`/`Int-End` (colonne ANCRÉE à la fin, Phil,
+      # "aligné en bas puisque ça devrait être une colonne") : MÊME mécanisme
+      # gauche/droite-par-page que `int`/`ext` (`dynamic_mode`), sauf que la colonne
+      # n'occupe QUE les dernières pages de la chanson (jamais la 1re, voir
+      # `Layout.paginate_and_draw`) — donc EXCLUES ci-dessous du calcul de la capo p.1
+      # (`diag_col_side_p1`), qui suppose une colonne DÉJÀ là dès la première page.
+      dynamic_mode = %i[int ext ext-end int-end].include?(diag_position) ? diag_position : nil
       # Capo (issue #69) : par défaut à DROITE, alignée avec le bandeau — sauf si la
       # colonne de diags occupe elle-même la droite de la PREMIÈRE page de la chanson
       # (`first_page_no`, même résolution recto/verso que `want_left_for` dans
       # `Layout.paginate_and_draw`), auquel cas la capo passe à gauche.
-      diag_col_side_p1 = if dynamic_mode
+      diag_col_side_p1 = if dynamic_mode && %i[int ext].include?(diag_position)
         left_here = !printer.facing_pages || (dynamic_mode == :int) == printer.recto?(first_page_no)
         left_here ? :left : :right
       elsif diag_position == :left
@@ -1005,6 +1011,14 @@ module PageBuilder
       text_x_r, side_col_r = if dynamic_mode
         tx_r, _, _, sc_r, = Layout.layout_diags(pdf, diag_paths, :right, header_bottom, align: diag_align)
         [tx_r, sc_r]
+      end
+      # `Right-End`/`Left-End`/`Ext-End`/`Int-End` : colonne ANCRÉE EN BAS (Phil,
+      # "aligné en bas puisque ça devrait être une colonne") — écrase l'option
+      # `diags_align` (SANS rapport, voir `layout_diags`) pour ce seul aspect,
+      # indépendamment du côté gauche/droite déjà en place ci-dessus.
+      if %i[right-end left-end ext-end int-end].include?(diag_position)
+        side_col[:align] = :bot if side_col
+        side_col_r[:align] = :bot if side_col_r
       end
 
       chord_ascent = Layout.font_metric(pdf, Layout.scaled_chord_size) { pdf.font.ascender }
