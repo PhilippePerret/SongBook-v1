@@ -4,6 +4,7 @@ require "net/smtp"
 require "base64"
 require "cgi"
 require_relative "rights_manager"
+require_relative "publishers_db"
 require_relative "carnet_builder"
 require_relative "file_finder"
 require_relative "app_config"
@@ -23,12 +24,20 @@ module RightsMailer
 
   Group = Struct.new(:publisher_name, :publisher_email, :songs, keyword_init: true)
 
-  # `carnet_folder` -> un `Group` par ÉDITEUR (pas par chanson) ayant un email renseigné,
-  # chacun listant les chansons du carnet qu'il édite (`{title:, infos_path:, status:}`).
-  # Une chanson à plusieurs co-éditeurs (Phil, 2026-09-22, "l'éditeur de la chanson doit
-  # pouvoir être une liste") apparaît dans PLUSIEURS groupes, un par éditeur — chacun ne
-  # reçoit une demande QUE pour les droits qu'il détient réellement. Chansons sans
-  # `music_publisher`/email connu ignorées (rien à envoyer).
+  # `carnet_folder` -> un `Group` par ÉDITEUR À CONTACTER (pas par chanson) ayant un
+  # email renseigné, chacun listant les chansons du carnet concernées
+  # (`{title:, infos_path:, status:}`). Une chanson à plusieurs co-éditeurs (Phil,
+  # 2026-09-22, "l'éditeur de la chanson doit pouvoir être une liste") apparaît dans
+  # PLUSIEURS groupes, un par éditeur — chacun ne reçoit une demande QUE pour les droits
+  # qu'il détient réellement. Chansons sans `music_publisher`/email connu ignorées (rien
+  # à envoyer).
+  #
+  # `cf_ipi` (Phil, 2026-09-24) : un éditeur de `PublishersDb` peut renvoyer vers un
+  # AUTRE éditeur à qui adresser la demande (sous-édition) — `PublishersDb.resolve_contact`
+  # suit cette chaîne jusqu'à l'éditeur effectivement contacté. Plusieurs éditeurs
+  # d'origine (A, B, C lui-même) pointant vers le même éditeur final se retrouvent
+  # regroupés dans le MÊME `Group` (même email = même clé `by_email`) — une seule
+  # demande, toutes leurs œuvres rassemblées.
   #
   # NB : `entry[:infos]` (`SongsList`) vient de `PageBuilder.parse_infos`, un parseur
   # PLAT qui ignore l'indentation (distinct de `CarnetBuilder.parse_nested_infos` — écart
@@ -42,10 +51,12 @@ module RightsMailer
 
       infos = CarnetBuilder.parse_nested_infos(infos_path)
       RightsManager.publisher_list(infos).each do |publisher|
-        next if publisher["email"].to_s.strip.empty?
+        _, contact = PublishersDb.resolve_contact(publisher["ipi"])
+        contact ||= publisher
+        next if contact["email"].to_s.strip.empty?
 
-        email = publisher["email"].to_s.strip
-        by_email[email] ||= Group.new(publisher_name: publisher["name"], publisher_email: email, songs: [])
+        email = contact["email"].to_s.strip
+        by_email[email] ||= Group.new(publisher_name: contact["name"], publisher_email: email, songs: [])
         by_email[email].songs << {
           title: infos["title"].to_s,
           performer: infos["performer"].to_s,

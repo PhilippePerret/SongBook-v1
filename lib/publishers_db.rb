@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "yaml"
+require "set"
 require_relative "app_config"
 
 # Base commune des éditeurs (`music_publisher`), partagée entre toutes les chansons —
@@ -33,5 +34,20 @@ module PublishersDb
     incoming = fields.transform_keys(&:to_s).reject { |_, v| v.to_s.strip.empty? }
     data[key] = existing.merge(incoming)
     File.write(path, YAML.dump(data))
+  end
+
+  # Suit la chaîne `cf_ipi` (éditeur A délègue sa demande d'autorisation à un autre
+  # éditeur C) jusqu'à l'éditeur EFFECTIVEMENT à contacter -> `[key_final, entry_final]`.
+  # Boucle éventuelle jamais suivie à l'infini (`seen`) : s'arrête sur la clé déjà vue.
+  def self.resolve_contact(key)
+    key = key.to_s.strip
+    entry = find(key)
+    seen = Set.new
+    while entry.is_a?(Hash) && !entry["cf_ipi"].to_s.strip.empty? && !seen.include?(key)
+      seen << key
+      key = entry["cf_ipi"].to_s.strip
+      entry = find(key)
+    end
+    [key, entry]
   end
 end

@@ -432,7 +432,8 @@ module RightsCli
     return puts error("👎 pas de fichier .infos/.inf pour cette chanson") unless infos_path
 
     infos = CarnetBuilder.parse_nested_infos(infos_path)
-    candidates = RightsManager.publisher_list(infos).select { |p| p["email"].to_s.strip.empty? && !p["address"].to_s.strip.empty? }
+    contacts = RightsManager.publisher_list(infos).map { |p| PublishersDb.resolve_contact(p["ipi"])[1] || p }.uniq
+    candidates = contacts.select { |p| p["email"].to_s.strip.empty? && !p["address"].to_s.strip.empty? }
     return puts error("👎 aucun éditeur sans email (avec adresse) pour cette chanson") if candidates.empty?
 
     publisher = candidates.size == 1 ? candidates.first : choose_postal_publisher(prompt, candidates)
