@@ -1982,7 +1982,12 @@ module Layout
         #   - `min_v_dist(:default)` : même distance minimale texte<->bas de page (ou
         #     texte<->grille si `merging_here`) que `try_width` ailleurs — jamais
         #     seulement "ne dépasse pas y=0/la grille", un ÉCART reste dû.
-        if printer.facing_pages && printer.recto?(page_no) && prev_verso_first_line_y
+        #   - `prev_verso_first_line_y < y` (recentrage) : renoncer (issue #110, "Le Plat
+        #     Pays" p.3) — caler plus BAS que le centrage aurait mis la 1re ligne
+        #     n'arrive QUE quand la page gauche a moins d'air au-dessus que cette page-ci ;
+        #     appliquer quand même créerait exactement ce que RAL5 est censé éviter :
+        #     beaucoup d'air au-dessus et plus assez entre paroles et diagrammes.
+        if printer.facing_pages && printer.recto?(page_no) && prev_verso_first_line_y && prev_verso_first_line_y >= y
           content_span = page_heights.sum + gutters[1..].sum
           floor_h = merging_here ? (min_v_dist(:diags) + merged_last_page[:block_h]) : 0.0
           if prev_verso_first_line_y - content_span - floor_h >= min_v_dist(:default)
