@@ -1295,6 +1295,8 @@ module Layout
   # `force_chord_baseline` (posé par `row_to_element` selon le voisin de row) impose
   # l'ancrage "1re ligne avec accord" même si CE bloc-ci n'en a pas lui-même.
   def self.block_visual_height(pdf, chord_ascent, text_ascent, text_descent, block, width, chord_size: scaled_chord_size, text_size: Options.get(:font_size), force_chord_baseline: false)
+    return diags_block_height(block, width) if block.directives[:diags]
+
     lines = block.lines
     return 0 if lines.empty?
 
@@ -1338,8 +1340,24 @@ module Layout
   # ailleurs (`row_column_widths`/`row_to_element`, un bloc de parole est un bloc de
   # parole, avec ou sans label).
   def self.block_width(pdf, block, chord_size: scaled_chord_size, text_size: Options.get(:font_size))
+    return diags_block_natural_width(block) if block.directives[:diags]
+
     natural = block.lines.map { |l| line_width(pdf, l.segments, chord_size, text_size, label: l.label) }.max || 0
     natural + label_reserve(pdf, block, text_size)
+  end
+
+  # `{diags}` posé en row (issue #112) : CONTRAIREMENT à un bloc de paroles, la grille de
+  # diagrammes n'a pas de largeur "naturelle" incompressible — elle s'adapte TOUJOURS à
+  # la largeur de colonne imposée par les VRAIS blocs de paroles de la chanson
+  # (rétrécissement/repli en plusieurs rangées, voir `draw_diags_block`/
+  # `estimate_excess_grid_height`). Renvoyer `0` ici évite deux effets de bord sinon
+  # constatés : la grille forçant `Layout.row_column_widths` à élargir sa colonne
+  # au-delà de ce que la page peut réellement tenir (`distribute_gutter` ne rétrécit
+  # JAMAIS des colonnes déjà trop larges, seulement la gouttière), et
+  # `build_row_or_split` abandonnant le côte-à-côte (repli empilé) à cause de CETTE
+  # largeur alors que la grille, elle, tient TOUJOURS dans n'importe quelle colonne.
+  def self.diags_block_natural_width(_block)
+    0
   end
 
   def self.label_reserve(pdf, block, text_size)
@@ -2201,6 +2219,8 @@ module Layout
   # inchangé — par LIGNE, pas par bloc entier (un bloc "+"-concaténé peut mélanger des
   # lignes alignées et des lignes normales, voir `PageBuilder.apply_extra_directives`).
   def self.draw_block(pdf, block, x, y0, width, chord_ascent, text_ascent, chord_size: scaled_chord_size, text_size: Options.get(:font_size), force_chord_baseline: false)
+    return draw_diags_block(pdf, block, x, y0, width) if block.directives[:diags]
+
     y = y0 - (force_chord_baseline || line_has_chord?(block.lines.first) ? chord_ascent : text_ascent)
     # `label:` (issue #63, ex. `{refrain-1; label: REFRAIN}`) : PAS une ligne du corps —
     # fait partie de la largeur du bloc (`block_width`), dessiné à SA place normale (`x`,
@@ -2973,6 +2993,18 @@ module Layout
     n_rows * row_h + [n_rows - 1, 0].max * min_v_dist(:diags)
   end
 
+  # `{diags}` posé en row (issue #112) : hauteur RÉELLEMENT nécessaire dans la largeur
+  # ALLOUÉE à cette colonne (`width`, celle de la row — pas la largeur "naturelle" de
+  # `diags_block_natural_width`) — même formule que la grille d'excédent de fin de
+  # chanson (`estimate_excess_grid_height`), rétrécissement/repli en plusieurs rangées
+  # inclus.
+  def self.diags_block_height(block, width)
+    paths = block.directives[:diag_paths]
+    return 0 if paths.nil? || paths.empty?
+
+    estimate_excess_grid_height(paths, width || diags_block_natural_width(block))
+  end
+
   def self.diag_row_width(paths, avail_w)
     return [Options.get(:diags_size), 0] if paths.empty?
 
@@ -3017,6 +3049,27 @@ module Layout
     when :right then x0 + (avail_w - block_w)
     when :justify then x0 + gap
     else x0 + [(avail_w - block_w) / 2.0, 0].max
+    end
+  end
+
+  # `{diags}` posé en row (issue #112) : `x`/`width` = position/largeur RÉELLES de la
+  # colonne (comme `draw_block`, un bloc de paroles) — `align` DEDANS la colonne vient de
+  # `{diags; align: ...;}` s'il est posé, sinon `diags_align` (option), jamais le
+  # centrage générique d'un bloc seul (`block_align: "left"` forcé par
+  # `PageBuilder.diags_block`). Rangées multiples (`each_slice`) si `diag_row_width` ne
+  # fait pas tenir tous les diagrammes sur une seule — même gouttière verticale que la
+  # grille d'excédent (`min_v_dist(:diags)`).
+  def self.draw_diags_block(pdf, block, x, y0, width)
+    paths = block.directives[:diag_paths]
+    return if paths.nil? || paths.empty?
+
+    align = (block.directives[:align] || Options.get(:diags_align)).to_s.downcase.to_sym
+    w, n_fit = diag_row_width(paths, width)
+    n_fit = [n_fit, 1].max
+    y = y0
+    paths.each_slice(n_fit) do |slice|
+      draw_diags_row(pdf, slice, x, y, width, w, align: align)
+      y -= svg_height_for(IO.read(slice.first), w) + min_v_dist(:diags)
     end
   end
 

@@ -47,7 +47,7 @@ module PageBuilder
   # Table des alias construite en INVERSANT `Loc.get` sur ces clés  :
   # `TABLE[Loc.get(canon)] = canon`. Mémoïsée une fois (`Loc` lui-même ne charge qu'une
   # langue, celle de l'utilisateur — voir `lib/locale.rb`).
-  INFOS_CANONICAL_KEYS = %w[title performer composer lyrics year transpose].freeze
+  INFOS_CANONICAL_KEYS = %w[title performer composer lyrics year transpose youtube iswc].freeze
 
   def self.infos_key_aliases
     @infos_key_aliases ||= INFOS_CANONICAL_KEYS.each_with_object({}) do |canon, table|
@@ -323,21 +323,6 @@ module PageBuilder
         [split_gab_row_with_resources(para)]
       elsif !para.include?("//") && para =~ RESOURCE_DECLARATION_RE
         [parse_resource_declaration(para)]
-      # `{diags; position: End;}` : "diags" en tête SANS ":" (même forme que
-      # `{intro; tab: ...}` ci-dessus) matchait `ROW_TOKEN_RE` et se faisait chercher
-      # comme un bloc de paroles nommé "diags" dans le `.lyr` (bug constaté : "bloc
-      # diags introuvable"). "diags" n'est PAS un nom de bloc possible (mot réservé,
-      # position des diagrammes), intercepté ici en premier.
-      elsif para =~ /\A\{\s*diags\s*(;|\})/i
-        inner = para[/\A\{(.*)\}\z/m, 1] || ""
-        dirs = {}
-        inner.split(";")[1..].to_a.each do |pair|
-          k, v = pair.split(":", 2)
-          next unless k && v && !k.strip.empty?
-
-          dirs[AppConfig.normalize_property_key(k)] = v.strip.gsub(/\A["']|["']\z/, "")
-        end
-        [GabItem.new(:diags, dirs)]
       elsif (cols = para.split("//").map(&:strip)).all? { |c| c =~ ROW_TOKEN_RE }
         row_directives = {}
         names = cols.map { |c| row_col_name(c, row_directives) }
@@ -484,7 +469,7 @@ module PageBuilder
   # il gaspille toute une colonne de la row où il tombe (bug trouvé, 2026-08-18, sur "Au fur
   # et à mesure" — 2 rows sur 3 pages n'affichaient qu'un seul couplet, l'autre colonne vide).
   def self.block_kind(name)
-    name.sub(/-part-\d+\z/, "").sub(/-\d+\z/, "")
+    name.split("+").first.sub(/-part-\d+\z/, "").sub(/-\d+\z/, "")
   end
 
   # `title_band`/`diags_position` : défauts de CE dossier (Manuel/song/layout.adoc, voir
@@ -556,6 +541,20 @@ module PageBuilder
     Block.new(lines: [], directives: {}, paired_with_previous: false)
   end
 
+  # "diags" : mot réservé du `.gab` — placé en row comme n'importe quel bloc de paroles
+  # (issue #112, ex. "{refrain-2; align:Left;} // {diags}"), avec les MÊMES règles de
+  # pairage/largeur/pagination qu'une strophe (`Layout.row_column_widths`/
+  # `build_row_or_split`/`paginate`, inchangés). `block_align: "left"` par défaut : le
+  # bloc occupe TOUTE sa colonne, l'alignement des diagrammes DEDANS (centré/gauche/
+  # droite/justifié) restant `diags_align` (ou `align:` posé sur ce `{diags}` précis) —
+  # jamais le centrage générique d'un bloc seul (`Layout.row_to_element`), qui
+  # présupposerait à tort une largeur "naturelle" de grille.
+  # `directives[:diags]` (marqueur) fait bifurquer `Layout.block_width`/
+  # `block_visual_height`/`draw_block` vers le rendu grille au lieu du texte.
+  def self.diags_block(diag_paths)
+    Block.new(lines: [], directives: { diags: true, diag_paths: diag_paths, block_align: "left" }, paired_with_previous: false)
+  end
+
   # `name` peut être "nomA+nomB" (voir `parse_gab`, marque `+`) : concatène les lignes des
   # blocs dans l'ordre pour n'en faire qu'un seul, rendu comme un bloc normal.
   # `row_directives` (voir `parse_gab`, `{nom; clé:valeur;}`) : directives inline posées sur
@@ -563,10 +562,11 @@ module PageBuilder
   # sous-bloc (`nomA`), jamais à celles d'un autre sous-bloc concaténé avec lui via "+"
   #  : "la ligne contenant l'intro doit être alignée à droite", PAS le
   # couplet-1 qui la suit dans "{intro; align:Right;} + {couplet-1}").
-  def self.resolve_block(lyr_blocks, name, lyr_order, counters, row_directives: {})
+  def self.resolve_block(lyr_blocks, name, lyr_order, counters, row_directives: {}, diag_paths: [])
+    return apply_extra_directives(diags_block(diag_paths), name, row_directives) if name == "diags"
     return apply_extra_directives(fetch_block(lyr_blocks, name, lyr_order, counters), name, row_directives) unless name.include?("+")
 
-    parts = name.split("+").map { |n| apply_extra_directives(fetch_block(lyr_blocks, n, lyr_order, counters), n, row_directives) }
+    parts = name.split("+").map { |n| n == "diags" ? apply_extra_directives(diags_block(diag_paths), n, row_directives) : apply_extra_directives(fetch_block(lyr_blocks, n, lyr_order, counters), n, row_directives) }
     Block.new(lines: parts.flat_map(&:lines), directives: parts.first.directives, paired_with_previous: false)
   end
 
@@ -953,8 +953,14 @@ module PageBuilder
       # numéro de capo se place naturellement en haut à gauche, SAUF si une colonne de
       # diags y est déjà (alors à droite) — il faut donc savoir où vont les diags avant
       # de dessiner l'entête, pas après.
+      # `{diags}` posé en row (issue #112) : la position des diagrammes est désormais
+      # celle de leur row dans le `.gab`, plus un réglage global `position:` — REMPLACE
+      # l'ancienne directive `{diags; position: ...;}` pour CETTE chanson (`:end`,
+      # neutre, forcé ci-dessous : aucune colonne latérale/rangée réservée par
+      # `Layout.layout_diags`, voir `layout_diag_paths` plus bas).
+      uses_row_diags = items.any? { |i| i.type == :row && i.data[:names].any? { |n| n.split("+").include?("diags") } }
       diag_item_data = items.find { |i| i.type == :diags }&.data
-      diag_position = (diag_item_data&.dig(:position) || diag_position_default).to_s.downcase.to_sym
+      diag_position = uses_row_diags ? :end : (diag_item_data&.dig(:position) || diag_position_default).to_s.downcase.to_sym
       diag_align = (diag_item_data&.dig(:align) || diag_align_default).to_s.downcase.to_sym
       # `int`/`ext` (Manuel/song/layout.adoc, "Int"/"Ext" — côté reliure/extérieur) : PAS
       # résolu à une seule valeur left/right ici — le côté reliure change de page en page
@@ -1007,9 +1013,14 @@ module PageBuilder
       diag_paths = ChordDiagrams.diag_paths_for(chord_frets, carnet_dir: carnet_folder, song_dir: folder)
       Layout.log_build("#{diag_paths.size} diagramme(s) d'accord, position=#{dynamic_mode ? "#{dynamic_mode} (résolu page par page)" : diag_position}")
 
-      text_x, text_w, first_avail_h, side_col, row_excess, row_excess_w, side_col2 = Layout.layout_diags(pdf, diag_paths, dynamic_mode ? :left : diag_position, header_bottom, align: diag_align)
+      # `uses_row_diags` : diagrammes déjà placés via leur row (`resolve_block`, plus
+      # bas) — `[]` ici pour que `Layout.layout_diags` ne réserve RIEN et ne les
+      # renvoie pas une 2e fois en excédent (`row_excess`, RAD5/6/7/10), qui les
+      # dessinerait EN DOUBLE.
+      layout_diag_paths = uses_row_diags ? [] : diag_paths
+      text_x, text_w, first_avail_h, side_col, row_excess, row_excess_w, side_col2 = Layout.layout_diags(pdf, layout_diag_paths, dynamic_mode ? :left : diag_position, header_bottom, align: diag_align)
       text_x_r, side_col_r = if dynamic_mode
-        tx_r, _, _, sc_r, = Layout.layout_diags(pdf, diag_paths, :right, header_bottom, align: diag_align)
+        tx_r, _, _, sc_r, = Layout.layout_diags(pdf, layout_diag_paths, :right, header_bottom, align: diag_align)
         [tx_r, sc_r]
       end
       # `Right-End`/`Left-End`/`Ext-End`/`Int-End` : colonne ANCRÉE EN BAS (Phil,
@@ -1028,7 +1039,7 @@ module PageBuilder
       bare_kind_counters = Hash.new(0)
       row_items = items.select { |i| i.type == :row }
       row_names = row_items.map { |i| i.data[:names] }
-      rows = row_items.map { |i| i.data[:names].map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: i.data[:directives]), name) } }
+      rows = row_items.map { |i| i.data[:names].map { |name| with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: i.data[:directives], diag_paths: diag_paths), name) } }
       # `:side_by_side` (issue "Le Sud", `//` mêlant une marque tab/score/image et des
       # paroles) : chaque colonne `:lyrics` résolue en `Block` directement dans la
       # colonne (`c[:block]`) — pas besoin d'indexation parallèle comme `rows`, chaque
@@ -1038,7 +1049,7 @@ module PageBuilder
           next unless c[:kind] == :lyrics
 
           name = c[:names].first
-          c[:block] = name ? with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: c[:directives]), name) : nil
+          c[:block] = name ? with_intro_align(resolve_block(lyr_blocks, name, lyr_order, bare_kind_counters, row_directives: c[:directives], diag_paths: diag_paths), name) : nil
         end
       end
       col1_w, col2_w, h_gutter = Layout.row_column_widths(pdf, rows, text_w)
