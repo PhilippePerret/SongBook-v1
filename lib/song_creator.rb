@@ -54,6 +54,8 @@ module SongCreator
       "composer" => composer,
       "lyrics" => lyricist,
       "year" => year,
+      "youtube" => "",
+      "iswc" => "",
     }
 
     lyr_content = fetched_lyrics || CarnetBuilder::SONG_TEMPLATE
