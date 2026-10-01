@@ -33,6 +33,9 @@ include::layout.adoc[]
 // Produire le PDF
 include::pdf.adoc[]
 
+// Ajouter à un carnet
+include::add-to-songbook.adoc[]
+
 // Liste des chansons
 include::song_list.adoc[]
 

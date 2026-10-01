@@ -27,6 +27,7 @@ require_relative "songs_list"
 require_relative "tdm_creator"
 require_relative "rights_cli"
 require_relative "rights_expiry"
+require_relative "ie_command"
 require_relative "../tools/DiagSchem/diagschem"
 require_relative "../tools/ChordDiagram/generate_chord_diagrams"
 
@@ -419,6 +420,8 @@ module CLI
       end
     when "songbook", "sb"
       puts Session.carnet ? success(format(Loc.get("use_carnet_set"), SongResolver.display_name(Session.carnet))) : gray(Loc.get("songbook_current_none"))
+    when "ie"
+      IeCommand.run(arg1, arg2)
     when "manual", "manuel"
       manuel_dir = File.expand_path("../Manuel", __dir__)
       adoc_path = File.join(manuel_dir, "Manuel.adoc")

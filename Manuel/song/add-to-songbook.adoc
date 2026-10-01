@@ -1,0 +1,17 @@
+[[add-song-to-songbook]]
+=== Ajouter la chanson à un carnet ===
+
+----
+> songbook -i
+🎸> use song "titre approx"
+🎸> add-to "titre appprox carnet"
+----
+
+* place l'identifiant de la chanson dans la table des matières du carnet, dans l'ordre alphabétique des identifiants,
+* la table des matières du carnet est ouverte pour modification.
+
+En cas d'utilisation pour les éditions Icare (Phil seul) :
+
+* le dossier de la chanson est créé s'il n'existe pas,
+* l'identifiant du carnet est ajouté à la chanson,
+* produit la vidéo-annonce du tutoriel dans le dossier `chansons-tutos` (ScreenFlow, si elle n'existe pas déjà).

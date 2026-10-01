@@ -2109,6 +2109,45 @@ build diags # construit les diagrammes
 <p>Comme pour toutes ces commandes, le titre de la chanson peut être mis de façon très approximative, son début, certains de ses mots seulement, etc.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="tuto-editions">Dossier de la chanson sur le site des éditions</h4>
+<div class="paragraph">
+<p>Pour créer le dossier de la chanson (au nom de son identifiant) dans les items de la section « chansons » du site des éditions Icare, avec un fichier <code>texte.md</code> vide et un fichier <code>data.yaml</code> (<code>id</code>, <code>title</code>, <code>performer</code>, <code>carnets</code> vide).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>songbook tuto-editions "titre"
+songbook tuto "titre"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Sans titre, c&#8217;est la chanson courante qui est utilisée. Si le dossier existe déjà, rien n&#8217;est modifié.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="add-to">Ajouter une chanson à un carnet</h4>
+<div class="listingblock">
+<div class="content">
+<pre>songbook add-to "carnet"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>La chanson est la chanson courante, sinon elle est choisie dans la liste. Le carnet est celui désigné, sinon le carnet courant, sinon il est choisi dans la liste. La commande :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>place l&#8217;identifiant de la chanson dans la table des matières du carnet, dans l&#8217;ordre alphabétique des identifiants ;</p>
+</li>
+<li>
+<p>ajoute l&#8217;identifiant du carnet (champ <code>id</code> de sa fiche, demandé s&#8217;il manque) à la donnée <code>carnets</code> de la chanson sur le site des éditions (dossier créé s&#8217;il n&#8217;existe pas) ;</p>
+</li>
+<li>
+<p>produit la vidéo provisoire du tutoriel, <code>&lt;id chanson&gt;.mp4</code>, dans le dossier <code>chansons-tutos</code> (ScreenFlow, si elle n&#8217;existe pas déjà).</p>
+</li>
+</ul>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="songbook-creation">Création du carnet de chant</h3>

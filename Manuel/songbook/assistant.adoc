@@ -13,3 +13,15 @@ songbook song id "titre"
 ----
 
 Comme pour toutes ces commandes, le titre de la chanson peut être mis de façon très approximative, son début, certains de ses mots seulement, etc.
+
+[[tuto-editions]]
+==== Dossier de la chanson sur le site des éditions ====
+
+Pour créer le dossier de la chanson (au nom de son identifiant) dans les items de la section « chansons » du site des éditions Icare, avec un fichier `texte.md` vide et un fichier `data.yaml` (`id`, `title`, `performer`, `carnets` vide).
+
+----
+songbook tuto-editions "titre"
+songbook tuto "titre"
+----
+
+Sans titre, c'est la chanson courante qui est utilisée. Si le dossier existe déjà, rien n'est modifié.

@@ -32,6 +32,17 @@ USAGE = <<~TXT
 
         {{command: songbook song id "titre"}}
 
+  - Icare éditions : menu des opérations sur le site des éditions, ou action directe
+
+        {{command: songbook ie}}
+        {{command: songbook ie sync}}
+        {{command: songbook ie create song}}
+        {{command: songbook ie open song}}
+        {{command: songbook ie upload tuto}}
+        {{command: songbook ie add-to "carnet"}}
+        {{command: songbook ie create tuto}}
+        {{command: songbook ie create songbook}}
+
   - Ouvrir la TDM d'un carnet
         
         {{command: songbook tdm "titre approximatif"}}
