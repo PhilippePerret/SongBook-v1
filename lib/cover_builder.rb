@@ -243,6 +243,7 @@ module CoverBuilder
 
   def self.field_value(name, conf)
     case name
+    when "collection" then conf["collection"]
     when "title" then conf["title"]
     when "subtitle" then conf["subtitle"]
     when "author" then conf["author"]

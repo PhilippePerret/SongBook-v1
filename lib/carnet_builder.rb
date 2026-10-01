@@ -82,7 +82,13 @@ module CarnetBuilder
     if root["options"].is_a?(Hash)
       root["options"].each { |k, v| root[k] = v unless root.key?(k) }
     end
-    root
+    empty_blocks_to_nil(root)
+  end
+
+  # `clé:` seule SANS ligne enfant (ex. `subtitle:` laissé vide) = valeur absente (nil),
+  # jamais un bloc `{}` vide.
+  def self.empty_blocks_to_nil(hash)
+    hash.each { |k, v| hash[k] = v.empty? ? nil : empty_blocks_to_nil(v) if v.is_a?(Hash) }
   end
 
   # Gabarit d'une chanson auto-créée  : jamais un .tdm sans dossier
@@ -738,7 +744,8 @@ module CarnetBuilder
     end
     toc_page_list = toc_specs(toc_conf, prelim_entries, content_h_pt)
     front_specs = front_matter_specs(fm, copyright, tdm_position == "front" ? toc_page_list : [],
-      editor_name: conf.dig("editor", "name"), author: conf["author"], book_designer: credits["book_designer"])
+      editor_name: conf.dig("editor", "name"), author: conf["author"], book_designer: credits["book_designer"],
+      collection: conf["collection"])
     front_matter_page_count = front_specs.size
 
     # --- 3) Rendu final des chansons, dans l'ordre du TDM (déplacé/complété par #54 si
@@ -1157,7 +1164,7 @@ module CarnetBuilder
   # `toc_specs_list` : non vide seulement si `tdm_position: front` — insérée AVANT tout
   # texte (avant-propos/préface/remerciements), après garde/copyright  :
   # "elle se place avant tout texte, donc avant une préface").
-  def self.front_matter_specs(fm, copyright, toc_specs_list, editor_name: nil, author: nil, book_designer: nil)
+  def self.front_matter_specs(fm, copyright, toc_specs_list, editor_name: nil, author: nil, book_designer: nil, collection: nil)
     specs = []
     specs << { kind: :half_title } if fm["half_title_page"]
     specs << { kind: :garde } if fm["pages_garde"]
@@ -1170,6 +1177,7 @@ module CarnetBuilder
       byline = author || (book_designer && "Conçu par #{book_designer}")
       specs << { kind: :title_page, editor_name: editor_name, byline: byline }
     end
+    specs.each { |s| s[:collection] = collection } if collection
     if copyright
       idx = specs.index { |s| %i[half_title garde title_page].include?(s[:kind]) }
       specs.insert(idx ? idx + 1 : 0, { kind: :copyright, text: normalize_copyright(copyright) })
@@ -1253,6 +1261,10 @@ module CarnetBuilder
   end
 
   def self.draw_front_matter_page(pdf, spec, title, subtitle, entries, carnet_folder)
+    # Nom de la collection juste au-dessus du titre (faux titre, garde, page de titre).
+    if %i[half_title garde title_page].include?(spec[:kind]) && spec[:collection]
+      draw_centered_text_box(pdf, spec[:collection], y: pdf.bounds.height / 2 + 10 + 28, size: 12)
+    end
     case spec[:kind]
     when :half_title
       draw_centered_text_box(pdf, title, y: pdf.bounds.height / 2 + 10, size: 18, style: :bold)
@@ -1281,7 +1293,7 @@ module CarnetBuilder
       # "en bas de page"  — PAS centré verticalement comme le reste du
       # front matter, une simple mention en pied de fausse-page.
       draw_centered_text_box(pdf, spec[:text], y: 40, size: 9)
-      general = general_specs_text
+      general = Options.get(:show_specs) && general_specs_text
       if general
         frame_bottom = draw_framed_label(pdf, "Impression test", y: pdf.bounds.height / 2 + 30, size: 10)
         draw_centered_text_box(pdf, general, y: frame_bottom - 10, size: 11)
@@ -1476,7 +1488,8 @@ module CarnetBuilder
     text.sub(/\A@/, "©")
   end
 
-  # Règles générales du carnet, affichées sur la page de copyright — liste ouverte,
+  # Règles générales du carnet, affichées sur la page de copyright en impression test
+  # seulement (option `show_specs`) — liste ouverte,
   # à compléter plus tard (tablatures/partitions...) sans rien restructurer. `nil` si
   # rien ne s'écarte du défaut de l'app (rien à signaler).
   def self.general_specs_text

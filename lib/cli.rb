@@ -423,7 +423,7 @@ module CLI
     when "add-to"
       SongAdder.run_local(arg1)
     when "ie"
-      IeCommand.run(arg1, arg2)
+      IeCommand.run(arg1, arg2, arg3)
     when "manual", "manuel"
       manuel_dir = File.expand_path("../Manuel", __dir__)
       adoc_path = File.join(manuel_dir, "Manuel.adoc")

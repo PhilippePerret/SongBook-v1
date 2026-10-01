@@ -1,5 +1,6 @@
 1.
 {cover_image} |
+              |  {collection; font-size: 14pt;}
               |  {title; font-size: 30pt;}
               | {subtitle; font-size: 24pt;}
               |

@@ -9,6 +9,7 @@ require_relative "icare_editions"
 require_relative "locale"
 require_relative "session"
 require_relative "song_resolver"
+require_relative "songbook_site"
 require_relative "tuto_video"
 
 # `songbook ie add-to [carnet]` (`run`) : ajoute une chanson (courante, sinon choisie) à un carnet
@@ -28,6 +29,7 @@ module SongAdder
     puts(add_to_tdm(carnet_folder, song_id) ? success(Loc.get("add_to_tdm_added")) : gray(Loc.get("add_to_tdm_already")))
 
     carnet_id = ensure_carnet_id(carnet_folder)
+    puts success(Loc.get("add_to_site_tdm_updated")) if SongbookSite.write_tdm(carnet_folder, carnet_id)
     item = IcareEditions.create_song_item(song_folder)
     puts success(Loc.get("tuto_editions_created")) if item[:status] == :created
     puts(IcareEditions.add_carnet(item[:folder], carnet_id) ? success(Loc.get("add_to_editions_added")) : gray(Loc.get("add_to_editions_already")))

@@ -31,7 +31,7 @@ module IdmlCoverBuilder
   TEXT_WIDTH_SCALE = 0.5 #  : blocs de texte réduits d'au moins 50% (largeur, pas hauteur).
 
   FONT_SIZE = {
-    "title" => 32.0, "subtitle" => 20.0, "author" => 13.0,
+    "collection" => 14.0, "title" => 32.0, "subtitle" => 20.0, "author" => 13.0,
     "price" => 15.0, "isbn" => 12.0, "performers" => 11.0, "songs" => 11.0,
   }.freeze
 
@@ -55,6 +55,7 @@ module IdmlCoverBuilder
   COVER_IMAGE_FIELD = Field.new(name: "cover_image", kind: :image, resolver: ->(conf, _e) { conf.dig("cover", "image") })
 
   FRONT_FIELDS = [
+    Field.new(name: "collection", kind: :text, resolver: ->(conf, _e) { conf["collection"] }),
     Field.new(name: "title", kind: :text, resolver: ->(conf, _e) { conf["title"] }),
     Field.new(name: "subtitle", kind: :text, resolver: ->(conf, _e) { conf["subtitle"] }),
     Field.new(name: "author", kind: :text, resolver: ->(conf, _e) { conf["author"] || (conf["credits"].is_a?(Hash) && conf["credits"]["book_designer"]) }),
@@ -108,9 +109,9 @@ module IdmlCoverBuilder
     # centre sur TOUTE la largeur de la page hors marge, sans tenir compte de l'image
     #  : "je m'en fous de l'image, ça n'a rien à voir").
     image_value = COVER_IMAGE_FIELD.resolver.call(conf, entries)
-    if image_value && !image_value.to_s.strip.empty?
+    img_path = image_value && !image_value.to_s.strip.empty? ? File.expand_path(image_value, carnet_folder) : nil
+    if img_path && File.exist?(img_path)
       img_x0 = spine_x1 + binding_overlap
-      img_path = File.expand_path(image_value, carnet_folder)
       img_h = (ch - margin) - margin
       img_w = image_frame_width(img_path, front_x1 - margin - img_x0, img_h)
       frames << { kind: :image, self: ids.next!, name: "cover_image", x: img_x0, y: margin, w: img_w, h: img_h, image_path: img_path }
@@ -215,7 +216,11 @@ module IdmlCoverBuilder
       # "clé seule -> Hash") par le parseur imbriqué — jamais une vraie valeur de champ,
       # toujours absence (bug constaté : `{}` passait le filtre, `File.expand_path`
       # plantait ensuite sur un Hash).
-      [field, value] if value && !value.is_a?(Hash) && !value.to_s.strip.empty?
+      next unless value && !value.is_a?(Hash) && !value.to_s.strip.empty?
+      # Image déclarée mais absente du carnet : ignorée, jamais un plantage.
+      next if field.kind == :image && !File.exist?(File.expand_path(value, carnet_folder))
+
+      [field, value]
     end
 
     w = x1 - x0

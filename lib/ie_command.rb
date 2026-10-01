@@ -4,6 +4,7 @@ require_relative "ansi_colors"
 require_relative "icare_editions"
 require_relative "locale"
 require_relative "song_adder"
+require_relative "songbook_site"
 require_relative "tuto_video"
 
 # `songbook ie [action]` : opérations liées au site des éditions Icare — menu si
@@ -19,9 +20,10 @@ module IeCommand
     add_to: "ie_menu_add_to",
     create_tuto: "ie_menu_create_tuto",
     create_songbook: "ie_menu_create_songbook",
+    covers: "ie_menu_covers",
   }.freeze
 
-  def self.run(arg1 = nil, arg2 = nil)
+  def self.run(arg1 = nil, arg2 = nil, arg3 = nil)
     action =
       case [arg1, arg2]
       in ["sync", _] then :sync
@@ -31,12 +33,14 @@ module IeCommand
       in ["add-to", _] then :add_to
       in ["create", "tuto"] then :create_tuto
       in ["create", "songbook" | "sb"] then :create_songbook
+      in ["cover" | "covers", _] then :covers
       in [nil, _] then pick_action
       else abort "commande inconnue : ie #{[arg1, arg2].compact.join(" ")} (aide : songbook -h)"
       end
     return unless action
 
-    send(action, arg1 == "add-to" ? arg2 : nil)
+    target = arg1 == "create" ? arg3 : arg2
+    send(action, %w[add-to cover covers create].include?(arg1) ? target : nil)
   end
 
   def self.pick_action
@@ -94,7 +98,37 @@ module IeCommand
     end
   end
 
-  def self.create_songbook(_ = nil)
-    puts gray(Loc.get("ie_create_songbook_pending"))
+  # Dossier du carnet sur le site (data.yaml, texte.md, tdm.yaml, couverture,
+  # miniature), ouvert dans le Finder pour vérification avant synchronisation.
+  def self.create_songbook(carnet_name = nil)
+    carnet_folder = SongAdder.pick_carnet(carnet_name)
+    carnet_id = SongAdder.ensure_carnet_id(carnet_folder)
+    if SongbookSite.create(carnet_folder, carnet_id) == :exists
+      puts gray(Loc.get("ie_songbook_exists"))
+    else
+      puts success(Loc.get("ie_songbook_created"))
+      report_covers(SongbookSite.make_covers(carnet_folder, carnet_id))
+    end
+    system("open", SongbookSite.folder_for(carnet_id))
+    return unless colored_prompt.yes?(yellow(Loc.get("ie_songbook_sync_question")), default: false)
+    return unless colored_prompt.yes?(yellow(Loc.get("ie_songbook_covers_checked_question")), default: false)
+
+    IcareEditions.sync
+  end
+
+  # `ie cover`/`ie covers` : couverture et miniature du carnet pour le site.
+  def self.covers(carnet_name = nil)
+    carnet_folder = SongAdder.pick_carnet(carnet_name)
+    carnet_id = SongAdder.ensure_carnet_id(carnet_folder)
+    report_covers(SongbookSite.make_covers(carnet_folder, carnet_id))
+    system("open", SongbookSite.folder_for(carnet_id))
+  end
+
+  def self.report_covers(status)
+    case status
+    when :created then puts success(Loc.get("ie_covers_created"))
+    when :no_pdf then warn Loc.get("ie_covers_no_pdf")
+    else warn Loc.get("ie_covers_failed")
+    end
   end
 end
