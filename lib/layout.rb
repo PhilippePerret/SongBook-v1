@@ -395,6 +395,12 @@ module Layout
   # 2026-08-23, voir `distribute_v_gutters`). NE PAS remettre à 1.0 sans redemander.
   TOP_GUTTER_WEIGHT = 0.85
 
+  # Écart FIXE, en plus de la gouttière normale entre couplets, pour la gouttière
+  # bandeau -> 1er couplet (Phil, 2026-09-29 : après avoir égalisé les deux, demande
+  # explicitement que celle sous le bandeau reste 4pt PLUS GRANDE que le reste, pas
+  # juste égale) — voir l'override dans `distribute_v_gutters`, `top_type: :band_strophe`.
+  BAND_STROPHE_TOP_EXTRA = 4.0
+
   # Distance minimale JAMAIS franchie entre deux éléments (même sans chevauchement, trop
   # proches reste moche) et distance MAXIMALE JAMAIS dépassée (même avec beaucoup de place
   # libre, trop écartés reste moche aussi) — même valeur pour les deux directions pour
@@ -403,10 +409,14 @@ module Layout
   # Table par TYPE d'élément (:diags, :title, :score, :tabs, :strophe...) — clé absente ⇒
   # valeur de :default. Seul :diags a une valeur propre pour l'instant ,
   # les autres types tomberont sur :default tant qu'aucun besoin distinct n'est apparu.
-  # `band_diag`/`band_strophe` : gouttière ENTRE la bande de titre et le 1er élément
-  # (diag / couplet) — INDÉPENDANTE de la gouttière ENTRE éléments de même type (`diags`/
-  # `default`). Les deux ne doivent jamais partager la même plage  : sinon
-  # une plage resserrée pour "entre diags" resserre aussi, à tort, "sous le bandeau".
+  # `band_diag` : gouttière ENTRE la bande de titre et le 1er diagramme — INDÉPENDANTE
+  # de la gouttière ENTRE diags (`diags`) : les deux ne doivent jamais partager la même
+  # plage, sinon une plage resserrée pour "entre diags" resserre aussi, à tort, "sous
+  # le bandeau". `band_strophe` PARTAGE la plage de `default` (Phil, 2026-09-29,
+  # "Petite Fleur" p.1 : l'espace sous le bandeau se retrouvait plus PETIT qu'entre
+  # deux couplets — ne devrait jamais arriver), plancher/plafond +`BAND_STROPHE_TOP_EXTRA`
+  # (4pt, demandé ENSUITE le même jour : pas juste égal, 4pt DE PLUS que le reste —
+  # voir l'override dédié dans `distribute_v_gutters`, pas les poids/plages génériques).
   # `tdm_num` (RATDM3) : distance entre le titre le plus long de la TDM et le chiffre de
   # page — valeur fixée à 20pt pour l'essai (Manuel, regles_esthetiques.adoc).
   # `tabs_system` : PAS ici  : "garder cette config enregistrée en
@@ -417,9 +427,9 @@ module Layout
   # Plancher/plafond volontairement quasi égaux dans les presets : des systèmes
   # d'une même tablature sont un contenu continu, jamais espacés comme des
   # couplets (`distribute_v_gutters` ne doit quasiment jamais les étirer).
-  MIN_V_DIST = { default: 20.0, diags: 2.0, band_diag: 10.0, band_strophe: 10.0 }.freeze
+  MIN_V_DIST = { default: 16.0, diags: 2.0, band_diag: 10.0, band_strophe: 16.0 + BAND_STROPHE_TOP_EXTRA }.freeze
   MIN_H_DIST = { default: 8.0, diags: 4.0, tdm_num: 20.0, label: 12.0 }.freeze
-  MAX_V_DIST = { default: 25.0, diags: 2.0, band_diag: 20.0, band_strophe: 40.0 }.freeze
+  MAX_V_DIST = { default: 20.0, diags: 2.0, band_diag: 20.0, band_strophe: 20.0 + BAND_STROPHE_TOP_EXTRA }.freeze
 
   # Rééquilibrage vertical , "L'Aigle noir" p.9 : bloc de paroles collé
   # en haut, grand vide en bas) : DUP (haut du bloc -> bas du bandeau/marge haut) et DDO
@@ -1203,6 +1213,17 @@ module Layout
       end
     end
 
+    # `:band_strophe` (Phil, 2026-09-29) : PAS juste une plage propre — TOUJOURS
+    # exactement `BAND_STROPHE_TOP_EXTRA` de PLUS que la gouttière entre couplets
+    # réellement rendue à côté, jamais une valeur clampée indépendamment (ce que
+    # `min_v_dist`/`max_v_dist` seuls ne peuvent pas garantir). Référence = 2e gouttière
+    # (déjà réglée, poids 1.0, même boucle ci-dessus) — repli sur `unit` propre au
+    # `type` de la page s'il n'y a qu'un seul élément (pas de 2e gouttière à copier).
+    if top_type == :band_strophe
+      reference = gutters.length > 1 ? gutters[1] : unit.clamp(min_v_dist(type), max_v_dist(type))
+      gutters[0] = reference + BAND_STROPHE_TOP_EXTRA
+    end
+
     gutters
   end
 
@@ -1965,14 +1986,21 @@ module Layout
         merging_here = merged_last_page && i == pages.size - 1
         avail_for_text = merging_here ? merged_last_page[:remaining_h] : page[:avail_h]
         page_heights = page_els.map(&:height)
-        gutters = distribute_v_gutters(avail_for_text, page_heights, top_type: i.zero? ? :band_strophe : :default, types: page_els.map(&:gutter_type))
+        page_top_type = i.zero? ? :band_strophe : :default
+        gutters = distribute_v_gutters(avail_for_text, page_heights, top_type: page_top_type, types: page_els.map(&:gutter_type))
 
         # Rééquilibrage vertical : jamais si une
         # grille de diags en trop occupe déjà le bas (`merging_here`, RAD7) — elle EST la
-        # référence "bas" voulue, pas la marge réelle.
+        # référence "bas" voulue, pas la marge réelle. NI sous un bandeau (`:band_strophe`,
+        # Phil 2026-09-29) : le DUP=DDO recentre en écrasant tout écart volontaire côté
+        # haut vers LA MOYENNE avec la marge basse — quelle que soit la valeur initiale de
+        # `dup` (mathématiquement invariant, PAS un simple "un peu moins bien préservé").
+        # `BAND_STROPHE_TOP_EXTRA` (déjà dans `gutters[0]`, voir `distribute_v_gutters`)
+        # exige un DUP EXACT (gouttière inter-couplets + 4pt), pas juste approché : les
+        # deux exigences sont incompatibles, celle-ci gagne sur la 1re page (bandeau).
         dup = gutters[0]
         ddo = avail_for_text - (page_heights.sum + gutters.sum)
-        balance_shift = if !merging_here && ddo >= 0
+        balance_shift = if !merging_here && ddo >= 0 && page_top_type != :band_strophe
           (ddo - dup) / 2.0
         else
           0.0

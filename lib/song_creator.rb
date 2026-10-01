@@ -42,10 +42,12 @@ module SongCreator
     propose_web_search(prompt, title, performer) unless all_found
 
     year = pick_year(prompt, year_candidates)
-    id = CarnetBuilder.slugify("#{title} #{performer} #{year}")
+    id = CarnetBuilder.song_id(title, performer, year)
 
     composer = prompt.ask(yellow("Compositeur :"), default: cl[:composer]) { |q| q.required true }
     lyricist = prompt.ask(yellow("Parolier :"), default: cl[:lyricist]) { |q| q.required true }
+
+    id = prompt.ask(yellow("Identifiant :"), default: id) { |q| q.required true }.strip
 
     infos = {
       "id" => id,

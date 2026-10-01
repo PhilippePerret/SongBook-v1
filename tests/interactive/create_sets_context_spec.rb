@@ -29,6 +29,7 @@ RSpec.describe "create song/songbook devient le contexte courant" do
       allow(prompt).to receive(:ask).with(SongCreator.yellow("Année :")).and_return("2020")
       allow(prompt).to receive(:ask).with(SongCreator.yellow("Compositeur :"), default: nil).and_return("Compositeur Test")
       allow(prompt).to receive(:ask).with(SongCreator.yellow("Parolier :"), default: nil).and_return("Parolier Test")
+      allow(prompt).to receive(:ask).with(SongCreator.yellow("Identifiant :"), default: anything) { |_, opts| opts[:default] }
       allow(prompt).to receive(:yes?).and_return(false)
 
       CLI.run(["create", "song", "Chanson De Test", "Artiste Test"], interactive: true)
