@@ -147,13 +147,15 @@ module CarnetBuilder
     ascii.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-+|-+\z/, "")
   end
 
-  # Identifiant de chanson (`create song`) : article de tête du titre retiré (FR/EN),
-  # apostrophes supprimées sans rien laisser à leur place ("d'habitude" -> "dhabitude").
+  # Identifiant de chanson (`create song`) : article de tête du titre et du performer
+  # retiré (FR/EN), " et "/" and " du performer retirés ("Simon and Garfunkel" ->
+  # "simon-garfunkel"), apostrophes supprimées sans rien laisser à leur place ("d'habitude" -> "dhabitude").
   ID_ARTICLE_HEAD_RE = /\A(?:(?:le|la|les|un|une|des|the|an|a)\s+|l['’]\s*)/i
 
   def self.song_id(title, performer, year)
     bare_title = title.strip.sub(ID_ARTICLE_HEAD_RE, "")
-    slugify("#{bare_title} #{performer} #{year}".delete("'’"))
+    bare_performer = performer.strip.sub(ID_ARTICLE_HEAD_RE, "").gsub(/\s+(?:et|and)\s+/i, " ")
+    slugify("#{bare_title} #{bare_performer} #{year}".delete("'’"))
   end
 
   # "Le Pénitencier" -> "Pénitencier (Le)", "L'Aigle noir" -> "Aigle noir (L')" — convention

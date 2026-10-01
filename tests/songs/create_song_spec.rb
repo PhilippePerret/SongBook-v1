@@ -71,6 +71,11 @@ RSpec.describe "assistant de création de chanson" do
       expect(CarnetBuilder.song_id("Lettre à France", "Michel Polnareff", "1977")).to eq("lettre-a-france-michel-polnareff-1977")
     end
 
+    it "retire « et »/« and » du performer" do
+      expect(CarnetBuilder.song_id("Le Lac", "Michel et Jonaz", "1980")).to eq("lac-michel-jonaz-1980")
+      expect(CarnetBuilder.song_id("Cecilia", "Simon and Garfunkel", "1970")).to eq("cecilia-simon-garfunkel-1970")
+    end
+
     it "supprime les apostrophes sans les remplacer par un tiret" do
       expect(CarnetBuilder.song_id("Comme d'habitude", "Claude François", "1967")).to eq("comme-dhabitude-claude-francois-1967")
       expect(CarnetBuilder.song_id("Comme d’habitude", "Claude François", "1967")).to eq("comme-dhabitude-claude-francois-1967")
