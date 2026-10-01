@@ -32,6 +32,12 @@ USAGE = <<~TXT
 
         {{command: songbook song id "titre"}}
 
+  - Ajouter la chanson (courante, sinon choisie) à la table des matières d'un carnet
+    (désigné, courant, sinon choisi) — propose d'abord de la synchroniser sur le site
+    des éditions (`ie add-to`)
+
+        {{command: songbook add-to "carnet"}}
+
   - Icare éditions : menu des opérations sur le site des éditions, ou action directe
 
         {{command: songbook ie}}

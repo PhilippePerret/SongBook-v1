@@ -11,7 +11,7 @@ require_relative "session"
 require_relative "song_resolver"
 require_relative "tuto_video"
 
-# `songbook ie add-to [carnet]` : ajoute une chanson (courante, sinon choisie) à un carnet
+# `songbook ie add-to [carnet]` (`run`) : ajoute une chanson (courante, sinon choisie) à un carnet
 # (désigné, courant, sinon choisi) — `.tdm` du carnet (ordre alphabétique des ids),
 # donnée `carnets` du site des éditions, vidéo provisoire du tutoriel.
 module SongAdder
@@ -20,10 +20,7 @@ module SongAdder
   # `sync:` (`ie add-to`) : synchronise le site des éditions à la fin.
   def self.run(carnet_name = nil, sync: false)
     song_folder = pick_song
-    carnet_folder =
-      if carnet_name then SongResolver.resolve_carnet_folder(carnet_name)
-      else Session.carnet || SongResolver.select_song(Loc.get("add_to_pick_carnet"), CarnetBuilder.all_carnets(AppConfig.songbooks_dir))
-      end
+    carnet_folder = pick_carnet(carnet_name)
 
     song_infos = song_infos!(song_folder)
     song_id = song_infos["id"].to_s.strip
@@ -50,6 +47,24 @@ module SongAdder
 
     synced = sync && IcareEditions.sync
     guide_next_steps(song_folder, carnet_folder, r2_done: upload != :failed, synced: synced)
+  end
+
+  # `songbook add-to [carnet]` : demande d'abord s'il faut synchroniser la chanson sur
+  # le site des éditions (-> `ie add-to` complet). Sinon, ajout à la table des
+  # matières du carnet local seulement.
+  def self.run_local(carnet_name = nil)
+    return run(carnet_name, sync: true) if colored_prompt.yes?(yellow(Loc.get("add_to_sync_question")))
+
+    song_id = song_infos!(pick_song)["id"].strip
+    carnet_folder = pick_carnet(carnet_name)
+    puts(add_to_tdm(carnet_folder, song_id) ? success(Loc.get("add_to_tdm_added")) : gray(Loc.get("add_to_tdm_already")))
+  end
+
+  # Carnet désigné, sinon courant, sinon choisi dans la liste.
+  def self.pick_carnet(carnet_name)
+    return SongResolver.resolve_carnet_folder(carnet_name) if carnet_name
+
+    Session.carnet || SongResolver.select_song(Loc.get("add_to_pick_carnet"), CarnetBuilder.all_carnets(AppConfig.songbooks_dir))
   end
 
   # Chanson courante, sinon choisie dans la liste de toutes les chansons.

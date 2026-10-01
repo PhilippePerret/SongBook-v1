@@ -169,3 +169,4 @@ ie_tuto_missing: "Aucun fichier .mp4 pour cette chanson dans le dossier des tuto
 ie_create_songbook_pending: "Procédure à définir."
 ie_menu_create_song: "Créer la chanson sur le site"
 ie_menu_open_song: "Ouvrir la page de la chanson en ligne"
+add_to_sync_question: "Synchroniser aussi la chanson sur le site des éditions ?"

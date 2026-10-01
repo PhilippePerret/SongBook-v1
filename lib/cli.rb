@@ -420,6 +420,8 @@ module CLI
       end
     when "songbook", "sb"
       puts Session.carnet ? success(format(Loc.get("use_carnet_set"), SongResolver.display_name(Session.carnet))) : gray(Loc.get("songbook_current_none"))
+    when "add-to"
+      SongAdder.run_local(arg1)
     when "ie"
       IeCommand.run(arg1, arg2)
     when "manual", "manuel"
