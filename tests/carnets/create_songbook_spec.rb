@@ -19,6 +19,7 @@ RSpec.describe "assistant de création de carnet" do
   it "Créer un carnet avec les bonnes données" do
     allow(prompt).to receive(:ask).with(SongbookCreator.yellow("Titre du carnet :")).and_return("Mon Carnet Test")
     allow(prompt).to receive(:ask).with(SongbookCreator.yellow("Nom du dossier :"), default: "Carnet-mon-carnet-test").and_return("Carnet-De-Test-Assistant")
+    allow(prompt).to receive(:ask).with(SongbookCreator.yellow("Collection (rien si aucune) :")).and_return("Ma Collection")
     allow(prompt).to receive(:ask).with(SongbookCreator.yellow("Sous-titre (rien si aucun) :")).and_return("Le sous-titre")
     allow(prompt).to receive(:ask).with(SongbookCreator.yellow("Prix (ex. 9,90 € — rien si inconnu) :")).and_return("9,90 €")
     allow(prompt).to receive(:ask).with(SongbookCreator.yellow("Nom de l'éditeur (rien si aucun) :")).and_return("")
@@ -29,6 +30,8 @@ RSpec.describe "assistant de création de carnet" do
 
     expect(folder).to eq(created_folder)
     infos = CarnetBuilder.parse_nested_infos(File.join(created_folder, "c.infos"))
+    expect(infos["id"]).to eq("carnet-de-test-assistant")
+    expect(infos["collection"]).to eq("Ma Collection")
     expect(infos["title"]).to eq("Mon Carnet Test")
     expect(infos["subtitle"]).to eq("Le sous-titre")
     expect(infos["price"]).to eq("9,90 €")

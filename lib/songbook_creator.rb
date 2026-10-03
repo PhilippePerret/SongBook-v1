@@ -30,12 +30,13 @@ module SongbookCreator
     folder = File.join(songbooks_dir, folder_name)
     return handle_existing_songbook(prompt, folder) if Dir.exist?(folder)
 
+    collection = prompt.ask(yellow("Collection (rien si aucune) :"))
     subtitle = prompt.ask(yellow("Sous-titre (rien si aucun) :"))
     price = prompt.ask(yellow("Prix (ex. 9,90 € — rien si inconnu) :"))
     editor_name = prompt.ask(yellow("Nom de l'éditeur (rien si aucun) :"))
     book_designer = prompt.ask(yellow("Conception du carnet (rien si inconnu) :"))
 
-    infos = default_infos(title: title, subtitle: subtitle, price: price, editor_name: editor_name, book_designer: book_designer)
+    infos = default_infos(id: CarnetBuilder.slugify(folder_name), collection: collection, title: title, subtitle: subtitle, price: price, editor_name: editor_name, book_designer: book_designer)
 
     Dir.mkdir(folder)
     infos_path = File.join(folder, "c.infos")
@@ -59,8 +60,8 @@ module SongbookCreator
     nil
   end
 
-  def self.default_infos(title:, subtitle:, price:, editor_name:, book_designer:)
-    infos = { "title" => title }
+  def self.default_infos(id:, collection:, title:, subtitle:, price:, editor_name:, book_designer:)
+    infos = { "id" => id, "collection" => collection.to_s.strip, "title" => title }
     infos["subtitle"] = subtitle unless subtitle.to_s.strip.empty?
     infos["format"] = AppConfig.get("format")
     infos["price"] = price unless price.to_s.strip.empty?

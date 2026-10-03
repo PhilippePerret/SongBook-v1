@@ -50,6 +50,7 @@ RSpec.describe "create song/songbook devient le contexte courant" do
 
       allow(prompt).to receive(:ask).with(SongbookCreator.yellow("Titre du carnet :")).and_return("Mon Carnet Test")
       allow(prompt).to receive(:ask).with(SongbookCreator.yellow("Nom du dossier :"), default: "Carnet-mon-carnet-test").and_return("Carnet-De-Test-Assistant")
+      allow(prompt).to receive(:ask).with(SongbookCreator.yellow("Collection (rien si aucune) :")).and_return("")
       allow(prompt).to receive(:ask).with(SongbookCreator.yellow("Sous-titre (rien si aucun) :")).and_return("")
       allow(prompt).to receive(:ask).with(SongbookCreator.yellow("Prix (ex. 9,90 € — rien si inconnu) :")).and_return("")
       allow(prompt).to receive(:ask).with(SongbookCreator.yellow("Nom de l'éditeur (rien si aucun) :")).and_return("")
