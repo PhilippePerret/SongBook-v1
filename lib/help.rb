@@ -42,12 +42,13 @@ USAGE = <<~TXT
 
         {{command: songbook ie}}
         {{command: songbook ie sync}}
-        {{command: songbook ie create song}}
-        {{command: songbook ie open song}}
-        {{command: songbook ie upload tuto}}
+        {{command: songbook ie create song "chanson"}}
+        {{command: songbook ie open song "chanson"}}
+        {{command: songbook ie upload tuto "chanson"}}
         {{command: songbook ie add-to "carnet"}}
-        {{command: songbook ie create tuto}}
+        {{command: songbook ie create tuto "chanson"}}
         {{command: songbook ie create songbook "carnet"}}
+        {{command: songbook ie update songbook "carnet"}}
         {{command: songbook ie cover "carnet"}}
         {{command: songbook ie covers "carnet"}}
 

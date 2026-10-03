@@ -36,6 +36,27 @@ RSpec.describe "add-to : ajout d'une chanson à un carnet" do
     end
   end
 
+  describe "présence dans la table des matières" do
+    it "repère l'id dans le .tdm du carnet" do
+      File.write(tdm, "- aigle-noir-barbara-1970\n")
+
+      expect(SongAdder.in_tdm?(carnet, "aigle-noir-barbara-1970")).to be true
+      expect(SongAdder.in_tdm?(carnet, "zz-top-1980")).to be false
+    end
+  end
+
+  describe "couverture et miniature du carnet sur le site" do
+    it "n'existent que si les deux fichiers sont là" do
+      folder = File.join(tmp, "items", "carnet-full")
+      FileUtils.mkdir_p(folder)
+      File.write(File.join(folder, "cover.png"), "")
+      expect(SongbookSite.covers_exist?("carnet-full", File.join(tmp, "items"))).to be false
+
+      File.write(File.join(folder, "miniature.png"), "")
+      expect(SongbookSite.covers_exist?("carnet-full", File.join(tmp, "items"))).to be true
+    end
+  end
+
   describe "identifiant du carnet" do
     it "lit le champ id de la fiche" do
       File.write(File.join(carnet, "cc.infos"), "id: carnet-full\ntitle: Tout\n")

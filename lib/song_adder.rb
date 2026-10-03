@@ -5,57 +5,22 @@ require_relative "ansi_colors"
 require_relative "app_config"
 require_relative "carnet_builder"
 require_relative "file_finder"
-require_relative "icare_editions"
 require_relative "locale"
 require_relative "session"
 require_relative "song_resolver"
 require_relative "songbook_site"
-require_relative "tuto_video"
 
-# `songbook ie add-to [carnet]` (`run`) : ajoute une chanson (courante, sinon choisie) à un carnet
-# (désigné, courant, sinon choisi) — `.tdm` du carnet (ordre alphabétique des ids),
-# donnée `carnets` du site des éditions, vidéo provisoire du tutoriel.
+# `songbook add-to [carnet]` : ajoute une chanson (courante, sinon choisie) à la table
+# des matières d'un carnet (désigné, courant, sinon choisi), dans l'ordre alphabétique
+# des ids — ou, sur demande, `ie add-to` complet (site des éditions).
 module SongAdder
   extend AnsiColors
 
-  # `sync:` (`ie add-to`) : synchronise le site des éditions à la fin.
-  def self.run(carnet_name = nil, sync: false)
-    song_folder = pick_song
-    carnet_folder = pick_carnet(carnet_name)
-
-    song_infos = song_infos!(song_folder)
-    song_id = song_infos["id"].to_s.strip
-
-    puts(add_to_tdm(carnet_folder, song_id) ? success(Loc.get("add_to_tdm_added")) : gray(Loc.get("add_to_tdm_already")))
-
-    carnet_id = ensure_carnet_id(carnet_folder)
-    puts success(Loc.get("add_to_site_tdm_updated")) if SongbookSite.write_tdm(carnet_folder, carnet_id)
-    item = IcareEditions.create_song_item(song_folder)
-    puts success(Loc.get("tuto_editions_created")) if item[:status] == :created
-    puts(IcareEditions.add_carnet(item[:folder], carnet_id) ? success(Loc.get("add_to_editions_added")) : gray(Loc.get("add_to_editions_already")))
-
-    puts gray(Loc.get("add_to_video_running"))
-    case TutoVideo.produce(song_id, song_infos["title"].to_s, song_infos["performer"].to_s)
-    when :created then puts success(Loc.get("add_to_video_created"))
-    when :exists then puts gray(Loc.get("add_to_video_exists"))
-    else warn Loc.get("add_to_video_failed")
-    end
-
-    upload = TutoVideo.upload(song_id)
-    case upload
-    when :uploaded then puts success(Loc.get("add_to_r2_uploaded"))
-    else warn Loc.get("add_to_r2_failed")
-    end
-
-    synced = sync && IcareEditions.sync
-    guide_next_steps(song_folder, carnet_folder, r2_done: upload != :failed, synced: synced)
-  end
-
-  # `songbook add-to [carnet]` : demande d'abord s'il faut synchroniser la chanson sur
-  # le site des éditions (-> `ie add-to` complet). Sinon, ajout à la table des
-  # matières du carnet local seulement.
   def self.run_local(carnet_name = nil)
-    return run(carnet_name, sync: true) if colored_prompt.yes?(yellow(Loc.get("add_to_sync_question")))
+    if colored_prompt.yes?(yellow(Loc.get("add_to_sync_question")))
+      require_relative "ie_command"
+      return IeCommand.add_to(carnet_name)
+    end
 
     song_id = song_infos!(pick_song)["id"].strip
     carnet_folder = pick_carnet(carnet_name)
@@ -69,8 +34,10 @@ module SongAdder
     Session.carnet || SongResolver.select_song(Loc.get("add_to_pick_carnet"), CarnetBuilder.all_carnets(AppConfig.songbooks_dir))
   end
 
-  # Chanson courante, sinon choisie dans la liste de toutes les chansons.
-  def self.pick_song
+  # Chanson désignée, sinon courante, sinon choisie dans la liste de toutes les chansons.
+  def self.pick_song(song_name = nil)
+    return SongResolver.resolve_song_folder(song_name) if song_name
+
     Session.song || SongResolver.select_song(Loc.get("add_to_pick_song"), CarnetBuilder.all_songs(AppConfig.songs_dir))
   end
 
@@ -83,23 +50,8 @@ module SongAdder
     infos
   end
 
-  # Fin de `add-to` : ouvre le dossier de la chanson, celui des vidéos et le `.tdm` du
-  # carnet, puis liste les opérations qui restent à faire à la main (téléversement R2
-  # et synchronisation seulement s'ils n'ont pas été faits).
-  def self.guide_next_steps(song_folder, carnet_folder, r2_done: false, synced: false)
-    system("open", song_folder)
-    system("open", TutoVideo::CHANSONS_TUTOS_DIR)
-    tdm_path = FileFinder.find(carnet_folder, :tdm)
-    system("open", "-a", AppConfig.user_song_editor, tdm_path) if tdm_path
-
-    puts
-    puts yellow(Loc.get("add_to_next_steps"))
-    steps = %w[add_to_step_tdm]
-    steps << "add_to_step_r2" unless r2_done
-    steps << "add_to_step_sync" unless synced
-    steps.each_with_index do |key, i|
-      puts "  #{i + 1}. #{format(Loc.get(key), IcareEditions::EDITIONS_DIR)}"
-    end
+  def self.in_tdm?(carnet_folder, song_id)
+    SongbookSite.tdm_ids(carnet_folder).include?(song_id)
   end
 
   # Insère `- <id>` avant la 1re ligne d'id alphabétiquement supérieure (fin de liste

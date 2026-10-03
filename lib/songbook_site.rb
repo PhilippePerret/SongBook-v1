@@ -49,10 +49,8 @@ module SongbookSite
     folder = folder_for(carnet_id, items_dir)
     return false unless Dir.exist?(folder)
 
-    tdm_path = FileFinder.find(carnet_folder, :tdm)
-    ids = tdm_path ? File.read(tdm_path).scan(/^-\s*(\S+)/).flatten : []
     songs = songs_by_id(songs_dir)
-    entries = ids.map do |id|
+    entries = tdm_ids(carnet_folder).map do |id|
       infos = songs[id] || {}
       titre = infos["title"] ? "#{infos["title"]} (#{infos["performer"]})" : id
       { "id" => id, "titre" => titre }
@@ -61,7 +59,17 @@ module SongbookSite
     true
   end
 
+  # Ids des chansons du `.tdm` du carnet, dans l'ordre.
+  def self.tdm_ids(carnet_folder)
+    tdm_path = FileFinder.find(carnet_folder, :tdm)
+    tdm_path ? File.read(tdm_path).scan(/^-\s*(\S+)/).flatten : []
+  end
+
   def self.songs_by_id(songs_dir)
+    song_folders_by_id(songs_dir).transform_values { |folder| CarnetBuilder.parse_nested_infos(FileFinder.find(folder, :inf)) }
+  end
+
+  def self.song_folders_by_id(songs_dir = AppConfig.songs_dir)
     Dir.children(songs_dir).each_with_object({}) do |entry, h|
       folder = File.join(songs_dir, entry)
       next unless File.directory?(folder)
@@ -69,14 +77,19 @@ module SongbookSite
       infos_path = FileFinder.find(folder, :inf)
       next unless infos_path
 
-      infos = CarnetBuilder.parse_nested_infos(infos_path)
-      h[infos["id"].to_s] = infos unless infos["id"].to_s.empty?
+      id = CarnetBuilder.parse_nested_infos(infos_path)["id"].to_s
+      h[id] = folder unless id.empty?
     end
   end
 
-  # PDF de couverture le plus récent du carnet (`export/cover/*.pdf`).
+  def self.covers_exist?(carnet_id, items_dir = ITEMS_DIR)
+    folder = folder_for(carnet_id, items_dir)
+    %w[cover.png miniature.png].all? { |name| File.exist?(File.join(folder, name)) }
+  end
+
+  # PDF de couverture de la dernière version du carnet (`export/cover/*-v<n>-cover.pdf`).
   def self.latest_cover_pdf(carnet_folder)
-    Dir.glob(File.join(carnet_folder, "export", "cover", "*.pdf")).max_by { |f| File.mtime(f) }
+    Dir.glob(File.join(carnet_folder, "export", "cover", "*.pdf")).max_by { |f| f[/-v(\d+)-cover\.pdf\z/, 1].to_i }
   end
 
   # `cover.png` (~2000 px de haut) et `miniature.png` (300 px de haut), 300 ppi,
@@ -110,9 +123,13 @@ module SongbookSite
   # Épaisseur approximative du dos (pouces) — 0 si le carnet n'a jamais été construit.
   def self.spine_width(carnet_folder)
     require_relative "cli"
+    stderr = $stderr
+    $stderr = File.open(File::NULL, "w")
     CLI.printer_for_carnet(carnet_folder).spine_width
   rescue SystemExit
     0.0
+  ensure
+    $stderr = stderr
   end
 
   def self.carnet_conf(carnet_folder)

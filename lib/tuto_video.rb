@@ -21,12 +21,31 @@ module TutoVideo
     File.join(dir, "#{id}.mp4")
   end
 
+  # ScreenFlow laissé ouvert pendant tout le bloc (série de vidéos), puis quitté s'il
+  # n'était pas ouvert au départ.
+  def self.batch
+    return yield if @in_batch
+
+    @in_batch = true
+    was_running = system("pgrep", "-xq", "ScreenFlow")
+    begin
+      yield
+    ensure
+      @in_batch = false
+      system("osascript", "-e", 'tell application "ScreenFlow" to quit', out: File::NULL) if !was_running && system("pgrep", "-xq", "ScreenFlow")
+    end
+  end
+
   # Renvoie `:exists` (vidéo déjà là, rien refait — sauf `force:`), `:created` ou
   # `:failed`.
   def self.produce(id, title, performer, dir = CHANSONS_TUTOS_DIR, force: false)
     mp4 = path_for(id, dir)
     return :exists if File.exist?(mp4) && !force
 
+    batch { export(id, title, performer, mp4) }
+  end
+
+  def self.export(id, title, performer, mp4)
     Dir.mktmpdir do |tmp|
       doc = File.join(tmp, "#{id}.screenflow")
       ok = system("python3", File.join(TOOLS_DIR, "sf_title.py"), TEMPLATE, doc, title.upcase, performer, mp4, out: File::NULL) &&
@@ -36,6 +55,11 @@ module TutoVideo
   end
 
   R2_OPTIONS = ["--profile", R2_PROFILE, "--endpoint-url", R2_ENDPOINT].freeze
+
+  # `<id>.mp4` déjà présent à la racine du bucket.
+  def self.on_r2?(id)
+    system("aws", "s3api", "head-object", "--bucket", R2_BUCKET, "--key", "#{id}.mp4", *R2_OPTIONS, out: File::NULL, err: File::NULL)
+  end
 
   # Téléverse `<id>.mp4` à la racine du bucket, en remplaçant toujours la version R2
   # (le fichier local fait foi). Renvoie `:missing` (pas de fichier local),
