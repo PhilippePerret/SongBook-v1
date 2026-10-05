@@ -1122,7 +1122,12 @@ module Layout
   # entre 2 colonnes il n'y a pas la place et elle empiète sur le bloc voisin (chevauchement
   # constaté, "One More Try" : "REFRAIN" collé/mordant sur le couplet pairé à sa gauche).
   def self.solo_row?(block)
-    block.directives[:block_align] == "center" || block.directives[:label]
+    block_align(block) == "center" || block.directives[:label]
+  end
+
+  # Valeur de `block_align` insensible à la casse (`block-align: Left` = `left`).
+  def self.block_align(block)
+    block.directives[:block_align].to_s.strip.downcase
   end
 
   def self.build_rows_positional(blocks)
@@ -1487,7 +1492,7 @@ module Layout
     when 1
       block = row[0]
       w = align_width || block_width(pdf, block)
-      left = if block.directives[:block_align] != "left"
+      left = if block_align(block) != "left"
                x0 + [(width - w) / 2.0, 0].max
              else
                x0 + h_gutter
@@ -1558,7 +1563,7 @@ module Layout
                # l'un est plus court que l'autre, et un bloc seul peut même retomber par
                # coïncidence sur le centrage d'un bloc voisin SANS RAPPORT (ex. le label
                # d'un refrain) — bug constaté (issue #92, "Fais-moi une place").
-               centered = block.directives[:block_align] != "left"
+               centered = block_align(block) != "left"
                if centered
                  x0 + [(width - (align_width || block_width(pdf_, block))) / 2.0, 0].max
                else
@@ -3558,7 +3563,7 @@ module Layout
       svg_h = target_svg_h
     end
 
-    svg_x = align == "center" ? x0 + [(width - embed_w) / 2.0, 0].max : x0
+    svg_x = align.to_s.downcase == "center" ? x0 + [(width - embed_w) / 2.0, 0].max : x0
     staff_center_h = svg_staff_center_pt(svg_data, embed_w)
     count_extra_h, count_draw = build_count_mark(pdf, count, x0, width, svg_x, embed_w, svg_h, center_h: staff_center_h)
 
@@ -3587,7 +3592,7 @@ module Layout
     title_ascent = title ? font_metric(pdf, title_size) { pdf.font.ascender } : 0
     title_h = title ? font_metric(pdf, title_size) { pdf.font.height } + TAB_TITLE_IMAGE_GAP : 0
 
-    img_x = align == "center" ? x0 + [(width - embed_w) / 2.0, 0].max : x0
+    img_x = align.to_s.downcase == "center" ? x0 + [(width - embed_w) / 2.0, 0].max : x0
     count_extra_h, count_draw = build_count_mark(pdf, count, x0, width, img_x, embed_w, embed_h)
 
     draw = lambda do |pdf_, y|

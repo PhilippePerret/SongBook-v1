@@ -469,7 +469,7 @@ module PageBuilder
   # il gaspille toute une colonne de la row où il tombe (bug trouvé, 2026-08-18, sur "Au fur
   # et à mesure" — 2 rows sur 3 pages n'affichaient qu'un seul couplet, l'autre colonne vide).
   def self.block_kind(name)
-    name.split("+").first.sub(/-part-\d+\z/, "").sub(/-\d+\z/, "")
+    name.split("+").first.downcase.sub(/-part-\d+\z/, "").sub(/-\d+\z/, "")
   end
 
   # `title_band`/`diags_position` : défauts de CE dossier (Manuel/song/layout.adoc, voir
@@ -519,6 +519,9 @@ module PageBuilder
   # - Aucun candidat (type inconnu du .lyr) -> conflict log, bloc vide rendu à la place.
   def self.fetch_block(lyr_blocks, name, lyr_order, counters)
     return lyr_blocks[name] if lyr_blocks.key?(name)
+
+    same_name = lyr_blocks.keys.find { |k| k.casecmp?(name) }
+    return lyr_blocks[same_name] if same_name
 
     kind = block_kind(name)
     candidates = lyr_order.uniq.select { |n| block_kind(n) == kind }
@@ -597,7 +600,7 @@ module PageBuilder
   # "intro-1" -> "intro"  : "le premier mot dans un {...}, découpé selon
   # les '-', le deuxième élément étant souvent le numéro").
   def self.block_name_kind(name)
-    name.split("-").first
+    name.split("-").first.downcase
   end
 
   # `intro_align` (option, voir `Options`) : alignement par défaut du bloc "intro" — un
@@ -677,7 +680,7 @@ module PageBuilder
     # matriciel (photo/scan d'une partition).
     if !asset_paths.is_a?(Array)
       elements << Layout.build_image_element(pdf, asset_paths, x0, width, align: align, title: title, count: count)
-      shrink_jobs << { local_index: 0, svg_paths: asset_paths, align: align, title: title } if item.data[:shrink] == "true"
+      shrink_jobs << { local_index: 0, svg_paths: asset_paths, align: align, title: title } if item.data[:shrink].to_s.downcase == "true"
     else
       # UN élément de pagination PAR SYSTÈME : "chaque système doit être un élément
       # indépendant" — 2 systèmes peuvent tenir sur une page, le suivant passer sur la
@@ -692,7 +695,7 @@ module PageBuilder
         # `:tabs_system` : "systèmes trop séparés").
         el.gutter_type = :tabs_system if i.positive?
         elements << el
-        shrink_jobs << { local_index: i, svg_paths: [svg_path], align: align, title: sys_title } if item.data[:shrink] == "true"
+        shrink_jobs << { local_index: i, svg_paths: [svg_path], align: align, title: sys_title } if item.data[:shrink].to_s.downcase == "true"
       end
     end
     [elements, shrink_jobs]
@@ -996,7 +999,7 @@ module PageBuilder
       # imposé en silence — bug constaté 2026-08-22 : chanson sans bandeau alors que le
       # carnet le demande, simplement parce que son .gab ne redéfinit pas le titre.
       header_style = if title_item
-        title_item.data[:title] == "band" ? :band : :inline
+        title_item.data[:title].to_s.downcase == "band" ? :band : :inline
       else
         title_band_default ? :band : :inline
       end
