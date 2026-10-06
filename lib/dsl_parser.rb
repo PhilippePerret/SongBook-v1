@@ -17,7 +17,8 @@ class DSLParser
   # "En rouge et noir"/"Belle île en mer", pas reconnu DU TOUT faute de `-(\d+)` strict).
   # "+" (quinte augmentée, ex. "/d75+:", "Amstrong") : absent de la classe de caractères,
   # accord jamais reconnu du tout (bug constaté).
-  CHORD_RE = /\/((?:[A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)(?:\/[A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)?)(?:-([^: ]+))?:/
+  # "\/" (issue #116) : "/" échappé = caractère de parole, jamais le début d'un accord.
+  CHORD_RE = /(?<!\\)\/((?:[A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)(?:\/[A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)?)(?:-([^: ]+))?:/
 
   # Marqueur bracket SEUL (ex. "[B]", capturé par `CHORD_RE` en groupe 1) — DUPLIQUÉ de
   # `ChordDiagrams::BASS_ONLY_RE` (jamais requis ici : `chord_diagrams.rb` requiert déjà

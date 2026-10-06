@@ -1,6 +1,20 @@
 [[riffs, riffs]]
 ==== Riffs, les « petits bouts de musique » ====
 
+On peut mettre des « bouts » de musique simplement comme des paroles, par exemple :
+
+----
+/Dm:Ré ré mi /F:Fa /G:Sol
+----
+
+… qui sera écrit tel quel sur la page de la chanson.
+
+Pour indiquer des basses avec la balance « / », il faut *échapper* cette balance pour que la ligne ne soit pas traitée comme une ligne d'accord :
+
+----
+/Dm:\/Ré \/ré \/mi /F:\/fa /G:\/sol
+----
+
 **CETTE PARTIE N'EST PAS IMPLÉMENTE, IL FAUT ENCORE Y RÉFLÉCHIR**
 
 Il est possible, grâce à la balise `/riff ...:` d'ajouter un petit bout de musique, un __riff__ par exemple, comme dans la chanson __Le Sud__ (riff de début) ou la chanson __All You Need Is Love__ (riff de fin):

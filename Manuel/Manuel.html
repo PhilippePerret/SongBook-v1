@@ -466,6 +466,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#gabarit-file">Gabarit de la chanson</a></li>
 <li><a href="#song-layout">Layout de la chanson</a></li>
 <li><a href="#song-pdf">Production du PDF</a></li>
+<li><a href="#add-song-to-songbook">Ajouter la chanson à un carnet</a></li>
 <li><a href="#song-list">Liste des chansons</a></li>
 <li><a href="#song-interactive-mode">Travailler les chansons en mode interactif</a></li>
 </ul>
@@ -1727,6 +1728,25 @@ songbook missing diags --all
 <div class="sect3">
 <h4 id="riffs">Riffs, les « petits bouts de musique »</h4>
 <div class="paragraph">
+<p>On peut mettre des « bouts » de musique simplement comme des paroles, par exemple :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>/Dm:Ré ré mi /F:Fa /G:Sol</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>… qui sera écrit tel quel sur la page de la chanson.</p>
+</div>
+<div class="paragraph">
+<p>Pour indiquer des basses avec la balance « / », il faut <strong>échapper</strong> cette balance pour que la ligne ne soit pas traitée comme une ligne d&#8217;accord :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>/Dm:\/Ré \/ré \/mi /F:\/fa /G:\/sol</pre>
+</div>
+</div>
+<div class="paragraph">
 <p><strong>CETTE PARTIE N&#8217;EST PAS IMPLÉMENTE, IL FAUT ENCORE Y RÉFLÉCHIR</strong></p>
 </div>
 <div class="paragraph">
@@ -2002,6 +2022,42 @@ Si le nom du carnet n&#8217;est pas fourni, il sera demandé en proposant la lis
 </div>
 </div>
 <div class="sect2">
+<h3 id="add-song-to-songbook">Ajouter la chanson à un carnet</h3>
+<div class="listingblock">
+<div class="content">
+<pre>&gt; songbook -i
+🎸&gt; use song "titre approx"
+🎸&gt; add-to "titre appprox carnet"</pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>place l&#8217;identifiant de la chanson dans la table des matières du carnet, dans l&#8217;ordre alphabétique des identifiants,</p>
+</li>
+<li>
+<p>la table des matières du carnet est ouverte pour modification.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>En cas d&#8217;utilisation pour les éditions Icare (Phil seul) :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>le dossier de la chanson est créé s&#8217;il n&#8217;existe pas,</p>
+</li>
+<li>
+<p>l&#8217;identifiant du carnet est ajouté à la chanson,</p>
+</li>
+<li>
+<p>produit la vidéo-annonce du tutoriel dans le dossier <code>chansons-tutos</code> (ScreenFlow, si elle n&#8217;existe pas déjà).</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
 <h3 id="song-list">Liste des chansons</h3>
 <div class="paragraph">
 <p>Pour afficher la liste de toutes les chansons (filtrable) :</p>
@@ -2122,30 +2178,6 @@ songbook tuto "titre"</pre>
 </div>
 <div class="paragraph">
 <p>Sans titre, c&#8217;est la chanson courante qui est utilisée. Si le dossier existe déjà, rien n&#8217;est modifié.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="add-to">Ajouter une chanson à un carnet</h4>
-<div class="listingblock">
-<div class="content">
-<pre>songbook add-to "carnet"</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>La chanson est la chanson courante, sinon elle est choisie dans la liste. Le carnet est celui désigné, sinon le carnet courant, sinon il est choisi dans la liste. La commande :</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>place l&#8217;identifiant de la chanson dans la table des matières du carnet, dans l&#8217;ordre alphabétique des identifiants ;</p>
-</li>
-<li>
-<p>ajoute l&#8217;identifiant du carnet (champ <code>id</code> de sa fiche, demandé s&#8217;il manque) à la donnée <code>carnets</code> de la chanson sur le site des éditions (dossier créé s&#8217;il n&#8217;existe pas) ;</p>
-</li>
-<li>
-<p>produit la vidéo provisoire du tutoriel, <code>&lt;id chanson&gt;.mp4</code>, dans le dossier <code>chansons-tutos</code> (ScreenFlow, si elle n&#8217;existe pas déjà).</p>
-</li>
-</ul>
 </div>
 </div>
 </div>

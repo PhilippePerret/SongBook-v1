@@ -135,7 +135,7 @@ module PageBuilder
   # final — reste sinon pris à tort pour une parole), puis les "_" (espaceur d'alignement,
   # pas une syllabe).
   def self.chords_only_body?(body)
-    body.all? { |line| line.gsub(DSLParser::CHORD_RE, "").gsub(%r{/\S*}, "").gsub("_", "").strip.empty? }
+    body.all? { |line| line.gsub(DSLParser::CHORD_RE, "").gsub(%r{(?<!\\)/\S*}, "").gsub("_", "").strip.empty? }
   end
 
   def self.parse_lyr(path)

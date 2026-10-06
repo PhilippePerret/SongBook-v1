@@ -39,7 +39,11 @@ class ChordLine
     chords = {}
     i = 0
     while i < raw.length
-      if raw[i] == "/" && raw[i + 1] == "/" && (m = raw[(i + 1)..].match(%r{\A(/\[[^\]]*\]):}))
+      # "\/" (issue #116) : "/" échappé = parole, jamais un accord — gardé tel quel.
+      if raw[i] == "\\" && raw[i + 1] == "/"
+        text << raw[i, 2]
+        i += 2
+      elsif raw[i] == "/" && raw[i + 1] == "/" && (m = raw[(i + 1)..].match(%r{\A(/\[[^\]]*\]):}))
         offset = text.length
         value = m[1]
         chords[offset] = chords[offset] ? "#{chords[offset]}/#{value[1..]}" : value
