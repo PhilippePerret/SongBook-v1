@@ -50,6 +50,10 @@ RSpec.describe "toute commande ciblant une chanson/un carnet devient le contexte
   end
 
   it "'cover dims <carnet>' fixe le contexte" do
+    # Sans PDF de carnet déjà construit, `printer_for_carnet` fait `abort` (SystemExit) —
+    # qui arrêtait TOUTE la suite en silence à cet exemple.
+    allow(CLI).to receive(:printer_for_carnet).and_return(double)
+    allow(CLI).to receive(:print_cover_dims)
     CLI.run(%w[cover dims Carnet-Test], interactive: true)
     expect(Session.carnet).to eq(carnet_test)
   end

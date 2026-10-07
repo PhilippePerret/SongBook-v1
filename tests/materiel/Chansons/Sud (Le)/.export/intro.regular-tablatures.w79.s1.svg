@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="79.03pt" height="52.5pt" viewBox="0 0 79.03 52.5" data-staff-top="25.0" data-staff-height="25.0">
+<line x1="0" y1="25.0" x2="77.03" y2="25.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="0" y1="30.0" x2="77.03" y2="30.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="0" y1="35.0" x2="54.79" y2="35.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="60.26" y1="35.0" x2="77.03" y2="35.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="0" y1="40.0" x2="41.79" y2="40.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="47.26" y1="40.0" x2="48.29" y2="40.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="53.76" y1="40.0" x2="77.03" y2="40.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="0" y1="45.0" x2="28.79" y2="45.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="34.26" y1="45.0" x2="35.29" y2="45.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="40.76" y1="45.0" x2="77.03" y2="45.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="0" y1="50.0" x2="22.29" y2="50.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="27.76" y1="50.0" x2="61.29" y2="50.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="66.76" y1="50.0" x2="77.03" y2="50.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<path d="M 31.53,45.0 Q 34.78,37.0 38.03,45.0" fill="none" stroke="black" stroke-width="0.6"/>
+<text x="34.78" y="35.34" font-family="sans-serif" font-size="5.5249999999999995" text-anchor="middle">H</text>
+<path d="M 44.53,40.0 Q 47.78,32.0 51.03,40.0" fill="none" stroke="black" stroke-width="0.6"/>
+<text x="47.78" y="30.34" font-family="sans-serif" font-size="5.5249999999999995" text-anchor="middle">H</text>
+<text x="7.51" y="37.88" font-family="sans-serif" font-size="7.475" text-anchor="middle" fill="#333333">4</text><text x="7.51" y="44.61" font-family="sans-serif" font-size="7.475" text-anchor="middle" fill="#333333">4</text>
+<text x="25.03" y="52.28" font-family="sans-serif" font-size="6.5" text-anchor="middle" font-weight="bold">3</text>
+<text x="31.53" y="47.28" font-family="sans-serif" font-size="6.5" text-anchor="middle" font-weight="bold">0</text>
+<text x="38.03" y="47.28" font-family="sans-serif" font-size="6.5" text-anchor="middle" font-weight="bold">3</text>
+<text x="44.53" y="42.28" font-family="sans-serif" font-size="6.5" text-anchor="middle" font-weight="bold">0</text>
+<text x="51.03" y="42.28" font-family="sans-serif" font-size="6.5" text-anchor="middle" font-weight="bold">2</text>
+<text x="57.53" y="37.28" font-family="sans-serif" font-size="6.5" text-anchor="middle" font-weight="bold">0</text>
+<text x="64.03" y="52.28" font-family="sans-serif" font-size="6.5" text-anchor="middle" font-weight="bold">3</text>
+<line x1="25.03" y1="46.5" x2="25.03" y2="22.5" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="31.53" y1="41.5" x2="31.53" y2="22.5" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="25.03" y1="22.5" x2="31.53" y2="22.5" stroke="black" stroke-width="1.599" stroke-linecap="butt"/>
+<line x1="38.03" y1="41.5" x2="38.03" y2="17.5" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="44.53" y1="36.5" x2="44.53" y2="17.5" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="38.03" y1="17.5" x2="44.53" y2="17.5" stroke="black" stroke-width="1.599" stroke-linecap="butt"/>
+<line x1="51.03" y1="36.5" x2="51.03" y2="12.5" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="57.53" y1="31.5" x2="57.53" y2="12.5" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="51.03" y1="12.5" x2="57.53" y2="12.5" stroke="black" stroke-width="1.599" stroke-linecap="butt"/>
+<line x1="64.03" y1="46.5" x2="64.03" y2="27.5" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+<line x1="77.03" y1="25.0" x2="77.03" y2="50.0" stroke="black" stroke-width="0.6" stroke-linecap="butt"/>
+</svg>

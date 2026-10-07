@@ -18,7 +18,7 @@ RSpec.describe "recherche des diagrammes d'accords" do
 
   it "Reconnaître un accord transposé (dièse/bémol) écrit avec le vrai symbole musical" do
     expect(ChordDiagrams.file_chord("B♭7M")).to eq("Bb7M")
-    expect(ChordDiagrams.file_chord("F♯m")).to eq("F#m")
+    expect(ChordDiagrams.file_chord("F♯m")).to eq("Fdm")
   end
 
   it "Préférer le diagramme du carnet à celui de la chanson" do

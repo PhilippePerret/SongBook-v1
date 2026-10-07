@@ -508,7 +508,18 @@ module Layout
   # `gutter_type` (optionnel, nil = `:default`) : type de gouttière à utiliser
   # AVANT cet élément  : systèmes de tablature quasi collés entre
   # eux, `:tabs_system` — voir `MIN_V_DIST`/`MAX_V_DIST`/`distribute_v_gutters`).
-  PageElement = Struct.new(:height, :draw, :gutter_type)
+  # `text_offset` : distance entre le haut de l'élément et le haut de sa 1re ligne de
+  # PAROLES (ligne d'accords au-dessus) — RAL5 aligne les lignes de texte, pas les hauts
+  # d'éléments. `nil` = 0 (1re ligne = texte, ou élément sans paroles).
+  PageElement = Struct.new(:height, :draw, :gutter_type, :text_offset)
+
+  # Voir `PageElement#text_offset`. 1re ligne 100% accords : 0 (lignes d'accords alignées
+  # entre elles, RAL5).
+  def self.first_text_offset(row, chord_ascent, text_ascent, chord_size: scaled_chord_size, text_size: Options.get(:font_size))
+    return 0.0 unless row.any? { |b| (l = b.lines.first) && line_has_chord?(l) && !chords_only_line?(l) }
+
+    chord_ascent + chord_to_text_drop(chord_size, text_size) - text_ascent
+  end
 
   # Boîte d'encre RÉELLE (llx, lly, urx, ury — unités/1000em) de chaque caractère latin
   # courant (français inclus), pour HelveticaNeue Bold/Regular — SEULE police utilisée par
@@ -1463,7 +1474,7 @@ module Layout
       draw_block(pdf_, row[0], x0 + h_gutter, y, col1_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord)
       draw_block(pdf_, row[1], x0 + h_gutter + col1_w + h_gutter, y, col2_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord)
     end
-    PageElement.new(height, draw)
+    PageElement.new(height, draw, nil, first_text_offset(row, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size))
   end
 
   # Row à 3 blocs ou plus (`//` chaîné dans le `.gab`, ex. "{a} // {b} // {c}") : PAS
@@ -1578,7 +1589,7 @@ module Layout
         end
       end
     end
-    PageElement.new(height, draw)
+    PageElement.new(height, draw, nil, first_text_offset(row, chord_ascent, text_ascent))
   end
 
   # Colonne de paroles à une position/largeur EXACTES, sans gouttière ajoutée en interne
@@ -1588,7 +1599,7 @@ module Layout
   def self.build_text_column_element(pdf, block, x, width, chord_ascent, text_ascent, text_descent)
     height = block_visual_height(pdf, chord_ascent, text_ascent, text_descent, block, width)
     draw = lambda { |pdf_, y| draw_block(pdf_, block, x, y, width, chord_ascent, text_ascent) }
-    PageElement.new(height, draw)
+    PageElement.new(height, draw, nil, first_text_offset([block], chord_ascent, text_ascent))
   end
 
   # Pagination générique : chaque page reçoit autant d'éléments (rows de couplets, tabs...)
@@ -2038,11 +2049,16 @@ module Layout
         #     n'arrive QUE quand la page gauche a moins d'air au-dessus que cette page-ci ;
         #     appliquer quand même créerait exactement ce que RAL5 est censé éviter :
         #     beaucoup d'air au-dessus et plus assez entre paroles et diagrammes.
-        if printer.facing_pages && printer.recto?(page_no) && prev_verso_first_line_y && prev_verso_first_line_y >= y
+        # 1res lignes de PAROLES alignées (`PageElement#text_offset`), jamais une ligne
+        # d'accords de gauche avec une ligne de texte de droite.
+        if printer.facing_pages && printer.recto?(page_no) && prev_verso_first_line_y && !page_els.empty?
+          target_y = prev_verso_first_line_y + page_els.first.text_offset.to_f
           content_span = page_heights.sum + gutters[1..].sum
           floor_h = merging_here ? (min_v_dist(:diags) + merged_last_page[:block_h]) : 0.0
-          if prev_verso_first_line_y - content_span - floor_h >= min_v_dist(:default)
-            y = prev_verso_first_line_y
+          gap_below = target_y - content_span - floor_h
+          air_above = page[:avail_h] - target_y
+          if target_y <= page[:avail_h] && gap_below >= min_v_dist(:default) && (target_y >= y || gap_below >= air_above)
+            y = target_y
             log_build("1re ligne calée sur celle de la page gauche en vis-à-vis (RAL5)")
           end
         end
@@ -2158,7 +2174,7 @@ module Layout
       # RAL5 : valeur consultée par la PROCHAINE page recto (voir plus haut) — mise à
       # jour à CHAQUE page (y compris `nil` sur une page recto ou sans texte), jamais
       # laissée traîner au-delà de la page verso qui vient d'être rendue.
-      prev_verso_first_line_y = (page && printer.facing_pages && printer.verso?(page_no)) ? first_line_y : nil
+      prev_verso_first_line_y = (page && printer.facing_pages && printer.verso?(page_no) && page_els.any?) ? first_line_y - page_els.first.text_offset.to_f : nil
 
       side_page = side_pages[i]
       if side_page

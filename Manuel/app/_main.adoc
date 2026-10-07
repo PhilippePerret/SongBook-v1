@@ -189,7 +189,7 @@ NOTE: Noter que s'il y des options réglées pour le carnet en construction et d
 | [`true`], `false`
 
 | `diags_size` 
-| Taille par défaut des diagrammes (minimum pour rester visible : `48pt`)
+| Taille par défaut des diagrammes (jamais rétrécie sous `60pt`, cf. `diags_shrink`)
 | [`60pt`], `Xpt`
 
 | `diag_list`

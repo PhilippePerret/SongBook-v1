@@ -22,7 +22,10 @@ RSpec.describe "rétrécissement des diagrammes (diags_shrink)" do
     end
   end
 
-  after { Options.set!(:diags_shrink, true) }
+  after do
+    Options.set!(:diags_shrink, true)
+    Options.set!(:diags_size, Layout::DIAG_W.to_f)
+  end
 
   it "situation normale (les diags tiennent déjà à DIAG_W) : jamais rétréci, option ou pas" do
     paths = svg_paths(6)
@@ -32,11 +35,19 @@ RSpec.describe "rétrécissement des diagrammes (diags_shrink)" do
     end
   end
 
-  it "situation critique (ne tiennent pas à DIAG_W), diags_shrink: true => rétrécit sous DIAG_W" do
+  # RAD3 : plancher = `DIAG_W` (taille normale) — voir `diag_row_spec.rb`.
+  it "situation critique (ne tiennent pas à DIAG_W), diags_shrink: true => jamais sous DIAG_W (plancher)" do
     paths = svg_paths(6)
     Options.set!(:diags_shrink, true)
-    w = Layout.diag_column_width(paths, 300, 300)
-    expect(w).to be < Layout::DIAG_W
+    expect(Layout.diag_column_width(paths, 300, 300)).to eq(Layout::DIAG_W)
+  end
+
+  it "situation critique, diags_shrink: true, diags_size > DIAG_W => rétrécit, jamais sous le plancher" do
+    paths = svg_paths(6)
+    Options.set!(:diags_shrink, true)
+    Options.set!(:diags_size, 90.0)
+    w = Layout.diag_column_width(paths, 450, 450)
+    expect(w).to be < 90
     expect(w).to be >= Layout::MIN_SIZE[:diags][:width]
   end
 

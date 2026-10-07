@@ -754,7 +754,19 @@ module PageBuilder
       w1 = col1[:kind] == :resource ? resource_natural_width(col1[:item], folder, width, tab_scale) : (col1[:block] ? [Layout.block_width(pdf, col1[:block]), width].min : 0)
       el1 = side_by_side_column_element(pdf, col1, folder, x0, w1, h_gutter, chord_ascent, text_ascent, text_descent, tab_scale)
       x2 = x0 + w1 + h_gutter
-      el2 = side_by_side_column_element(pdf, col2, folder, x2, [width - w1 - h_gutter, 0].max, h_gutter, chord_ascent, text_ascent, text_descent, tab_scale)
+      w2 = [width - w1 - h_gutter, 0].max
+      # `block_align: center` sur le bloc de paroles de la 2e colonne : centré sur la
+      # PAGE, jamais sur sa colonne — sans jamais empiéter sur la 1re colonne.
+      if col2[:block] && Layout.block_align(col2[:block]) == "center"
+        bw = [Layout.block_width(pdf, col2[:block]), w2].min
+        centered_x = x0 + (width - bw) / 2.0
+        if centered_x > x2
+          w2 -= centered_x - x2
+          x2 = centered_x
+        end
+        Layout.log_build("bloc côte à côte centré sur la page (block_align: center)#{centered_x < x0 + w1 + h_gutter ? ' — limité par la 1re colonne' : ''}")
+      end
+      el2 = side_by_side_column_element(pdf, col2, folder, x2, w2, h_gutter, chord_ascent, text_ascent, text_descent, tab_scale)
       sub_elements = [el1, el2].compact
     else
       # Plus de 2 colonnes (rare, hors du cas documenté) : partage égal, pas de
@@ -772,7 +784,7 @@ module PageBuilder
 
     height = sub_elements.map(&:height).max
     draw = lambda { |pdf_, y| sub_elements.each { |el| el.draw.call(pdf_, y) } }
-    Layout::PageElement.new(height, draw)
+    Layout::PageElement.new(height, draw, nil, sub_elements.map { |el| el.text_offset.to_f }.max)
   end
 
   # `pair_elements` : {row_idx:, element_index:} pour chaque row à 2 colonnes rendue
