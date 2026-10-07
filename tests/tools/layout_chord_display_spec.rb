@@ -94,7 +94,13 @@ RSpec.describe "Layout : affichage des accords (basse en solfège italien)" do
     it "séparateur ACCORD COMPOSÉ (2 accords collés, ex. fusion \"G6[B]\"+\"Gm6[Bb]\") : 2pt de plus des 2 côtés" do
       expect(Layout::CHORD_SLASH_GAP_COMPOSITE_LEAD).to eq(Layout::CHORD_SLASH_GAP + 2.0)
       expect(Layout::CHORD_SLASH_GAP_COMPOSITE_TRAIL).to eq(Layout::CHORD_SLASH_GAP + 2.0)
-      expect(Layout.slash_gaps(Layout.slash_bass_flags("Bb6/C"), 0, "Bb6")).to eq([Layout::CHORD_SLASH_GAP_COMPOSITE_LEAD, Layout::CHORD_SLASH_GAP_COMPOSITE_TRAIL])
+      expect(Layout.slash_gaps(Layout.slash_bass_flags("G6[B]/Gm6[Bb]"), 1, "si")).to eq([Layout::CHORD_SLASH_GAP_COMPOSITE_LEAD, Layout::CHORD_SLASH_GAP_COMPOSITE_TRAIL])
+    end
+
+    it "accord composé SANS basse (ex. \"Gsus4/G\") : 2pt de moins des 2 côtés que l'accord composé avec basse" do
+      expect(Layout::CHORD_SLASH_GAP_PLAIN_COMPOSITE).to eq(Layout::CHORD_SLASH_GAP_COMPOSITE_LEAD - 2.0)
+      expect(Layout.slash_gaps(Layout.slash_bass_flags("Gsus4/G"), 0, "Gsus4")).to eq([Layout::CHORD_SLASH_GAP_PLAIN_COMPOSITE, Layout::CHORD_SLASH_GAP_PLAIN_COMPOSITE])
+      expect(Layout.slash_gaps(Layout.slash_bass_flags("Bb6/C"), 0, "Bb6")).to eq([Layout::CHORD_SLASH_GAP_PLAIN_COMPOSITE, Layout::CHORD_SLASH_GAP_PLAIN_COMPOSITE])
     end
   end
 

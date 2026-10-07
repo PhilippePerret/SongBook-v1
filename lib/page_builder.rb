@@ -853,6 +853,25 @@ module PageBuilder
     end
   end
 
+  # Positions composées (Manuel, "valeurs de position") — l'ORDRE compte :
+  #   `End-Left`/`Top-Right`... : rangée horizontale après/avant les paroles, alignée
+  #     sur le côté donné (alignement IMPOSÉ, `:"fixed-<côté>"`, voir
+  #     `Layout.resolve_fixed_align`) ;
+  #   `Left-Top`/`Right-Top`/`Ext-Top`/`Int-Top` : colonne latérale à côté des
+  #     premières paroles (= `Left`/`Right`/`Ext`/`Int`).
+  # `Left-End`/`Right-End`/`Ext-End`/`Int-End` (colonne à côté des dernières paroles)
+  # sont traités tels quels par `build`.
+  def self.split_diag_position(position, align)
+    first, second = position.to_s.split("-", 2)
+    if %w[top end].include?(first) && %w[left right ext int].include?(second)
+      [first.to_sym, :"fixed-#{second}"]
+    elsif %w[left right ext int].include?(first) && second == "top"
+      [first.to_sym, align]
+    else
+      [position, align]
+    end
+  end
+
   # `diags_position: Back` (issue #98) : seuls les accords listés EXPLICITEMENT dans
   # `diag_list` restent sur la page de la chanson — "all" (défaut) ne veut plus dire "tout
   # afficher ici" mais "tout envoyer en fin de livre" (`Layout.back_diags`, voir `build`).
@@ -977,6 +996,9 @@ module PageBuilder
       diag_item_data = items.find { |i| i.type == :diags }&.data
       diag_position = uses_row_diags ? :end : (diag_item_data&.dig(:position) || diag_position_default).to_s.downcase.to_sym
       diag_align = (diag_item_data&.dig(:align) || diag_align_default).to_s.downcase.to_sym
+      diag_position, diag_align = split_diag_position(diag_position, diag_align)
+      # Rangée du haut (`Top-Ext`/`Top-Int`) : toujours sur la 1re page de la chanson.
+      diag_align = Layout.resolve_fixed_align(diag_align, printer, first_page_no) if diag_position == :top
       # `int`/`ext` (Manuel/song/layout.adoc, "Int"/"Ext" — côté reliure/extérieur) : PAS
       # résolu à une seule valeur left/right ici — le côté reliure change de page en page
       # (recto/verso) DANS une même chanson (bug constaté 2026-08-24, "À bicyclette" p.4/

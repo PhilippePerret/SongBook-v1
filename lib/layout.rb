@@ -293,6 +293,9 @@ module Layout
   # "Gm6[Bb]") : écart des DEUX côtés du "/" élargi de 2pt par rapport à `CHORD_SLASH_GAP`.
   CHORD_SLASH_GAP_COMPOSITE_LEAD = CHORD_SLASH_GAP + 2.0
   CHORD_SLASH_GAP_COMPOSITE_TRAIL = CHORD_SLASH_GAP + 2.0
+  # Accord composé SANS basse d'aucun côté (ex. "Gsus4/G") : les deux accords rapprochés
+  # du "/" de 2pt par rapport à l'accord composé avec basse.
+  CHORD_SLASH_GAP_PLAIN_COMPOSITE = CHORD_SLASH_GAP_COMPOSITE_LEAD - 2.0
   # Deux accords qui se suivent SANS retomber sur des paroles entre eux (segment au texte
   # vide/blanc, ligne NORMALE — `text_line_steps`, pas une ligne "chords-only", déjà
   # traitée séparément par `CHORD_CHORD_GAP`) : `CHORD_GAP` seul les laissait trop
@@ -2156,7 +2159,7 @@ module Layout
               # `diag_row_gap`/`diag_row_x`) reprend la main dans la colonne TEXTE, comme
               # pour toute autre rangée de diagrammes (bug constaté : centrage fixe ici,
               # `align` jamais branché, alors que la colonne normale le respectait déjà).
-              row_align = rad12_align(row_excess_align, text_w, row.size, diag_w)
+              row_align = rad12_align(resolve_fixed_align(row_excess_align, printer, page_no), text_w, row.size, diag_w)
               row_gap = diag_row_gap(row_align, text_w, row.size, diag_w)
               row_w = row.size * diag_w + [row.size - 1, 0].max * row_gap
               row_start_x = diag_row_x(row_align, cur_text_x, text_w, row_w, row_gap)
@@ -2245,7 +2248,7 @@ module Layout
       draw_page_number(pdf, printer, page_no, page_w_pt, page_h_pt)
 
       slice.each_slice(cols).with_index do |row, ri|
-        row_align = rad12_align(align, pdf.bounds.width, row.size, diag_w)
+        row_align = rad12_align(resolve_fixed_align(align, printer, page_no), pdf.bounds.width, row.size, diag_w)
         row_gap = diag_row_gap(row_align, pdf.bounds.width, row.size, diag_w)
         row_w = row.size * diag_w + [row.size - 1, 0].max * row_gap
         x0 = diag_row_x(row_align, 0, pdf.bounds.width, row_w, row_gap)
@@ -2413,7 +2416,9 @@ module Layout
   # Écarts avant/après le "/" d'UN séparateur (`bass_flags`/`i` : voir `slash_label_width`/
   # `draw_slash_chord_label`, UNE SEULE formule pour les deux, issue #106).
   def self.slash_gaps(bass_flags, i, leading_part)
-    if bass_flags
+    if bass_flags&.none?
+      [CHORD_SLASH_GAP_PLAIN_COMPOSITE, CHORD_SLASH_GAP_PLAIN_COMPOSITE]
+    elsif bass_flags
       bass_flags[i] ? [CHORD_SLASH_GAP_BASS_LEAD, CHORD_SLASH_GAP_BASS_TRAIL] : [CHORD_SLASH_GAP_COMPOSITE_LEAD, CHORD_SLASH_GAP_COMPOSITE_TRAIL]
     else
       [CHORD_SLASH_GAP, leading_part.to_s.empty? ? CHORD_SLASH_GAP_BASS_ONLY : CHORD_SLASH_GAP]
@@ -3079,10 +3084,23 @@ module Layout
   # trop faible de diagrammes se retrouve étiré sur toute la largeur, avec des vides
   # énormes entre eux (bug constaté, "C'est un parc", 4 diags en `justify`).
   def self.rad12_align(align, avail_w, n, w)
+    return align.to_s.delete_prefix("fixed-").to_sym if align.to_s.start_with?("fixed-")
     return align if n <= 1
 
     natural_w = n * w + [n - 1, 0].max * min_h_dist(:diags)
     natural_w < avail_w / 2.0 ? :center : align
+  end
+
+  # Alignement IMPOSÉ par `diags_position` (`End-Left`, `Top-Right`, `End-Ext`...) :
+  # `:"fixed-<côté>"`, jamais centré par RAD12 (demande explicite > règle d'usage).
+  # `fixed-int`/`fixed-ext` résolus selon la parité de `page_no` (même convention que
+  # `want_left_for` : int = gauche sur une page recto).
+  def self.resolve_fixed_align(align, printer, page_no)
+    side = align.to_s.delete_prefix("fixed-")
+    return align unless align.to_s.start_with?("fixed-") && %w[int ext].include?(side)
+
+    left = !printer.facing_pages || (side == "int") == printer.recto?(page_no)
+    left ? :"fixed-left" : :"fixed-right"
   end
 
   def self.diag_row_gap(align, avail_w, n, w)
