@@ -111,6 +111,23 @@ RSpec.describe "lecture des paroles et accords (.lyr)" do
     end
   end
 
+  describe "accord composé avec case sur un des accords" do
+    it "\"/Gsus4-0/G:\" -> accord composé Gsus4/G, case 0 pour Gsus4 seulement" do
+      seg = DSLParser.parse_line("/Gsus4-0/G:_").first
+      expect([seg.chord, seg.fret]).to eq(["Gsus4/G", "0/"])
+    end
+
+    it "case de chaque côté, lettres admises après le \"-\"" do
+      seg = DSLParser.parse_line("/Gsus4-0abc/G-2:mot").first
+      expect([seg.chord, seg.fret, seg.text]).to eq(["Gsus4/G", "0abc/2", "mot"])
+    end
+
+    it "sans case : inchangé" do
+      seg = DSLParser.parse_line("/Bb6/C:mot").first
+      expect([seg.chord, seg.fret]).to eq(["Bb6/C", nil])
+    end
+  end
+
   describe "découper le fichier en morceaux" do
     it "Séparer les informations du début (frontmatter) du reste des paroles" do
       song = DSLParser.parse("---\ntitle: Test\n---\nBonjour\n")

@@ -18,7 +18,20 @@ class DSLParser
   # "+" (quinte augmentée, ex. "/d75+:", "Amstrong") : absent de la classe de caractères,
   # accord jamais reconnu du tout (bug constaté).
   # "\/" (issue #116) : "/" échappé = caractère de parole, jamais le début d'un accord.
-  CHORD_RE = /(?<!\\)\/((?:[A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)(?:\/[A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)?)(?:-([^: ]+))?:/
+  # Accord composé : CHAQUE accord porte sa propre case ("/Gsus4-0/G-2:", groupes 1-2
+  # puis 3-4) — jamais un "/" avalé par la case du 1er accord. Groupes réunis par
+  # `chord_and_fret`.
+  CHORD_RE = /(?<!\\)\/([A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)(?:-([^:\/ ]+))?(?:\/([A-Za-zÀ-ÿ0-9#♯♭+\[\]]+)(?:-([^:\/ ]+))?)?:/
+
+  # [nom, case] d'un match de `CHORD_RE` (MatchData ou captures de `scan`) : accord
+  # composé -> "Gsus4/G", cases jointes par "/" alignées sur les accords ("0/" = case
+  # "0" pour Gsus4, aucune pour G — `ChordDiagrams.split_chord_frets`), `nil` sans case.
+  def self.chord_and_fret(m)
+    name1, fret1, name2, fret2 = m.is_a?(MatchData) ? m.captures : m
+    return [name1, fret1] unless name2
+
+    ["#{name1}/#{name2}", (fret1 || fret2) ? "#{fret1}/#{fret2}" : nil]
+  end
 
   # Marqueur bracket SEUL (ex. "[B]", capturé par `CHORD_RE` en groupe 1) — DUPLIQUÉ de
   # `ChordDiagrams::BASS_ONLY_RE` (jamais requis ici : `chord_diagrams.rb` requiert déjà
@@ -69,12 +82,14 @@ class DSLParser
     pre = strip_bare_slashes(line[0...matches.first.begin(0)])
     segments << Segment.new(chord: nil, text: pre) unless pre.empty?
 
+    names_frets = matches.map { |mm| chord_and_fret(mm) }
     i = 0
     while i < matches.length
       m = matches[i]
+      m_name, m_fret = names_frets[i]
 
-      if m[1].match?(MULTI_BRACKET_RE)
-        notes = m[1].scan(/\[[^\]]*\]/)
+      if m_name.match?(MULTI_BRACKET_RE)
+        notes = m_name.scan(/\[[^\]]*\]/)
         text_end = i + 1 < matches.length ? matches[i + 1].begin(0) : line.length
         notes.each_with_index do |note, idx|
           seg_text = idx == notes.length - 1 ? strip_bare_slashes(line[m.end(0)...text_end]) : ""
@@ -84,7 +99,7 @@ class DSLParser
         next
       end
 
-      chord = normalize_chord(m[1])
+      chord = normalize_chord(m_name)
       # "//[B]:" (2026-09-07, Phil : "[B] n'est pas obligatoirement une basse") : un "/"
       # NU immédiatement AVANT un marqueur bracket SEUL (`BARE_BASS_RE`) distingue
       # désormais deux notations qui rendaient JUSQU'ICI identiquement "/si" — "[B]:"
@@ -95,8 +110,8 @@ class DSLParser
       # que d'être purement ignoré. SEULEMENT pour un marqueur bracket seul — un "/" nu
       # devant un accord NOMMÉ garde son sens D'ORIGINE (texte ignoré), jamais ambigu
       # avec ceci.
-      chord = "/#{chord}" if m.begin(0).positive? && line[m.begin(0) - 1] == "/" && m[1].match?(BARE_BASS_RE)
-      frets = [m[2]]
+      chord = "/#{chord}" if m.begin(0).positive? && line[m.begin(0) - 1] == "/" && m_name.match?(BARE_BASS_RE)
+      frets = [m_fret]
       # "/" SEUL entre deux marqueurs collés (ex. "/F://C:") : PAS un séparateur à
       # effacer — un séparateur VISUEL entre deux accords de la MÊME mesure (jamais deux
       # syllabes distinctes), fusionnés en UN SEUL segment "F/C" (`Layout.draw_chord_label`
@@ -115,11 +130,11 @@ class DSLParser
       # séparateur de fusion, c'est le "/" EN TROP de SON PROPRE "//" (issue #91,
       # "//[G]://[A]://[B]:", chacun sa propre basse) — jamais fusionné, laissé à
       # l'itération suivante qui lui applique son propre préfixe "/" (ci-dessus).
-      while i + 1 < matches.length && line[m.end(0)...matches[i + 1].begin(0)] == "/" && !matches[i + 1][1].match?(BARE_BASS_RE)
+      while i + 1 < matches.length && line[m.end(0)...matches[i + 1].begin(0)] == "/" && !names_frets[i + 1][0].match?(BARE_BASS_RE)
         i += 1
         nxt = matches[i]
-        chord = "#{chord}/#{normalize_chord(nxt[1])}"
-        frets << nxt[2]
+        chord = "#{chord}/#{normalize_chord(names_frets[i][0])}"
+        frets << names_frets[i][1]
         m = nxt
       end
       fret = frets.size > 1 ? frets.map(&:to_s).join("/") : frets.first

@@ -374,20 +374,20 @@ module ChordPlacer
     letter
   end
 
-  # "/" = séparateur d'accords — SAUF le "/" natif du groupe accord
-  # de `DSLParser::CHORD_RE` lui-même (ex. "Bb6/C", SANS case sur aucun des deux côtés) :
-  # bug constaté par le passé ("il s'agit de deux accords" appliqué à tort ici,
-  # "Bb6/C" est UN SEUL accord avec basse) — RESTE un accord unique. En revanche un "/"
-  # accidentellement capturé dans le groupe case de `CHORD_RE` (case AVANT le "/", ex.
-  # "A2-0/A-0" -> chord="A2" fret="0/A-0", `[^: ]+` trop permissif) est bien DEUX accords
-    # distincts, chacun sa propre case ("If You Don't Know Me By Now").
+  # "/" = séparateur d'accords — SAUF le "/" d'un accord composé SANS case d'aucun côté
+  # (ex. "Bb6/C") : RESTE un accord unique (bug constaté par le passé, "il s'agit de deux
+  # accords" appliqué à tort). Avec une case d'un côté au moins (ex. "A2-0/A-0",
+  # "Gsus4-0/G"), DEUX accords distincts, chacun sa propre case ("If You Don't Know Me
+  # By Now"). `fret` : cases jointes par "/" (`DSLParser.chord_and_fret`).
   def self.chord_names(chord, fret)
     chord = capitalize_chord(chord)
     return [fret ? "#{chord}-#{fret}" : chord] unless fret&.include?("/")
 
-    real_fret, *extra = fret.split("/")
-    first = real_fret.empty? ? chord : "#{chord}-#{real_fret}"
-    [first] + extra.map { |c| capitalize_chord(c) }
+    frets = fret.split("/", -1)
+    chord.split("/").each_with_index.map do |c, i|
+      c = capitalize_chord(c)
+      frets[i].to_s.empty? ? c : "#{c}-#{frets[i]}"
+    end
   end
 
   # {lettre => [accords]}, amorcée à partir de TOUS les accords déjà présents dans le
@@ -397,7 +397,7 @@ module ChordPlacer
     seen = []
     lines.each do |raw|
       raw.scan(DSLParser::CHORD_RE) do |m|
-        chord_names(m[0], m[1]).each do |chord|
+        chord_names(*DSLParser.chord_and_fret(m)).each do |chord|
           next if seen.include?(chord)
 
           seen << chord

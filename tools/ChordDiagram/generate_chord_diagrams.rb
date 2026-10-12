@@ -64,13 +64,24 @@ module GenerateChordDiagrams
   # dessinait alors un barré traversant des cordes à vide, impossible aussi).
   # Un groupe de 2+ cordes non facultatives, même frette, même doigt -> { fret:,
   # finger:, indices:, span: } (voir commentaire de `decode` pour `indices`/`span`).
-  def self.barre_from(candidates, finger, fretted)
+  #
+  # `traverse:` (barré principal seulement) : barré d'au moins 3 cordes dont TOUTES les
+  # cordes plus aiguës (1 jusqu'à la plus aiguë du barré) sont frettées plus haut que
+  # lui -> le barré traverse le manche jusqu'à la corde 1 (ex. Bm7-2A).
+  def self.barre_from(candidates, finger, fretted, traverse: false)
     strings = candidates.map { |t| t[:string] }
     min_s, max_s = strings.minmax
     indices = candidates.map { |t| 6 - t[:string] }
     gap_strings = ((min_s..max_s).to_a - strings)
     gap_fretted = gap_strings.any? { |s| fretted.any? { |t| t[:string] == s } }
     span = gap_fretted ? (indices.min..indices.max).to_a : indices
+    if traverse && strings.size >= 3 && min_s > 1
+      fret = candidates.first[:fret]
+      above = (1...min_s).to_a
+      if above.all? { |s| fretted.any? { |t| t[:string] == s && t[:fret] > fret } }
+        span = ((6 - max_s)..5).to_a
+      end
+    end
     { fret: candidates.first[:fret], finger: finger, indices: indices, span: span }
   end
 
@@ -92,7 +103,7 @@ module GenerateChordDiagrams
       key, candidates = groups.max_by { |_, v| v.size }
       if candidates.size >= 2
         main_candidates = candidates
-        barres << barre_from(candidates, key == :implicit ? "1" : key, fretted)
+        barres << barre_from(candidates, key == :implicit ? "1" : key, fretted, traverse: true)
       end
     end
 
