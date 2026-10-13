@@ -54,6 +54,17 @@ Le troisième couplet
 ...
 ----
 
+[[saut-page]]
+===== Forcer un saut de page =====
+
+Pour obliger un bloc à passer à la page suivante, il suffit de régler sa propriété `next_page` (ou `next-page`) à `true`.
+
+----
+...
+{couplet-4; next-page: True;}
+...
+----
+
 ===== Définitions pour les diags =====
 
 On peut définir les propriétés des diagrammes d'accord au début du fichier gabarit.

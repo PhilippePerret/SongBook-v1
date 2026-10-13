@@ -64,7 +64,11 @@ Exemple :
 
 | `position`
 | Définit l'endroit où doit être placé l'objet (diag, paroles, image, etc.).
-| `position: Front`
+| `position: Front;`
+
+| `next-page`
+| Pour forcer le saut de page (mettre l'élément sur la page suivante)
+| `next-page: True;`
 
 |====
 
