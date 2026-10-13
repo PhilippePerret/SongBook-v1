@@ -817,10 +817,15 @@ module PageBuilder
         row_idx += 1
       when :side_by_side
         el = build_side_by_side_element(pdf, item, folder, text_x, text_w, h_gutter, chord_ascent, text_ascent, text_descent, tab_scale)
-        elements << el if el
+        if el
+          el.next_page = Layout.next_page?(item.data[:columns].map { |c| c[:block] }) ||
+                         item.data[:columns].any? { |c| c[:item]&.data&.dig(:next_page).to_s.strip.downcase == "true" }
+          elements << el
+        end
       when :tabs, :score, :image
         base_index = elements.size
         els, sjs = build_resource_page_elements(pdf, item, folder, text_x, text_w, tab_scale)
+        els.first.next_page = true if els.any? && item.data[:next_page].to_s.strip.downcase == "true"
         elements.concat(els)
         sjs.each { |sj| shrink_jobs << sj.merge(index: base_index + sj[:local_index]).except(:local_index) }
       end

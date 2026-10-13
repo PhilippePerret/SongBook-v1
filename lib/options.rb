@@ -18,7 +18,6 @@ module Options
     tabs_shrink: { flat: "tabs_shrink", nested: %w[tabs shrink], default: true, bool: true },
     scores_shrink: { flat: "scores_shrink", nested: %w[scores shrink], default: true, bool: true },
     shrink_text: { flat: "shrink_text", nested: nil, default: false, bool: true },
-    rebalance_pages: { flat: "rebalance_pages", nested: nil, default: true, bool: true },
     show_specs: { flat: "show_specs", nested: nil, default: false, bool: true },
     font_family: { flat: "font_family", nested: nil, default: "HelveticaNeue" },
     font_size: { flat: "font_size", nested: nil, default: 11.0, numeric: true },

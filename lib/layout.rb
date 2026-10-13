@@ -474,13 +474,6 @@ module Layout
     DEFAULT_H_DIST.fetch(type).clamp(min_h_dist(type), max_h_dist(type))
   end
 
-  # Anti-page-clairsemée : si tout ce qui reste après la page courante ne remplirait
-  # qu'une fraction (REBALANCE_MIN_FILL) de la page suivante, on repousse le dernier
-  # élément de la page courante vers la suivante plutôt que de la laisser presque vide
-  # en regard d'une page bien remplie. formulation mathématique pas encore stabilisée — 
-  # ce seuil est un point de départ, pas une valeur définitive.
-  REBALANCE_MIN_FILL = 0.4
-
   # Écartement CIBLE (en pt page) des lignes de la portée tab, une fois intégrée — choisie
   # au hasard pour amorcer le mécanisme, PAS une convention. Valeur provisoire : un carnet
   # test de 24 pages imprimé doit trancher les vraies tailles par défaut .
@@ -514,7 +507,13 @@ module Layout
   # `text_offset` : distance entre le haut de l'élément et le haut de sa 1re ligne de
   # PAROLES (ligne d'accords au-dessus) — RAL5 aligne les lignes de texte, pas les hauts
   # d'éléments. `nil` = 0 (1re ligne = texte, ou élément sans paroles).
-  PageElement = Struct.new(:height, :draw, :gutter_type, :text_offset)
+  PageElement = Struct.new(:height, :draw, :gutter_type, :text_offset, :next_page)
+
+  # `next_page: true` (.gab ou .lyr, Manuel "Forcer un saut de page") sur un des blocs
+  # de la row : l'élément commence obligatoirement une nouvelle page (`paginate`).
+  def self.next_page?(blocks)
+    blocks.compact.any? { |b| b.directives[:next_page].to_s.strip.downcase == "true" }
+  end
 
   # Voir `PageElement#text_offset`. 1re ligne 100% accords : 0 (lignes d'accords alignées
   # entre elles, RAL5).
@@ -1241,6 +1240,20 @@ module Layout
     if top_type == :band_strophe
       reference = gutters.length > 1 ? gutters[1] : unit.clamp(min_v_dist(type), max_v_dist(type))
       gutters[0] = reference + BAND_STROPHE_TOP_EXTRA
+      # Le +4pt ci-dessus peut refaire dépasser `slack` (réduction déjà faite plus haut
+      # sans lui) : contenu poussé hors zone sûre alors que la pagination le croyait
+      # casé. Réduire les gouttières 1.. au-dessus de leur plancher — `gutters[0]`
+      # suivant `gutters[1]`, d'où `margins[0]` compté deux fois dans le coefficient.
+      excess = gutters.sum - slack
+      if excess > 0 && gutters.length > 1
+        margins = (1...gutters.length).map { |i| gutters[i] - min_v_dist(types[i]) }
+        reducible = margins.sum + margins[0]
+        if reducible > 0
+          k = [excess / reducible, 1.0].min
+          (1...gutters.length).each { |i| gutters[i] -= k * margins[i - 1] }
+          gutters[0] = gutters[1] + BAND_STROPHE_TOP_EXTRA
+        end
+      end
     end
 
     gutters
@@ -1477,7 +1490,7 @@ module Layout
       draw_block(pdf_, row[0], x0 + h_gutter, y, col1_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord)
       draw_block(pdf_, row[1], x0 + h_gutter + col1_w + h_gutter, y, col2_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord)
     end
-    PageElement.new(height, draw, nil, first_text_offset(row, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size))
+    PageElement.new(height, draw, nil, first_text_offset(row, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size), next_page?(row))
   end
 
   # Row à 3 blocs ou plus (`//` chaîné dans le `.gab`, ex. "{a} // {b} // {c}") : PAS
@@ -1592,7 +1605,7 @@ module Layout
         end
       end
     end
-    PageElement.new(height, draw, nil, first_text_offset(row, chord_ascent, text_ascent))
+    PageElement.new(height, draw, nil, first_text_offset(row, chord_ascent, text_ascent), next_page?(row))
   end
 
   # Colonne de paroles à une position/largeur EXACTES, sans gouttière ajoutée en interne
@@ -1638,24 +1651,11 @@ module Layout
       # repousser pour faire de la place au plancher — la marge basse se retrouvait nulle.
       # AUCUNE gouttière après le dernier élément (voir `distribute_v_gutters`,
       # 2026-08-23) : pour n éléments, gutter_top + (n-1) gouttières `type`, pas n+1.
-      while idx < elements.length && page_sum + heights[idx] + gutter_top + min_v_dist(type) * (idx - start) <= avail_h
+      while idx < elements.length && !(idx > start && elements[idx].next_page) && page_sum + heights[idx] + gutter_top + min_v_dist(type) * (idx - start) <= avail_h
         page_sum += heights[idx]
         idx += 1
       end
       idx += 1 if idx == start # un seul élément déborde déjà la page : le poser quand même
-
-      # Anti-page-clairsemée : repousser le dernier élément à la page suivante tant que
-      # ce qui resterait sur CETTE page-ci en aurait encore plus d'un ET que la suite
-      # (elle-même) ne remplirait qu'une fraction dérisoire de la prochaine page. Jamais
-      # un élément épinglé (pinned). `idx - start > 2` (pas `> 1`) : ne descend jamais à
-      # une page d'un seul élément par ce mécanisme — bug trouvé (remarques.txt Carnet-1,
-      # 2026-08-18) où 2 couplets pleins étaient repoussés à 1 seul pour "corriger" une
-      # page suivante elle-même peu remplie, résultat pire que le problème visé.
-      while Options.get(:rebalance_pages) != false && type != :diags && idx - start > 2 && idx < elements.length && !pinned.include?(idx - 1) &&
-            heights[idx...elements.length].sum + trailing_extra < REBALANCE_MIN_FILL * page_height
-        idx -= 1
-        page_sum -= heights[idx]
-      end
 
       pages << { start: start, finish: idx, avail_h: avail_h }
       avail_h = page_height
@@ -2019,7 +2019,13 @@ module Layout
         # deux exigences sont incompatibles, celle-ci gagne sur la 1re page (bandeau).
         dup = gutters[0]
         ddo = avail_for_text - (page_heights.sum + gutters.sum)
+        # Exception (issue #120) : page sous bandeau coupée par un `next_page` forcé sur
+        # l'élément suivant — même air au-dessus et en dessous, écarts au max, bloc
+        # descendu (jamais remonté : le plancher bandeau + 4pt reste dû).
+        cut_by_next_page = cur_elements[page[:finish]]&.next_page
         balance_shift = if !merging_here && ddo >= 0 && page_top_type != :band_strophe
+          (ddo - dup) / 2.0
+        elsif !merging_here && ddo > dup && cut_by_next_page
           (ddo - dup) / 2.0
         else
           0.0
