@@ -433,6 +433,8 @@ module Layout
   MIN_V_DIST = { default: 16.0, diags: 2.0, band_diag: 10.0, band_strophe: 16.0 + BAND_STROPHE_TOP_EXTRA }.freeze
   MIN_H_DIST = { default: 8.0, diags: 4.0, tdm_num: 20.0, label: 12.0 }.freeze
   MAX_V_DIST = { default: 20.0, diags: 2.0, band_diag: 20.0, band_strophe: 20.0 + BAND_STROPHE_TOP_EXTRA }.freeze
+  # Écart max entre strophes sur une page équilibrée assez aérée (voir `paginate_and_draw`).
+  BALANCED_MAX_V_DIST = 30.0
 
   # Rééquilibrage vertical , "L'Aigle noir" p.9 : bloc de paroles collé
   # en haut, grand vide en bas) : DUP (haut du bloc -> bas du bandeau/marge haut) et DDO
@@ -2029,6 +2031,22 @@ module Layout
           (ddo - dup) / 2.0
         else
           0.0
+        end
+
+        # Page équilibrée (air haut = air bas) : si cet air dépasse 2 x l'écart entre
+        # strophes, l'écart peut grandir jusqu'à `BALANCED_MAX_V_DIST`, tant que l'air
+        # haut/bas reste >= 2 x l'écart. Air libre F, k écarts : 2a + k*g = F, a = 2g.
+        if balance_shift.positive? && page_els.size > 1 && page_els.all? { |el| el.gutter_type.nil? }
+          k = page_els.size - 1
+          air = dup + balance_shift
+          free = avail_for_text - page_heights.sum
+          g = [free / (4.0 + k), BALANCED_MAX_V_DIST].min
+          if air > 2 * gutters[1] && g > gutters[1]
+            a = (free - k * g) / 2.0
+            gutters = [a] + Array.new(k, g)
+            balance_shift = 0.0
+            log_build("écart entre strophes porté à #{g.round(2)}pt, air haut/bas #{a.round(2)}pt (page équilibrée)")
+          end
         end
 
         # Les gouttières sont calculées sur le budget RÉDUIT (`avail_for_text`, pour
