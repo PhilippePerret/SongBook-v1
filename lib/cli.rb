@@ -903,11 +903,7 @@ module CLI
   # + "c.infos" -> "c") — "c" par défaut si le dossier est vide ,
   # valable pour n'importe quel type de fichier manquant).
   def self.most_common_root(folder)
-    exts = FileFinder::EXTENSIONS.values.flatten
-    roots = Dir.glob(File.join(folder, "*.{#{exts.join(',')}}")).map { |p| File.basename(p, ".*") }
-    return "c" if roots.empty?
-
-    roots.tally.max_by { |_, count| count }.first
+    FileFinder.most_common_root(folder)
   end
 
   # Fichier attendu absent (`open lyrics`/`infos`/`gabarit`...) : propose de le créer

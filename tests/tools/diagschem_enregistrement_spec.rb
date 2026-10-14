@@ -122,14 +122,15 @@ RSpec.describe "DiagSchem#enregistrer_dans_application" do
       instance
     end
 
-    it "aucun .schemas existant : en crée un DANS le dossier de la chanson (jamais assets/chords_diags/)" do
+    it "aucun .schemas existant : en crée un (root-name du dossier, jamais masqué) DANS le dossier de la chanson (jamais assets/chords_diags/)" do
       instance = build_song_instance("Am7-0: 10 21/1 32/3 42/2 50 6x", @dir)
       allow(prompt).to receive(:ask).and_return("Am7-0")
       expect(SchemaLibrary).not_to receive(:schemas_path)
 
       instance.send(:enregistrer_dans_application, prompt)
 
-      expect(File.read(File.join(@dir, ".schemas"))).to eq("Am7-0 : 10 21/1 32/3 42/2 50 6x\n")
+      expect(File.exist?(File.join(@dir, ".schemas"))).to be false
+      expect(File.read(File.join(@dir, "c.schemas"))).to eq("Am7-0 : 10 21/1 32/3 42/2 50 6x\n")
       # `scores/`, SANS sous-dossier — même dossier ressource que tabs/images
       # (`PageBuilder::RESOURCE_SUBDIRS`), jamais un `images/diags/` inventé.
       expect(File.exist?(File.join(@dir, "scores", "Am7-0.svg"))).to be true
@@ -159,7 +160,7 @@ RSpec.describe "DiagSchem#enregistrer_dans_application" do
 
       instance.send(:enregistrer_dans_application, prompt)
 
-      expect(File.exist?(File.join(@dir, ".schemas"))).to be true
+      expect(File.exist?(File.join(@dir, "c.schemas"))).to be true
     end
   end
 end

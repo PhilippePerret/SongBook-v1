@@ -31,4 +31,15 @@ module FileFinder
     end
     nil
   end
+
+  # Racine reprise du nom le PLUS UTILISÉ parmi les fichiers déjà présents (ex. "c.lyr"
+  # + "c.infos" -> "c") — "c" par défaut si le dossier est vide. Jamais de fichier
+  # créé sans root-name (".ext" = fichier masqué dans le Finder).
+  def self.most_common_root(folder)
+    exts = EXTENSIONS.values.flatten
+    roots = Dir.glob(File.join(folder, "*.{#{exts.join(',')}}")).map { |p| File.basename(p, ".*") }
+    return "c" if roots.empty?
+
+    roots.tally.max_by { |_, count| count }.first
+  end
 end

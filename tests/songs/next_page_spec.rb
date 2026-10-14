@@ -93,27 +93,26 @@ RSpec.describe "next-page — saut de page forcé" do
   end
 
   # Issue #120 : page sous bandeau coupée par `next-page` -> même air au-dessus et en
-  # dessous des blocs (écarts au max, ensemble descendu).
+  # dessous des blocs, mesuré sur l'encre (écarts au max, ensemble descendu).
   it "page coupée par `next-page` : même air au-dessus et en dessous" do
-    tops = {}
-    allow(Layout).to receive(:paginate).and_wrap_original do |m, elements, first_avail_h, *rest, **kw|
-      pages = m.call(elements, first_avail_h, *rest, **kw)
-      if kw[:top_type] == :band_strophe
-        elements.each_with_index do |el, i|
-          draw = el.draw
-          el.draw = ->(pdf_, y) { tops[i] = y; draw.call(pdf_, y) }
-        end
-        tops[:avail] = first_avail_h
-        tops[:pages] = pages
-        tops[:heights] = elements.map(&:height)
+    seen = {}
+    allow(Layout).to receive(:paginate_and_draw).and_wrap_original do |m, pdf, elements, first_avail_h, **kw|
+      tops = {}
+      elements.each_with_index do |el, i|
+        draw = el.draw
+        el.draw = ->(pdf_, y) { tops[i] = y; draw.call(pdf_, y) }
       end
-      pages
+      seen.replace(elements: elements, avail: first_avail_h, tops: tops)
+      m.call(pdf, elements, first_avail_h, **kw)
     end
     page_of("wake", lyr: LYR, gab: format(GAB, "").sub("{refrain-2}", "{refrain-2; next-page: true;}"))
-    first = tops[:pages].first
+    els = seen[:elements]
+    first = Layout.paginate(els, seen[:avail], 1000, top_type: :band_strophe).first
     last = first[:finish] - 1
-    air_above = tops[:avail] - tops[first[:start]]
-    air_below = tops[last] - tops[:heights][last]
+    ink = ->(i) { els[i].ink || [0.0, 0.0] }
+    # Air mesuré sur l'encre visible (vides haut/bas des cadres retirés).
+    air_above = seen[:avail] - (seen[:tops][first[:start]] - ink.call(first[:start])[0])
+    air_below = seen[:tops][last] - els[last].height + ink.call(last)[1]
     expect(air_above).to be_within(0.5).of(air_below)
   end
 end

@@ -170,6 +170,8 @@ module Layout
   @missing_chords = Hash.new { |h, k| h[k] = [] }
 
   def self.log_build(message)
+    return if @ink_dry_run
+
     line = "#{current_song || "?"} p.#{current_page || "?"} : #{message}"
     File.open(building_log_path, "a") { |f| f.puts line }
   end
@@ -224,6 +226,8 @@ module Layout
   # `paginate_and_draw`) — "?" si inconnu à ce stade (ex. accord vérifié avant la mise en
   # page, page pas encore déterminée).
   def self.conflict!(problem, solution:)
+    return if @ink_dry_run
+
     line = "#{current_song || "?"} p.#{current_page || "?"} : #{problem} — #{solution}"
     unless sensitivity == "low"
       @log_conflict_count += 1
@@ -329,6 +333,12 @@ module Layout
   # Marge visée quand on remonte la grille (cas 1.1, place suffisante au-dessus) — au-delà
   # de la zone d'encre, pour un espace visuellement net, pas juste "qui ne touche pas".
   PAGE_NUMBER_TARGET_CLEARANCE_PT = PAGE_NUMBER_INK_ZONE_PT + 8.0
+
+  # Air minimum entre l'encre des paroles et le bas de la zone de contenu (numéro de page
+  # en bas) : les paroles ne descendent jamais au niveau du numéro de page.
+  def self.text_bottom_floor
+    folio_position[:vertical] == :top ? 0.0 : PAGE_NUMBER_INK_ZONE_PT.to_f
+  end
   # Remontée forcée (cas 1.2, place insuffisante pour la cible ci-dessus) — RÉSERVÉE dès
   # la passe virtuelle (`fits`, avant tout dessin), sinon cette remontée mord sur le texte
   # sans que le calcul amont l'ait anticipée (chevauchement constaté, "The Man I Love" :
@@ -509,7 +519,120 @@ module Layout
   # `text_offset` : distance entre le haut de l'élément et le haut de sa 1re ligne de
   # PAROLES (ligne d'accords au-dessus) — RAL5 aligne les lignes de texte, pas les hauts
   # d'éléments. `nil` = 0 (1re ligne = texte, ou élément sans paroles).
-  PageElement = Struct.new(:height, :draw, :gutter_type, :text_offset, :next_page)
+  # `ink` : [vide haut, vide bas] (pt) entre le cadre de l'élément et l'encre RÉELLEMENT
+  # dessinée (glyphes) — nil = cadre et encre confondus (diags, tabs, images...).
+  # Pagination, écarts et équilibrage travaillent sur l'ENCRE (`visual_elements`).
+  PageElement = Struct.new(:height, :draw, :gutter_type, :text_offset, :next_page, :ink)
+
+  # Éléments ramenés à leur encre visible : hauteur sans les vides haut/bas, dessin
+  # décalé d'autant — toute la mécanique d'écarts s'applique alors à ce qu'on voit.
+  def self.visual_elements(elements)
+    elements.map do |el|
+      top, bottom = el.ink || [0.0, 0.0]
+      next el if top.zero? && bottom.zero?
+
+      draw = el.draw
+      PageElement.new(el.height - top - bottom, ->(pdf_, y) { draw.call(pdf_, y + top) }, el.gutter_type, el.text_offset.to_f - top, el.next_page, nil)
+    end
+  end
+
+  INK_DOC_Y0 = 10_000.0
+
+  # Enregistre l'encre de tout ce qu'un élément dessine, sans rien graver (document
+  # factice, voir `ink_pads`).
+  module InkCapture
+    attr_accessor :ink_top, :ink_bottom, :ink_graphic
+
+    def ink_add(top, bottom)
+      @ink_top = [@ink_top, top].compact.max
+      @ink_bottom = [@ink_bottom, bottom].compact.min
+    end
+
+    def draw_text(text, options = {})
+      style = options[:style]
+      f = style ? find_font(font.family, style: style) : font
+      size = options[:size] || font_size
+      y_max, y_min = Layout.glyph_extent(f, text.to_s)
+      ink_add(options[:at][1] + y_max * size, options[:at][1] + y_min * size) if y_max
+    end
+
+    def fill_rectangle(point, _width, height)
+      ink_add(point[1], point[1] - height)
+    end
+
+    def stroke_line(*points)
+      ys = points.flatten.each_slice(2).map(&:last)
+      ink_add(ys.max + line_width / 2.0, ys.min - line_width / 2.0)
+    end
+
+    def svg(*) = (@ink_graphic = true)
+    def image(*) = (@ink_graphic = true)
+    def stroke_rectangle(*) = (@ink_graphic = true)
+  end
+
+  # [y_max, y_min] des glyphes de `text` (fraction de la taille de police), nil si
+  # aucun glyphe visible (espaces) ou police sans contours TrueType.
+  def self.glyph_extent(font, text)
+    return nil unless font.respond_to?(:ttf)
+
+    @glyph_extents ||= {}
+    upem = font.ttf.header.units_per_em.to_f
+    cmap = font.ttf.cmap.unicode.first
+    exts = text.each_char.filter_map do |ch|
+      @glyph_extents[[font.object_id, ch]] ||= begin
+        glyph = font.ttf.glyph_outlines.for(cmap[ch.ord])
+        glyph ? [glyph.y_max / upem, glyph.y_min / upem] : :none
+      end
+    end.reject { |e| e == :none }
+    return nil if exts.empty?
+
+    [exts.map(&:first).max, exts.map(&:last).min]
+  end
+
+  # Point le plus bas de l'ENCRE de `text` posé sur la ligne de base `y` (police
+  # courante de `pdf`, `style` éventuel) — ce que vérifie `engrave` pour du texte, jamais
+  # la descente théorique de la police (cohérent avec l'espacement, calculé sur l'encre).
+  def self.text_ink_bottom(pdf, text, y, size, style = nil)
+    f = style ? pdf.find_font(pdf.font.family, style: style) : pdf.font
+    _, y_min = glyph_extent(f, text.to_s)
+    y_min ? y + y_min * size : y
+  end
+
+  # [vide haut, vide bas] d'un élément de paroles : dessiné à blanc sur un document
+  # factice (mêmes polices), encre relevée glyphe par glyphe. [0, 0] si l'élément
+  # contient un graphisme (SVG, image) — son cadre EST alors son encre.
+  def self.ink_pads(el)
+    doc = ink_doc
+    doc.ink_top = doc.ink_bottom = nil
+    doc.ink_graphic = false
+    @ink_dry_run = true
+    begin
+      el.draw.call(doc, INK_DOC_Y0)
+    ensure
+      @ink_dry_run = false
+    end
+    return nil if doc.ink_graphic || doc.ink_top.nil?
+
+    top = (INK_DOC_Y0 - doc.ink_top).clamp(0.0, el.height)
+    bottom = (doc.ink_bottom - (INK_DOC_Y0 - el.height)).clamp(0.0, el.height - top)
+    [top, bottom]
+  end
+
+  def self.ink_doc
+    key = [Options.get(:font_family), AppConfig.get("text_font")]
+    @ink_docs ||= {}
+    @ink_docs[key] ||= begin
+      doc = Prawn::Document.new(page_size: [5000, 2 * INK_DOC_Y0], margin: 0)
+      doc.singleton_class.prepend(InkCapture)
+      register_fonts(doc)
+      doc
+    end
+  end
+
+  def self.with_ink(el)
+    el.ink = ink_pads(el)
+    el
+  end
 
   # `next_page: true` (.gab ou .lyr, Manuel "Forcer un saut de page") sur un des blocs
   # de la row : l'élément commence obligatoirement une nouvelle page (`paginate`).
@@ -1492,7 +1615,7 @@ module Layout
       draw_block(pdf_, row[0], x0 + h_gutter, y, col1_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord)
       draw_block(pdf_, row[1], x0 + h_gutter + col1_w + h_gutter, y, col2_w, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size, force_chord_baseline: force_chord)
     end
-    PageElement.new(height, draw, nil, first_text_offset(row, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size), next_page?(row))
+    with_ink(PageElement.new(height, draw, nil, first_text_offset(row, chord_ascent, text_ascent, chord_size: chord_size, text_size: text_size), next_page?(row)))
   end
 
   # Row à 3 blocs ou plus (`//` chaîné dans le `.gab`, ex. "{a} // {b} // {c}") : PAS
@@ -1607,7 +1730,7 @@ module Layout
         end
       end
     end
-    PageElement.new(height, draw, nil, first_text_offset(row, chord_ascent, text_ascent), next_page?(row))
+    with_ink(PageElement.new(height, draw, nil, first_text_offset(row, chord_ascent, text_ascent), next_page?(row)))
   end
 
   # Colonne de paroles à une position/largeur EXACTES, sans gouttière ajoutée en interne
@@ -1617,7 +1740,7 @@ module Layout
   def self.build_text_column_element(pdf, block, x, width, chord_ascent, text_ascent, text_descent)
     height = block_visual_height(pdf, chord_ascent, text_ascent, text_descent, block, width)
     draw = lambda { |pdf_, y| draw_block(pdf_, block, x, y, width, chord_ascent, text_ascent) }
-    PageElement.new(height, draw, nil, first_text_offset([block], chord_ascent, text_ascent))
+    with_ink(PageElement.new(height, draw, nil, first_text_offset([block], chord_ascent, text_ascent)))
   end
 
   # Pagination générique : chaque page reçoit autant d'éléments (rows de couplets, tabs...)
@@ -1639,7 +1762,8 @@ module Layout
   # même `top_type`) n'en réserve que 15 (`:band_strophe`) : la pagination refusait des
   # contenus qui, eux, tenaient réellement au rendu (bug constaté : "il
   # prend les valeurs mini et teste").
-  def self.paginate(elements, first_avail_h, page_height, pinned: [], type: :default, top_type: type, trailing_extra: 0)
+  def self.paginate(elements, first_avail_h, page_height, pinned: [], type: :default, top_type: type, trailing_extra: 0, bottom_floor: nil)
+    elements = visual_elements(elements)
     heights = elements.map(&:height)
     avail_h = first_avail_h
     idx = 0
@@ -1653,7 +1777,8 @@ module Layout
       # repousser pour faire de la place au plancher — la marge basse se retrouvait nulle.
       # AUCUNE gouttière après le dernier élément (voir `distribute_v_gutters`,
       # 2026-08-23) : pour n éléments, gutter_top + (n-1) gouttières `type`, pas n+1.
-      while idx < elements.length && !(idx > start && elements[idx].next_page) && page_sum + heights[idx] + gutter_top + min_v_dist(type) * (idx - start) <= avail_h
+      floor = bottom_floor || (type == :diags ? 0.0 : text_bottom_floor)
+      while idx < elements.length && !(idx > start && elements[idx].next_page) && page_sum + heights[idx] + gutter_top + min_v_dist(type) * (idx - start) <= avail_h - floor
         page_sum += heights[idx]
         idx += 1
       end
@@ -1730,6 +1855,8 @@ module Layout
 
   def self.paginate_and_draw(pdf, elements, first_avail_h, printer:, page_w_pt:, page_h_pt:, first_page_no: 1, pinned: [], side_col: nil, side_col2: nil, text_x: 0, text_w: nil, debug_marks: false,
       dynamic_mode: nil, elements_alt: nil, side_col_alt: nil, text_x_alt: nil, row_excess: [], row_excess_w: Options.get(:diags_size), row_excess_align: :center, diag_position: nil)
+    elements = visual_elements(elements)
+    elements_alt = visual_elements(elements_alt) if elements_alt
     heights = elements.map(&:height)
     trailing_extra = row_excess.any? ? estimate_excess_grid_height(row_excess, text_w || pdf.bounds.width) : 0
     pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned, top_type: :band_strophe, trailing_extra: trailing_extra)
@@ -1942,7 +2069,7 @@ module Layout
         block_h = rows.size * grid_diag_h + [rows.size - 1, 0].max * gap_v
         row_top_y = column_bottom_y ? column_bottom_y + block_h : gap_v + block_h
         remaining_h = last_page[:avail_h] - row_top_y - min_v_dist(:default) - page_number_reserve
-        fits = remaining_h.positive? && page_els.sum(&:height) <= remaining_h && (paginate(page_els, remaining_h, remaining_h).size == 1)
+        fits = remaining_h.positive? && page_els.sum(&:height) <= remaining_h && (paginate(page_els, remaining_h, remaining_h, bottom_floor: 0.0).size == 1)
         next nil unless fits
 
         { rows: rows, diag_w: w, diag_h: grid_diag_h, remaining_h: remaining_h, block_h: block_h, column_bottom_y: column_bottom_y }
@@ -2005,7 +2132,7 @@ module Layout
       if page
         page_els = cur_elements[page[:start]...page[:finish]]
         merging_here = merged_last_page && i == pages.size - 1
-        avail_for_text = merging_here ? merged_last_page[:remaining_h] : page[:avail_h]
+        avail_for_text = merging_here ? merged_last_page[:remaining_h] : page[:avail_h] - text_bottom_floor
         page_heights = page_els.map(&:height)
         page_top_type = i.zero? ? :band_strophe : :default
         gutters = distribute_v_gutters(avail_for_text, page_heights, top_type: page_top_type, types: page_els.map(&:gutter_type))
@@ -2020,7 +2147,11 @@ module Layout
         # exige un DUP EXACT (gouttière inter-couplets + 4pt), pas juste approché : les
         # deux exigences sont incompatibles, celle-ci gagne sur la 1re page (bandeau).
         dup = gutters[0]
-        ddo = avail_for_text - (page_heights.sum + gutters.sum)
+        # Équilibrage (air haut = air bas) sur la hauteur ENTIÈRE : le plancher au-dessus
+        # du numéro de page ne vaut que pour une page pleine — l'air d'une page équilibrée
+        # (>= 14pt) le dépasse toujours.
+        balance_h = merging_here ? avail_for_text : page[:avail_h]
+        ddo = balance_h - (page_heights.sum + gutters.sum)
         # Exception (issue #120) : page sous bandeau coupée par un `next_page` forcé sur
         # l'élément suivant — même air au-dessus et en dessous, écarts au max, bloc
         # descendu (jamais remonté : le plancher bandeau + 4pt reste dû).
@@ -2039,7 +2170,7 @@ module Layout
         if balance_shift.positive? && page_els.size > 1 && page_els.all? { |el| el.gutter_type.nil? }
           k = page_els.size - 1
           air = dup + balance_shift
-          free = avail_for_text - page_heights.sum
+          free = balance_h - page_heights.sum
           g = [free / (4.0 + k), BALANCED_MAX_V_DIST].min
           if air > 2 * gutters[1] && g > gutters[1]
             a = (free - k * g) / 2.0
@@ -2081,7 +2212,7 @@ module Layout
         if printer.facing_pages && printer.recto?(page_no) && prev_verso_first_line_y && !page_els.empty?
           target_y = prev_verso_first_line_y + page_els.first.text_offset.to_f
           content_span = page_heights.sum + gutters[1..].sum
-          floor_h = merging_here ? (min_v_dist(:diags) + merged_last_page[:block_h]) : 0.0
+          floor_h = merging_here ? (min_v_dist(:diags) + merged_last_page[:block_h]) : text_bottom_floor
           gap_below = target_y - content_span - floor_h
           air_above = page[:avail_h] - target_y
           if target_y <= page[:avail_h] && gap_below >= min_v_dist(:default) && (target_y >= y || gap_below >= air_above)
@@ -2455,12 +2586,10 @@ module Layout
 
     main, suffix = chord_label_parts(chord)
     with_chord_font(pdf) do
-      descent = font_metric(pdf, size) { pdf.font.descender }
-      engrave(bottom: y - descent, context: "accord #{chord}") { pdf.draw_text main, at: [x, y], size: size, style: :bold }
+      engrave(bottom: text_ink_bottom(pdf, main, y, size, :bold), context: "accord #{chord}") { pdf.draw_text main, at: [x, y], size: size, style: :bold }
       next if suffix.empty?
 
-      suffix_descent = font_metric(pdf, size - 2) { pdf.font.descender }
-      engrave(bottom: y - suffix_descent, context: "accord #{chord} (suffixe)") do
+      engrave(bottom: text_ink_bottom(pdf, suffix, y, size - 2, :bold), context: "accord #{chord} (suffixe)") do
         pdf.draw_text suffix, at: [x + pdf.width_of(main, size: size, style: :bold), y], size: size - 2, style: :bold
       end
     end
@@ -2472,17 +2601,16 @@ module Layout
   # `bass_flags` : voir `slash_label_width`/`slash_bass_flags` (issue #106).
   def self.draw_slash_chord_label(pdf, text, x, y, size, bass_flags: nil)
     with_chord_font(pdf) do
-      descent = font_metric(pdf, size) { pdf.font.descender }
       cx = x
       parts = text.split("/")
       parts.each_with_index do |part, i|
-        engrave(bottom: y - descent, context: "accord (slash) \"#{part}\"") { pdf.draw_text part, at: [cx, y], size: size, style: :bold }
+        engrave(bottom: text_ink_bottom(pdf, part, y, size, :bold), context: "accord (slash) \"#{part}\"") { pdf.draw_text part, at: [cx, y], size: size, style: :bold }
         cx += pdf.width_of(part, size: size, style: :bold)
         next if i == parts.length - 1
 
         lead_gap, trailing_gap = slash_gaps(bass_flags, i, part)
         cx += lead_gap
-        engrave(bottom: y - descent, context: "accord (slash) séparateur") { pdf.draw_text "/", at: [cx, y], size: size, style: :bold }
+        engrave(bottom: text_ink_bottom(pdf, "/", y, size, :bold), context: "accord (slash) séparateur") { pdf.draw_text "/", at: [cx, y], size: size, style: :bold }
         cx += pdf.width_of("/", size: size, style: :bold) + trailing_gap
       end
     end
@@ -2990,7 +3118,7 @@ module Layout
         style_runs(tok[:text], tok[:co], bold_steps, italic_steps).each do |sub_text, style|
           opts = { size: text_size }
           opts[:style] = style if style
-          engrave(bottom: text_y - text_descent, context: "texte \"#{sub_text[0, 20]}\"") { pdf.draw_text sub_text, at: [x + tok[:x] + dx, text_y], **opts }
+          engrave(bottom: text_ink_bottom(pdf, sub_text, text_y, text_size, style), context: "texte \"#{sub_text[0, 20]}\"") { pdf.draw_text sub_text, at: [x + tok[:x] + dx, text_y], **opts }
           run_w = style ? pdf.width_of(sub_text, size: text_size, style: style) : pdf.width_of(sub_text, size: text_size)
           dx += run_w + cs * sub_text.length
         end
@@ -3017,8 +3145,7 @@ module Layout
     text_y = has_chord ? y - chord_to_text_drop(chord_size, text_size) : y
     overflow_y = text_y - text_size - LINE_GAP
     overflow_w = pdf.width_of(overflow_text, size: text_size)
-    overflow_descent = font_metric(pdf, text_size) { pdf.font.descender }
-    engrave(bottom: overflow_y - overflow_descent, context: "excédent de vers \"#{overflow_text[0, 20]}\"") do
+    engrave(bottom: text_ink_bottom(pdf, overflow_text, overflow_y, text_size), context: "excédent de vers \"#{overflow_text[0, 20]}\"") do
       pdf.draw_text overflow_text, at: [x + width - overflow_w, overflow_y], size: text_size
     end
   end
@@ -3029,7 +3156,6 @@ module Layout
   # jamais le séparateur affiché sous l'accord — . Espacement RAA1
   # (`CHORD_GAP`) partout, y compris entre accord et séparateur.
   def self.draw_chords_only_line(pdf, line, x, y, chord_size: scaled_chord_size)
-    descent = font_metric(pdf, chord_size) { pdf.font.descender }
     steps, = chords_only_steps(pdf, line.segments, chord_size)
     steps.each do |step|
       if step[:chord]
@@ -3037,7 +3163,7 @@ module Layout
         next
       end
 
-      engrave(bottom: y - descent, context: "séparateur accords \"#{step[:sep]}\"") { pdf.draw_text step[:sep], at: [x + step[:x], y], size: chord_size }
+      engrave(bottom: text_ink_bottom(pdf, step[:sep], y, chord_size), context: "séparateur accords \"#{step[:sep]}\"") { pdf.draw_text step[:sep], at: [x + step[:x], y], size: chord_size }
     end
   end
 

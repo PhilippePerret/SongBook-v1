@@ -102,8 +102,7 @@ class DiagSchem
 
   # `song_dir:` (issue #79, `songbook create diag`) : enregistre dans le `.schemas`/
   # `.sch` DE LA CHANSON courante (`FileFinder.find(song_dir, :sch)`, créé s'il
-  # n'existe pas encore — `.schemas` par défaut, 1re extension de `FileFinder::
-  # EXTENSIONS[:sch]`) plutôt que dans la bibliothèque de l'application
+  # n'existe pas encore — `<root>.schemas`, `FileFinder.most_common_root`) plutôt que dans la bibliothèque de l'application
   # (`SchemaLibrary`, `assets/chords_diags/`) — jamais les deux à la fois, un
   # diagramme propre à UNE chanson n'a rien à faire dans la bibliothèque partagée.
   def initialize(output_svg: false, schema: nil, song_dir: nil)
@@ -151,14 +150,14 @@ class DiagSchem
   # Fichier `.schemas`/`.sch` CIBLE de l'enregistrement (issue #79) : celui DE LA
   # CHANSON courante (`@song_dir`, `songbook create diag`) — repris s'il existe déjà,
   # SEULE l'extension compte (`.schemas` ou `.sch`, `FileFinder`), jamais le root-name
-  # (Phil : "on s'en branle de son nom") ; sinon `.schemas` (1re extension de
-  # `FileFinder::EXTENSIONS[:sch]`) créé dans le dossier de la chanson — ou, à défaut de
+  # (Phil : "on s'en branle de son nom") ; sinon `<root>.schemas` (root-name le plus
+  # utilisé du dossier, jamais un `.schemas` masqué) créé dans le dossier de la chanson — ou, à défaut de
   # `@song_dir` (outil `diag` autonome), la bibliothèque PARTAGÉE de l'application
   # (`SchemaLibrary.schemas_path`, `assets/chords_diags/<Lettre>/schemas.txt`).
   def schema_target_path(nom)
     return SchemaLibrary.schemas_path(nom) unless @song_dir
 
-    FileFinder.find(@song_dir, :sch) || File.join(@song_dir, '.schemas')
+    FileFinder.find(@song_dir, :sch) || File.join(@song_dir, "#{FileFinder.most_common_root(@song_dir)}.schemas")
   end
 
   # Dossier où produire le SVG tout de suite après l'enregistrement : `scores/` DANS la
