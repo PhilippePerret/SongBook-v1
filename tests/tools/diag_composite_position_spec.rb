@@ -29,6 +29,24 @@ RSpec.describe "positions composées des diagrammes (diags_position)" do
     expect(split(:"int-top")).to eq([:int, :justify])
   end
 
+  it "Left-Bot/Right-Bot/Ext-Bot/Int-Bot : colonne alignée en bas" do
+    expect(split(:"left-bot")).to eq([:left, :bot])
+    expect(split(:"right-bot")).to eq([:right, :bot])
+    expect(split(:"ext-bot")).to eq([:ext, :bot])
+    expect(split(:"int-bot")).to eq([:int, :bot])
+  end
+
+  it "Bot/Bot-Left/Bot-Right/Bot-Ext/Bot-Int : rangée du bas de page" do
+    expect(split(:bot)).to eq([:bottom, :justify])
+    expect(split(:"bot-left")).to eq([:bottom, :"fixed-left"])
+    expect(split(:"bot-right")).to eq([:bottom, :"fixed-right"])
+    expect(split(:"bot-ext")).to eq([:bottom, :"fixed-ext"])
+    expect(split(:"bot-int")).to eq([:bottom, :"fixed-int"])
+    expect(split(:"bot-center")).to eq([:bottom, :"fixed-center"])
+    expect(split(:"top-center")).to eq([:top, :"fixed-center"])
+    expect(split(:"end-center")).to eq([:end, :"fixed-center"])
+  end
+
   it "Left-End/Right-End/End/Top et autres valeurs : inchangées" do
     %i[left-end right-end ext-end int-end end top left-right back].each do |pos|
       expect(split(pos)).to eq([pos, :justify])
