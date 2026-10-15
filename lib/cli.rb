@@ -28,6 +28,7 @@ require_relative "tdm_creator"
 require_relative "rights_cli"
 require_relative "rights_expiry"
 require_relative "ie_command"
+require_relative "qr_code"
 require_relative "../tools/DiagSchem/diagschem"
 require_relative "../tools/ChordDiagram/generate_chord_diagrams"
 
@@ -439,6 +440,20 @@ module CLI
           end
         end
         puts matches.empty? ? "rien trouvé pour « #{arg1} »" : matches.join("\n")
+      end
+    when "qrcode", "qr-code"
+      # Cible : `--songbook` explicite > chanson (`--song`/contexte) > carnet (contexte
+      # ou dossier courant).
+      carnet_folder = sb_given ? resolve_carnet_folder(songs_carnet_opt) : nil
+      song_folder = carnet_folder ? nil : Session.song
+      carnet_folder ||= Session.carnet || (CarnetBuilder.carnet_folder?(Dir.pwd) ? Dir.pwd : nil) unless song_folder
+      abort Loc.get("qrcode_no_target") unless song_folder || carnet_folder
+
+      result = song_folder ? QRCode.generate(song_folder, QRCode::SONG_URL) : QRCode.generate(carnet_folder, QRCode::CARNET_URL)
+      case result[:status]
+      when :created then puts success(format(Loc.get("qrcode_created"), result[:url]))
+      when :exists then puts gray(format(Loc.get("qrcode_exists"), result[:url]))
+      else abort Loc.get("qrcode_no_id")
       end
     when "cover"
       begin

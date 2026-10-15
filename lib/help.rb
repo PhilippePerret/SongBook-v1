@@ -112,6 +112,14 @@ USAGE = <<~TXT
     {{command: songbook create songbook[ "titre du carnet"]}}
     {{command: songbook create sb[ "titre du carnet"]}}
 
+  QR-code
+  -------
+  Produit l'image QR-code (dossier images) vers la page en ligne de la
+  chanson ou du carnet courant — insérée dans le PDF seulement si elle existe :
+    {{command:songbook qrcode}}
+    {{command:songbook qrcode --song "titre"}}
+    {{command:songbook qrcode --songbook "carnet"}}
+
   Couverture
   ----------
   Pour construire la couverture, deux moyens :

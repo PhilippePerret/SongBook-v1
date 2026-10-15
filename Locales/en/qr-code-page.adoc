@@ -1,0 +1,2 @@
+// Text of the songbook QR-code page (placed right before the first song).
+// Paragraphs separated by a blank line; *bold*, _italic_.

@@ -176,3 +176,9 @@ ie_song_created_in: "Song “%s” created in the songbooks: %s"
 ie_site_synced: "Remote website synchronized."
 ie_site_not_synced: "Remote website not synchronized."
 ie_song_unknown: "Unknown song in the songbook: %s"
+
+# qrcode
+qrcode_created: "👍 QR code generated (%s)."
+qrcode_exists: "QR code already present (%s)."
+qrcode_no_id: "No id in the infos file: cannot generate QR code."
+qrcode_no_target: "No song or songbook in context for qrcode (use, --song or --songbook)."

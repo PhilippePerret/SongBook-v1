@@ -184,3 +184,9 @@ ie_song_created_in: "Chanson « %s » créée dans les carnets : %s"
 ie_site_synced: "Site distant synchronisé."
 ie_site_not_synced: "Site distant non synchronisé."
 ie_song_unknown: "Chanson inconnue dans le carnet : %s"
+
+# qrcode
+qrcode_created: "👍 QR-code produit (%s)."
+qrcode_exists: "QR-code déjà présent (%s)."
+qrcode_no_id: "Pas d'id dans la fiche : QR-code impossible."
+qrcode_no_target: "Aucune chanson ni carnet de contexte pour qrcode (use, --song ou --songbook)."

@@ -9,6 +9,7 @@ require_relative "locale"
 require_relative "file_finder"
 require_relative "diags_sync"
 require_relative "app_config"
+require_relative "qr_code"
 require_relative "../tools/tablator/tablator"
 
 # Construit les pages PDF d'UNE chanson — point d'entrée réutilisable (API : "je veux
@@ -996,7 +997,8 @@ module PageBuilder
 
     Prawn::Document.generate(out_path, page_size: page_size, margin: 0) do |pdf|
       Layout.register_fonts(pdf)
-      Layout.apply_print_margins(pdf, printer, first_page_no, page_w_pt, page_h_pt, debug_marks: debug_marks)
+      Layout.first_page_bottom_reserve = qr_code_reserve(folder)
+      Layout.apply_print_margins(pdf, printer, first_page_no, page_w_pt, page_h_pt, debug_marks: debug_marks, bottom_reserve: Layout.first_page_bottom_reserve)
       # `diag_position`/`dynamic_mode` calculés ICI, AVANT l'entête (issue #69) : le
       # numéro de capo se place naturellement en haut à gauche, SAUF si une colonne de
       # diags y est déjà (alors à droite) — il faut donc savoir où vont les diags avant
@@ -1133,7 +1135,7 @@ module PageBuilder
       # (même bug que "L'Étranger" ci-dessus, constaté sur "Il").
       if pair_elements.any? || solo_elements.any?
         trailing_extra = row_excess.any? ? Layout.estimate_excess_grid_height(row_excess, text_w || pdf.bounds.width) : 0
-        pages = Layout.paginate(elements, first_avail_h, pdf.bounds.height, pinned: shrink_jobs.map { |j| j[:index] }, top_type: :band_strophe, trailing_extra: trailing_extra)
+        pages = Layout.paginate(elements, first_avail_h, Layout.next_pages_height(pdf), pinned: shrink_jobs.map { |j| j[:index] }, top_type: :band_strophe, trailing_extra: trailing_extra)
         pages.each do |page|
           # `page_edges` (issue #104, `align:Left`/`align:Right`) : fer gauche/droit RÉEL de
           # chaque row (paire ou bloc seul) de CETTE page, accumulé au fil des deux boucles
@@ -1197,7 +1199,7 @@ module PageBuilder
       # .
       pinned = shrink_jobs.map { |j| j[:index] }
       shrink_jobs.each do |job|
-        pages = Layout.paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned)
+        pages = Layout.paginate(elements, first_avail_h, Layout.next_pages_height(pdf), pinned: pinned)
         page = pages.find { |p| (p[:start]...p[:finish]).cover?(job[:index]) }
         others_h = (page[:start]...page[:finish]).sum { |j| j == job[:index] ? 0 : elements[j].height }
         max_h = page[:avail_h] - others_h
@@ -1214,7 +1216,50 @@ module PageBuilder
 
       Layout.paginate_and_draw(pdf, elements, first_avail_h, printer: printer, page_w_pt: page_w_pt, page_h_pt: page_h_pt, first_page_no: first_page_no, pinned: pinned, side_col: side_col, side_col2: side_col2, text_x: text_x, text_w: text_w, debug_marks: debug_marks,
         dynamic_mode: dynamic_mode, elements_alt: elements_r, side_col_alt: side_col_r, text_x_alt: text_x_r, row_excess: row_excess, row_excess_w: row_excess_w, row_excess_align: diag_align, diag_position: diag_position)
+      draw_qr_code(pdf, folder, printer, first_page_no, page_w_pt, page_h_pt)
     end
+  ensure
+    Layout.first_page_bottom_reserve = 0
+  end
+
+  QR_CODE_GAP_PT = 12
+
+  # QR-code de la chanson (`images/QR-Code.svg`, seulement s'il existe) en bas de la 1re
+  # page, côté intérieur par défaut (`qr_code_position` : `bottom-int`, `bottom-ext`,
+  # `bottom-left`, `bottom-right`, `none`). Sa bande est réservée (`qr_code_reserve`) :
+  # aucun élément de la page ne peut la chevaucher.
+  def self.qr_code_position(folder)
+    position = Options.get(:qr_code_position).to_s.downcase
+    return nil if position == "none" || !QRCode.exist?(folder)
+
+    position.sub(/\Atop-/, "bottom-")
+  end
+
+  def self.qr_code_reserve(folder)
+    qr_code_position(folder) ? Options.get(:qr_code_size) + QR_CODE_GAP_PT : 0
+  end
+
+  def self.draw_qr_code(pdf, folder, printer, first_page_no, page_w_pt, page_h_pt)
+    position = qr_code_position(folder)
+    return unless position
+
+    size = Options.get(:qr_code_size)
+    vertical, side = position.split("-", 2)
+    recto = printer.recto?(first_page_no)
+    side = case side
+           when "int" then printer.facing_pages && recto ? "left" : "right"
+           when "ext" then printer.facing_pages && recto ? "right" : "left"
+           else side
+           end
+    lm = Layout.in_pt(printer.left_margin(first_page_no))
+    rm = Layout.in_pt(printer.right_margin(first_page_no))
+    bm = Layout.in_pt(printer.bot_margin)
+    x = side == "left" ? lm : page_w_pt - rm - size
+    y = bm + size
+    pdf.go_to_page(1)
+    pdf.canvas { pdf.svg File.read(QRCode.path(folder)), at: [x, y], width: size, enable_web_requests: false }
+    pdf.go_to_page(pdf.page_count)
+    Layout.log_build("QR-code page #{first_page_no}, #{vertical}-#{side}")
   end
 
   # Chemin legacy : chanson en un seul fichier `.dsl` (frontmatter YAML + blocs), voir

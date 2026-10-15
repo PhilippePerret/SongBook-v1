@@ -73,9 +73,9 @@ RSpec.describe "construction d'un carnet" do
       FileUtils.mkdir_p(small_carnet)
       File.write(File.join(small_carnet, "c.tdm"), "- Angie\n")
       File.write(File.join(small_carnet, "c.infos"), "title: Petit carnet\n")
-      # Total réel de ce petit carnet = 9 pages (`provisional_page_count` = 24, plancher).
+      # Total réel de ce petit carnet = 11 pages (dont la page vierge avant la 1re chanson) (`provisional_page_count` = 24, plancher).
       # Palier custom (0-15 / 16+) qui les sépare : provisional (24) tombe dans le 2e,
-      # le total réel (9) dans le 1er — force le déclenchement de la 2e passe.
+      # le total réel (11) dans le 1er — force le déclenchement de la 2e passe.
       stub_const("PrinterProfile::GUTTER_RANGES", [[0, 15, 0.05], [16, 999, 0.95]].freeze)
       allow(PageBuilder).to receive(:build).and_call_original
     end
@@ -86,7 +86,7 @@ RSpec.describe "construction d'un carnet" do
       CarnetBuilder.build(small_carnet)
 
       expect(PageBuilder).to have_received(:build).with(anything, anything, hash_including(page_count: 24)).twice
-      expect(PageBuilder).to have_received(:build).with(anything, anything, hash_including(page_count: 9)).twice
+      expect(PageBuilder).to have_received(:build).with(anything, anything, hash_including(page_count: 11)).twice
     end
   end
 end

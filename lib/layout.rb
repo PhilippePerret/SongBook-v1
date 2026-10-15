@@ -356,13 +356,28 @@ module Layout
   # `debug_marks:` (option CLI `-x`) : rectangle de repère sur la zone utile (`pdf.bounds`,
   # DONC déjà nette des marges) — même principe/couleur que les repères de couverture
   # (`CoverBuilder::DEBUG_COLOR`), jamais dessiné en dehors de ce garde-fou explicite.
-  def self.apply_print_margins(pdf, printer, page_no, page_w_pt, page_h_pt, debug_marks: false)
+  # Bande réservée en bas de la 1re page de la chanson en cours (QR-code,
+  # `PageBuilder.build`) — 0 hors construction de chanson.
+  @first_page_bottom_reserve = 0
+  class << self
+    attr_accessor :first_page_bottom_reserve
+  end
+
+  # Hauteur de contenu des pages SUIVANTES, mesurée depuis la 1re page (dont `bounds`
+  # est réduite de `first_page_bottom_reserve`).
+  def self.next_pages_height(pdf)
+    pdf.bounds.height + (pdf.page_number == 1 ? first_page_bottom_reserve.to_f : 0)
+  end
+
+  # `bottom_reserve` : bande du bas soustraite à la zone de contenu (QR-code de la 1re
+  # page de chanson) — rien ne peut y être dessiné (`engrave`).
+  def self.apply_print_margins(pdf, printer, page_no, page_w_pt, page_h_pt, debug_marks: false, bottom_reserve: 0)
     lm = in_pt(printer.left_margin(page_no))
     rm = in_pt(printer.right_margin(page_no))
     tm = in_pt(printer.top_margin)
     bm = in_pt(printer.bot_margin)
     pdf.bounds = Prawn::Document::BoundingBox.new(
-      pdf, pdf, [lm, page_h_pt - tm], width: page_w_pt - lm - rm, height: page_h_pt - tm - bm
+      pdf, pdf, [lm, page_h_pt - tm], width: page_w_pt - lm - rm, height: page_h_pt - tm - bm - bottom_reserve
     )
     return unless debug_marks
 
@@ -1859,7 +1874,7 @@ module Layout
     elements_alt = visual_elements(elements_alt) if elements_alt
     heights = elements.map(&:height)
     trailing_extra = row_excess.any? ? estimate_excess_grid_height(row_excess, text_w || pdf.bounds.width) : 0
-    pages = paginate(elements, first_avail_h, pdf.bounds.height, pinned: pinned, top_type: :band_strophe, trailing_extra: trailing_extra)
+    pages = paginate(elements, first_avail_h, next_pages_height(pdf), pinned: pinned, top_type: :band_strophe, trailing_extra: trailing_extra)
     # `int`/`ext` (alternance recto/verso) n'a de sens qu'en reliure (`facing_pages`) —
     # sinon retombe sur `int` fixe (pas d'alternance sans vis-à-vis).
     want_left_for = ->(page_no) { dynamic_mode.nil? || !printer.facing_pages || %i[int int-end].include?(dynamic_mode) == printer.recto?(page_no) }
@@ -1886,7 +1901,7 @@ module Layout
       end
       side_elements = build_side_elements.call(side_col)
       side_elements_alt = side_col_alt ? build_side_elements.call(side_col_alt) : side_elements
-      side_pages_all = paginate(side_elements, first_avail_h, pdf.bounds.height, type: :diags, top_type: :band_diag)
+      side_pages_all = paginate(side_elements, first_avail_h, next_pages_height(pdf), type: :diags, top_type: :band_diag)
       # `Right-End`/`Left-End`/`Ext-End`/`Int-End` : colonne ANCRÉE à la fin — occupe les
       # DERNIÈRES pages de la chanson (jamais dès la page 1 comme une colonne normale),
       # `nil` sur les pages qui précèdent (RAL4 les recentre déjà, aucun changement
@@ -1966,7 +1981,7 @@ module Layout
           engrave(bottom: y - h, context: "diagramme") { pdf_.svg(IO.read(path), at: [x, y], width: w, position: :left, enable_web_requests: false) }
         end)
       end
-      side_pages2_all = paginate(side_elements2, first_avail_h, pdf.bounds.height, type: :diags, top_type: :band_diag)
+      side_pages2_all = paginate(side_elements2, first_avail_h, next_pages_height(pdf), type: :diags, top_type: :band_diag)
       if side_pages2_all.size > pages.size
         side_pages2 = side_pages2_all.first(pages.size)
         excess_start2 = side_pages2.empty? ? 0 : side_pages2.last[:finish]
@@ -2210,7 +2225,7 @@ module Layout
         # 1res lignes de PAROLES alignées (`PageElement#text_offset`), jamais une ligne
         # d'accords de gauche avec une ligne de texte de droite.
         if printer.facing_pages && printer.recto?(page_no) && prev_verso_first_line_y && !page_els.empty?
-          target_y = prev_verso_first_line_y + page_els.first.text_offset.to_f
+          target_y = prev_verso_first_line_y - pdf.bounds.absolute_bottom + page_els.first.text_offset.to_f
           content_span = page_heights.sum + gutters[1..].sum
           floor_h = merging_here ? (min_v_dist(:diags) + merged_last_page[:block_h]) : text_bottom_floor
           gap_below = target_y - content_span - floor_h
@@ -2332,7 +2347,7 @@ module Layout
       # RAL5 : valeur consultée par la PROCHAINE page recto (voir plus haut) — mise à
       # jour à CHAQUE page (y compris `nil` sur une page recto ou sans texte), jamais
       # laissée traîner au-delà de la page verso qui vient d'être rendue.
-      prev_verso_first_line_y = (page && printer.facing_pages && printer.verso?(page_no) && page_els.any?) ? first_line_y - page_els.first.text_offset.to_f : nil
+      prev_verso_first_line_y = (page && printer.facing_pages && printer.verso?(page_no) && page_els.any?) ? first_line_y + pdf.bounds.absolute_bottom - page_els.first.text_offset.to_f : nil
 
       side_page = side_pages[i]
       if side_page
@@ -2392,7 +2407,7 @@ module Layout
     gap_h = min_h_dist(:diags)
     gap_v = min_v_dist(:diags)
     cols = [((pdf.bounds.width + gap_h) / (diag_w + gap_h)).floor, 1].max
-    rows_per_page = [((pdf.bounds.height + gap_v) / (diag_h + gap_v)).floor, 1].max
+    rows_per_page = [((next_pages_height(pdf) + gap_v) / (diag_h + gap_v)).floor, 1].max
     per_page = cols * rows_per_page
 
     paths.each_slice(per_page).with_index do |slice, gi|

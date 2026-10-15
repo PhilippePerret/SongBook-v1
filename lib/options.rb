@@ -39,6 +39,8 @@ module Options
     scores_title_bold: { flat: "scores_title_bold", nested: %w[scores title_bold], default: nil, bool: true },
     tabs_title_bold: { flat: "tabs_title_bold", nested: %w[tabs title_bold], default: nil, bool: true },
     diag_list: { flat: "diag_list", nested: nil, default: "all" },
+    qr_code_position: { flat: "qr_code_position", nested: %w[qr_code position], default: "bottom-int", layout_key: :qr_code_position },
+    qr_code_size: { flat: "qr_code_size", nested: %w[qr_code size], default: 57.0, numeric: true },
   }.freeze
 
   # `meta` : hash déjà fusionné par l'appelant pour un override RUNTIME (`--transpose`,

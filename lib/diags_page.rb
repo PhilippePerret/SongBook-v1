@@ -100,10 +100,10 @@ module DiagsPage
       <style>
         body { font-family: sans-serif; margin: 2em; }
         header.page-title { text-align: right; color: #888; font-size: 1.55em; margin-bottom: 1.5em; }
-        nav { display: flex; flex-wrap: wrap; gap: 0.6em; margin: 1em 0 2.5em; font-size: 1.1em; }
+        nav { position: sticky; top: 0; z-index: 500; background: #fff; display: flex; flex-wrap: wrap; gap: 0.6em; margin: 1em 0 2.5em; padding: 0.6em 0; font-size: 1.1em; }
         nav a { text-decoration: none; padding: 0.2em 0.6em; border: 1px solid #999; border-radius: 4px; }
         .nav-hint { margin: 0 0 0.3em; font-style: italic; color: #888; text-align: center; }
-        section { margin-bottom: 2.5em; }
+        section { margin-bottom: 2.5em; scroll-margin-top: 7em; }
         h2 { display: flex; justify-content: space-between; align-items: center; background: #222; color: #fff; padding: 0.4em 0.8em; border-radius: 4px; }
         h2 a.top-link { color: #ccc; text-decoration: none; font-size: 0.55em; font-weight: normal; }
         .grid { display: flex; flex-wrap: wrap; gap: 1em; }

@@ -12,6 +12,7 @@ require_relative "app_config"
 require_relative "file_finder"
 require_relative "diags_sync"
 require_relative "ansi_colors"
+require_relative "qr_code"
 
 # Construit un carnet ENTIER : pages de garde/TOC/textes de front matter (selon le
 # `.infos`/`.inf` du carnet), une page par chanson réelle du `.tdm` (via `PageBuilder.build`),
@@ -760,7 +761,7 @@ module CarnetBuilder
       page_no = front_matter_page_count + 1
       real_songs_by_name = real_songs.to_h
       printer_for_blanks = PrinterProfile.new(page_count: page_count_for_margins, trim_width: page_size_in[0], trim_height: page_size_in[1], paper: printer_paper, bleed: printer_bleed, facing_pages: printer_facing_pages, **printer_margins)
-      song_order = plan_song_order(real_songs.map(&:first), page_counts, front_matter_page_count, reorder_allowed, printer_facing_pages)
+      song_order = lead_and_song_order(real_songs.map(&:first), page_counts, front_matter_page_count, reorder_allowed, printer_facing_pages, carnet_folder)
 
       song_order.each do |item|
         if item == :blank
@@ -770,10 +771,25 @@ module CarnetBuilder
             Layout.apply_print_margins(pdf, printer_for_blanks, page_no, page_w_pt, page_h_pt)
             Layout.current_song = "(carnet)"
             Layout.current_page = page_no
-            Layout.log_build("page vide insérée avant chanson à nombre de pages pair (#54)")
+            Layout.log_build("page vide insérée avant chanson (vierge avant la 1re chanson, ou parité #54)")
           end
           combined_songs << CombinePDF.load(blank_out)
           File.delete(blank_out)
+          page_no += 1
+          next
+        end
+        if item == :qr_page
+          qr_out = File.join(export_dir, ".tmp-qr-page.pdf")
+          Prawn::Document.generate(qr_out, page_size: [page_w_pt, page_h_pt], margin: 0) do |pdf|
+            Layout.register_fonts(pdf)
+            Layout.apply_print_margins(pdf, printer_for_blanks, page_no, page_w_pt, page_h_pt)
+            Layout.current_song = "(carnet)"
+            Layout.current_page = page_no
+            draw_qr_page(pdf, carnet_folder)
+            Layout.log_build("page QR-code du carnet insérée avant la 1re chanson")
+          end
+          combined_songs << CombinePDF.load(qr_out)
+          File.delete(qr_out)
           page_no += 1
           next
         end
@@ -1258,6 +1274,59 @@ module CarnetBuilder
       i += 1
     end
     order
+  end
+
+  # Avant la 1re chanson : au moins une page vierge, puis la page QR-code du carnet
+  # (seulement si `images/QR-Code.svg` existe) juste avant la chanson. Une page vierge
+  # que la parité de la 1re chanson exigerait (#54) passe AVANT la page QR, jamais entre
+  # elle et la chanson.
+  def self.lead_and_song_order(names, page_counts, front_matter_page_count, reorder_allowed, facing_pages, carnet_folder)
+    lead = [:blank]
+    lead << :qr_page if QRCode.exist?(carnet_folder)
+    order = plan_song_order(names, page_counts, front_matter_page_count + lead.size, reorder_allowed, facing_pages)
+    if order.first == :blank
+      order.shift
+      lead.unshift(:blank)
+    end
+    lead + order
+  end
+
+  QR_PAGE_SIZE_PT = AppConfig.length_pt("4.5cm")
+  QR_PAGE_TEXT_WIDTH_RATIO = 0.7
+  QR_PAGE_TEXT_GAP_PT = 14
+
+  # Page QR-code du carnet : QR centré h/v, texte `Locales/<lang>/qr-code-page.adoc`
+  # dessous, fer à gauche justifié, colonne plus étroite que les marges.
+  def self.draw_qr_page(pdf, carnet_folder)
+    size = QR_PAGE_SIZE_PT
+    bw = pdf.bounds.width
+    bh = pdf.bounds.height
+    qr_top = (bh + size) / 2
+    pdf.svg File.read(QRCode.path(carnet_folder)), at: [(bw - size) / 2, qr_top], width: size, enable_web_requests: false
+    text_path = File.join(Loc::DIR, Loc::LANG, "qr-code-page.adoc")
+    text_path = File.join(Loc::DIR, Loc::DEFAULT_LANG, "qr-code-page.adoc") unless File.exist?(text_path)
+    return unless File.exist?(text_path)
+
+    paragraphs = adoc_paragraphs(File.read(text_path))
+    return if paragraphs.empty?
+
+    col_w = bw * QR_PAGE_TEXT_WIDTH_RATIO
+    top = qr_top - size - QR_PAGE_TEXT_GAP_PT
+    pdf.font_size(MarkdownPage::TEXT_SIZE) do
+      pdf.text_box paragraphs.join("\n\n"), at: [(bw - col_w) / 2, top], width: col_w, height: top,
+        align: :justify, inline_format: true, overflow: :shrink_to_fit, leading: MarkdownPage::LINE_GAP
+    end
+  end
+
+  # AsciiDoc minimal -> paragraphes Prawn (`inline_format`) : commentaires et attributs
+  # ignorés, `*gras*`, `_italique_`.
+  def self.adoc_paragraphs(source)
+    source.split(/\n{2,}/).filter_map do |para|
+      lines = para.lines.map(&:strip).reject { |l| l.empty? || l.start_with?("//", ":") }
+      next if lines.empty?
+
+      lines.join(" ").gsub(/\*([^*]+)\*/, '<b>\\1</b>').gsub(/(?<!\w)_([^_]+)_(?!\w)/, '<i>\\1</i>')
+    end
   end
 
   def self.draw_front_matter_page(pdf, spec, title, subtitle, entries, carnet_folder)
