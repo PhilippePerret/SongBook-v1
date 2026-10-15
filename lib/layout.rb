@@ -2354,7 +2354,7 @@ module Layout
         side_page_els = cur_side_elements[side_page[:start]...side_page[:finish]]
         side_page_heights, side_gutters = side_column_gutters(side_page, side_page_els, top_type: i.zero? ? :band_diag : :diags, align: side_col[:align] || :justify)
 
-        y = side_page[:avail_h] - side_gutters[0]
+        y = side_page[:avail_h] - side_gutters.first.to_f
         side_page_els.each_with_index do |el, j|
           el.draw.call(pdf, y)
           y -= side_page_heights[j]
@@ -2373,7 +2373,7 @@ module Layout
         side_page2_els = side_elements2[side_page2[:start]...side_page2[:finish]]
         side_page2_heights, side_gutters2 = side_column_gutters(side_page2, side_page2_els, top_type: i.zero? ? :band_diag : :diags, align: side_col2[:align] || :justify)
 
-        y2 = side_page2[:avail_h] - side_gutters2[0]
+        y2 = side_page2[:avail_h] - side_gutters2.first.to_f
         side_page2_els.each_with_index do |el, j|
           el.draw.call(pdf, y2)
           y2 -= side_page2_heights[j]
